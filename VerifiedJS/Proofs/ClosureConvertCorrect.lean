@@ -2044,6 +2044,53 @@ private theorem Flat_step?_call_value_arg_none (s : Flat.State)
     Flat.step? { s with expr := .call (.lit fv) (.lit ev) args } = none := by
   unfold Flat.step?; simp only [Flat.exprValue?, hvals]; rw [hfnv]; simp only [hss]
 
+/-- Flat call with closure at consoleLogIdx, env value, all arg values. -/
+private theorem Flat_step?_call_consoleLog_vals (s : Flat.State)
+    (envPtr : Nat) (envVal : Flat.Value) (args : List Flat.Expr)
+    (argVals : List Flat.Value)
+    (hvals : Flat.valuesFromExprList? args = some argVals) :
+    Flat.step? { s with expr := .call (.lit (.closure Core.consoleLogIdx envPtr)) (.lit envVal) args } =
+      let msg := match argVals with
+        | [v] => Flat.valueToString v
+        | vs => String.intercalate " " (vs.map Flat.valueToString)
+      some (.log msg, { expr := .lit .undefined, env := s.env, heap := s.heap,
+                        trace := s.trace ++ [.log msg], funcs := s.funcs,
+                        callStack := s.callStack }) := by
+  simp [Flat.step?, Flat.exprValue?, hvals, Core.consoleLogIdx, Flat.pushTrace]
+
+/-- Core call with function at consoleLogIdx, all-value args (general). -/
+private theorem Core_step?_call_consoleLog_general (args : List Core.Expr) (argVals : List Core.Value)
+    (env : Core.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Core.FuncClosure) (cs : List (List (Core.VarName × Core.Value)))
+    (hargs : Core.allValues args = some argVals) :
+    let msg := match argVals with
+      | [v] => Core.valueToString v
+      | vs => String.intercalate " " (vs.map Core.valueToString)
+    Core.step? ⟨.call (.lit (.function Core.consoleLogIdx)) args, env, heap, trace, funcs, cs⟩ =
+      some (.log msg, ⟨.lit .undefined, env, heap,
+                       trace ++ [.log msg], funcs, cs⟩) := by
+  simp [Core.step?, Core.exprValue?, hargs, Core.consoleLogIdx, Core.pushTrace]
+
+/-- Console.log message from converted values equals message from original values. -/
+private theorem consoleLog_msg_convertValue (argVals : List Core.Value) :
+    (match argVals.map Flat.convertValue with
+      | [v] => Flat.valueToString v
+      | vs => String.intercalate " " (vs.map Flat.valueToString)) =
+    (match argVals with
+      | [v] => Core.valueToString v
+      | vs => String.intercalate " " (vs.map Core.valueToString)) := by
+  cases argVals with
+  | nil => rfl
+  | cons hd tl =>
+    cases tl with
+    | nil => simp [List.map, valueToString_convertValue]
+    | cons hd2 tl2 =>
+      simp only [List.map]
+      congr 1
+      rw [show (Flat.convertValue hd :: Flat.convertValue hd2 :: List.map Flat.convertValue tl2).map Flat.valueToString
+              = (hd :: hd2 :: tl2).map Core.valueToString from by
+        simp [List.map, valueToString_convertValue]]
+
 private theorem Core_step?_call_func_step (s : Core.State) (args : List Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
@@ -4076,8 +4123,48 @@ private theorem closureConvert_step_simulation
           | function idx => left; exact ⟨idx, rfl⟩
           | _ => right; intro idx h; cases h
         rcases hfunc_or_not with ⟨idx, rfl⟩ | hnotfunc
-        · -- Function call case: complex setup, sorry for now
-          sorry
+        · -- Function call case: cv = .function idx, all args are values
+          have hflatvals := allValues_convertExprList_valuesFromExprList args argVals scope envVar envMap st hallv
+          have hstflat : (Flat.convertExprList args scope envVar envMap st).snd = st :=
+            allValues_convertExprList_state args argVals scope envVar envMap st hallv
+          have hsf_eta : sf = { sf with expr := .call (.lit (.closure idx 0)) (.lit .null)
+              (Flat.convertExprList args scope envVar envMap st).fst } := by
+            cases sf; simp_all [Flat.convertValue]
+          rw [hsf_eta] at hstep
+          by_cases hidx : idx = Core.consoleLogIdx
+          · -- consoleLogIdx case: both Core and Flat do console.log
+            subst hidx
+            rw [Flat_step?_call_consoleLog_vals _ 0 .null _ _ hflatvals] at hstep
+            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+            obtain ⟨hev, hsf'⟩ := hstep; subst hsf'
+            -- Relate Flat msg to Core msg via valueToString_convertValue
+            have hmsg := consoleLog_msg_convertValue argVals
+            let coreMsg := match argVals with
+              | [v] => Core.valueToString v
+              | vs => String.intercalate " " (vs.map Core.valueToString)
+            have hev' : ev = .log coreMsg := by rw [hev]; congr 1; exact hmsg
+            subst hev'
+            let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
+              sc.trace ++ [.log coreMsg], sc.funcs, sc.callStack⟩
+            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+            · show Core.step? sc = some (.log coreMsg, sc')
+              have hsc' : sc = { sc with expr := .call (.lit (.function Core.consoleLogIdx)) args } := by
+                obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+              rw [hsc']
+              exact Core_step?_call_consoleLog_general args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
+            · simp [sc', htrace]
+            · exact hinj
+            · exact henvCorr
+            · exact henvwf
+            · exact hheapvwf
+            · simp [sc', hheapna]
+            · simp [sc', noCallFrameReturn]
+            · simp [sc', ExprAddrWF, ValueAddrWF]
+            · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, ?_⟩
+              · simp [sc', Flat.convertExpr, Flat.convertValue]
+              · rw [hstflat]; subst hst; exact ⟨rfl, rfl⟩
+          · -- non-consoleLogIdx: blocked on FuncsCorr invariant (CC_SimRel lacks funcs correspondence)
+            sorry
         · -- Non-function callee with all-value args: both Core and Flat return .undefined
           have hflatvals := allValues_convertExprList_valuesFromExprList args argVals scope envVar envMap st hallv
           have hnoclosure : ∀ fi ep, Flat.convertValue cv ≠ .closure fi ep :=
