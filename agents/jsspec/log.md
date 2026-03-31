@@ -1,5 +1,94 @@
 # jsspec agent log
 
+## 2026-03-31T04:00 — Monotone approach analysis: REJECTED. All 4 assigned sorries confirmed architecturally blocked.
+
+### Result: 0 sorries closed. File unchanged at 17 grep-sorry.
+
+### What was attempted
+
+Thorough analysis of the prompt's proposed "monotone output" approach:
+Change `CCStateAgree st' st_a'` (equality) to `st_a'.nextId ≤ st'.nextId` (monotone) in the suffices (L2901-2903).
+
+### Why monotone approach FAILS
+
+**Sub-stepping cases fundamentally need output equality, not ≤.**
+
+The proof has ~12 "pass-through" sites and ~10 "chaining" sites that use `hAgreeOut` from the IH:
+
+**Pass-through pattern** (L3215, L3530, L3627, L3963, etc.):
+```
+hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)
+```
+These just relay hAgreeOut. With ≤, they'd still work since `hst`/`hconv.2` provides `st' = st_sub'`.
+
+**Chaining pattern** (L3128, L3340, L3440, L3686, L3761, L4214, L4497, L4578, L4945, L5128):
+```
+have hthen := convertExpr_state_determined then_ ... st_cond st_a' hAgreeOut.1 hAgreeOut.2
+```
+These use `hAgreeOut.1 : st_a'.nextId = st'.nextId` and `hAgreeOut.2 : st_a'.funcs.size = st'.funcs.size` as **equality arguments** to `convertExpr_state_determined`, which requires `=`, not `≤`.
+
+With `≤`, `state_determined` can't be called → sibling sub-expression conversions can't be shown equal → expression equality fails → ~10 sub-stepping cases break.
+
+**Key insight**: ≤ propagates from inner resolution steps to outer sub-stepping. E.g., `if (if true a b) c d` → `if a c d`: the inner resolution gives ≤, then the outer sub-step receives ≤ from IH, breaking its chaining.
+
+### Why the 4 assigned sorries are architecturally blocked
+
+**Root cause**: `CCStateAgree` requires equality of `nextId` and `funcs.size`. Resolution steps (if-true/false, while_ lowering) discard branches whose conversion advanced these counters. No witness `st_a` can satisfy both the conversion equation AND output state agreement.
+
+**Key discovery**: Only `functionDef` cases in `convertExpr` call `freshVar`/`addFunc` (advancing nextId/funcs.size). All other expression cases thread state through sub-expression conversion without modification. This means:
+- Sorries are trivially provable when discarded branches have NO functionDef nodes
+- But unprovable in the general case (functionDef in discarded branch)
+
+#### L3252 (if-true CCStateAgree)
+Need: `(convertExpr else_ (convertExpr then_ st).snd).snd.nextId = (convertExpr then_ st).snd.nextId`
+I.e., `delta(else_) = 0`. Only holds if `else_` has no `functionDef` nodes at any depth.
+
+#### L3274 (if-false CCStateAgree — 2 sorries)
+Witnesses chosen: `st_a = (convertExpr then_ st).snd`. Then:
+- Input CCStateAgree `st st_a` needs `st.nextId = (convertExpr then_ st).snd.nextId`, i.e., `delta(then_) = 0`
+- Alternative `st_a = st` fails because expression equation needs `st ≈ (convertExpr then_ st).snd`
+Both require `delta(then_) = 0` — only if `then_` has no `functionDef` nodes.
+
+#### L5313 (while_ expression equality + CCState)
+Core expansion: `.if cond (.seq body (.while_ cond body)) (.lit .undefined)`
+Converting this from `st_a` produces `fcond_2 = (convertExpr cond st_a2).fst` where `st_a2 = (convertExpr body (convertExpr cond st_a).snd).snd`. But `sf'.expr` has `fcond = (convertExpr cond st).fst` in both positions.
+Need `st_a ≈ st_a2`, i.e., `delta(cond) + delta(body) = 0`. Only if BOTH have no `functionDef` nodes.
+
+#### L2933 (captured variable step mismatch)
+Unchanged from previous analysis: 1-to-1 step simulation can't match because Flat `.getEnv (.var envVar) idx` needs 2 steps while Core `.var name` needs 1.
+
+### Alternative approaches evaluated
+
+| Approach | Verdict | Reason |
+|----------|---------|--------|
+| Monotone output (≤) | FAILS | Breaks ~10 sub-stepping chaining cases |
+| Drop output CCStateAgree | FAILS | Sub-stepping still needs output equality for `state_determined` |
+| Track canonical output state | FAILS | Same equality requirement at resolution |
+| Separate sub-step/resolution invariants | INFEASIBLE | Single existential; can't have two forms |
+| `convertExpr_step_output_agree` lemma | FALSE | Resolution steps within sub-expressions break it |
+| Change st_a witness for if-true/false | FAILS | All choices constrained by conversion equation + input agreement |
+| Change Flat while_ semantics (Fix #2) | BLOCKED | ANFConvertCorrect.lean has 42 `while_` references; can't touch |
+| Pre-expand while_ in conversion | BLOCKED | Infinite recursion (while_ appears in expansion) |
+| N-to-M step simulation | NOT ATTEMPTED | Major proof restructuring needed |
+| State-independent conversion | NOT ATTEMPTED | Requires changing ClosureConvert.lean's freshVar naming |
+
+### Viable paths forward (for future agents)
+
+**Path A: Make conversion expression-output state-independent** (most comprehensive)
+Change `freshVar` in `ClosureConvert.lean` to use expression-position-based naming instead of `nextId`. Then `convertExpr` produces the same expression regardless of input state, eliminating the need for `CCStateAgree` entirely. Impact: need to update `convertExpr_state_determined` (becomes trivial), `convertExpr_state_mono` (may not be needed), and all CCState witnesses.
+
+**Path B: Change Flat while_ semantics** (most surgical for while_ only)
+Change `Flat.step?` for `.while_ cond body` to evaluate cond in-place and branch, instead of expanding to `if/seq/while_`. Avoids sub-expression duplication. Impact: must update `ANFConvertCorrect.lean` (42 while_ references), `Flat_step?_while` helper, and the while_ case proof.
+
+**Path C: N-to-M step simulation** (addresses all sorries)
+Change the simulation from "1 Flat step ↔ 1 Core step" to "N Flat steps ↔ 1 Core step". Fixes captured variable (L2933), and with multi-step, resolution state mismatches can be absorbed. Impact: major restructuring of the entire `closureConvert_correct` proof.
+
+### Recommendation
+
+Path A is the cleanest long-term fix. It removes the root cause (state-dependent expressions) and simplifies the entire CCState invariant. It requires changes to `ClosureConvert.lean` only, with mechanical updates to the proof file.
+
+---
+
 ## 2026-03-31T03:00 — Deep analysis of remaining 5 assigned sorries: ALL structurally unprovable
 
 ### Result: 0 sorries closed. Build still passing at 15 grep-sorry (same as previous session).
@@ -2260,3 +2349,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-31T04:00:01+00:00
 
+2026-03-31T04:22:17+00:00 DONE

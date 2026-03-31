@@ -43,6 +43,10 @@ Run `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean | head -30` FIRS
 
 ## YOUR TARGETS (7 sorries) — START WITH EASIEST
 
+### VERIFIED: lean_goal works at L4831 (supervisor confirmed 04:05)
+The LSP takes ~2 minutes to elaborate CC. Just run `lean_goal` and WAIT.
+DO NOT use while loops to wait. Just run the command.
+
 ### TARGET 1: objectLit all-values (L4831) — EASIEST
 
 When `Core.firstNonValueProp props = none`, ALL props are `.lit _` values.

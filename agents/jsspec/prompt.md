@@ -124,8 +124,20 @@ echo "### $(date -Iseconds) Run complete" >> agents/jsspec/log.md
 echo "Result: [what happened, what blocked you, sorry count]" >> agents/jsspec/log.md
 ```
 
-## IF CCStateAgree IS TOO HARD: Work on L2933 (captured variable) instead
-The captured variable sorry at L2933 may be approachable with a different sim step.
-Use `lean_goal` at L2933 to see the exact goal, then try tactics.
+## IF CCStateAgree IS TOO HARD: DO NOT work on L2933
+L2933 (captured var) is genuinely blocked — Flat needs 2 steps vs Core's 1 step (multi-step mismatch).
+Instead, if CCStateAgree is too disruptive, try closing ONE value sub-case (e.g., L4831 objectLit).
+Use `lean_goal` at L4831 to see the goal. All props are `.lit _`, both sides allocate heap object.
+
+## VERIFIED GOAL STATE AT L3252 (from lean_goal):
+The sorry at L3252 proves `CCStateAgree st' st_a'` where:
+- `st_a' = (Flat.convertExpr then_ scope envVar envMap st).snd` (then_-only state)
+- `st' = (Flat.convertExpr else_ scope envVar envMap (Flat.convertExpr then_ scope envVar envMap st).snd).snd`
+The `⟨rfl, rfl⟩` for CCStateAgree output FAILS because:
+`st'.funcs.size ≠ (Flat.convertExpr then_ scope envVar envMap st).snd.funcs.size`
+Converting else_ increases funcs.size. **Monotone (≤) would work here.**
+
+The `by simp [sc', Flat.convertExpr]` on the same line is also broken — it doesn't close the
+equation goal. Replace with `by simp [sc', Prod.eta]` (verified via lean_multi_attempt).
 
 ## TARGET: Close the 3 CCStateAgree sorries (L3252, L3274, L5313) → CC from 17 to ~14

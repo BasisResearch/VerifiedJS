@@ -4,7 +4,7 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ PASS (2026-03-31T03:05) — All files compile. LowerCorrect.lean is SORRY-FREE.
+## BUILD STATUS: ✅ PASS (2026-03-31T04:05) — All files compile. LowerCorrect.lean is SORRY-FREE.
 
 ## Sorry Count: 75 grep-c (58 ANF + 17 CC + 0 Lower + 0 Wasm) — ~29 real provable sorries
 
@@ -18,7 +18,15 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 **Fix**: Weaken output invariant to monotonicity: `st_a'.nextId ≤ st'.nextId`. Keep input equality (needed for `convertExpr_state_determined`). Then: if-true uses `st_a = st` → output ≤ ✓. if-false uses `st_a = st` → output = st' ✓.
 **Impact**: Unblocks 3 CC sorries (L3252, L3274, L5313).
 **Risk**: Changing theorem signature may break 20+ proved cases (each needs `≤` instead of `=`).
-**Status**: jsspec prompt rewritten with detailed implementation plan.
+**Status**: jsspec prompt rewritten with detailed implementation plan. Supervisor verified via LSP:
+`simp [sc', Prod.eta]` closes equation, `⟨rfl, rfl⟩` for output fails (`st'.funcs.size ≠ st_a'.funcs.size`).
+
+### P2. Captured variable multi-step mismatch — blocks 1 CC sorry (CONFIRMED 2026-03-31T04:05)
+**Owner**: unassigned (needs architectural fix)
+**Issue**: L2933 — Flat steps `.getEnv (.var envVar) idx` (2 steps: resolve var, then getEnv). Core steps `.var name` (1 step: env lookup). 1-to-1 simulation impossible.
+**Fix**: Either add stutter steps to the simulation, or change captured variable conversion.
+**Impact**: 1 CC sorry.
+**Status**: Confirmed blocked via lean_goal. Not a priority — focus on CCStateAgree (3 sorries) first.
 
 ### O. hasBreakInHead_step?_error_aux is UNPROVABLE — blocks 40 ANF sorries
 **Owner**: proof agent
