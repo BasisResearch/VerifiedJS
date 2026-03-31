@@ -5145,13 +5145,13 @@ private theorem closureConvert_step_simulation
               | none => exact henvwf
               | some props => exact EnvAddrWF_mono henvwf (by simp [size_set!])
             · -- HeapValuesWF
-              simp only [sc', coreHeap', propName]
+              simp only [sc', coreHeap']
               cases hprops : sc.heap.objects[addr]? with
               | none => exact hheapvwf
               | some props =>
                 apply HeapValuesWF_set_at hheapvwf
                 intro kv hkv
-                by_cases hany : props.any (fun kv => kv.fst == propName)
+                by_cases hany : props.any (fun kv => kv.fst == Core.valueToString iv)
                 · simp only [hany, ↓reduceIte] at hkv
                   obtain ⟨orig, horig, rfl⟩ := List.mem_map.mp hkv
                   split
