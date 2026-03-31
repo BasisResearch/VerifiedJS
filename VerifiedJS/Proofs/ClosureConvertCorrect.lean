@@ -106,6 +106,24 @@ private theorem firstNonValueProp_none_implies_values (l : List (Flat.PropName �
         exact ⟨v :: vs, by simp [Flat.valuesFromExprList?, Flat.exprValue?, hvs]⟩
     | _ => all_goals (simp [Flat.firstNonValueProp] at h)
 
+/-- If Flat.exprValue? e = none (e is not .lit), then firstNonValueExpr picks e immediately. -/
+private theorem Flat_firstNonValueExpr_cons_not_value
+    {e : Flat.Expr} (rest : List Flat.Expr)
+    (h : Flat.exprValue? e = none) :
+    Flat.firstNonValueExpr (e :: rest) = some ([], e, rest) := by
+  cases e with
+  | lit v => simp [Flat.exprValue?] at h
+  | _ => rfl
+
+/-- If Flat.exprValue? e = none, then firstNonValueProp picks (name, e) immediately. -/
+private theorem Flat_firstNonValueProp_cons_not_value
+    (name : Flat.PropName) {e : Flat.Expr} (rest : List (Flat.PropName × Flat.Expr))
+    (h : Flat.exprValue? e = none) :
+    Flat.firstNonValueProp ((name, e) :: rest) = some ([], name, e, rest) := by
+  cases e with
+  | lit v => simp [Flat.exprValue?] at h
+  | _ => rfl
+
 /-- Environment correspondence: bidirectional — every Flat binding has a corresponding
     Core binding and vice versa (modulo value conversion). -/
 private def EnvCorr (cenv : Core.Env) (fenv : Flat.Env) : Prop :=
@@ -2660,7 +2678,27 @@ private theorem convertExprList_firstNonValueExpr_some
             (Flat.convertExprList rest scope envVar envMap
               (Flat.convertExpr target scope envVar envMap
                 (Flat.convertExprList done scope envVar envMap st).snd).snd).fst) := by
-  sorry -- Proved in staging (cc_objectLit_arrayLit_helpers.lean); needs convertExpr_not_lit for 3 stub constructors (requires threading `supported` through CC_SimRel)
+  induction es generalizing done target rest st with
+  | nil => simp [Core.firstNonValueExpr] at h
+  | cons e es' ih =>
+    unfold Core.firstNonValueExpr at h
+    split at h
+    · -- e = .lit v: Core skips this literal and recurses on es'
+      rename_i v
+      match hrest : Core.firstNonValueExpr es' with
+      | some val =>
+        obtain ⟨d', t', r'⟩ := val
+        simp only [hrest, Option.some.injEq, Prod.mk.injEq] at h
+        obtain ⟨rfl, rfl, rfl⟩ := h
+        -- Flat side: convertExpr (.lit v) keeps it as .lit, firstNonValueExpr skips it
+        simp only [Flat.convertExprList, Flat.convertExpr, Flat.firstNonValueExpr,
+                   ih d' target rest st hrest hnovalue]
+      | none => simp [hrest] at h
+    · -- e is not .lit: Core picks e as target, Flat also picks convertExpr e
+      simp only [Option.some.injEq, Prod.mk.injEq] at h
+      obtain ⟨rfl, rfl, rfl⟩ := h
+      simp only [Flat.convertExprList]
+      exact Flat_firstNonValueExpr_cons_not_value _ (convertExpr_not_value e hnovalue scope envVar envMap st)
 
 private theorem valuesFromExprList_none_of_firstNonValueExpr
     {elems : List Flat.Expr} {done target rest}
@@ -2770,7 +2808,27 @@ private theorem convertPropList_firstNonValueProp_some
             (Flat.convertPropList rest scope envVar envMap
               (Flat.convertExpr target scope envVar envMap
                 (Flat.convertPropList done scope envVar envMap st).snd).snd).fst) := by
-  sorry -- Same class as convertExprList_firstNonValueExpr_some; needs convertExpr_not_lit for stub constructors
+  induction ps generalizing done name target rest st with
+  | nil => simp [Core.firstNonValueProp] at h
+  | cons p ps' ih =>
+    obtain ⟨pn, pe⟩ := p
+    unfold Core.firstNonValueProp at h
+    split at h
+    · -- pe = .lit v: Core skips this literal property and recurses
+      rename_i v
+      match hrest : Core.firstNonValueProp ps' with
+      | some val =>
+        obtain ⟨d', n', t', r'⟩ := val
+        simp only [hrest, Option.some.injEq, Prod.mk.injEq] at h
+        obtain ⟨rfl, rfl, rfl, rfl⟩ := h
+        simp only [Flat.convertPropList, Flat.convertExpr, Flat.firstNonValueProp,
+                   ih d' name target rest st hrest hnovalue]
+      | none => simp [hrest] at h
+    · -- pe is not .lit: Core picks pe as target
+      simp only [Option.some.injEq, Prod.mk.injEq] at h
+      obtain ⟨rfl, rfl, rfl, rfl⟩ := h
+      simp only [Flat.convertPropList]
+      exact Flat_firstNonValueProp_cons_not_value _ _ (convertExpr_not_value pe hnovalue scope envVar envMap st)
 
 private theorem convertPropList_append (a b : List (Core.PropName × Core.Expr))
     (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
