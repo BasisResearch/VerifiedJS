@@ -4752,3 +4752,4 @@ refine ⟨[], sf, Flat.Steps.refl, ⟨k, n, m, ?_, hk⟩, rfl, rfl, ?_, ?_, ?_�
 **Remaining sorries investigated**: L4336+ are `throw_direct` cases with compound flat_args. Much more complex — need understanding of how Flat.step? works for throw on compound expressions.
 
 **BLOCKED**: Cannot apply any of these proofs until file becomes group-writable.
+2026-03-31T17:15:01+00:00 SKIP: already running
