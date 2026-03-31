@@ -2369,8 +2369,8 @@ private theorem Flat_step?_tryCatch_body_step (s : Flat.State)
                  env := sb.env, heap := sb.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
   cases t with
-  | silent => simp [Flat.step?, hbnv, hstep]
-  | log msg => simp [Flat.step?, hbnv, hstep]
+  | silent => simp [Flat.step?, hbnv, hstep, Flat.pushTrace]
+  | log msg => simp [Flat.step?, hbnv, hstep, Flat.pushTrace]
   | error msg => exact absurd rfl (hne msg)
 
 private theorem Flat_step?_tryCatch_body_error (s : Flat.State)
@@ -2386,9 +2386,11 @@ private theorem Flat_step?_tryCatch_body_error (s : Flat.State)
           env := Flat.Env.extend sb.env catchParam (.string msg),
           heap := sb.heap,
           trace := s.trace ++ [.error msg], funcs := s.funcs, callStack := s.callStack }) := by
+  have hicf : (catchParam == "__call_frame_return__") = false := by
+    simp [BEq.beq, bne_iff_ne, h_ncf]
   cases finally_ with
-  | none => simp [Flat.step?, hbnv, hstep, h_ncf]
-  | some fin => simp [Flat.step?, hbnv, hstep, h_ncf]
+  | none => simp [Flat.step?, hbnv, hstep, hicf, Flat.pushTrace, Flat.Env.extend]
+  | some fin => simp [Flat.step?, hbnv, hstep, hicf, Flat.pushTrace, Flat.Env.extend]
 
 -- Helper: Flat getProp on object → heap property lookup
 private theorem Flat_step?_getProp_object (s : Flat.State) (addr : Nat) (prop : Core.PropName) :
@@ -3225,6 +3227,7 @@ private theorem closureConvert_step_simulation
         · exact henvCorr
         · exact henvwf
         · exact hheapvwf
+        · simp [sc']
         · simp [sc', noCallFrameReturn]
         · simp [sc', ExprAddrWF]; exact henvwf name cv hclookup
         · exact ⟨st, st, by simp [sc', Flat.convertExpr, hfvcv], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
