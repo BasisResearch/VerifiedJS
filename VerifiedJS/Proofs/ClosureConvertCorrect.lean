@@ -2056,7 +2056,7 @@ private theorem Flat_step?_call_consoleLog_vals (s : Flat.State)
       some (.log msg, { expr := .lit .undefined, env := s.env, heap := s.heap,
                         trace := s.trace ++ [.log msg], funcs := s.funcs,
                         callStack := s.callStack }) := by
-  simp [Flat.step?, Flat.exprValue?, hvals, Core.consoleLogIdx, Flat.pushTrace]
+  simp [Flat.step?, Flat.exprValue?, hvals, Core.consoleLogIdx]
 
 /-- Core call with function at consoleLogIdx, all-value args (general). -/
 private theorem Core_step?_call_consoleLog_general (args : List Core.Expr) (argVals : List Core.Value)
@@ -2085,11 +2085,11 @@ private theorem consoleLog_msg_convertValue (argVals : List Core.Value) :
     cases tl with
     | nil => simp [List.map, valueToString_convertValue]
     | cons hd2 tl2 =>
-      simp only [List.map]
+      simp only [List.map, valueToString_convertValue]
       congr 1
-      rw [show (Flat.convertValue hd :: Flat.convertValue hd2 :: List.map Flat.convertValue tl2).map Flat.valueToString
-              = (hd :: hd2 :: tl2).map Core.valueToString from by
-        simp [List.map, valueToString_convertValue]]
+      induction tl2 with
+      | nil => rfl
+      | cons h t ih => simp [List.map, valueToString_convertValue, ih]
 
 private theorem Core_step?_call_func_step (s : Core.State) (args : List Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -4127,8 +4127,8 @@ private theorem closureConvert_step_simulation
           have hflatvals := allValues_convertExprList_valuesFromExprList args argVals scope envVar envMap st hallv
           have hstflat : (Flat.convertExprList args scope envVar envMap st).snd = st :=
             allValues_convertExprList_state args argVals scope envVar envMap st hallv
-          have hsf_eta : sf = { sf with expr := .call (.lit (.closure idx 0)) (.lit .null)
-              (Flat.convertExprList args scope envVar envMap st).fst } := by
+          have hsf_eta : sf = { sf with expr := (Flat.Expr.call (.lit (.closure idx 0)) (.lit .null)
+              (Flat.convertExprList args scope envVar envMap st).fst) } := by
             cases sf; simp_all [Flat.convertValue]
           rw [hsf_eta] at hstep
           by_cases hidx : idx = Core.consoleLogIdx

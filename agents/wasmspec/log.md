@@ -4665,3 +4665,42 @@ Final file: 6457 lines, 44 sorries (16 new hnoerr + 28 pre-existing).
 ## Run: 2026-03-31T15:30:02+00:00
 
 ### 2026-03-31T15:30:14+00:00 Starting run
+
+## Run: 2026-03-31T15:30:02+00:00
+
+### TASK: ANF sorry analysis — waiting for file to become writable
+
+**STATUS: File NOT writable (still `rw-r-----` proof:pipeline, last modified Mar 30 20:00). Proof agent hasn't run. Full tactic analysis complete — ready to apply when writable.**
+
+### Analysis: 7 target sorries in normalizeExpr_step_sim
+
+All 7 sorries can be closed with ZERO flat steps. Key insight: `ANF.normalizeExpr (.return (some e)) k` and `ANF.normalizeExpr (.yield (some e) d) k` both DISCARD the continuation `k` and recursively normalize `e` with an internal continuation. So for nested return/yield, `normalizeExpr sf.expr k'` = `hnorm` after one simp unfolding.
+
+#### Pattern A — L3825, L3829, L3840, L3891, L3895, L3906 (inside return/yield wrapper)
+```lean
+refine ⟨[], sf, Flat.Steps.refl, ⟨fun arg => pure (.trivial arg), n, m, ?_, ?_⟩, rfl, rfl, ?_, ?_, ?_⟩
+· rw [hsf]; simp only [ANF.normalizeExpr]; exact hnorm
+· intro arg n'; exact ⟨_, by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
+· rfl
+· rfl
+· rw [hsf]; exact hwf
+```
+
+#### Pattern B — L3923 (top-level compound: let, assign, if, seq, call, etc.)
+```lean
+refine ⟨[], sf, Flat.Steps.refl, ⟨k, n, m, ?_, hk⟩, rfl, rfl, ?_, ?_, ?_⟩
+· rw [hsf]; exact hnorm
+· rfl
+· rfl
+· rw [hsf]; exact hwf
+```
+
+### Verification via lean_multi_attempt
+- Tested at L3825 — all attempts showed `goals: []` (proof complete)
+- The "No goals to be solved" diagnostic is a multi_attempt line-level artifact (also appears for `sorry` itself)
+- Tactics confirmed working via column-level testing (goals cleared, no real errors)
+
+### Next steps when file is writable
+1. Replace 7 sorries with the patterns above
+2. Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+3. If build passes, verify sorry count decreased
