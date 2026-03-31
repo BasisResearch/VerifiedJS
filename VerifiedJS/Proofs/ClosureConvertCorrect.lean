@@ -2794,15 +2794,6 @@ private theorem Flat_step?_setIndex_nonobject_both_values (s : Flat.State) (v iv
   | object addr => exact absurd rfl (hobj addr)
   | _ => simp only [Flat.step?, Flat.exprValue?]; rfl
 
--- setIndex: obj+idx are values, value step returns none → outer step is none
-private theorem Flat_step?_setIndex_value_none (s : Flat.State) (v iv : Flat.Value)
-    (ve : Flat.Expr) (hnv : Flat.exprValue? ve = none)
-    (hss : Flat.step? { s with expr := ve } = none) :
-    Flat.step? { s with expr := .setIndex (.lit v) (.lit iv) ve } = none := by
-  cases ve with
-  | lit w => simp [Flat.exprValue?] at hnv
-  | _ => unfold Flat.step?; simp only [Flat.exprValue?, hnv]; split <;> simp_all
-
 -- Core: setIndex with value obj, idx needs stepping
 private theorem Core_step?_setIndex_value_step_idx (cv : Core.Value)
     (ie value : Core.Expr) (hnv : Core.exprValue? ie = none)
