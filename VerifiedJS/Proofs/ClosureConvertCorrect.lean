@@ -2741,6 +2741,56 @@ private theorem valuesFromExprList_none_of_firstNonValueExpr
       | none => rw [hrest] at h; simp at h
     | _ => simp [Flat.valuesFromExprList?, Flat.exprValue?]
 
+/-- When Core.allValues returns some, the converted Flat args also have all values. -/
+private theorem allValues_convertExprList_valuesFromExprList
+    (args : List Core.Expr) (argVals : List Core.Value)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState)
+    (h : Core.allValues args = some argVals) :
+    Flat.valuesFromExprList? (Flat.convertExprList args scope envVar envMap st).fst =
+      some (argVals.map Flat.convertValue) := by
+  induction args generalizing argVals st with
+  | nil => simp [Core.allValues] at h; subst h; simp [Flat.convertExprList, Flat.valuesFromExprList?]
+  | cons e rest ih =>
+    cases e with
+    | lit v =>
+      simp [Core.allValues] at h
+      match hrest : Core.allValues rest with
+      | some vs =>
+        simp [hrest] at h; subst h
+        simp only [Flat.convertExprList, Flat.convertExpr]
+        simp only [Flat.valuesFromExprList?, Flat.exprValue?]
+        exact ih vs st hrest
+      | none => simp [hrest] at h
+    | _ => simp [Core.allValues] at h
+
+/-- Converting a non-function Core.Value never produces a Flat.closure. -/
+private theorem convertValue_not_closure_of_not_function (cv : Core.Value)
+    (h : ∀ idx, cv ≠ .function idx) :
+    ∀ fi ep, Flat.convertValue cv ≠ .closure fi ep := by
+  cases cv with
+  | function idx => exact absurd rfl (h idx)
+  | _ => simp [Flat.convertValue]
+
+/-- The Flat converted state does not change when Core.allValues args = some. -/
+private theorem allValues_convertExprList_state
+    (args : List Core.Expr) (argVals : List Core.Value)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState)
+    (h : Core.allValues args = some argVals) :
+    (Flat.convertExprList args scope envVar envMap st).snd = st := by
+  induction args generalizing argVals st with
+  | nil => simp [Flat.convertExprList]
+  | cons e rest ih =>
+    cases e with
+    | lit v =>
+      simp [Core.allValues] at h
+      match hrest : Core.allValues rest with
+      | some vs =>
+        simp [hrest] at h; subst h
+        simp only [Flat.convertExprList, Flat.convertExpr]
+        exact ih vs st hrest
+      | none => simp [hrest] at h
+    | _ => simp [Core.allValues] at h
+
 private theorem convertExprList_append (a b : List Core.Expr)
     (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
     (Flat.convertExprList (a ++ b) scope envVar envMap st).fst =
@@ -3837,7 +3887,43 @@ private theorem closureConvert_step_simulation
       -- Case split on whether all args are values
       cases hallv : Core.allValues args with
       | some argVals =>
-        sorry -- all args are values: call execution (function lookup or non-function → .undefined)
+        -- Case split on whether callee is a function
+        have hfunc_or_not : (∃ idx, cv = .function idx) ∨ (∀ idx, cv ≠ .function idx) := by
+          cases cv with
+          | function idx => left; exact ⟨idx, rfl⟩
+          | _ => right; intro idx h; cases h
+        rcases hfunc_or_not with ⟨idx, rfl⟩ | hnotfunc
+        · -- Function call case: complex setup, sorry for now
+          sorry
+        · -- Non-function callee with all-value args: both Core and Flat return .undefined
+          have hflatvals := allValues_convertExprList_valuesFromExprList args argVals scope envVar envMap st hallv
+          have hnoclosure : ∀ fi ep, Flat.convertValue cv ≠ .closure fi ep :=
+            convertValue_not_closure_of_not_function cv hnotfunc
+          have hsf_eta : sf = { sf with expr := .call (.lit (Flat.convertValue cv)) (.lit .null)
+              (Flat.convertExprList args scope envVar envMap st).fst } := by
+            cases sf; simp_all
+          rw [hsf_eta] at hstep
+          rw [Flat_step?_call_nonclosure _ (Flat.convertValue cv) .null _ _ hflatvals hnoclosure] at hstep
+          simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
+          let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
+            sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          · show Core.step? sc = some (.silent, sc')
+            have hsc' : sc = { sc with expr := .call (.lit cv) args } := by
+              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+            rw [hsc']
+            exact Core.step_call_nonfunc_exact cv args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hnotfunc hallv
+          · simp [sc', htrace]
+          · exact hinj
+          · exact henvCorr
+          · exact henvwf
+          · exact hheapvwf
+          · simp [sc', noCallFrameReturn]
+          · simp [sc', ExprAddrWF, ValueAddrWF]
+          · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, ?_⟩
+            · simp [sc', Flat.convertExpr, Flat.convertValue]
+            · rw [allValues_convertExprList_state args argVals scope envVar envMap st hallv]
+              subst hst; exact ⟨rfl, rfl⟩
       | none =>
         sorry -- some arg not value: step first non-value arg (standard IH pattern)
   | newObj f args => sorry
