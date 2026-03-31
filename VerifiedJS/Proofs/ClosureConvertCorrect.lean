@@ -5145,19 +5145,19 @@ private theorem closureConvert_step_simulation
               | none => exact henvwf
               | some props => exact EnvAddrWF_mono henvwf (by simp [size_set!])
             · -- HeapValuesWF
-              simp only [sc', coreHeap']
+              simp only [sc', coreHeap', propName]
               cases hprops : sc.heap.objects[addr]? with
               | none => exact hheapvwf
               | some props =>
                 apply HeapValuesWF_set_at hheapvwf
                 intro kv hkv
                 by_cases hany : props.any (fun kv => kv.fst == Core.valueToString iv)
-                · simp only [hany, ↓reduceIte] at hkv
+                · simp only [propName, hany, ↓reduceIte] at hkv
                   obtain ⟨orig, horig, rfl⟩ := List.mem_map.mp hkv
                   split
                   · simp only; exact hvv_wf
                   · exact hheapvwf addr haddr_wf props hprops orig horig
-                · simp only [hany, Bool.false_eq_true, ↓reduceIte] at hkv
+                · simp only [propName, hany, Bool.false_eq_true, ↓reduceIte] at hkv
                   rcases List.mem_append.mp hkv with h | h
                   · exact hheapvwf addr haddr_wf props hprops kv h
                   · rw [List.mem_singleton.mp h]; simp only; exact hvv_wf
