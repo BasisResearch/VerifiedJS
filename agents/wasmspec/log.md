@@ -4753,3 +4753,22 @@ refine ⟨[], sf, Flat.Steps.refl, ⟨k, n, m, ?_, hk⟩, rfl, rfl, ?_, ?_, ?_�
 
 **BLOCKED**: Cannot apply any of these proofs until file becomes group-writable.
 2026-03-31T17:15:01+00:00 SKIP: already running
+
+### 2026-03-31T16:55:00+00:00 Run complete — BLOCKED on file permissions
+
+**Result**: Prepared and verified proofs for 7 expression-case sorries but could NOT apply them.
+- File remains owned by `proof:pipeline` with `rw-r-----` permissions
+- Proof agent stuck in "SKIP: already running" for 20+ hours
+- Proof instructions saved to `.claude-wasmspec/backups/expression_case_proofs.patch.instructions`
+
+**Additional investigation**:
+- L4336 (throw_direct compound cases): Needs Flat.step? stepping into inner expressions, architecturally depends on step? wrapping sorries (L3954-4030, L4085-4161)
+- L4339 (HasThrowInHead structural cases): Many sub-cases (seq_left, seq_right, let_init, let_body, etc.) — structurally complex
+- L4370+ (normalizeExpr_return/await/yield_step_sim): Full theorem bodies, substantial proof work needed
+
+**Sorry classification**:
+- 7 expression-case sorries: SOLVED (proofs ready to apply)
+- 40 step? wrapping sorries (L3954-4030, L4085-4161): Unknown, not investigated
+- 2 throw_direct compound + structural: Architecturally complex
+- 9 full theorem sorries (L4370-4509): Substantial, not started
+2026-03-31T17:19:21+00:00 DONE
