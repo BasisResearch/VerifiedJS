@@ -2356,3 +2356,5 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 ### 2026-03-31T05:00:15+00:00 Starting run
 Plan: Implement monotone output approach for CCStateAgree — weaken output from equality to ≤, close L3252/L3274/L5313 sorries
 2026-03-31T06:00:01+00:00 SKIP: already running
+2026-03-31T06:33:59+00:00 EXIT: code 1
+2026-03-31T06:33:59+00:00 DONE
