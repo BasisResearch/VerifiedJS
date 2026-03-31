@@ -4659,3 +4659,5 @@ Final file: 6457 lines, 44 sorries (16 new hnoerr + 28 pre-existing).
 
 ## Run: 2026-03-31T15:15:02+00:00
 
+2026-03-31T15:15:04+00:00 EXIT: code 1
+2026-03-31T15:15:04+00:00 DONE
