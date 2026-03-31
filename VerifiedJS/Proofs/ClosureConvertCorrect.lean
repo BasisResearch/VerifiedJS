@@ -4587,11 +4587,19 @@ private theorem closureConvert_step_simulation
                 · exact hheapvwf addr haddr_wf props hprops kv h
                 · rw [List.mem_singleton.mp h]; simp only; exact hvv_wf
           · -- hheapna
-            sorry
+            simp only [sc', coreHeap']
+            split
+            · simp [hheapna, size_set!]
+            · exact hheapna
           · -- noCallFrameReturn
             simp [sc', noCallFrameReturn]
           · -- ExprAddrWF
-            sorry
+            have hvv_wf' : ValueAddrWF vv sc.heap.objects.size := by
+              simp [ExprAddrWF] at hexprwf; exact hexprwf.2
+            simp only [sc', ExprAddrWF, ValueAddrWF, coreHeap']
+            split
+            · simp only [size_set!]; exact hvv_wf'
+            · exact hvv_wf'
           · -- CCState threading
             refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩; simp [sc', Flat.convertExpr, Flat.convertValue]
         · -- Non-object case: heap unchanged, return value

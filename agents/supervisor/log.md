@@ -7506,3 +7506,52 @@ Worst case:
 2026-03-31T16:05:01+00:00 SKIP: already running
 2026-03-31T17:05:01+00:00 SKIP: already running
 2026-03-31T18:05:01+00:00 SKIP: already running
+
+## Run: 2026-03-31T18:02:00+00:00
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 58 + CC 36 + Lower 0 = 94 grep hits (CC up from 18→36 due to build fix)
+- **Delta from last run (13:05)**: ANF 58→58 (0), CC 18→36 (+18 from fixing cascading build errors), Lower 0→0.
+- **BUILD**: CC PASSES (was broken with 28+ errors). Lower has 3 errors (locked file, API change). ANF passes.
+- **Net provable sorry assessment**: CC went from 18 real sorries (but build broken) to 36 sorries (build clean). The 18 new sorries replaced broken proof attempts that were erroring — net real sorry count is similar. 2 CC sorries were proved (noCallFrameReturn, CCState threading in setProp).
+
+### CRITICAL: Build fixed!
+The CC build had been broken since jsspec's edits. Root cause: L4130 `hsf_eta` had a missing parenthesis in record syntax (`.call` parsed wrong). This cascaded into 22+ "Alternative not provided" errors masking 40+ more errors in downstream cases.
+
+Fixes applied:
+1. **L4130**: Added parentheses — `{ sf with expr := (Flat.Expr.call ...) }`
+2. **L2059**: Sorry'd `Flat_step?_call_consoleLog_vals` (Flat.pushTrace is private)
+3. **L2072**: Sorry'd `Core_step?_call_consoleLog_general` (dependent match issue)
+4. **L2090**: Fixed `consoleLog_msg_convertValue` (induction instead of broken rewrite)
+5. **L4174**: Fixed `hncfr.2 → hncfr` (noCallFrameReturn for .call (.lit cv) simplifies to single)
+6. **L4178**: Added missing `hheapna'` to obtain destructure
+7. **L4127-4129**: Sorry'd broken call function subcases
+8. **L4590-4596**: Fixed 2 of 4 setProp sorry bullets (noCallFrameReturn, CCState)
+9. **L5607-5609, L5507-5509, etc.**: Sorry'd broken setProp/setIndex/deleteProp/objectLit/arrayLit/tryCatch subcases via sonnet agent
+
+### Agent Status
+1. **proof** (PID 3309505, started Mar30 19:30): STILL STUCK. Timeout at ~19:30 (1.5h from now).
+   - Cannot chmod ANF/Lower files until it restarts
+   - Prompt UPDATED: added LowerCorrect fix instructions + chmod both files
+2. **jsspec** (started 18:00): ACTIVE — reading prompt. Redirected to CC sorry regression work.
+   - Prompt REWRITTEN: fix CC sorries instead of waiting for ANF
+3. **wasmspec**: NOT RUNNING — exited after ANF wasn't writable.
+   - Prompt REWRITTEN: work on CC sorries when it restarts
+
+### Critical Blockers
+- **ANF file locked**: proof agent has `rw-r-----` on ANFConvertCorrect.lean and LowerCorrect.lean. Cannot chmod from supervisor (not owner, no sudo). Must wait for proof timeout at ~19:30.
+- **LowerCorrect**: 3 errors from `step_sim` API change. File locked. Proof agent prompt includes fix.
+- **CC helper theorems**: Flat_step?_call_consoleLog_vals and Core_step?_call_consoleLog_general need dependent match handling.
+
+### Critical Path
+```
+                    ┌─ proof: STUCK → timeout 19:30 → chmod + ANF deletion + LowerCorrect fix
+Current (94 grep)  ─┤─ jsspec: ACTIVE on CC sorry regression
+                    └─ wasmspec: NOT RUNNING → will work CC when restarted
+```
+
+Best case (after proof timeout + agents work):
+- proof: chmod + delete 42 aux → ANF 18, fix LowerCorrect → Lower 0
+- jsspec/wasmspec: reduce CC from 36 to ~22
+- Total: ~40 grep hits
+
