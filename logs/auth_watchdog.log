@@ -1219,3 +1219,4 @@ Done
 [4.8s] Got 87 bytes, clean: '\x1b[?2026h\r◐medium·/effort\r\r\n\x1b[?2026l\x1b[>0q'
 [SENT] /exit
 Done
+2026-03-31T15:00:02+00:00 FIXED+RESTARTED: jsspec
