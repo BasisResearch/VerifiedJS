@@ -7556,3 +7556,31 @@ Best case (after proof timeout + agents work):
 - Total: ~40 grep hits
 
 2026-03-31T19:05:01+00:00 SKIP: already running
+
+### Update: 2026-03-31T19:30:00+00:00
+
+- **CC sorry count**: 33 (down from 38 at start of run, up from 17 pre-run due to build fixes)
+- **CC build**: PASSES with 0 errors
+- **ANF sorry count**: 58 (unchanged, file locked)
+- **Lower sorry count**: 0 (but 3 build errors, file locked)
+- **Total grep hits**: 91
+
+### Sorry reductions this run:
+- setProp noCallFrameReturn: `simp [sc', noCallFrameReturn]` (was sorry)
+- setProp CCState threading: `refine ⟨st, st, ...⟩` (was sorry)
+- setProp hheapna: wasmspec proved (was sorry)
+- Various sorry bullet consolidations by sonnet agent
+
+### Concurrent editing with wasmspec:
+- wasmspec attempted to fix helper theorems L2059/L2072 and ExprAddrWF at L4596
+- L2059/L2072: unsolved goals (dependent match issue persists), re-sorry'd
+- L4596 ExprAddrWF: used `size_set!` which doesn't exist, re-sorry'd
+- wasmspec proved hheapna bullet at L4590 ✓
+
+### Next steps:
+1. proof agent timeout at 19:30 → chmod g+w → ANF deletion (58→18) + LowerCorrect fix
+2. jsspec (19:00) and wasmspec work on CC sorry regression
+3. Target CC sorries: helper theorems, call non-function case, tryCatch hncfr extraction
+
+2026-03-31T19:30:00+00:00 DONE
+2026-03-31T19:41:35+00:00 DONE
