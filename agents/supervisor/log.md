@@ -7757,3 +7757,84 @@ Realistic case:
 
 ## Run: 2026-03-31T22:05:01+00:00
 
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 21 + CC 21 + Lower 0 = 42 grep hits
+- **Delta from last run (21:05)**: 41 → 42. NET +1 grep hit.
+- **WHY UP**: Proof agent decomposed ANF seq case (1 sorry → 3 sub-sorries at L3945/3951/3953 = +2). But also closed LowerCorrect (1→0 = -1). CC went 22→21 (-1). Net: +2 ANF - 1 Lower - 1 CC = 0... wait, 18+22+1=41 → 21+21+0=42, so +3 ANF - 1 CC - 1 Lower = +1.
+- **BUILD**: ANF and CC both building right now. Lower clean (0 sorries).
+
+### Agent Status
+1. **proof** (PID 1344210, started 21:30): ACTIVE.
+   - Closed LowerCorrect (1→0) ✓
+   - Decomposed ANF seq case (added L3945/3951/3953), net +3 ANF sorries
+   - DID NOT apply the 6 verified expression-case proofs (L3825/3829/3840/3891/3895/3906)
+   - Currently building ANF (lake build at 22:05)
+   - Prompt REWRITTEN: explicit table of 6 proofs to apply, "stop decomposing" instruction
+
+2. **jsspec** (PID 1057136, started 19:00): ACTIVE.
+   - Closed 1 CC sorry since last run (22→21)
+   - Currently building CC (lake build at 22:05)
+   - Prompt UPDATED: new target lines L4140 and L5891, updated CC sorry map
+
+3. **wasmspec** (PID 970211, started 18:15): ACTIVE (~4 hours).
+   - Still running on CC setIndex targets
+   - Prompt UPDATED: new target lines L5248/L5251, updated CC sorry map
+
+### CC Sorry Classification (21 grep hits)
+```
+STUBS (unprovable): 2
+  L1507, L1508: forIn/forOf
+
+BLOCKED (architectural): 14
+  L3271: captured var (HeapInj)
+  L3599: CCStateAgree if-then
+  L3622 x2: CCStateAgree if-else
+  L4338: newObj
+  L4928: getIndex string semantic mismatch
+  L5583: objectLit heap
+  L5679, L5686: arrayLit heap
+  L5782: arrayLit CCState
+  L5783: functionDef multi-step
+  L5894: tryCatch body-step CCState
+  L5926: while_ CCState
+
+POSSIBLY PROVABLE: 3
+  L4140: call non-closure (jsspec TARGET)
+  L5248: setIndex value-stepping (wasmspec TARGET)
+  L5251: setIndex idx-stepping (wasmspec TARGET)
+
+MAYBE PROVABLE: 2
+  L5891: tryCatch body-value (jsspec TARGET 2)
+  (one other from previous maybe list absorbed)
+```
+
+### Critical Path
+```
+                    ┌─ proof: apply 6 verified proofs (ANF 21→15), then close seq sub-sorries (15→12)
+Current (42 grep)  ─┤─ jsspec: targeting L4140, L5891 (CC 21→19 possible)
+                    └─ wasmspec: targeting L5248, L5251 (CC 19→17 possible)
+```
+
+Best case (next few hours):
+- proof applies 6 proofs + closes 3 seq sub-sorries → ANF 12
+- jsspec closes L4140 + L5891 → CC 19
+- wasmspec closes L5248 + L5251 → CC 17
+- Total: ~29 grep hits (from 42)
+
+Realistic case:
+- proof applies 6 proofs → ANF 15
+- jsspec/wasmspec close 1-2 CC targets → CC 19-20
+- Total: ~34-36 grep hits
+
+### Actions Taken
+1. Counted sorries: ANF 21, CC 21, Lower 0 = 42 total
+2. Investigated ANF increase: proof agent decomposed seq case (+3), closed Lower (-1)
+3. Rewrote proof prompt: explicit 6-proof table, "stop decomposing" directive
+4. Updated jsspec prompt: new CC sorry map with current line numbers
+5. Updated wasmspec prompt: new CC sorry map with current line numbers
+6. Updated PROOF_BLOCKERS.md sorry count
+7. Logged to time_estimate.csv
+
+2026-03-31T22:09:00+00:00 DONE
+2026-03-31T22:08:47+00:00 DONE
