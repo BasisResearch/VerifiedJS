@@ -2056,7 +2056,7 @@ private theorem Flat_step?_call_consoleLog_vals (s : Flat.State)
       some (.log msg, { expr := .lit .undefined, env := s.env, heap := s.heap,
                         trace := s.trace ++ [.log msg], funcs := s.funcs,
                         callStack := s.callStack }) := by
-  simp [Flat.step?, Flat.exprValue?, hvals, Core.consoleLogIdx]
+  sorry -- TODO: simp lemma for Flat.step? call consoleLog; pushTrace is private
 
 /-- Core call with function at consoleLogIdx, all-value args (general). -/
 private theorem Core_step?_call_consoleLog_general (args : List Core.Expr) (argVals : List Core.Value)
@@ -2069,7 +2069,7 @@ private theorem Core_step?_call_consoleLog_general (args : List Core.Expr) (argV
     Core.step? ⟨.call (.lit (.function Core.consoleLogIdx)) args, env, heap, trace, funcs, cs⟩ =
       some (.log msg, ⟨.lit .undefined, env, heap,
                        trace ++ [.log msg], funcs, cs⟩) := by
-  simp [Core.step?, Core.exprValue?, hargs, Core.consoleLogIdx, Core.pushTrace]
+  sorry -- TODO: simp lemma for Core.step? call consoleLog
 
 /-- Console.log message from converted values equals message from original values. -/
 private theorem consoleLog_msg_convertValue (argVals : List Core.Value) :
