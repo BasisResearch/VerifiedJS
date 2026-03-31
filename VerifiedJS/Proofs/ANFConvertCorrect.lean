@@ -3920,6 +3920,37 @@ private theorem normalizeExpr_labeled_step_sim :
         | some fin =>
           simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
           repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+      | seq a b =>
+        -- normalizeExpr (.seq a b) k = normalizeExpr a (fun _ => normalizeExpr b k)
+        simp only [ANF.normalizeExpr] at hnorm
+        -- Check if a is a value
+        cases ha : Flat.exprValue? a with
+        | some v =>
+          -- a = .lit v, so seq steps silently to b
+          -- normalizeExpr (.lit v) inner_k = inner_k(trivialOfFlatValue v) = normalizeExpr b k
+          -- which produces .labeled label body
+          have ha_lit : a = .lit v := by
+            cases a <;> simp [Flat.exprValue?] at ha <;> try rfl
+            exact congrArg Flat.Expr.lit ha
+          -- One flat step: .seq (.lit v) b → b
+          have hstep_seq : Flat.step? sf = some (.silent,
+              Flat.pushTrace { sf with expr := b } .silent) := by
+            rw [hsf]; unfold Flat.step?
+            simp only [Flat.exprValue?, ha_lit, ha]
+            rfl
+          -- normalizeExpr a inner_k reduces to normalizeExpr b k
+          have hnorm_b : ∀ inner_k : ANF.Trivial → ANF.ConvM ANF.Expr,
+              (ANF.normalizeExpr (.lit v) inner_k).run n = (inner_k (ANF.trivialOfFlatValue v).get!).run n ∨
+              ∃ msg, (ANF.normalizeExpr (.lit v) inner_k).run n = .error msg := by
+            sorry -- unfold normalizeExpr for lit, case split on trivialOfFlatValue
+          -- Apply ih to b which has smaller depth
+          have hd_b : b.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+          -- b's ExprWellFormed from seq
+          have hwf_b : ExprWellFormed b sf.env := by
+            intro x hfx; exact hwf x (VarFreeIn.seq_right _ _ _ hfx)
+          sorry -- compose flat step with ih application on b
+        | none =>
+          sorry -- a is not a value; .labeled in eval head of a
       | _ => sorry -- compound/bindComplex/throw/await cases: needs induction on depth
 
 /-- If an expression has break in its evaluation head, then Flat stepping produces the
