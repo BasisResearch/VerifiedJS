@@ -994,21 +994,21 @@ end
 /-- Heap prefix relation: Core heap is a prefix of Flat heap.
     Flat may contain additional closure-environment objects. -/
 private def HeapCorr (cheap fheap : Core.Heap) : Prop :=
-  cheap.objects.size ≤ fheap.objects.size ∧
+  cheap.objects.size = fheap.objects.size ∧
   ∀ addr, addr < cheap.objects.size → cheap.objects[addr]? = fheap.objects[addr]?
 
 private theorem HeapCorr_refl (h : Core.Heap) : HeapCorr h h :=
-  ⟨Nat.le_refl _, fun _ _ => rfl⟩
+  ⟨rfl, fun _ _ => rfl⟩
 
 private theorem HeapCorr_get {ch fh : Core.Heap} {addr : Nat} (hc : HeapCorr ch fh) (hlt : addr < ch.objects.size) :
     ch.objects[addr]? = fh.objects[addr]? := hc.2 addr hlt
 
-/-- Both heaps push the same object at the same size: prefix relation is maintained.
-    Requires equal sizes (exact prefix), which holds when no extra Flat env objects exist. -/
+/-- Both heaps push the same object: size-equality relation is maintained. -/
 private theorem HeapCorr_alloc_both {ch fh : Core.Heap} (hc : HeapCorr ch fh)
-    (hsize : ch.objects.size = fh.objects.size) (p : List (Core.PropName × Core.Value)) :
+    (p : List (Core.PropName × Core.Value)) :
     HeapCorr { objects := ch.objects.push p, nextAddr := ch.nextAddr + 1 }
              { objects := fh.objects.push p, nextAddr := fh.nextAddr + 1 } := by
+  have hsize := hc.1
   constructor
   · simp only [Array.size_push]; omega
   · intro addr hlt
@@ -1020,17 +1020,6 @@ private theorem HeapCorr_alloc_both {ch fh : Core.Heap} (hc : HeapCorr ch fh)
     · have haddr_eq : addr = ch.objects.size := by omega
       subst haddr_eq
       simp only [Array.getElem?_push, hsize, ite_true]
-
-/-- Flat allocates an extra object (e.g. environment): prefix relation is maintained. -/
-private theorem HeapCorr_alloc_right {ch fh : Core.Heap} (hc : HeapCorr ch fh)
-    (p : List (Core.PropName × Core.Value)) :
-    HeapCorr ch { objects := fh.objects.push p, nextAddr := fh.nextAddr + 1 } := by
-  constructor
-  · simp only [Array.size_push]; exact Nat.le_succ_of_le hc.1
-  · intro addr hlt
-    have hlt_fh : addr < fh.objects.size := Nat.lt_of_lt_of_le hlt hc.1
-    simp only [Array.getElem?_push, show ¬(addr = fh.objects.size) from by omega]
-    exact hc.2 addr hlt
 
 /-- Map Core.Value object addresses through an injection (for heap correspondence). -/
 private def mapHeapValue (f : Nat → Nat) : Core.Value → Core.Value
@@ -1075,16 +1064,11 @@ private def EnvCorrInj (_injMap : Nat → Nat) (cenv : Core.Env) (fenv : Flat.En
 private theorem HeapInj_id (h : Core.Heap) : HeapInj id h h := HeapCorr_refl h
 
 private theorem HeapInj_alloc_both {ch fh : Core.Heap} {f : Nat → Nat}
-    (hinj : HeapInj f ch fh) (hsize : ch.objects.size = fh.objects.size)
+    (hinj : HeapInj f ch fh)
     (p : List (Core.PropName × Core.Value)) :
     HeapInj f { objects := ch.objects.push p, nextAddr := ch.nextAddr + 1 }
              { objects := fh.objects.push p, nextAddr := fh.nextAddr + 1 } :=
-  HeapCorr_alloc_both hinj hsize p
-
-private theorem HeapInj_alloc_right {ch fh : Core.Heap} {f : Nat → Nat}
-    (hinj : HeapInj f ch fh) (p : List (Core.PropName × Core.Value)) :
-    HeapInj f ch { objects := fh.objects.push p, nextAddr := fh.nextAddr + 1 } :=
-  HeapCorr_alloc_right hinj p
+  HeapCorr_alloc_both hinj p
 
 private theorem EnvCorrInj_extend {cenv : Core.Env} {fenv : Flat.Env} {f : Nat → Nat}
     (h : EnvCorrInj f cenv fenv) (name : String) (cv : Core.Value) :
@@ -1124,7 +1108,7 @@ private theorem HeapInj_set_same {ch fh : Core.Heap} {f : Nat → Nat}
     · rfl
   refine ⟨by simp only [sz_eq]; exact hinj.1, fun addr' hlt' => ?_⟩
   simp only [sz_eq] at hlt'
-  have hlt_f : addr < fh.objects.size := Nat.lt_of_lt_of_le hlt hinj.1
+  have hlt_f : addr < fh.objects.size := hinj.1 ▸ hlt
   by_cases h : addr' = addr
   · subst h; simp [Array.set!, Array.setIfInBounds, hlt, hlt_f]
   · simp only [Array.set!, Array.setIfInBounds, hlt, hlt_f, ↓reduceDIte]
