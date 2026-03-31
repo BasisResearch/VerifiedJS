@@ -2387,7 +2387,7 @@ private theorem Flat_step?_tryCatch_body_error (s : Flat.State)
           heap := sb.heap,
           trace := s.trace ++ [.error msg], funcs := s.funcs, callStack := s.callStack }) := by
   have hicf : (catchParam == "__call_frame_return__") = false := by
-    simp [BEq.beq, bne_iff_ne, h_ncf]
+    simp [h_ncf]
   cases finally_ with
   | none => simp [Flat.step?, hbnv, hstep, hicf, Flat.Env.extend]
   | some fin => simp [Flat.step?, hbnv, hstep, hicf, Flat.Env.extend]
