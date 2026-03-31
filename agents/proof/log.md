@@ -1,3 +1,45 @@
+## Run: 2026-03-31T21:30+00:00
+- **BUILD: PASSES** ✓ (both ANFConvertCorrect and LowerCorrect)
+- **ANF Sorries: 18** (unchanged — deep analysis of proof strategy below)
+- **LowerCorrect: 0 sorries** ✓
+
+### Detailed analysis: Why the 7 prompt tactics FAIL
+
+The prompt's tactics for L3825/3829/3840/3891/3895/3906/3923 are **provably wrong**. Confirmed via `lean_multi_attempt` with column-precise positioning. Root causes:
+
+**L3825 (return.some.return.some)**: Tactic `exact ih _ ... (by intro arg n'; exact ⟨_, by simp [pure, StateT.run]⟩) hnorm _ rfl (by cases hwf; assumption)` fails with 3 errors:
+1. `StateT.pure (ANF.Expr.return (some arg)) n' ≠ Except.ok (ANF.Expr.trivial arg, ?m)` — the continuation `fun t => pure (.return (some t))` does NOT produce `.trivial arg`. It produces `.return (some (.trivial arg))`.
+2. `cases hwf` fails because `ExprWellFormed` is not an inductive type that can be case-split.
+3. The depth omega tactic succeeds but the other obligations fail.
+
+**L3923 (top-level compound)**: Tactic `all_goals exact ⟨[], sf, Flat.Steps.refl, ⟨k, n, m, hnorm, hk⟩, rfl, rfl, rfl, rfl, hwf⟩` fails because:
+1. `Flat.Steps.refl` needs explicit application `Flat.Steps.refl sf`
+2. `hnorm` has type `... = Except.ok (ANF.Expr.labeled label body, m)` but goal needs `... = Except.ok (body, m')` — these differ by `.labeled label` wrapper
+3. `hnorm` talks about concrete expression but goal uses `sf.expr` — needs `hsf ▸`
+
+### Root cause analysis for all 18 sorries
+
+**The fundamental issue**: `normalizeExpr_labeled_step_sim` requires trivializing continuations (`∀ arg n', ∃ m', (k arg).run n' = ok (.trivial arg, m')`), which:
+- Correctly eliminates base cases (lit, var, this → contradiction since trivializing k can't produce .labeled)
+- But BLOCKS inductive cases: compound expressions (seq, let, if, etc.) internally use NON-trivializing continuations (e.g., `fun _ => normalizeExpr b k` for seq), so `ih` can't be applied
+
+**The correct proof strategy** (not yet implemented):
+1. Prove an **evaluation context lifting lemma**: if `normalizeExpr e k` produces `.labeled label body`, then `e` has `.labeled l body_flat` in its evaluation-head position, and one flat step unwraps it silently, yielding `normalizeExpr (stepped_expr) k = ok (body, m)` with the SAME `k`.
+2. This lemma does NOT require trivializing `k` — it works because normalizeExpr and Flat.step? traverse evaluation contexts in the same order.
+3. The main theorem then applies this lemma: one silent flat step gives `sf'` with `normalizeExpr sf'.expr k n = ok (body, m)`, and since `k` is trivializing (from hypothesis), we satisfy the conclusion.
+4. Key expressions that ignore `k` (return, yield, throw, break, continue, await) need special handling since their normalizeExpr ignores the outer `k`.
+
+**Estimated effort**: ~100-200 lines of Lean code for the lifting lemma + case-by-case correspondence proofs.
+
+### L3940/L3953 (hasBreakInHead/hasContinueInHead_flat_error_steps)
+The `HasBreakInHead` inductive includes `seq_right` (break in second arg of seq) and similar "non-first-position" cases. These are **unprovable as stated** when the first argument doesn't terminate. The theorem claims `sf'.expr = .lit .undefined` but seq would continue to the second arg's expression after the first completes. Previous agent correctly identified this.
+
+### L4106/L4109 (throw compound cases)
+Same evaluation-context lifting issue. Needs multi-step reasoning through compound expressions inside `.throw`.
+
+### L4140-L4279 (7 step_sim theorems)
+These require case analysis on `sf.expr` to determine which flat expression normalizes to the given ANF form, then constructing the flat step sequence. Each requires ~30-100 lines of proof.
+
 ## Run: 2026-03-31T20:30+00:00
 - **BUILD: PASSES** ✓ (both ANFConvertCorrect and LowerCorrect)
 - **ANF Sorries: 18** (unchanged — see analysis below)
