@@ -4653,3 +4653,6 @@ Final file: 6457 lines, 44 sorries (16 new hnoerr + 28 pre-existing).
 2026-03-31T12:15:01+00:00 SKIP: already running
 2026-03-31T13:15:01+00:00 SKIP: already running
 2026-03-31T14:15:02+00:00 SKIP: already running
+2026-03-31T14:30:07+00:00 EXIT: code 124
+2026-03-31T14:30:07+00:00 TIMEOUT
+2026-03-31T14:30:07+00:00 DONE
