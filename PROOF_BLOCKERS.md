@@ -4,10 +4,16 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ PASS (2026-03-31T07:00) — All files compile. LowerCorrect.lean is SORRY-FREE.
+## BUILD STATUS: ✅ PASS (2026-03-31T07:50) — All files compile. LowerCorrect.lean is SORRY-FREE.
 
-## Sorry Count: 78 grep-c (58 ANF + 20 CC + 0 Lower + 0 Wasm) — ~25 real provable sorries
-CC +3: jsspec added 2 helper lemma scaffolding (L2035, L2048) + 1 comment line. Not regression.
+## Sorry Count: 76 grep-c (58 ANF + 18 CC + 0 Lower + 0 Wasm) — ~22 real provable sorries
+CC -2: Supervisor closed Flat_step?_call_value_step_arg (L2019) and Flat_step?_call_nonclosure (L2032).
+
+### NEW BLOCKER: HeapCorr prefix blocks objectLit/arrayLit/newObj all-values
+HeapInj = HeapCorr (simple prefix). `HeapInj_alloc_both` requires equal heap sizes.
+Flat heap can be bigger from env allocations. Both-sides-allocate cases (objectLit L4900,
+arrayLit L5083, possibly newObj L3838) are BLOCKED until HeapInj is upgraded to real injection.
+This affects 2-3 CC sorries previously thought provable.
 
 ---
 

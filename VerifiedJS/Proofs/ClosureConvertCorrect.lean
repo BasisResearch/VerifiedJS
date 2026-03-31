@@ -2016,7 +2016,7 @@ private theorem Flat_step?_call_value_step_arg (s : Flat.State)
       some (t, { expr := .call (.lit fv) (.lit ev) (done ++ [sa.expr] ++ remaining),
                  env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- unfold Flat.step?; needs deeper reduction
+  unfold Flat.step?; simp only [Flat.exprValue?, hvals]; rw [hfnv]; simp only [hss]; rfl
 
 /-- Flat call with non-closure value callee, all-value args: return undefined. -/
 private theorem Flat_step?_call_nonclosure (s : Flat.State)
@@ -2029,7 +2029,7 @@ private theorem Flat_step?_call_nonclosure (s : Flat.State)
                        trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
   cases fv with
   | closure fi ep => exact absurd rfl (hnc fi ep)
-  | _ => sorry -- unfold Flat.step?; needs deeper reduction
+  | _ => simp [Flat.step?, Flat.exprValue?, hvals]
 
 private theorem Core_step?_call_func_step (s : Core.State) (args : List Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -2831,7 +2831,7 @@ private theorem convertPropList_firstNonValueProp_none
         have : (Flat.convertPropList ((pn, Core.Expr.lit v) :: ps') scope envVar envMap st).fst =
             (pn, Flat.Expr.lit (Flat.convertValue v)) :: (Flat.convertPropList ps' scope envVar envMap st).fst := by
           simp [Flat.convertPropList, Flat.convertExpr]
-        rw [this, Flat.firstNonValueProp, Flat.exprValue?, ih st hrest]
+        rw [this]; unfold Flat.firstNonValueProp; simp [Flat.exprValue?, ih st hrest]
     | _ => simp [Core.firstNonValueProp] at h
 
 /-- When all Core props are values, the filterMap results match through conversion. -/

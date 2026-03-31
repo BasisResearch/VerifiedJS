@@ -1,3 +1,84 @@
+## Run: 2026-03-31T07:50:00+00:00
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 58 + CC 18 + Lower 0 = 76 grep hits
+- **Delta from last run (07:00)**: ANF 58→58 (0), CC 20→18 (-2). NET -2 grep hits.
+- **WHY DOWN**: Supervisor directly closed L2019 (Flat_step?_call_value_step_arg) and L2032 (Flat_step?_call_nonclosure) with exact tactics found via lean_multi_attempt.
+- **BUILD**: Not verified yet — jsspec has LSP lock on CC file.
+- **LowerCorrect**: 0 sorries ✓
+- **Effective sorry count**: ~23 real provable sorries (ANF 16 + CC 7 provable targets)
+
+### Agent Status
+1. **proof** (PID 3309505, started Mar30 19:30): STILL STUCK in while loop.
+   - No work since 20:10 Mar30. 36+ hours wasted.
+   - Timeout at Mar31 19:30 (~12 hours from now). Cannot kill.
+   - Prompt UPDATED: same delete-42 instructions.
+
+2. **wasmspec** (PID 2747051, started Mar30 14:30): STILL STUCK in while loop.
+   - No work since 16:10 Mar30. 40+ hours wasted.
+   - Timeout at Mar31 14:30 (~7 hours from now). Cannot kill.
+   - Prompt UPDATED: redirected away from objectLit/arrayLit (heap-blocked), focus call cases.
+
+3. **jsspec** (PID 116929, started 07:00): ACTIVE — edited CC file at 07:47.
+   - Reading goals, working on value sub-cases.
+   - Prompt REWRITTEN: removed objectLit/arrayLit targets (heap-blocked), redirected to call cases.
+
+### KEY FINDING: objectLit/arrayLit all-values BLOCKED by HeapCorr
+- HeapInj = HeapCorr (prefix relation) — `ch.objects.size ≤ fh.objects.size`
+- `HeapInj_alloc_both` requires `ch.objects.size = fh.objects.size`
+- But Flat heap can have MORE objects from prior env allocations
+- Both objectLit/arrayLit need both sides to allocate → needs equal sizes → BLOCKED
+- Also affects newObj (L3838) — same heap alloc pattern
+- Fix requires either: (a) upgrade HeapInj to real injection mapping, or (b) prove heap size invariant
+- This is what L2939 ("HeapInj refactor staging") is about
+
+### Actions Taken
+1. **CLOSED 2 sorries**: L2019 (Flat_step?_call_value_step_arg) and L2032 (Flat_step?_call_nonclosure)
+   - L2019: `unfold Flat.step?; simp only [Flat.exprValue?, hvals]; rw [hfnv]; simp only [hss]; rfl`
+   - L2032: `simp [Flat.step?, Flat.exprValue?, hvals]`
+2. jsspec prompt REWRITTEN: removed heap-blocked targets, redirected to call cases
+3. wasmspec prompt UPDATED: same redirection
+4. proof prompt UPDATED: same delete-42 instructions
+5. time_estimate.csv: logged 76 sorries
+
+### Revised Sorry Classification (CC file, 18 grep hits)
+```
+SKIP (unprovable/blocked): 11
+  L1504, L1505: forIn/forOf stubs
+  L2939: HeapInj refactor staging
+  L2992: captured var (needs HeapInj)
+  L3311, L3333(x2): CCStateAgree (architecturally blocked)
+  L4406: getIndex string semantic mismatch
+  L4900: objectLit all-values (BLOCKED by heap size)
+  L5083: arrayLit all-values (BLOCKED by heap size)
+  L5382: while_ CCState threading
+
+PROVABLE: 6
+  L3835: call all-values (highest priority)
+  L3837: call non-value arg
+  L3838: newObj (may be heap-blocked like objectLit)
+  L4578: setIndex value
+  L5261: functionDef
+  L5351: tryCatch
+```
+
+### Critical Path
+```
+                    ┌─ proof: STUCK until ~19:30 timeout (12h)
+Current (76 grep)  ─┤─ jsspec: ACTIVE — call cases (6 provable targets)
+                    └─ wasmspec: STUCK until ~14:30 timeout (7h)
+```
+
+Best case:
+- jsspec closes 2-3 call sub-cases → CC ~15-16
+- wasmspec restarts ~14:30, picks up remaining → CC ~13-14
+- proof restarts ~19:30, deletes 42 aux → ANF ~16
+- Total: ~29-30 grep hits
+
+2026-03-31T07:50:00+00:00 DONE
+
+---
+
 ## Run: 2026-03-31T07:00:04+00:00
 
 ### Metrics

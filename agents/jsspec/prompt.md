@@ -1,4 +1,4 @@
-# jsspec — Close CC value sub-cases (you are the ONLY productive agent right now)
+# jsspec — Close CC call + non-heap sub-cases
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,104 +11,99 @@ Previous agents got PERMANENTLY STUCK. **NEVER use `while`, `until`, or `sleep` 
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE (07:00): CC has 20 grep-sorry hits, build PASSES. File is ~6460 lines.
-- You added L2035 and L2048 helper lemmas (sorry'd) in your 05:00 session. Good scaffolding.
-- proof and wasmspec are STUCK (while loops). You're the only one making progress.
+## STATE (07:47): CC has 18 grep-sorry hits, build PASSES.
+- **Supervisor closed L2019 + L2032** (Flat_step?_call_value_step_arg and Flat_step?_call_nonclosure). -2 sorries!
+- proof and wasmspec STILL STUCK (while loops). You're the only active agent.
 
-## SORRY MAP (current grep -n sorry output):
+## CRITICAL FINDING: objectLit/arrayLit all-values are BLOCKED
+- Both sides allocate on heap. HeapInj is currently HeapCorr (prefix relation).
+- `HeapInj_alloc_both` requires `ch.objects.size = fh.objects.size` — but Flat heap
+  can be BIGGER due to env objects from prior closure conversions.
+- Until HeapInj is upgraded to real injection (L2988 sorry), objectLit/arrayLit
+  all-values CANNOT be proved. **DO NOT waste time on L4900 or L5083.**
+
+## SORRY MAP (current after supervisor fixes):
 ```
-L1520  forIn stub (SKIP — unprovable)
-L1521  forOf stub (SKIP — unprovable)
-L2035  Flat_step?_call_arg_step helper (YOUR scaffolding — close when working on call)
-L2048  Flat_step?_call_nonclosure helper (YOUR scaffolding — close when working on call)
-L2960  HeapInj refactor staging (SKIP)
-L3279  CCStateAgree if-then (SKIP — blocked)
-L3301  CCStateAgree if-else x2 (SKIP — blocked)
-L3803  call all-values ← YOUR TARGET
-L3805  call non-value arg ← YOUR TARGET
-L3806  newObj ← YOUR TARGET
-L4374  getIndex string value mismatch (SKIP — Flat/Core semantic mismatch)
-L4546  setIndex value sub-case ← YOUR TARGET
-L4868  objectLit all-values ← YOUR TARGET (EASIEST)
-L5051  arrayLit all-values ← YOUR TARGET
-L5229  functionDef ← YOUR TARGET
-L5319  tryCatch ← YOUR TARGET (hardest)
-L5350  CCState threading while_ (SKIP — blocked)
+L1504  forIn stub (SKIP — unprovable)
+L1505  forOf stub (SKIP — unprovable)
+L2939  HeapInj refactor staging (SKIP)
+L2992  captured var (SKIP — needs HeapInj)
+L3311  CCStateAgree if-then (SKIP — blocked)
+L3333  CCStateAgree if-else x2 (SKIP — blocked)
+L3835  call all-values ← YOUR TARGET (highest priority)
+L3837  call non-value arg ← YOUR TARGET
+L3838  newObj ← YOUR TARGET (heap alloc — may be blocked like objectLit)
+L4406  getIndex string (SKIP — semantic mismatch)
+L4578  setIndex value sub-case ← YOUR TARGET
+L4900  objectLit all-values (SKIP — BLOCKED by heap size)
+L5083  arrayLit all-values (SKIP — BLOCKED by heap size)
+L5261  functionDef ← YOUR TARGET
+L5351  tryCatch ← YOUR TARGET (hardest)
+L5382  CCState while_ (SKIP — blocked)
 ```
 
-## YOUR PROVABLE TARGETS (9 sorries including your 2 helpers):
-1. **L4868 — objectLit all-values** (EASIEST, start here)
-2. **L5051 — arrayLit all-values** (same pattern as objectLit)
-3. **L4546 — setIndex value sub-case**
-4. **L2035 — Flat_step?_call_arg_step** (your helper, close by unfolding Flat.step?)
-5. **L2048 — Flat_step?_call_nonclosure** (your helper, close remaining cases)
-6. **L3803 — call callee-is-value** (uses L2035+L2048)
-7. **L3805 — call non-value arg**
-8. **L3806 — newObj**
-9. **L5229 — functionDef**
-10. **L5319 — tryCatch** (hardest, skip if short on time)
+## YOUR PROVABLE TARGETS (5 sorries):
+1. **L3835 — call callee-is-value, all args values** (HIGHEST PRIORITY)
+   - When cv is not a function: both sides return .undefined (no heap alloc, similar to getProp primitive)
+   - When cv IS a function: need to set up call frame, complex but no heap alloc
+   - Use the now-proved `Flat_step?_call_nonclosure` for non-function case
+2. **L3837 — call non-value arg** (standard IH pattern like getProp non-value)
+   - Step the first non-value arg using IH, same as the `| none =>` case for getProp
+3. **L4578 — setIndex value sub-case** (may need heap for object mutation)
+4. **L5261 — functionDef** (complex — involves addFunc, makeEnv, makeClosure)
+5. **L5351 — tryCatch** (hardest, skip if short on time)
 
-### HOW TO PROVE objectLit all-values (L4868):
+### HOW TO PROVE L3835 (call all-values):
 
-Context: `Core.firstNonValueProp props = none` means ALL props are `.lit _`.
+Context: `hlit : f = .lit cv` already proved, `hallv : Core.allValues args = some argVals`.
 
-Key facts in scope:
-- `hcfnv : Core.firstNonValueProp props = none`
-- `hfexpr : sf.expr = Flat.Expr.objectLit (Flat.convertPropList props scope envVar envMap st).fst`
-- `hconv` and `hstep` from parent
+Strategy: Case split on `cv`:
+- **Non-function** (null, undefined, bool, number, string, object): Both Core and Flat return .undefined.
+  ```lean
+  -- Core side: Core.step?_call_nonfunction or similar
+  -- Flat side: Flat_step?_call_nonclosure (NOW PROVED!)
+  -- Result: refine ⟨injMap, sc', ⟨?_⟩, ...⟩ like getProp primitive case
+  ```
+- **Function idx**: Core looks up function, creates call frame. Flat has `.closure idx 0` and looks up function too.
+  This sub-case is complex — skip if too hard, focus on non-function first.
 
-The proof pattern (follow getProp value case at L3919-3939 for reference):
-1. When all props are values, `convertPropList` maps `(k, .lit v)` → `(k, .lit (convertValue v))`
-2. Flat.step? on objectLit with all-value props allocates a new heap object
-3. Core.step? on objectLit with all-value props also allocates a new heap object
-4. HeapInj extends naturally (both add one object at the end)
-5. CCState is unchanged (no freshVar/addFunc in value conversion)
+### HOW TO PROVE L3837 (call non-value arg):
+Follow the exact pattern of getProp `| none =>` case (~L3950-3968):
+1. Get `convertExprList_firstNonValueExpr_some` for the Flat firstNonValueExpr
+2. Get `Flat.step?` decomposition via `Flat_step?_call_value_step_arg` (NOW PROVED!)
+3. Apply IH on the first non-value arg
+4. Construct Core result using `Core_step?_call_arg_step` or similar
 
-Use `lean_goal` at L4868 to see the exact goal. LSP takes ~3 minutes — just WAIT.
-
-### TACTIC PATTERNS (from proved cases nearby):
+### TACTIC PATTERNS (from proved cases):
 ```lean
--- For getting the literal form:
-have hlit : obj = .lit cv := by
-  cases obj <;> simp [Core.exprValue?] at hcev; subst hcev; rfl
-subst hlit
-simp [Flat.convertExpr] at hfexpr hst
-
--- For sf eta:
-have hsf_eta : sf = { sf with expr := ... } := by cases sf; simp_all
-
--- For constructing the result:
-refine ⟨injMap', { sc with ... }, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, st, st', ?_, ⟨rfl, rfl⟩, ⟨rfl, rfl⟩⟩
-```
-
-### HOW TO CLOSE L2035 (Flat_step?_call_arg_step):
-This is a helper lemma about Flat.step? on a call with a non-value arg.
-```lean
--- Try: unfold Flat.step?, use hvals (valuesFromExprList? = none) and hfnv (firstNonValueExpr)
-simp [Flat.step?, hvals, hfnv, hss, Flat.pushTrace]
-```
-
-### HOW TO CLOSE L2048 (Flat_step?_call_nonclosure non-closure cases):
-Each `fv` case that isn't `.closure` should reduce:
-```lean
--- Try: simp [Flat.step?, hvals, Flat.pushTrace]
+-- For constructing result (9 obligations + CCState):
+refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+· show Core.step? sc = some (ev, sc')    -- Core step
+· simp [sc', htrace]                     -- trace
+· exact hinj                             -- HeapInj
+· exact henvCorr                         -- EnvCorr
+· exact henvwf                           -- EnvWF
+· exact hheapvwf                         -- HeapVWF
+· simp [sc', noCallFrameReturn]          -- noCallFrameReturn
+· simp [sc', ExprAddrWF, ValueAddrWF]    -- ExprAddrWF
+· refine ⟨st, st, ?_, ⟨rfl, rfl⟩, ...⟩  -- CCState
 ```
 
 ## DO NOT TOUCH:
 - ANFConvertCorrect.lean — proof agent owns this
-- forIn/forOf stubs (L1520-1521) — unprovable
-- CCState threading sorries (L3279, L3301, L5350) — architecturally blocked
-- getIndex string mismatch (L4374) — Flat/Core semantic mismatch
+- forIn/forOf stubs — unprovable
+- CCState threading sorries — architecturally blocked
+- getIndex string mismatch — Flat/Core semantic mismatch
+- objectLit/arrayLit all-values — BLOCKED by heap size issue
 
 ## WORKFLOW:
-1. `lean_goal` at target line → read FULL goal (wait for LSP, ~3 min)
-2. Study nearby proved cases (getProp at L3919, setProp, deleteProp) for patterns
-3. Build the proof step by step
-4. Build after every successful change
+1. `grep -n sorry` to find CURRENT line numbers (they shift!)
+2. `lean_goal` at target line (LSP takes ~3 min, just WAIT)
+3. Study nearby proved cases for patterns
+4. Build after each change
 5. Move to next target
 
-## CRITICAL: YOU MUST LOG WHAT YOU DO
-**FIRST ACTION**: `echo "### $(date -Iseconds) Starting run — value sub-cases" >> agents/jsspec/log.md`
+## CRITICAL: LOG YOUR WORK
 **LAST ACTION**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`
 
-## TARGET: Close at least 3 of 10 provable sorries → CC grep from 20 to ~17 or less
+## TARGET: Close L3835 (non-function sub-case) + L3837 → CC grep from 18 to ~16

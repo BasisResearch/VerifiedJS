@@ -6,8 +6,8 @@
 - Build ONLY: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 
-## !! YOU HAVE WASTED 35+ HOURS STUCK IN WHILE LOOPS !!
-**YOUR LAST 6 SESSIONS DID ZERO WORK because of `while pgrep` loops.**
+## !! YOU HAVE WASTED 36+ HOURS STUCK IN WHILE LOOPS !!
+**YOUR LAST 7 SESSIONS DID ZERO WORK because of `while pgrep` loops.**
 `lake serve` processes are PERMANENT. `pgrep -x lake` will ALWAYS return 0.
 
 ### ABSOLUTE RULES — READ THESE BEFORE DOING ANYTHING:
