@@ -2056,7 +2056,7 @@ private theorem Flat_step?_call_consoleLog_vals (s : Flat.State)
       some (.log msg, { expr := .lit .undefined, env := s.env, heap := s.heap,
                         trace := s.trace ++ [.log msg], funcs := s.funcs,
                         callStack := s.callStack }) := by
-  sorry -- TODO: simp lemma for Flat.step? call consoleLog; pushTrace is private
+  unfold Flat.step?; simp [Flat.exprValue?, hvals, Core.consoleLogIdx]
 
 /-- Core call with function at consoleLogIdx, all-value args (general). -/
 private theorem Core_step?_call_consoleLog_general (args : List Core.Expr) (argVals : List Core.Value)
@@ -2069,7 +2069,7 @@ private theorem Core_step?_call_consoleLog_general (args : List Core.Expr) (argV
     Core.step? ⟨.call (.lit (.function Core.consoleLogIdx)) args, env, heap, trace, funcs, cs⟩ =
       some (.log msg, ⟨.lit .undefined, env, heap,
                        trace ++ [.log msg], funcs, cs⟩) := by
-  sorry -- TODO: simp lemma for Core.step? call consoleLog
+  unfold Core.step?; simp [Core.exprValue?, hargs, Core.consoleLogIdx, Core.pushTrace]
 
 /-- Console.log message from converted values equals message from original values. -/
 private theorem consoleLog_msg_convertValue (argVals : List Core.Value) :
@@ -4589,7 +4589,7 @@ private theorem closureConvert_step_simulation
           · -- hheapna
             simp only [sc', coreHeap']
             split
-            · simp [hheapna, size_set!]
+            · rw [size_set!]; exact hheapna
             · exact hheapna
           · -- noCallFrameReturn
             simp [sc', noCallFrameReturn]
@@ -4598,7 +4598,7 @@ private theorem closureConvert_step_simulation
               simp [ExprAddrWF] at hexprwf; exact hexprwf.2
             simp only [sc', ExprAddrWF, ValueAddrWF, coreHeap']
             split
-            · simp only [size_set!]; exact hvv_wf'
+            · rw [size_set!]; exact hvv_wf'
             · exact hvv_wf'
           · -- CCState threading
             refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩; simp [sc', Flat.convertExpr, Flat.convertValue]
