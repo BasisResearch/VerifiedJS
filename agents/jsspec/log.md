@@ -1,5 +1,63 @@
 # jsspec agent log
 
+## 2026-03-31T03:00 — Deep analysis of remaining 5 assigned sorries: ALL structurally unprovable
+
+### Result: 0 sorries closed. Build still passing at 15 grep-sorry (same as previous session).
+
+### Analysis summary
+
+All 5 assigned sorries (L2933, L3252, L3274×2, L5313) are **structurally impossible** to prove with the current `suffices` invariant. The issues are not missing lemmas but fundamental architectural mismatches.
+
+### Sorry-by-sorry analysis
+
+#### L2933 — Captured variable (.var name when lookupEnv returns some idx)
+**Blocker**: Step-count mismatch. Core: `.var name` → `.lit v` (1 step). Flat: `.getEnv (.var envVar) idx` first steps `.var envVar` → `.lit (.object envPtr)` (1 step), then needs another step to extract from the env object. The 1-to-1 simulation cannot match because after the Flat step, `sf'.expr = .getEnv (.lit (.object envPtr)) idx` but `convertExpr (.lit v) = .lit (convertValue v)`. These expressions differ fundamentally.
+
+#### L3252 — CCStateAgree for if-true (cond resolved, true branch taken)
+**Blocker**: State divergence. After taking the true branch:
+- `sf'.expr = then_flat = (convertExpr then_ st).fst` — matches `(convertExpr then_ st_a).fst` for `st_a = st` ✓
+- `st_a' = (convertExpr then_ st).snd`
+- `st' = (convertExpr else_ (convertExpr then_ st).snd).snd` — includes else_ conversion effect
+- Need `CCStateAgree st' st_a'` but `st'` has advanced past `st_a'` by else_ conversion delta
+
+No choice of `st_a` can fix this: by `convertExpr_state_determined`, any `st_a` with `CCStateAgree st st_a` produces `st_a'` agreeing with `(convertExpr then_ st).snd`, never with `st'`.
+
+#### L3274 — CCStateAgree for if-false (2 sorries: both input and output agreement fail)
+**Blocker**: Same class as L3252. The witness `st_a = (convertExpr then_ st).snd` can't satisfy `CCStateAgree st st_a` (then_ advances state). No other choice works because sf'.expr must match `(convertExpr else_ st_a).fst`, constraining `st_a`.
+
+#### L5313 — while_ CCState threading
+**Blocker**: **Impossible existential** (stronger than the if cases). The expanded form `.if cond (.seq body (.while_ cond body)) (.lit .undefined)` contains TWO copies of `cond` and `body`. Converting this expression produces DIFFERENT flat expressions for the 1st and 2nd copies (because `convertExpr` advances the state through the 1st copy before converting the 2nd). But `sf'.expr` uses the SAME `fcond` and `fbody` in both positions. Therefore **no `st_a` exists** such that `(convertExpr sc'.expr st_a).fst = sf'.expr`. The expression equality itself fails, not just CCStateAgree.
+
+### Root cause
+
+The `suffices` invariant (L2884–2903) requires:
+```
+∃ st_a st_a', (sf'.expr, st_a') = convertExpr sc'.expr st_a ∧
+  CCStateAgree st st_a ∧ CCStateAgree st' st_a'
+```
+
+This works for **sub-expression stepping** (e.g., stepping cond within an if) because `convertExpr_state_determined` propagates CCStateAgree through unchanged sub-expressions. But it fails for:
+1. **Resolution steps** (if-true/false): the "lost" branch's state delta is baked into `st'` but absent from `st_a'`
+2. **Expression duplication** (while_): `convertExpr` produces different flat code for duplicated sub-expressions, but the Flat semantics reuses the same flat code
+
+### Proposed fixes (all require architectural changes)
+
+1. **Pre-expand while_ during conversion**: Change `convertExpr (.while_ cond body)` to produce the expansion directly instead of `.while_ fcond fbody`. Blocked by termination: `.while_ cond body` appears in the expansion, causing infinite recursion.
+
+2. **Change Flat while_ semantics**: Instead of expanding to if/seq/while_, have while_ check the condition directly and step into the body. Avoids duplication.
+
+3. **N-to-1 or N-to-M step simulation**: Allow the Flat side to take multiple steps per Core step. Fixes captured variable (L2933) and resolution cases, but requires significant proof restructuring.
+
+4. **Drop CCStateAgree from suffices output**: The outer `CC_SimRel` doesn't need CCStateAgree (it discards it at L2906). Replace the internal invariant with a weaker property. However, the sub-stepping cases fundamentally need output state agreement to apply `convertExpr_state_determined`, so this requires a different induction structure.
+
+5. **Make convertExpr state-independent for expression output**: If fresh names were generated based on expression position rather than `nextId`, expressions would be state-independent. CCStateAgree would be unnecessary. Requires changing `freshVar` in ClosureConvert.lean.
+
+### Recommendation
+
+Fix #2 (changing Flat while_ semantics) is the most surgical. Fix #5 is the most comprehensive but most invasive. Fix #3 would address all 5 sorries but is a major proof restructuring. The if-true/false sorries (L3252, L3274) would also be fixed by #4 if a suitable weaker invariant can be found that still enables sub-stepping induction.
+
+---
+
 ## 2026-03-31T02:00 — Proved convertExprList/PropList_firstNonValueExpr/Prop_some (19→17 grep-sorry, 17→15 actual)
 
 ### Result: 2 sorries closed, build passing
@@ -2198,3 +2256,4 @@ Agent `jsspec` can read but NOT write. Need `chmod g+w` from root/wasmspec.
 
 ## Run: 2026-03-31T03:00:01+00:00
 
+2026-03-31T03:14:17+00:00 DONE
