@@ -1945,7 +1945,7 @@ private theorem Flat_step?_getIndex_step (s : Flat.State) (idx : Flat.Expr) (fe 
     Flat.step? { s with expr := .getIndex fe idx } =
       some (t, { expr := .getIndex sa.expr idx, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
+  cases fe with | lit v => simp [Flat.exprValue?] at hnv | _ => simp [Flat.step?, hss]
 
 private theorem Core_step?_getIndex_step (s : Core.State) (idx : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -1963,7 +1963,7 @@ private theorem Flat_step?_setProp_obj_step (s : Flat.State) (prop : Core.PropNa
     Flat.step? { s with expr := .setProp fe prop value } =
       some (t, { expr := .setProp sa.expr prop value, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
+  cases fe with | lit v => simp [Flat.exprValue?] at hnv | _ => simp [Flat.step?, hss]
 
 private theorem Core_step?_setProp_obj_step (s : Core.State) (prop : Core.PropName) (value : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -1981,7 +1981,7 @@ private theorem Flat_step?_setIndex_obj_step (s : Flat.State) (idx value : Flat.
     Flat.step? { s with expr := .setIndex fe idx value } =
       some (t, { expr := .setIndex sa.expr idx value, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
+  cases fe with | lit v => simp [Flat.exprValue?] at hnv | _ => simp [Flat.step?, hss]
 
 private theorem Core_step?_setIndex_obj_step (s : Core.State) (idx value : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -2000,7 +2000,7 @@ private theorem Flat_step?_call_func_step (s : Flat.State) (envExpr : Flat.Expr)
     Flat.step? { s with expr := .call fe envExpr args } =
       some (t, { expr := .call sa.expr envExpr args, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
+  cases fe with | lit v => simp [Flat.exprValue?] at hnv | _ => simp [Flat.step?, hss]
 
 private theorem Core_step?_call_func_step (s : Core.State) (args : List Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -2120,7 +2120,7 @@ private theorem Flat_step?_binary_lhs_step (s : Flat.State) (op : Core.BinOp) (r
     Flat.step? { s with expr := .binary op fe rhs } =
       some (t, { expr := .binary op sa.expr rhs, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  simp [Flat.step?, hss]; split <;> simp_all [Flat.exprValue?]
+  cases fe with | lit v => simp [Flat.exprValue?] at hnv | _ => simp [Flat.step?, hss]
 
 private theorem Core_step?_binary_lhs_step (s : Core.State) (op : Core.BinOp) (rhs : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
