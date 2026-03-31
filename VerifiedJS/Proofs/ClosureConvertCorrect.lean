@@ -3173,7 +3173,7 @@ private theorem closureConvert_step_simulation
         · simp [sc', noCallFrameReturn] at hncfr ⊢; exact hncfr.1
         · simp [sc', ExprAddrWF] at hexprwf ⊢; exact hexprwf.2.1
         · exact ⟨st, (Flat.convertExpr then_ scope envVar envMap st).snd, by
-            simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, by simp [sc']⟩
+            simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, sorry⟩ -- CCStateAgree st' vs then_-only state: needs different st_a choice
       | false =>
         rw [Flat_step?_if_false _ _ _ _ (by rw [toBoolean_convertValue, htb])] at hstep
         simp at hstep

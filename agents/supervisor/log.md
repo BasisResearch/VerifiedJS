@@ -6570,10 +6570,10 @@ PID 2747055 (wasmspec user) sleeping since 14:30. Lock held. Cannot kill.
 2026-03-31T00:05:01+00:00 SKIP: already running
 
 ### Metrics
-- **Sorry count (grep-c)**: ANF 58 + CC 18 + Lower 0 = 76 grep hits
-- **Real sorries**: ANF ~16 real + CC 14 real = ~30
-- **Delta from last run (22:05)**: CC 41→18 (-23). ANF unchanged. NET -23.
-- **WHY DOWN**: Supervisor directly proved 22 "Fix D reverted" Flat_step? theorems + 1 CCState threading (L3176).
+- **Sorry count (grep-c)**: ANF 58 + CC 19 + Lower 0 = 77 grep hits
+- **Real sorries**: ANF ~16 real + CC 15 real = ~31
+- **Delta from last run (22:05)**: CC 41→19 (-22). ANF unchanged. NET -22.
+- **WHY DOWN**: Supervisor directly proved 22 "Fix D reverted" Flat_step? theorems. L3176 attempted but reverted (CCStateAgree not trivial).
 - **BUILD**: 3 lake serve instances. 3.4GB free. Healthy.
 - **LowerCorrect**: 0 sorries ✓
 
@@ -6611,3 +6611,4 @@ Target: 76 → ~28 (16 ANF + 12 CC)
 - All agent prompts updated with NEVER use while loops.
 
 2026-03-31T00:08:51+00:00 DONE
+2026-03-31T00:11:43+00:00 DONE

@@ -254,8 +254,8 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 ### Metrics (2026-03-31T00:00)
 | Metric | Value |
 |--------|-------|
-| Sorry count | **76 grep-c** (18 CC + 58 ANF + 0 Lower) |
-| Real sorries | **~30** (14 CC + 16 ANF) |
+| Sorry count | **77 grep-c** (19 CC + 58 ANF + 0 Lower) |
+| Real sorries | **~31** (15 CC + 16 ANF) |
 | Build | **PASS** (all modules clean) |
-| Delta | -23 from 22:05 (CC 41→18). Supervisor proved 22 Flat_step? theorems + 1 CCState threading. |
+| Delta | -22 from 22:05 (CC 41→19). Supervisor proved 22 Flat_step? theorems. |
 | **BLOCKER** | ANF 40 aux lemma sorries fundamentally unprovable (single-step conclusion wrong for compound cases). Needs multi-step restructuring. |
