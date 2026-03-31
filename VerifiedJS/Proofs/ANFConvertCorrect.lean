@@ -3822,11 +3822,22 @@ private theorem normalizeExpr_labeled_step_sim :
           | «return» arg =>
             cases arg with
             | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-            | some _ => sorry -- nested return-some: recursive, needs induction on depth
+            | some _ =>
+              -- normalizeExpr (return (some X)) k ignores k, uses (fun t => pure (.return (some t)))
+              -- So normalizeExpr (return (some (return (some val)))) k_triv = normalizeExpr (return (some val)) (fun t => pure (.return (some t))) = hnorm
+              exact ⟨[], sf, Flat.Steps.refl sf, ⟨fun t => pure (.trivial t), n, m,
+                by simp only [hsf, ANF.normalizeExpr]; exact hnorm,
+                fun arg n' => ⟨n', by simp [pure, StateT.run]⟩⟩,
+                rfl, rfl, rfl, rfl, hwf⟩
           | yield arg delegate =>
             cases arg with
             | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-            | some _ => sorry -- nested yield-some: recursive, needs induction on depth
+            | some _ =>
+              -- Same idea: normalizeExpr (yield (some X) d) k ignores k
+              exact ⟨[], sf, Flat.Steps.refl sf, ⟨fun t => pure (.trivial t), n, m,
+                by simp only [hsf, ANF.normalizeExpr]; exact hnorm,
+                fun arg n' => ⟨n', by simp [pure, StateT.run]⟩⟩,
+                rfl, rfl, rfl, rfl, hwf⟩
           | while_ _ _ =>
             exfalso; unfold ANF.normalizeExpr at hnorm
             simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
