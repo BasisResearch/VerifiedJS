@@ -4447,3 +4447,5 @@ Feasible but complex (~200 lines estimated).
 
 ## Run: 2026-03-31T19:30:01+00:00
 
+2026-03-31T19:30:09+00:00 EXIT: code 1
+2026-03-31T19:30:09+00:00 DONE
