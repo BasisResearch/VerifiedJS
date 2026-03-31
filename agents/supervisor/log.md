@@ -1,3 +1,69 @@
+## Run: 2026-03-31T01:05:01+00:00
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 58 + CC 19 + Lower 0 = 77 grep hits
+- **Delta from last run (00:08)**: ANF 58→58 (0), CC 18→19 (+1). NET +1.
+- **WHY UP**: CC +1 likely from jsspec work (adding sorry during restructuring or build fix).
+- **BUILD**: 3 lake serve instances running. 4.1GB free. Healthy.
+- **LowerCorrect**: 0 sorries ✓
+- **Effective sorry count**: ~31 real provable sorries (ANF 16 + CC 15)
+
+### CRITICAL: 2 of 3 agents PERMANENTLY STUCK in while loops
+
+**proof agent** (PID 3309505, started 19:30):
+- Bash shell PID 3371116 stuck in `while pgrep -x lake > /dev/null; do sleep 5; done`
+- `pgrep -x lake` matches 3 permanent `lake serve` processes → infinite loop
+- Owned by `proof` user. **Cannot kill from supervisor.** Timeout: ~2026-03-31T19:30.
+- **5.5 hours wasted.** No work since 20:10.
+
+**wasmspec agent** (PID 2747051, started 14:30):
+- Bash shell PID 2750345 stuck in `while pgrep -f "lake build" > /dev/null; do sleep 10; done`
+- `pgrep -f "lake build"` matches its OWN shell command string → infinite loop
+- Owned by `wasmspec` user. **Cannot kill from supervisor.** Timeout: ~2026-03-31T14:30.
+- **10.5 hours wasted.** No work since 16:10.
+
+**jsspec agent** (PID 3532215, started 23:00):
+- Last seen doing `sleep 180` (waiting for build). At least not in infinite loop.
+- Only active agent. CC went from 18→19 suggesting some work happening.
+
+### Actions attempted
+1. Tried to kill stuck bash processes → FAILED (different user ownership).
+2. Cannot edit ANFConvertCorrect.lean (rw-r----- owned by proof user, group read only).
+3. CAN edit ClosureConvertCorrect.lean (rw-rw---- group pipeline write).
+4. LSP lean_goal times out (3 competing lake serve instances).
+
+### Sorry analysis: remaining CC sorries are ALL non-trivial
+- **L2663, L2773**: Blocked by forIn/forOf stubs. Need `supported` guard propagation.
+- **L2857**: Captured variable case. Needs getEnv stepping + EnvCorrInj. Substantial proof (~100 lines).
+- **L3176, L3198**: CCStateAgree witnesses are WRONG. Current `st_a = st` doesn't work because `st'` includes else_ conversion. Needs fundamentally different witness choice.
+- **L4433, L4755, L4938**: Value sub-cases with heap reasoning. Need LSP to understand goals.
+- **L5116, L5206**: functionDef/tryCatch. Complex control flow proofs.
+
+### Actions Taken
+1. **proof prompt REWRITTEN**: Added CRITICAL BUG section explaining while loop failure.
+   Added ABSOLUTE RULES: never while/until/sleep-in-loop. `lake serve` is permanent.
+2. **wasmspec prompt REWRITTEN**: Same critical bug section. Explicit warning about pgrep -f self-match.
+3. **jsspec prompt REWRITTEN**: Added KEY INSIGHT about L3176/L3198 CCStateAgree — the
+   current witness choice (st_a = st) is provably wrong. Suggested restructuring approach.
+4. Analyzed all 16 real CC sorries. None closable without LSP or significant restructuring.
+
+### Critical Path
+```
+                    ┌─ proof: STUCK (while loop) until ~19:30 timeout
+Current (77 grep)  ─┤─ jsspec: ACTIVE — only agent working. 5 CC targets.
+                    └─ wasmspec: STUCK (while loop) until ~14:30 timeout
+```
+
+### Process Notes
+- All 3 agents will eventually timeout (86400s) and be restarted.
+- wasmspec restarts ~14:30, proof ~19:30. Until then, only jsspec works.
+- The while loop bug is the #1 productivity killer. Prompts now have triple-underlined warnings.
+- Consider: should we request manual process kills to unblock agents sooner?
+
+2026-03-31T01:05:01+00:00 DONE
+
+---
+
 ## Run: 2026-03-30T22:05:01+00:00
 
 ### Metrics

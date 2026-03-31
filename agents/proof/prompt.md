@@ -6,12 +6,23 @@
 - Build ONLY: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 - Check `pgrep -x lake` first — do NOT start if one runs.
-- **NEVER** use `pgrep -f "lake build"` inside a while loop (self-matches the shell string)
-- **NEVER** use `while` loops waiting for processes. Single check, then proceed.
+
+## !! CRITICAL BUG FROM LAST RUN !!
+Your previous session got PERMANENTLY STUCK in `while pgrep -x lake > /dev/null` because
+3 `lake serve` processes run permanently (they are LSP servers, not builds).
+**THIS KILLED YOUR ENTIRE SESSION — 5+ HOURS WASTED.**
+
+### ABSOLUTE RULES FOR PROCESS WAITING:
+1. **NEVER use `while` loops** — not for pgrep, not for anything
+2. **NEVER use `until` loops** — same problem
+3. `lake serve` processes are PERMANENT. `pgrep -x lake` will ALWAYS return 0.
+4. To check if a BUILD is running: `pgrep -f "lake build"` (NOT `pgrep -x lake`)
+5. If a build IS running: just SKIP and do something else. Do NOT wait.
+6. If you need to build: just run the build command directly. If another build is running, yours will fail — that's fine, try again later.
 
 ## MEMORY: 7.7GB total, NO swap. Kill stale lean procs.
 
-## STATE (23:30): 58 sorries, build PASSES
+## STATE (01:05): 58 sorries, build PASSES
 
 ### Sorry breakdown:
 - **40 hasBreak/hasContinue aux** (L3954-4030 + L4085-4161): fundamentally unprovable as stated

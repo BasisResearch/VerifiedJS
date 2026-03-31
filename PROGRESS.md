@@ -245,17 +245,18 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 
 ## Agent Health
 
-| Agent | Status (2026-03-30T05:05) | Notes |
+| Agent | Status (2026-03-31T01:05) | Notes |
 |-------|---------------------|-------|
-| proof | **ACTIVE** | Fixing Fix D build breakage (step?_seq_ctx). CC 23→22. |
-| jsspec | **IDLE** | Fix D applied to Flat/Semantics.lean. Staging ANF helper proofs. |
-| wasmspec | **COMPLETED** | ALL 9 Wasm sorries eliminated with axioms! chmod done. |
+| proof | **STUCK** | While loop matching lake serve (5.5h wasted). Timeout ~19:30. |
+| jsspec | **ACTIVE** | Only working agent. CC targets: convertExpr_not_lit, captured var, CCStateAgree. |
+| wasmspec | **STUCK** | While loop self-match (10.5h wasted). Timeout ~14:30. |
 
-### Metrics (2026-03-31T00:00)
+### Metrics (2026-03-31T01:05)
 | Metric | Value |
 |--------|-------|
 | Sorry count | **77 grep-c** (19 CC + 58 ANF + 0 Lower) |
 | Real sorries | **~31** (15 CC + 16 ANF) |
 | Build | **PASS** (all modules clean) |
-| Delta | -22 from 22:05 (CC 41→19). Supervisor proved 22 Flat_step? theorems. |
-| **BLOCKER** | ANF 40 aux lemma sorries fundamentally unprovable (single-step conclusion wrong for compound cases). Needs multi-step restructuring. |
+| Delta | +1 from 00:08 (CC 18→19). No ANF progress (agent stuck). |
+| **BLOCKER 1** | ANF 40 aux lemma sorries fundamentally unprovable. Needs multi-step restructuring. Agent stuck. |
+| **BLOCKER 2** | 2 of 3 agents permanently stuck in while loops. Cannot kill (different users). |

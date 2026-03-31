@@ -4,15 +4,39 @@
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
-- **NEVER** use `pgrep -f "lake build"` inside a while loop (self-matches the shell)
-- **NEVER** use a `while` loop waiting for processes. Single `pgrep -x lake` check then proceed.
-- Check builds with: `pgrep -x lake` (not `-f`)
+
+## !! CRITICAL BUG FROM LAST RUN !!
+Your previous session got PERMANENTLY STUCK in `while pgrep -f "lake build"` because
+the while loop's own shell command string contains "lake build", so pgrep matches ITSELF.
+**THIS KILLED YOUR ENTIRE SESSION — 10+ HOURS WASTED.**
+
+### ABSOLUTE RULES FOR PROCESS WAITING:
+1. **NEVER use `while` loops** — not for pgrep, not for anything, not ever
+2. **NEVER use `until` loops** — same problem
+3. **NEVER use `sleep` in a loop** — you will get stuck
+4. `lake serve` processes are PERMANENT. `pgrep -x lake` will ALWAYS return 0.
+5. To check if a BUILD is running: `pgrep -f "lake build"` (but NEVER in a loop)
+6. If a build IS running: just SKIP and do something else. Do NOT wait.
+7. If you need to build: just run the build command directly. If it fails, try later.
 
 ## MEMORY: 7.7GB total, NO swap.
 
-## STATE (23:30): CC has 18 grep-sorry, 14 real sorries
+## STATE (01:05): CC has 19 grep-sorry, ~16 real sorries
 
-Supervisor proved 22 "Fix D reverted" + 1 CCState threading. CC dropped from 41 to 18.
+### Remaining sorry breakdown:
+- **2 unprovable stubs** (L1502-1503 forIn/forOf): DO NOT TOUCH
+- **2 convertExpr_not_lit** (L2663, L2773): jsspec owns
+- **1 captured variable** (L2857): jsspec owns
+- **2 CCState if-true** (L3176): jsspec owns
+- **2 CCState if-false** (L3198): jsspec owns
+- **1 CCState while_** (L5237): jsspec owns
+- **2 callee/newObj** (L3692, L3693): YOUR TARGET
+- **1 getIndex mismatch** (L4261): possibly unprovable
+- **1 setIndex value sub-case** (L4433): YOUR TARGET
+- **1 objectLit all-values** (L4755): YOUR TARGET
+- **1 arrayLit all-values** (L4938): YOUR TARGET
+- **1 functionDef** (L5116): YOUR TARGET
+- **1 tryCatch** (L5206): YOUR TARGET
 
 ## YOUR TARGETS (7 sorries):
 
@@ -63,7 +87,7 @@ Use this pattern when you need to prove Flat stepping lemmas.
 ## DO NOT TOUCH:
 - ANFConvertCorrect.lean — proof agent owns this
 - forIn/forOf stubs (L1502-1503) — unprovable
-- CCState threading sorries (L2857, L3198, L5237) — jsspec owns these
+- CCState threading sorries (L2857, L3176, L3198, L5237) — jsspec owns these
 - convertExpr_not_lit (L2663, L2773) — jsspec owns these
 - getIndex string mismatch (L4261) — possibly unprovable
 
@@ -73,4 +97,4 @@ Use this pattern when you need to prove Flat stepping lemmas.
 3. If nothing closes it in 10 minutes, MOVE TO THE NEXT ONE
 4. Log what you tried and why it failed
 
-## TARGET: Close at least 3 of your 7 assigned sorries → CC from 18 to ~13
+## TARGET: Close at least 3 of your 7 assigned sorries → CC from 19 to ~16
