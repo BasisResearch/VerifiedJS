@@ -2871,9 +2871,8 @@ private theorem allValues_convertExprList_valuesFromExprList
       match hrest : Core.allValues rest with
       | some vs =>
         simp [hrest] at h; subst h
-        simp only [Flat.convertExprList, Flat.convertExpr]
-        simp only [Flat.valuesFromExprList?, Flat.exprValue?]
-        exact ih vs st hrest
+        have hih := ih vs st hrest
+        simp [Flat.convertExprList, Flat.convertExpr, Flat.valuesFromExprList?, Flat.exprValue?, hih]
       | none => simp [hrest] at h
     | _ => simp [Core.allValues] at h
 
@@ -2900,8 +2899,8 @@ private theorem allValues_convertExprList_state
       match hrest : Core.allValues rest with
       | some vs =>
         simp [hrest] at h; subst h
-        simp only [Flat.convertExprList, Flat.convertExpr]
-        exact ih vs st hrest
+        have hih := ih vs st hrest
+        simp [Flat.convertExprList, Flat.convertExpr, hih]
       | none => simp [hrest] at h
     | _ => simp [Core.allValues] at h
 
@@ -4014,8 +4013,8 @@ private theorem closureConvert_step_simulation
             | _ => rfl
           have hffnv := convertExprList_firstNonValueExpr_some args scope envVar envMap st
               done_c target_c rest_c hcfnv htarget_novalue
-          have hsf_eta : sf = { sf with expr := .call (.lit (Flat.convertValue cv)) (.lit .null)
-              (Flat.convertExprList args scope envVar envMap st).fst } := by
+          have hsf_eta : sf = { sf with expr := (Flat.Expr.call (.lit (Flat.convertValue cv)) (.lit .null)
+              (Flat.convertExprList args scope envVar envMap st).fst) } := by
             cases sf; simp_all
           rw [hsf_eta] at hstep
           have hvals := valuesFromExprList_none_of_firstNonValueExpr hffnv
