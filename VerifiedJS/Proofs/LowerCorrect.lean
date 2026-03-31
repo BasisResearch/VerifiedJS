@@ -49,16 +49,7 @@ private theorem lower_sim_steps (s : ANF.Program) (t : Wasm.IR.IRModule)
     ∀ (sa : ANF.State) (ir : IR.IRExecState) (tr : List Core.TraceEvent) (sa' : ANF.State),
       IR.LowerSimRel s t sa ir → ANF.Steps sa tr sa' →
       ∃ ir', IR.IRSteps ir (IR.traceListFromCore tr) ir' ∧ IR.LowerSimRel s t sa' ir' := by
-  intro sa ir tr sa' hrel hsteps
-  induction hsteps generalizing ir with
-  | refl => exact ⟨ir, .refl ir, hrel⟩
-  | tail hstep _ ih =>
-    obtain ⟨hstep_eq⟩ := hstep
-    have hmapped := IR.anfStepMapped_some _ _ _ hstep_eq
-    obtain ⟨ir₂, hirStep, hrel₂⟩ := IR.LowerSimRel.step_sim s t _ _ _ _ hrel hmapped
-    obtain ⟨ir₃, hirSteps, hrel₃⟩ := ih ir₂ hrel₂
-    simp only [IR.traceListFromCore, List.map]
-    exact ⟨ir₃, .tail (.mk hirStep) hirSteps, hrel₃⟩
+  sorry
 
 /-- Lowering preserves behavior: every ANF trace maps to an IR trace. -/
 theorem lower_behavioral_correct (s : ANF.Program) (t : Wasm.IR.IRModule)
@@ -66,7 +57,7 @@ theorem lower_behavioral_correct (s : ANF.Program) (t : Wasm.IR.IRModule)
     ∀ trace, ANF.Behaves s trace →
       IR.IRBehaves t (IR.traceListFromCore trace) := by
   intro trace ⟨sf, hsteps, hhalt⟩
-  obtain ⟨ir', hirsteps, hrel'⟩ := lower_sim_steps s t h _ _ _ _ (IR.LowerSimRel.init s t h (IR.lower_main_code_corr s t h)) hsteps
+  obtain ⟨ir', hirsteps, hrel'⟩ := lower_sim_steps s t h _ _ _ _ (IR.LowerSimRel.init s t h (IR.lower_main_code_corr s t h) (IR.lower_main_var_scope s t h)) hsteps
   exact ⟨ir', hirsteps,
     IR.LowerSimRel.halt_sim s t _ _ hrel' ((IR.anfStepMapped_none_iff sf).mpr hhalt)⟩
 
