@@ -5099,7 +5099,30 @@ private theorem closureConvert_step_simulation
           · -- Object case: heap mutation
             sorry
           · -- Non-object case: heap unchanged, return value
-            sorry
+            have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr :=
+              convertValue_not_object cv hno
+            rw [Flat_step?_setIndex_nonobject_both_values _ _ _ _ hno_flat] at hstep
+            simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
+            let sc' : Core.State := ⟨.lit vv, sc.env, sc.heap,
+              sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+            · have hsc' : sc = { sc with expr := .setIndex (.lit cv) (.lit iv) (.lit vv) } := by
+                obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+              rw [hsc']
+              have := Core.step?_setIndex_nonobject_val cv iv vv sc.env sc.heap sc.trace sc.funcs sc.callStack hno
+              simp only [Core.pushTrace, sc'] at this ⊢; exact this
+            · simp [sc', htrace]
+            · exact hinj
+            · exact henvCorr
+            · exact henvwf
+            · exact hheapvwf
+            · simp [sc', hheapna]
+            · simp [sc', noCallFrameReturn]
+            · have hvv_wf' : ValueAddrWF vv sc.heap.objects.size := by
+                simp [ExprAddrWF] at hexprwf; exact hexprwf.2.2
+              simp only [sc', ExprAddrWF, ValueAddrWF]; exact hvv_wf'
+            · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
+              simp [sc', Flat.convertExpr, Flat.convertValue]
         | none =>
           -- value needs stepping; obj+idx are values
           sorry

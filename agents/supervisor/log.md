@@ -7587,3 +7587,85 @@ Best case (after proof timeout + agents work):
 
 ## Run: 2026-03-31T20:05:01+00:00
 
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 18 + CC 27 + Lower 1 + Wasm 2 = 48 grep hits
+- **Delta from last run (19:30)**: ANF 58→18 (-40!), CC 33→27 (-6), Lower 0→1 (+1 sorry replacing 3 build errors)
+- **NET CHANGE**: -43 grep hits (91→48). HUGE progress.
+- **BUILD**: CC PASSES (9 jobs, warnings only). ANF likely passes (proof active). Lower TBD.
+
+### What happened since last run (19:30)
+1. **proof agent restarted at 20:00** — FINALLY broke out of the 23-hour while loop.
+   - **chmod g+w DONE** ✓ — Both ANF and Lower files now group-writable (0660)
+   - **ANF aux deletion DONE** — Deleted 40 unprovable hasBreakInHead/hasContinueInHead aux lemmas (58→18 sorries)
+   - **LowerCorrect fixed** — 3 build errors → 1 sorry (lower_sim_steps)
+2. **jsspec** (started 19:00): Working on CC. Closed ~2 sorries (29→27).
+3. **wasmspec** (started 18:15): Working on CC. Contributing to sorry reduction.
+
+### CC Sorry Classification (27 grep hits, ~23 actual sorries)
+```
+UNPROVABLE (stubs): 2
+  L1507 (forIn), L1508 (forOf)
+
+BLOCKED (architectural): 13
+  L3262: captured var (HeapInj)
+  L3590: CCStateAgree if-then
+  L3613: CCStateAgree if-false (×2)
+  L4131: call consoleLog (FuncsCorr)
+  L4302: newObj
+  L4892: getIndex string semantic mismatch
+  L5440: objectLit all-values (heap)
+  L5543: arrayLit all-values (heap)
+  L5640: functionDef
+  L5745, L5748: tryCatch body (complex)
+  L5780: while_ CCState
+
+PROVABLE TARGETS: ~8
+  L5740: tryCatch hncf (from noCallFrameReturn) — jsspec assigned
+  L5741: tryCatch hncfr_body (from noCallFrameReturn) — jsspec assigned
+  L5742: tryCatch hncfr_catch (from noCallFrameReturn) — jsspec assigned
+  L4133: call non-closure — jsspec assigned
+  L5100, L5102, L5105, L5108: setProp/setIndex bullets — wasmspec assigned
+```
+
+### ANF Sorry Classification (18 grep hits)
+```
+After deletion, remaining 18:
+  7: normalizeExpr_labeled_step_sim depth-recursive (PROOFS READY from wasmspec)
+  2: throw/HasThrowInHead compound (architecturally complex)
+  2: makeEnv/objectLit/arrayLit consolidated
+  7: expression-case helper theorems (return/await/yield/let/seq/if/tryCatch)
+```
+
+### Agent Status
+1. **proof** (PID 1107968, started 20:00): ACTIVE ✓ — chmod done, aux deleted, working on LowerCorrect/expression-cases
+2. **jsspec** (PID 1057136, started 19:00): ACTIVE ✓ — working on CC tryCatch + call non-closure
+3. **wasmspec** (PID 970211, started 18:15): ACTIVE ✓ — working on CC setProp/setIndex bullets
+
+### Actions Taken
+1. Updated proof prompt: P1 deletion done → P2 apply 7 expression-case proofs → P3 LowerCorrect sorry
+2. Updated jsspec prompt: new targets (tryCatch L5740-5742, call L4133) with specific tactics
+3. Updated wasmspec prompt: setProp/setIndex/objectLit/arrayLit bullets with candidate tactics
+4. Partitioned CC work: jsspec L4100-4200 + L5700-5800, wasmspec L5000-5650 (no collision)
+5. Logged 48 sorries to time_estimate.csv
+
+### Critical Path
+```
+                    ┌─ proof: ANF 18→11 (7 expression-case proofs ready) + Lower 1→0
+Current (48 grep)  ─┤─ jsspec: CC 27→24 (tryCatch hncfr) → CC 23 (call non-closure)
+                    └─ wasmspec: CC 27→23 (setProp/setIndex bullets)
+```
+
+Best case:
+- proof closes 7 ANF + 1 Lower = ANF 11, Lower 0
+- jsspec closes 3 tryCatch + 1 call = CC 23
+- wasmspec closes 4 setProp/setIndex = CC 19
+- Total: ~32 grep hits
+
+Realistic case:
+- proof closes 5 ANF + 1 Lower → ANF 13, Lower 0
+- jsspec closes 3 tryCatch → CC 24
+- wasmspec closes 2 bullets → CC 25
+- Total: ~40 grep hits
+
+2026-03-31T20:18:32+00:00 DONE

@@ -1,60 +1,86 @@
-# jsspec — Fix CC sorry regression (38 → reduce)
+# jsspec — Close CC tryCatch + call sorries
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build CC: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
-- Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+- **DO NOT** edit ANFConvertCorrect.lean or LowerCorrect.lean (proof agent owns them).
 
 ## !! DO NOT USE WHILE/UNTIL LOOPS !!
 Previous agents got PERMANENTLY STUCK. **NEVER use `while`, `until`, or `sleep` in a loop.**
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## SITUATION
-- **CC: 38 sorries, BUILD PASSES.** Extra sorries added to fix cascading errors. Many fixable.
-- **ANF: 58 sorries — FILE LOCKED** (owned by proof, group read-only). DO NOT TOUCH.
-- **LowerCorrect: FILE LOCKED.** DO NOT TOUCH.
+## STATE: CC 29 grep-sorry hits, build passing.
 
-## YOUR PLAN: Fix CC sorry regressions
+## YOUR TARGETS (in priority order)
 
-### Priority 1: Fix helper theorems (L2059, L2072)
-**L2059** (`Flat_step?_call_consoleLog_vals`): `Flat.pushTrace` is private.
-- The @[simp] lemma `Flat.step?_pushTrace_expand` should fire automatically
-- Try: `unfold Flat.step?; simp [Flat.exprValue?, hvals, Core.consoleLogIdx]`
-- The `let msg := match ...` in the conclusion creates a dependent match pattern
-- May need to use `show` to specialize the match, or `split` on argVals
+### Target 1: tryCatch noCallFrameReturn (L5740-5742) — EASY
 
-**L2072** (`Core_step?_call_consoleLog_general`): `Core.pushTrace` IS public.
-- Same dependent match issue
-- Try: `unfold Core.step?; simp [Core.exprValue?, hargs, Core.consoleLogIdx]; unfold Core.pushTrace; rfl`
+These 3 sorries extract facts from `hncfr : noCallFrameReturn (.tryCatch body catchParam catchBody finally_) = true`.
 
-### Priority 2: Restore call non-function case (L4129)
-Was previously proven. Needs restoring after hsf_eta parentheses fix:
-- `lean_goal` to see current state
-- Pattern: hsf_eta sets sf.expr, rw at hstep, Flat_step?_call_nonclosure, Core.step_call_nonfunc_exact
-- All 10 refine bullets are standard: hinj, henvCorr, henvwf, hheapvwf, hheapna, noCallFrameReturn, ExprAddrWF, CCState
+`noCallFrameReturn` for tryCatch (L957-960):
+```lean
+| .tryCatch body cp cb fin =>
+    cp != "__call_frame_return__" &&
+    noCallFrameReturn body && noCallFrameReturn cb &&
+    match fin with | some f => noCallFrameReturn f | none => true
+```
 
-### Priority 3: Fix setProp/setIndex sorry bullets (L4590-4596, L5084-5092)
-Individual proof bullets sorry'd. For each:
-1. `lean_goal` at the sorry line
-2. `lean_multi_attempt` with: `["exact hheapna'", "simp [sc', hheapna]", "simp [sc', noCallFrameReturn]", "simp [sc', ExprAddrWF, ValueAddrWF]"]`
+**L5740** (`catchParam ≠ "__call_frame_return__"`):
+```
+lean_multi_attempt at L5740:
+["simp [noCallFrameReturn] at hncfr; exact hncfr.1",
+ "simp [noCallFrameReturn, bne_iff_ne] at hncfr; exact hncfr.1",
+ "simp [noCallFrameReturn, Bool.and_eq_true, bne_iff_ne] at hncfr; exact hncfr.1",
+ "have := hncfr; simp [noCallFrameReturn] at this; exact this.1",
+ "simp only [noCallFrameReturn, Bool.and_eq_true, bne_iff_ne, ne_eq] at hncfr; exact hncfr.1"]
+```
 
-### Priority 4: Fix tryCatch sorries (L5710-5718)
-- L5710: `catchParam ≠ "__call_frame_return__"` — extract from hncfr via noCallFrameReturn tryCatch
-- L5711-5712: `noCallFrameReturn body/catchBody` — extract from hncfr
+**L5741** (`noCallFrameReturn body = true`):
+```
+lean_multi_attempt at L5741:
+["simp [noCallFrameReturn] at hncfr; exact hncfr.2.1",
+ "simp [noCallFrameReturn, Bool.and_eq_true] at hncfr; exact hncfr.2.1",
+ "have := hncfr; simp [noCallFrameReturn] at this; exact this.2.1"]
+```
+
+**L5742** (`noCallFrameReturn catchBody = true`):
+```
+lean_multi_attempt at L5742:
+["simp [noCallFrameReturn] at hncfr; exact hncfr.2.2.1",
+ "simp [noCallFrameReturn, Bool.and_eq_true] at hncfr; exact hncfr.2.2.1",
+ "have := hncfr; simp [noCallFrameReturn] at this; exact this.2.2.1"]
+```
+
+### Target 2: call non-function case (L4133) — MEDIUM
+
+Was previously proved before hsf_eta correction. Pattern:
+1. `lean_goal` at L4133 to see current state
+2. Need: rw hsf_eta at hstep, then Flat_step?_call_nonclosure, then Core.step_call_nonfunc
+3. The 10 refine bullets are: hinj, henvCorr, henvwf, hheapvwf, hheapna, noCallFrameReturn, ExprAddrWF, CCState
+4. `lean_multi_attempt` at L4133 with candidate approaches
+
+### Target 3: setProp/setIndex sorry bullets (L5100-5108) — if time
+
+These are in the setIndex all-values case. Use `lean_goal` to check what's needed.
 
 ### SKIP (architecturally blocked):
-- L1507-1508: forIn/forOf stubs
-- L3258: captured var (HeapInj)
-- L3586, L3609: CCStateAgree
-- L4298: newObj
-- L4876: getIndex semantic mismatch
-- L5416, L5516: heap allocation
-- L5610: functionDef
-- L5750: while_ CCState
+- L1507-1508: forIn/forOf stubs (theorem is false)
+- L3262: captured var (HeapInj refactor)
+- L3590, L3613: CCStateAgree threading
+- L4131: call consoleLog (FuncsCorr needed)
+- L4302: newObj
+- L4892: getIndex string semantic mismatch
+- L5440, L5543: heap allocation
+- L5640: functionDef
+- L5745, L5748: tryCatch body stepping (complex)
+- L5780: while_ CCState
+
+### COLLISION AVOIDANCE
+wasmspec is also editing CC. You work on lines L4100-4200 and L5700-5800. wasmspec works on L5000-5650. Do NOT edit the same regions.
 
 ## WORKFLOW:
-1. `grep -n sorry ClosureConvertCorrect.lean` to find CURRENT line numbers
+1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers
 2. `lean_goal` at target line
 3. `lean_multi_attempt` with candidate tactics
 4. Edit the file with the working tactic

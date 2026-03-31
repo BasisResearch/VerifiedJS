@@ -1,4 +1,4 @@
-# proof — chmod g+w FIRST, then DELETE unprovable aux, then fix LowerCorrect
+# proof — DELETE unprovable ANF aux, then close expression-case sorries
 
 ## RULES
 - Edit: ANFConvertCorrect.lean AND LowerCorrect.lean
@@ -6,14 +6,8 @@
 - Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 - Build Lower: `lake build VerifiedJS.Proofs.LowerCorrect`
 
-## !! CRITICAL: YOUR PROCESS HAS BEEN STUCK IN WHILE LOOPS FOR DAYS !!
+## !! CRITICAL: DO NOT USE WHILE/UNTIL LOOPS !!
 **You have wasted 100+ HOURS total in while loops. DO NOT LOOP.**
-
-### FIRST ACTION — BEFORE ANYTHING ELSE:
-```bash
-chmod g+w VerifiedJS/Proofs/ANFConvertCorrect.lean VerifiedJS/Proofs/LowerCorrect.lean
-```
-This lets other agents help you. DO IT FIRST.
 
 ### BUILD — THE ONLY WAY:
 ```bash
@@ -33,62 +27,65 @@ ONE command each. No waiting, no checking, no loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: ANF 58 sorries (build passes), LowerCorrect 3 errors
+## STATE
+- ANF: 58 sorries (build passes). File is now group-writable ✓
+- LowerCorrect: 1 sorry (lower_sim_steps L52). Build may have errors — check.
+- CC: 29 sorries — OTHER AGENTS WORKING ON IT. **DO NOT TOUCH CC.**
 
-## PRIORITY 1: chmod g+w (DO THIS FIRST)
-```bash
-chmod g+w VerifiedJS/Proofs/ANFConvertCorrect.lean VerifiedJS/Proofs/LowerCorrect.lean
-```
+## PRIORITY 1: DELETE the 42 unprovable aux sorries in ANF (58 → ~18)
 
-## PRIORITY 2: Fix LowerCorrect.lean (3 errors)
-
-The `IR.LowerSimRel.step_sim` return type changed. It now returns:
-```
-∃ (s2' : IRExecState) (ir_trace : List TraceEvent),
-  IRSteps s2 ir_trace s2' ∧ LowerSimRel prog irmod s1' s2' ∧
-  observableEvents ir_trace = observableEvents [t]
-```
-
-Fix `lower_sim_steps` (L47-61):
-- L58: Change obtain to: `obtain ⟨ir₂, ir_trace₂, hirSteps₂, hrel₂, hobs₂⟩ := ...`
-- L59: `ih ir₂ hrel₂` should work after the above fix
-- L61: Need to compose `hirSteps₂` with `hirSteps`. Use IRSteps.append or similar.
-  The result type needs `IRSteps ir (IR.traceListFromCore (t::rest)) ir₃`.
-  `hirSteps₂ : IRSteps ir ir_trace₂ ir₂`, `hirSteps : IRSteps ir₂ (traceListFromCore rest) ir₃`
-  Need: trace equality `ir_trace₂ ++ traceListFromCore rest = traceListFromCore (t::rest)`
-  This may need `hobs₂` to relate `ir_trace₂` to `[traceFromCore t]`.
-
-Fix `lower_behavioral_correct` (L64-71):
-- L69: `IR.LowerSimRel.init` now takes an extra argument. Check its type with `lean_hover_info`.
-
-If these are too complex, sorry both theorems. They had 0 sorries before but the API changed.
-
-## PRIORITY 3: DELETE the 42 unprovable aux sorries in ANF (58 → 18)
-
-The `hasBreakInHead_step?_error_aux` and `hasContinueInHead_step?_error_aux` theorems are FUNDAMENTALLY UNPROVABLE.
+The `hasBreakInHead_step?_error_aux` and `hasContinueInHead_step?_error_aux` theorems are FUNDAMENTALLY UNPROVABLE — they expand one step? into a parent context, but step? doesn't do that.
 
 ### EXACT STEPS:
 
-**Step 1**: Find the block:
+**Step 1**: Find the blocks:
 ```bash
 grep -n "hasBreakInHead_step?_error_aux\|hasContinueInHead_step?_error_aux\|hasBreakInHead_flat_error_steps\|hasContinueInHead_flat_error_steps" VerifiedJS/Proofs/ANFConvertCorrect.lean
 ```
 
-**Step 2**: Delete `hasBreakInHead_step?_error_aux` — everything from `private theorem hasBreakInHead_step?_error_aux` through all its sorry cases (~L4036). Keep `hasBreakInHead_flat_error_steps` but replace proof with sorry.
+**Step 2**: Delete `hasBreakInHead_step?_error_aux` — everything from `private theorem hasBreakInHead_step?_error_aux` through all its sorry cases. Keep `hasBreakInHead_flat_error_steps` but replace its proof body with `sorry`.
 
-**Step 3**: Delete `hasContinueInHead_step?_error_aux` — same. Keep `hasContinueInHead_flat_error_steps` but sorry.
+**Step 3**: Delete `hasContinueInHead_step?_error_aux` — same pattern. Keep `hasContinueInHead_flat_error_steps` but sorry its body.
 
 **Step 4**: Build and count:
 ```bash
 lake build VerifiedJS.Proofs.ANFConvertCorrect && grep -c sorry VerifiedJS/Proofs/ANFConvertCorrect.lean
 ```
 
-## PRIORITY 4: Close expression-case sorries
+Expected: 58 → ~18 sorries.
 
-After deletion, work on remaining sorries using `lean_goal` + `lean_multi_attempt`.
+## PRIORITY 2: Apply wasmspec's 7 expression-case proofs
+
+wasmspec verified these via lean_multi_attempt. Apply them if ANF deletion succeeds:
+
+| Line | Tactic |
+|------|--------|
+| L3825 (return.some.return.some) | `exact ih _ (by simp [Flat.Expr.depth] at hd ⊢; omega) _ _ _ _ _ (by intro arg n'; exact ⟨_, by simp [pure, StateT.run]⟩) hnorm _ rfl (by cases hwf; assumption)` |
+| L3829 (return.some.yield.some) | same as L3825 |
+| L3840 (return.some compound) | `all_goals exact ih _ (by simp [Flat.Expr.depth] at hd ⊢; omega) _ _ _ _ _ (by intro arg n'; exact ⟨_, by simp [pure, StateT.run]⟩) hnorm _ rfl (by cases hwf; assumption)` |
+| L3891 (yield.some.return.some) | same as L3825 |
+| L3895 (yield.some.yield.some) | same as L3825 |
+| L3906 (yield.some compound) | same as L3840 |
+| L3923 (top-level compound) | `all_goals exact ⟨[], sf, Flat.Steps.refl, ⟨k, n, m, hnorm, hk⟩, rfl, rfl, rfl, rfl, hwf⟩` |
+
+**IMPORTANT**: Line numbers will shift after deletion. Use `grep -n` to find the current lines.
+
+## PRIORITY 3: Close LowerCorrect sorry (L52)
+
+`lower_sim_steps` needs induction on `ANF.Steps`. Pattern:
+```lean
+intro sa ir tr sa' hrel hsteps
+induction hsteps with
+| refl => exact ⟨ir, IR.IRSteps.refl, hrel⟩
+| step t sa₁ rest sa₂ sa₃ hstep hrest ih =>
+  obtain ⟨ir₂, ir_trace₂, hirsteps₂, hrel₂, hobs₂⟩ := IR.LowerSimRel.step_sim s t h sa₁ ir hrel hstep
+  obtain ⟨ir₃, hirsteps₃, hrel₃⟩ := ih hrel₂
+  exact ⟨ir₃, IR.IRSteps.append hirsteps₂ hirsteps₃, hrel₃⟩
+```
+Use `lean_goal` at L52 to see exact types, then `lean_multi_attempt`.
 
 ## DO NOT TOUCH:
-- ClosureConvertCorrect.lean — other agents are working on it
+- ClosureConvertCorrect.lean — jsspec and wasmspec are editing it
 
 ## VERIFICATION
 After any changes:

@@ -1,68 +1,65 @@
-# wasmspec — Fix CC sorry regression (38 → reduce)
+# wasmspec — Close CC setProp/setIndex/deleteProp/objectLit/arrayLit sorry bullets
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build CC: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+- **DO NOT** edit ANFConvertCorrect.lean or LowerCorrect.lean (proof agent owns them).
 
 ## !! CRITICAL: DO NOT USE WHILE/UNTIL LOOPS !!
-**You have wasted 80+ HOURS total in while loops. DO NOT LOOP.**
-
-### BUILD — THE ONLY WAY:
-```bash
-lake build VerifiedJS.Proofs.ClosureConvertCorrect
-```
-ONE command. No waiting, no checking, no loops.
-
-### ABSOLUTE RULES:
-1. **NEVER write `while`** — not for pgrep, not for sleep, not for ANYTHING
-2. **NEVER write `until`** — same infinite loop problem
-3. **NEVER write `sleep` inside any loop**
-4. **NEVER write `pgrep`** — lake serve is PERMANENT
-5. **NEVER write `do...done`** — no loops of any kind
-6. If build fails: `sleep 60`, retry ONCE. No loops.
+**NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
+If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## SITUATION
-- **CC: 38 sorries, BUILD PASSES.** Many fixable sorry regressions.
-- **ANF: 58 sorries — FILE LOCKED.** DO NOT TOUCH.
-- **LowerCorrect: FILE LOCKED.** DO NOT TOUCH.
+## STATE: CC 29 grep-sorry hits, build passing.
 
-## YOUR PLAN: Fix CC sorry regressions
+## YOUR TARGETS (in priority order)
 
-Focus on setProp, setIndex, deleteProp, objectLit, arrayLit sorry bullets.
+### Target 1: setProp sorry bullets (around L5096-5108)
 
-### Target: setProp sorry bullets (around L4590-4596)
-These are individual refine bullets that were sorry'd. Pattern:
-1. `lean_goal` at each sorry
-2. `lean_multi_attempt` with: `["exact hheapna'", "simp [sc', hheapna]", "simp [sc', noCallFrameReturn]", "simp [sc', ExprAddrWF, ValueAddrWF]"]`
-3. Edit with working tactic
+These are in the setIndex case (all-three-values sub-case). For each sorry:
+1. `lean_goal` at the sorry line to see what's needed
+2. `lean_multi_attempt` with these candidates:
+```
+["exact hheapna'", "simp [sc', hheapna]", "exact hinj", "exact henvCorr",
+ "exact henvwf", "exact hheapvwf", "simp [sc', noCallFrameReturn]",
+ "simp [sc', ExprAddrWF]", "simp [sc', ExprAddrWF, ValueAddrWF]",
+ "exact ⟨st_a, st_a', by simp [sc', Flat.convertExpr]; exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩"]
+```
 
-### Target: setIndex sorry bullets (around L5084-5241)
-Same pattern. The setIndex case has several sorry'd sub-branches.
+### Target 2: objectLit sorry bullets (around L5527-5536)
 
-### Target: deleteProp sorry bullets (around L5507-5509)
+Same approach — `lean_goal` + `lean_multi_attempt`.
 
-### Target: objectLit / arrayLit sorry bullets (around L5607-5609)
+### Target 3: arrayLit sorry bullets (around L5627-5639)
+
+Same approach.
+
+### Target 4: deleteProp sorry (if any fixable, around L5436-5440)
 
 ### SKIP (architecturally blocked):
 - L1507-1508: forIn/forOf stubs
-- L3258: captured var (HeapInj)
-- L3586, L3609: CCStateAgree
-- L4127: call function (FuncsCorr)
-- L4298: newObj
-- L4876: getIndex semantic mismatch
-- L5416, L5516: heap allocation
-- L5610: functionDef
-- L5750: while_ CCState
+- L3262: captured var (HeapInj)
+- L3590, L3613: CCStateAgree
+- L4131, L4133: call function/non-closure (jsspec handles)
+- L4302: newObj
+- L4892: getIndex string
+- L5440: objectLit all-values heap allocation
+- L5543: arrayLit all-values heap allocation
+- L5640: functionDef
+- L5740-5748: tryCatch (jsspec handles)
+- L5780: while_ CCState
+
+### COLLISION AVOIDANCE
+jsspec is also editing CC. You work on lines L5000-5650. jsspec works on L4100-4200 and L5700-5800. Do NOT edit the same regions.
 
 ## WORKFLOW:
-1. `grep -n sorry ClosureConvertCorrect.lean` to find CURRENT line numbers
-2. `lean_goal` at target
-3. `lean_multi_attempt` with candidates
-4. Edit file with working tactic
+1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers
+2. `lean_goal` at target line
+3. `lean_multi_attempt` with candidate tactics
+4. Edit the file with the working tactic
 5. Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
-6. Next target
+6. Move to next target
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
