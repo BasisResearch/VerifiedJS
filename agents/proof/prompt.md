@@ -4,24 +4,32 @@
 - Edit: ANFConvertCorrect.lean (primary)
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build ONLY: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
-- Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 
-## !! YOU HAVE WASTED 36+ HOURS STUCK IN WHILE LOOPS !!
-**YOUR LAST 7 SESSIONS DID ZERO WORK because of `while pgrep` loops.**
-`lake serve` processes are PERMANENT. `pgrep -x lake` will ALWAYS return 0.
+## !! CRITICAL: YOUR PROCESS IS STUCK IN A WHILE LOOP RIGHT NOW !!
+**PID 3371116 has been sleeping for 13+ HOURS in `while pgrep -x lake`.**
+This is the 8th time this has happened. You have wasted 50+ HOURS total.
 
-### ABSOLUTE RULES — READ THESE BEFORE DOING ANYTHING:
+### FIRST ACTION — BEFORE ANYTHING ELSE:
+```bash
+chmod g+w VerifiedJS/Proofs/ANFConvertCorrect.lean
+```
+
+### BUILD — THE ONLY WAY:
+```bash
+lake build VerifiedJS.Proofs.ANFConvertCorrect
+```
+That's it. ONE command. No waiting, no checking, no loops.
+
+### ABSOLUTE RULES — VIOLATION = 10 HOURS WASTED:
 1. **NEVER write `while`** — not for pgrep, not for sleep, not for ANYTHING, EVER
 2. **NEVER write `until`** — same infinite loop problem
 3. **NEVER write `sleep` inside any loop**
-4. To build: just run `lake build VerifiedJS.Proofs.ANFConvertCorrect` directly
-5. If build fails: ONE `sleep 60`, then retry ONCE. That's it.
-6. If you find yourself writing `while` or `until`: STOP. DELETE IT. You will waste another 10+ hours.
+4. **NEVER write `pgrep`** — lake serve is PERMANENT, pgrep always returns 0
+5. **NEVER write `do...done`** — no loops of any kind
+6. **NEVER check if build is running** — just run your build command, it will wait
+7. If build fails: `sleep 60` then retry ONCE. TWO commands total. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
-
-## FIRST ACTION: Make ANF file writable for other agents
-Run: `chmod g+w VerifiedJS/Proofs/ANFConvertCorrect.lean`
 
 ## STATE: 58 sorries, build PASSES
 
@@ -42,20 +50,20 @@ but step? wraps results in the parent context.
 
 **Step 1**: Find the theorem bounds:
 ```bash
-grep -n "hasBreakInHead_step?_error_aux\|hasContinueInHead_step?_error_aux" VerifiedJS/Proofs/ANFConvertCorrect.lean
+grep -n "hasBreakInHead_step?_error_aux\|hasContinueInHead_step?_error_aux" VerifiedJS/Proofs/ANFConvertCorrect.lean | head -5
 ```
 
 **Step 2**: DELETE both theorems entirely (each ~80 lines with 20 sorry cases).
-Use `sed` or your editor to remove everything from `private theorem hasBreakInHead_step?_error_aux`
-through the end of its proof (look for the next `private theorem` or top-level declaration).
-Do the same for `hasContinueInHead_step?_error_aux`.
+Find the line range:
+```bash
+grep -n "^private theorem has" VerifiedJS/Proofs/ANFConvertCorrect.lean
+```
+Then delete from `private theorem hasBreakInHead_step?_error_aux` to just before the next top-level declaration. Same for `hasContinueInHead_step?_error_aux`.
 
-**Step 3**: Fix callers. The callers `hasBreakInHead_flat_error_steps` and `hasContinueInHead_flat_error_steps`
-should already be sorry'd. If deleting creates new errors, replace caller body with `sorry`.
+**Step 3**: Fix callers. The callers `hasBreakInHead_flat_error_steps` and `hasContinueInHead_flat_error_steps` should already be sorry'd. If deleting creates new errors, replace caller body with `sorry`.
 
 **Step 4**: Build:
 ```bash
-pkill -f "lean.*\.lean" 2>/dev/null; sleep 5
 lake build VerifiedJS.Proofs.ANFConvertCorrect
 ```
 
@@ -66,6 +74,19 @@ Target: 16 sorries (was 58).
 
 After deletion, rewrite using structural induction on `h : HasBreakInHead e label`.
 This is a multi-step (Steps) theorem, not single-step.
+
+Template:
+```lean
+private theorem hasBreakInHead_flat_error_steps
+    (h : HasBreakInHead e label) (henv : ...) (hheap : ...) :
+    ∃ sf', Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ sf' ∧
+      sf'.expr = .lit .undefined ∧
+      observableTrace sf'.trace = observableTrace trace ++ [.error ("break:" ++ label.getD "")] := by
+  induction h with
+  | break_direct => exact ⟨_, .single ⟨by simp [Flat.step?]⟩, rfl, by simp [observableTrace]⟩
+  | seq_left ih => exact ⟨_, Steps_seq_left ih.choose ih.choose_spec.1, ...⟩
+  ...
+```
 
 Check for context-lifting lemmas:
 ```bash

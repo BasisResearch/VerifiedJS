@@ -1,51 +1,58 @@
-# wasmspec — Close CC call sub-cases (share with jsspec)
+# wasmspec — Close CC value sub-cases (share with jsspec)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
-- Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 
-## !! ABSOLUTE RULE: NEVER USE WHILE/UNTIL LOOPS !!
-**YOU HAVE WASTED 40+ HOURS STUCK IN WHILE LOOPS. YOUR LAST 5 SESSIONS DID ZERO WORK.**
+## !! CRITICAL: YOUR PROCESS HAS BEEN STUCK FOR 18+ HOURS !!
+**PID 2750345 has been in `while pgrep -f "lake build"` since yesterday 14:30.**
+This is the WORST case yet. You have wasted 60+ HOURS total in while loops.
 
-### RULES — VIOLATION MEANS ANOTHER WASTED SESSION:
+### BUILD — THE ONLY WAY:
+```bash
+lake build VerifiedJS.Proofs.ClosureConvertCorrect
+```
+That's it. ONE command. No waiting, no checking, no loops.
+
+### ABSOLUTE RULES — VIOLATION = ANOTHER WASTED SESSION:
 1. **NEVER write `while`** — not for pgrep, not for sleep, not for ANYTHING
 2. **NEVER write `until`** — same problem
 3. **NEVER write `sleep` inside any loop**
-4. `lake serve` is PERMANENT. `pgrep -x lake` will ALWAYS return 0.
-5. To build: just run `lake build VerifiedJS.Proofs.ClosureConvertCorrect` directly
-6. If build fails: ONE `sleep 60`, then retry ONCE. If fails again, skip.
+4. **NEVER write `pgrep`** — lake serve is PERMANENT, pgrep always matches itself
+5. **NEVER write `do...done`** — no loops of any kind
+6. **NEVER check if build is running** — just run your build command
+7. If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC has 18 sorry-grep-hits, build PASSES.
-- Supervisor closed 2 helper lemmas (Flat_step?_call_value_step_arg, Flat_step?_call_nonclosure)
-- objectLit/arrayLit all-values are BLOCKED by heap size issue (HeapCorr prefix ≠ equal sizes)
-- jsspec is actively working on call cases
+## STATE: CC has ~17 grep-sorry-hits. Build should be PASSING (jsspec may have changes).
 
-## FIRST ACTION: Check what jsspec already closed
+**SUPERVISOR CHANGES** (during 09:05 run):
+- Added 8 Flat/Core setIndex helper lemmas (after getIndex helpers section)
+- Expanded setIndex value sorry (old L4583) into full proof with 3 sub-cases
+- jsspec working on call all-values + call non-value arg
+
+## FIRST ACTION:
 ```bash
 grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean
 ```
-Then pick up whatever jsspec DIDN'T finish.
+Check what jsspec already closed, then pick up remaining targets.
 
 ## CRITICAL: objectLit/arrayLit all-values are BLOCKED
 HeapInj_alloc_both requires equal heap sizes. HeapCorr only guarantees ≤.
-Flat heap can be bigger from env objects. DO NOT attempt L4900 or L5083.
+Flat heap can be bigger from env objects. DO NOT attempt objectLit/arrayLit all-values.
 
 ## PROVABLE TARGETS (pick up whatever jsspec didn't finish):
-1. **call all-values** (~L3835) — case split on cv, non-function returns .undefined
-2. **call non-value arg** (~L3837) — standard IH pattern
-3. **setIndex value** (~L4578)
-4. **functionDef** (~L5261) — complex state changes
-5. **tryCatch** (~L5351) — hardest
+1. **newObj** — similar pattern to call
+2. **functionDef** — complex state changes (addFunc, makeEnv, makeClosure)
+3. **tryCatch** — hardest, skip if short on time
 
-### PROOF PATTERN for call non-function (from getProp primitive ~L3930):
+### PROOF PATTERN for non-function call (from getProp primitive):
 ```lean
 let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
   sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-· -- Core step: Core.step?_call_nonfunction or unfold
+refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+· -- Core step
 · simp [sc', htrace]
 · exact hinj
 · exact henvCorr
