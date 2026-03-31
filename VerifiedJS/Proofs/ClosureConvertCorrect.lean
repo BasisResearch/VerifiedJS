@@ -2056,7 +2056,9 @@ private theorem Flat_step?_call_consoleLog_vals (s : Flat.State)
       some (.log msg, { expr := .lit .undefined, env := s.env, heap := s.heap,
                         trace := s.trace ++ [.log msg], funcs := s.funcs,
                         callStack := s.callStack }) := by
-  unfold Flat.step?; simp [Flat.exprValue?, hvals, Core.consoleLogIdx, Flat.step?_pushTrace_expand]; split <;> rfl
+  unfold Flat.step?
+  simp [Flat.exprValue?, hvals, Core.consoleLogIdx, Flat.step?_pushTrace_expand]
+  cases argVals with | nil => rfl | cons hd tl => cases tl with | nil => rfl | cons _ _ => rfl
 
 /-- Core call with function at consoleLogIdx, all-value args (general). -/
 private theorem Core_step?_call_consoleLog_general (args : List Core.Expr) (argVals : List Core.Value)
@@ -2069,7 +2071,9 @@ private theorem Core_step?_call_consoleLog_general (args : List Core.Expr) (argV
     Core.step? ⟨.call (.lit (.function Core.consoleLogIdx)) args, env, heap, trace, funcs, cs⟩ =
       some (.log msg, ⟨.lit .undefined, env, heap,
                        trace ++ [.log msg], funcs, cs⟩) := by
-  unfold Core.step?; simp [Core.exprValue?, hargs, Core.consoleLogIdx, Core.pushTrace]; split <;> rfl
+  unfold Core.step?
+  simp [Core.exprValue?, hargs, Core.consoleLogIdx, Core.pushTrace]
+  cases argVals with | nil => rfl | cons hd tl => cases tl with | nil => rfl | cons _ _ => rfl
 
 /-- Console.log message from converted values equals message from original values. -/
 private theorem consoleLog_msg_convertValue (argVals : List Core.Value) :
@@ -5224,8 +5228,12 @@ private theorem closureConvert_step_simulation
           simp only [Core.pushTrace, sc', coreHeap'] at this ⊢; exact this
         · -- trace
           simp [sc', htrace]
-        · -- HeapInj
-          sorry
+        · -- HeapInj: both heaps do same set! at addr with filtered props
+          simp only [sc', coreHeap']
+          rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf]
+          cases sc.heap.objects[addr]? with
+          | none => exact hinj
+          | some props => exact HeapInj_set_same hinj addr haddr_wf _
         · -- EnvCorrInj
           exact henvCorr
         · -- EnvAddrWF
@@ -5520,7 +5528,10 @@ private theorem closureConvert_step_simulation
         rw [propListNoCallFrameReturn_append, propListNoCallFrameReturn_append]
         simp [propListNoCallFrameReturn, hncfr', hncfr_done, hncfr_rest]
       · -- ExprAddrWF objectLit: reconstruct from IH
-        sorry
+        simp only [sc', ExprAddrWF]
+        exact ExprAddrPropListWF_firstNonValueProp_reconstruct hcfnv
+          (by simp [ExprAddrWF] at hexprwf; exact hexprwf) hexprwf'
+          (Core_step_heap_size_mono hcstep_sub)
       · -- CCState agreement (objectLit sub-step)
         sorry
   | arrayLit elems =>
@@ -5620,7 +5631,10 @@ private theorem closureConvert_step_simulation
         rw [listNoCallFrameReturn_append, listNoCallFrameReturn_append]
         simp [listNoCallFrameReturn, hncfr', hncfr_done, hncfr_rest]
       · -- ExprAddrWF arrayLit: reconstruct from IH
-        sorry
+        simp only [sc', ExprAddrWF]
+        exact ExprAddrListWF_firstNonValueExpr_reconstruct hcfnv
+          (by simp [ExprAddrWF] at hexprwf; exact hexprwf) hexprwf'
+          (Core_step_heap_size_mono hcstep_sub)
       · -- CCState agreement (arrayLit sub-step)
         sorry
   | functionDef fname params body isAsync isGen => sorry
