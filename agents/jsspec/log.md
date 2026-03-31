@@ -2492,3 +2492,44 @@ Plan: Implement monotone output approach for CCStateAgree — weaken output from
 ### 2026-03-31T20:16:20+00:00 Priority 1 done: fixed L2059 (Flat_step?_call_consoleLog_vals) and L2072 (Core_step?_call_consoleLog_general). 2 sorries removed. Build passes.
 2026-03-31T21:00:01+00:00 SKIP: already running
 2026-03-31T22:00:01+00:00 SKIP: already running
+### 2026-03-31T22:16:26+00:00 Priority 2 partially done: fixed L4133 (non-function callee). Also fixed propName bug in setIndex HeapValuesWF. 1 more sorry removed. Build passes.
+
+### 2026-03-31T19:00 Run complete — 6 sorries closed, build passes
+
+#### What was fixed
+
+**Priority 1: Helper theorems (2 sorries)**
+- L2059 `Flat_step?_call_consoleLog_vals`: Proved by `unfold Flat.step?; simp [...]` then `cases argVals` to eliminate dependent match on `(argVals, hvals)`.
+- L2072 `Core_step?_call_consoleLog_general`: Same pattern with `Core.step?`, `Core.pushTrace`.
+- Key insight: `let msg := match argVals with ...` creates a dependent match when `hvals` is in scope. After `simp` reduces the step? unfolding, `cases argVals with | nil | cons hd (nil | cons)` resolves both sides.
+
+**Priority 2: Non-function callee case (1 sorry)**
+- L4133: Proved using `Flat_step?_call_nonclosure`, `Core.step_call_nonfunc_exact`, and standard 10 refine bullets.
+- Used `allValues_convertExprList_valuesFromExprList` (Flat args have all values when Core does) and `convertValue_not_closure_of_not_function` (non-function Core value converts to non-closure Flat value).
+- CCState bullet: needed `allValues_convertExprList_state` since `convertExprList` with all-literal args doesn't change CCState.
+- Syntax fix: `{ sf with expr := .call ... }` fails to parse — must use `(Flat.Expr.call ...)` with explicit parens.
+
+**Priority 4: tryCatch noCallFrameReturn extraction (3 sorries)**
+- L5763 `hncf`: `unfold noCallFrameReturn at hncfr; simp at hncfr; exact hncfr.1.1.1`
+- L5764 `hncfr_body`: `...exact hncfr.1.1.2`
+- L5765 `hncfr_catch`: `...exact hncfr.1.2`
+- Key insight: `simp [noCallFrameReturn]` doesn't work (no progress) because `hncfr` still has the `sc.expr` field projection after `rw [hsc]`. Must use `unfold noCallFrameReturn at hncfr` first, then `simp at hncfr`.
+
+**Bug fix: setIndex HeapValuesWF (0 sorries, fix concurrent edit)**
+- L5155, L5160: Added `propName` to `simp only` arguments so the `if (props.any ...) = true` reduces after `by_cases hany`.
+
+#### What remains (12 actual sorry usages)
+- L3271: HeapInj refactor staging (architecturally blocked)
+- L4140: Function call (consoleLogIdx + non-consoleLogIdx): needs FuncsCorr invariant
+- L4928: getIndex string semantic mismatch (architecturally blocked)
+- L5248, L5251: setIndex sub-stepping (complex, needs IH threading)
+- L5583, L5686: objectLit/arrayLit all-values (heap allocation, architecturally blocked)
+- L5679, L5782: objectLit/arrayLit CCState agreement (complex CCState threading)
+- L5783: functionDef (architecturally blocked)
+- L5891, L5894: tryCatch body value/non-value (CCState threading)
+- L5926: while_ CCState (architecturally blocked)
+
+#### Sorry count
+- Start: ~29 lines (including comments), ~25 actual
+- End: 21 lines, ~12 actual (net -6 from this agent's work)
+2026-03-31T22:19:27+00:00 DONE
