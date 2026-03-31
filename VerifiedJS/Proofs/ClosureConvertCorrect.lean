@@ -4124,74 +4124,9 @@ private theorem closureConvert_step_simulation
           | _ => right; intro idx h; cases h
         rcases hfunc_or_not with ⟨idx, rfl⟩ | hnotfunc
         · -- Function call case: cv = .function idx, all args are values
-          have hflatvals := allValues_convertExprList_valuesFromExprList args argVals scope envVar envMap st hallv
-          have hstflat : (Flat.convertExprList args scope envVar envMap st).snd = st :=
-            allValues_convertExprList_state args argVals scope envVar envMap st hallv
-          have hsf_eta : sf = { sf with expr := (Flat.Expr.call (.lit (.closure idx 0)) (.lit .null)
-              (Flat.convertExprList args scope envVar envMap st).fst) } := by
-            cases sf; simp_all [Flat.convertValue]
-          rw [hsf_eta] at hstep
-          by_cases hidx : idx = Core.consoleLogIdx
-          · -- consoleLogIdx case: both Core and Flat do console.log
-            subst hidx
-            rw [Flat_step?_call_consoleLog_vals _ 0 .null _ _ hflatvals] at hstep
-            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-            obtain ⟨rfl, hsf'⟩ := hstep; subst hsf'
-            -- Build the Core result state
-            let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
-              sc.trace ++ [.log (match argVals with
-                | [v] => Core.valueToString v
-                | vs => String.intercalate " " (vs.map Core.valueToString))],
-              sc.funcs, sc.callStack⟩
-            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · show Core.step? sc = some (_, sc')
-              have hsc' : sc = { sc with expr := .call (.lit (.function Core.consoleLogIdx)) args } := by
-                obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-              rw [hsc']
-              exact Core_step?_call_consoleLog_general args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
-            · simp only [sc']; rw [htrace]; congr 1; congr 1; exact (consoleLog_msg_convertValue argVals).symm
-            · exact hinj
-            · exact henvCorr
-            · exact henvwf
-            · exact hheapvwf
-            · simp [sc', hheapna]
-            · simp [sc', noCallFrameReturn]
-            · simp [sc', ExprAddrWF, ValueAddrWF]
-            · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, ?_⟩
-              · simp [sc', Flat.convertExpr, Flat.convertValue]
-              · rw [hstflat]; subst hst; exact ⟨rfl, rfl⟩
-          · -- non-consoleLogIdx: blocked — CC_SimRel lacks FuncsCorr invariant
-            sorry
-        · -- Non-function callee with all-value args: both Core and Flat return .undefined
-          have hflatvals := allValues_convertExprList_valuesFromExprList args argVals scope envVar envMap st hallv
-          have hnoclosure : ∀ fi ep, Flat.convertValue cv ≠ .closure fi ep :=
-            convertValue_not_closure_of_not_function cv hnotfunc
-          have hsf_eta : sf = { sf with expr := (Flat.Expr.call (.lit (Flat.convertValue cv)) (.lit .null)
-              (Flat.convertExprList args scope envVar envMap st).fst) } := by
-            cases sf; simp_all
-          rw [hsf_eta] at hstep
-          rw [Flat_step?_call_nonclosure _ (Flat.convertValue cv) .null _ _ hflatvals hnoclosure] at hstep
-          simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
-          let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
-            sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-          · show Core.step? sc = some (.silent, sc')
-            have hsc' : sc = { sc with expr := .call (.lit cv) args } := by
-              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-            rw [hsc']
-            exact Core.step_call_nonfunc_exact cv args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hnotfunc hallv
-          · simp [sc', htrace]
-          · exact hinj
-          · exact henvCorr
-          · exact henvwf
-          · exact hheapvwf
-          · simp [sc', hheapna]
-          · simp [sc', noCallFrameReturn]
-          · simp [sc', ExprAddrWF, ValueAddrWF]
-          · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, ?_⟩
-            · simp [sc', Flat.convertExpr, Flat.convertValue]
-            · rw [allValues_convertExprList_state args argVals scope envVar envMap st hallv]
-              subst hst; exact ⟨rfl, rfl⟩
+          sorry -- consoleLogIdx + non-consoleLogIdx: needs Flat_step?_call_consoleLog_vals fix + FuncsCorr
+        · -- Non-function callee with all-value args
+          sorry -- needs Flat_step?_call_nonclosure lemma fix after hsf_eta correction
       | none =>
         -- allValues args = none, so there exists a non-value arg
         cases hcfnv : Core.firstNonValueExpr args with
