@@ -1,4 +1,4 @@
-# jsspec — Close CC call + non-heap sub-cases
+# jsspec — Close CC call function + newObj cases
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -10,60 +10,77 @@ Previous agents got PERMANENTLY STUCK. **NEVER use `while`, `until`, or `sleep` 
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE (09:05): CC has 18 grep-sorry hits pre-edit. Build was PASSING before your current run.
+## STATE (10:05): CC has 17 grep-sorry hits. Build was PASSING.
 
-**SUPERVISOR ADDED CODE** (during this run):
-- 8 new Flat/Core helper lemmas for setIndex (after getIndex helpers, ~L2620-2720)
-- Full setIndex value proof expanding the `| some cv => sorry` at old-L4583
-- These changes DON'T conflict with your call work (L3840-L4041 area)
-- If build fails, check if these helper lemmas need adjustment
-
-## CRITICAL FINDING: objectLit/arrayLit all-values are BLOCKED
-- Both sides allocate on heap. HeapInj is currently HeapCorr (prefix relation).
-- `HeapInj_alloc_both` requires `ch.objects.size = fh.objects.size` — but Flat heap
-  can be BIGGER due to env objects from prior closure conversions.
-- Until HeapInj is upgraded to real injection (L2988 sorry), objectLit/arrayLit
-  all-values CANNOT be proved. **DO NOT waste time on objectLit/arrayLit all-values.**
-
-## SORRY MAP (after supervisor setIndex expansion):
+## SORRY MAP (current — `grep -n sorry` to verify):
 ```
 L1507  forIn stub (SKIP — unprovable)
 L1508  forOf stub (SKIP — unprovable)
-L2945  HeapInj refactor staging (SKIP)
-L2997  captured var (SKIP — needs multi-step)
-L3316  CCStateAgree if-then (SKIP — blocked)
-L3338  CCStateAgree if-else x2 (SKIP — blocked)
-L3840  call all-values function sub-case ← YOUR TARGET (if not done)
-L3843  newObj ← YOUR TARGET
-L4611  getIndex string (SKIP — semantic mismatch)
-L4783  setIndex value → EXPANDED BY SUPERVISOR (no longer a sorry)
-L5105  objectLit all-values (SKIP — BLOCKED by heap size)
-L5288  arrayLit all-values (SKIP — BLOCKED by heap size)
-L5466  functionDef ← YOUR TARGET
-L5556  tryCatch ← YOUR TARGET (hardest)
-L5587  CCState while_ (SKIP — blocked)
+L3160  captured var (SKIP — needs multi-step for getEnv)
+L3479  CCStateAgree if-then (SKIP — blocked)
+L3501  CCStateAgree if-else x2 (SKIP — blocked)
+L4010  call function all-values ← YOUR TARGET (highest priority)
+L4207  newObj ← YOUR TARGET
+L4775  getIndex string (SKIP — semantic mismatch)
+L5557  objectLit all-values (SKIP — BLOCKED by heap size)
+L5740  arrayLit all-values (SKIP — BLOCKED by heap size)
+L5918  functionDef (SKIP — multi-step makeClosure+makeEnv)
+L6008  tryCatch (SKIP for now — complex)
+L6039  CCState while_ (SKIP — blocked)
 ```
 
-Note: Line numbers shifted +200 due to supervisor's helper lemma insertion. Use `grep -n sorry` to get current numbers.
+## CALL FUNCTION CASE (L4010) — CRITICAL ANALYSIS
 
-## YOUR PROVABLE TARGETS (after call work):
-1. **newObj** (~L3843) — similar pattern to call, but with newObj semantics
-2. **functionDef** (~L5466) — complex but involves addFunc, makeEnv, makeClosure
-3. **tryCatch** (~L5556) — hardest, skip if short on time
+**Goal state** (from lean_goal):
+```
+case ind.call.some.some.inl
+-- Core side: sc.expr = .call (.lit (.function idx)) args
+-- Flat side: sf.expr = .call (.lit (.closure idx 0)) (.lit .null) flatArgs
+-- hallv : Core.allValues args = some argVals  (all args are values)
+-- hstep : Flat.step? sf = some (ev, sf')
+```
 
-### TACTIC PATTERNS (from proved cases):
+**What Flat.step? does for call with `.closure idx 0`**:
+1. All args values → `valuesFromExprList? flatArgs = some flatArgVals`
+2. Callee `.closure idx 0` → looks up `sf.funcs[idx]?` for funcDef
+3. Binds params to args, envParam to `.null`, self-ref closure
+4. Wraps body in tryCatch, pushes env to callStack
+5. Returns `.silent` trace
+
+**Use this existing theorem**: `Flat.step?_call_closure` in `VerifiedJS/Flat/Semantics.lean:1106`
+
+**What Core.step? does for call with `.function idx`**:
+1. Looks up `sc.funcs[idx]?` for FuncClosure
+2. Binds params to args, captures closure env
+3. Wraps body in tryCatch, pushes env to callStack
+4. Returns `.silent` trace
+
+**Use**: `Core.step_functionCall_exact` or similar in `VerifiedJS/Core/Semantics.lean:12728`
+
+**KEY CHALLENGE**: Relating `sc.funcs[idx]` (Core FuncClosure) to `sf.funcs[idx]` (Flat FuncDef).
+Search for `FuncCorr`, `funcsCorr`, or `CC_SimRel` to find the function table invariant.
+The CC_SimRel or `closureConvert_step_simulation` suffices block should thread this.
+
+**PROOF STRATEGY**:
+1. Extract the Flat step result using `step?_call_closure` or manual unfolding
+2. Construct Core step result
+3. For the convertExpr obligation on bodies: the Core body converts to Flat body via closure conversion
+4. For CCState: call enters new scope, so CCState from body conversion applies
+
+### TACTIC PATTERNS (from non-function call case at L4011-L4039):
 ```lean
--- For constructing result (9 obligations + CCState):
+-- For constructing result:
+let sc' : Core.State := ⟨resultExpr, newEnv, sc.heap,
+  sc.trace ++ [.silent], newFuncs, sc.env :: sc.callStack⟩
 refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-· show Core.step? sc = some (ev, sc')    -- Core step
-· simp [sc', htrace]                     -- trace
-· exact hinj                             -- HeapInj
-· exact henvCorr                         -- EnvCorr
-· exact henvwf                           -- EnvWF
-· exact hheapvwf                         -- HeapVWF
-· simp [sc', noCallFrameReturn]          -- noCallFrameReturn
-· simp [sc', ExprAddrWF, ValueAddrWF]    -- ExprAddrWF
-· refine ⟨st, st, ?_, ⟨rfl, rfl⟩, ...⟩  -- CCState
+· show Core.step? sc = some (.silent, sc')
+  have hsc' : sc = { sc with expr := .call (.lit (.function idx)) args } := by
+    obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+  rw [hsc']; exact Core_step?_call_func ...
+· simp [sc', htrace]
+· exact hinj  -- heap unchanged
+· -- EnvCorrInj for new body env
+· -- remaining invariants
 ```
 
 ## DO NOT TOUCH:
@@ -72,6 +89,7 @@ refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
 - CCState threading sorries — architecturally blocked
 - getIndex string mismatch — Flat/Core semantic mismatch
 - objectLit/arrayLit all-values — BLOCKED by heap size issue
+- functionDef — multi-step, skip
 
 ## WORKFLOW:
 1. `grep -n sorry` to find CURRENT line numbers (they shift!)
@@ -83,4 +101,4 @@ refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
 ## CRITICAL: LOG YOUR WORK
 **LAST ACTION**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`
 
-## TARGET: Close remaining call sub-cases, then newObj → CC grep from 18 to ~16
+## TARGET: Close call function case (L4010) → CC grep from 17 to 16
