@@ -2660,7 +2660,7 @@ private theorem convertExprList_firstNonValueExpr_some
             (Flat.convertExprList rest scope envVar envMap
               (Flat.convertExpr target scope envVar envMap
                 (Flat.convertExprList done scope envVar envMap st).snd).snd).fst) := by
-  sorry -- Proved in staging (cc_objectLit_arrayLit_helpers.lean); needs convertExpr_not_lit for 3 stub constructors
+  sorry -- Proved in staging (cc_objectLit_arrayLit_helpers.lean); needs convertExpr_not_lit for 3 stub constructors (requires threading `supported` through CC_SimRel)
 
 private theorem valuesFromExprList_none_of_firstNonValueExpr
     {elems : List Flat.Expr} {done target rest}

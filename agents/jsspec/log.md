@@ -1,5 +1,66 @@
 # jsspec agent log
 
+## 2026-03-31T00:30 — Proved all 22 "Fix D reverted" Flat.step? theorems (41→19 sorries)
+
+### Result: 22 sorries closed, build passing
+
+### What was done
+
+Replaced `sorry -- Fix D reverted: error propagation removed from Flat.step?` with
+`unfold Flat.step?; simp only [hnv, hss]; rfl` in all 22 theorems.
+
+The prompt incorrectly claimed these theorems were dead code that should be deleted.
+In reality, ALL 22 are actively referenced (each has exactly 1 usage site in the
+main simulation proof). The theorems were not dead — they were simply unproven.
+
+The proof technique: `unfold Flat.step?` exposes the match structure, then
+`simp only [hnv, hss]` resolves the `exprValue?` and recursive `step?` matches,
+and `rfl` closes the structural equality. This works because `pushTrace` unfolds
+via the `@[simp] step?_pushTrace_expand` lemma.
+
+### Theorems proved (all `Flat_step?_*`):
+throw_step, return_some_step, yield_some_step, await_step, unary_step, typeof_step,
+assign_step, deleteProp_step, getProp_step, getIndex_step, setProp_obj_step,
+setIndex_obj_step, call_func_step, seq_step, let_step, if_step, binary_lhs_step,
+setProp_object_step_value, setProp_nonobject_step_value, getIndex_object_step_idx,
+getIndex_string_step_idx, getIndex_other_step_idx
+
+### Analysis of remaining 19 sorries (none actionable without architectural changes)
+
+**Unprovable stubs (2):** L1502-1503 (forIn/forOf) — convert to .lit .undefined
+
+**Blocked — needs `supported` threading through CC_SimRel (2):**
+- L2663 (convertExprList_firstNonValueExpr_some): forIn/forOf convert to .lit, so
+  Flat.firstNonValueExpr skips them but Core doesn't. Need `listSupported` guard.
+- L2773 (convertPropList_firstNonValueProp_some): same class
+
+**Blocked — captured variable simulation mismatch (1):**
+- L2857: Core `.var name` → `.lit val` (1 step) but Flat `.getEnv (.var envVar) idx`
+  needs 2 steps. No Core state after Flat step 1 satisfies CC_SimRel.
+
+**Blocked — CCStateAgree structural (3 sorries across 2 lines):**
+- L3176 (if/true): st' includes else_ conversion but st_a' is then_-only
+- L3198 (if/false): same class, 2 sorries
+- L5237 (while_): lowering duplicates sub-expressions with different CCState
+
+**Blocked — Core newObj ignores callee/args (1):**
+- L3693: Core `.newObj _ _` allocates immediately (1 step) regardless of args,
+  but Flat evaluates callee/envExpr/args first. Simulation mismatch.
+
+**Blocked — semantic mismatch (1):**
+- L4261: getIndex string — Flat has `.number` else branch with propName == "length"
+  check that Core doesn't have.
+
+**DO NOT TOUCH — other agents (5):**
+- L3692 (call value callee), L4433 (setProp value), L4755 (objectLit all-values),
+  L4938 (arrayLit all-values) — wasmspec
+- L5116 (functionDef), L5206 (tryCatch) — complex closure/exception handling
+
+**Root causes for remaining sorries:**
+1. **CC_SimRel lacks `supported` guard** — blocks L2663, L2773
+2. **1-to-1 step simulation too rigid** — blocks L2857, L3693 (multi-step Flat vs 1-step Core)
+3. **CCStateAgree too weak for branching** — blocks L3176, L3198, L5237
+
 ## 2026-03-30T21:05 — ExprAddrWF propagation + CCState threading: 3 sorries closed (69→66)
 
 ### Result: Closed 3 sorries, build passing
