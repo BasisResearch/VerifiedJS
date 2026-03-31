@@ -3228,6 +3228,7 @@ private theorem closureConvert_step_simulation
         · exact henvwf
         · exact hheapvwf
         · simp [sc']
+        · simp [sc']
         · simp [sc', noCallFrameReturn]
         · simp [sc', ExprAddrWF]; exact henvwf name cv hclookup
         · exact ⟨st, st, by simp [sc', Flat.convertExpr, hfvcv], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
@@ -3251,6 +3252,8 @@ private theorem closureConvert_step_simulation
         · exact henvCorr
         · exact henvwf
         · exact hheapvwf
+        · simp [sc']
+        · simp [sc']
         · simp [sc', noCallFrameReturn]
         · simp [sc', ExprAddrWF, ValueAddrWF]
         · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
@@ -3279,6 +3282,8 @@ private theorem closureConvert_step_simulation
       · exact henvCorr
       · exact henvwf
       · exact hheapvwf
+      · simp [sc']
+      · simp [sc']
       · simp [sc', noCallFrameReturn]
       · simp [sc', ExprAddrWF]; exact henvwf "this" cv hclookup
       · exact ⟨st, st, by simp [sc', Flat.convertExpr, hfvcv], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
@@ -3302,6 +3307,8 @@ private theorem closureConvert_step_simulation
       · exact henvCorr
       · exact henvwf
       · exact hheapvwf
+      · simp [sc']
+      · simp [sc']
       · simp [sc', noCallFrameReturn]
       · simp [sc', ExprAddrWF, ValueAddrWF]
       · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
@@ -3333,6 +3340,8 @@ private theorem closureConvert_step_simulation
       · exact EnvCorrInj_extend henvCorr name cv
       · exact EnvAddrWF_extend henvwf name cv (by simp [ExprAddrWF] at hexprwf; exact hexprwf.1)
       · exact hheapvwf
+      · simp [sc']
+      · simp [sc']
       · simp [sc', noCallFrameReturn] at hncfr ⊢; exact hncfr
       · simp [sc', ExprAddrWF] at hexprwf ⊢; exact hexprwf.2
       · have hscope := convertExpr_scope_irrelevant body scope (name :: scope) envVar envMap st
@@ -3392,6 +3401,7 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
+      · exact hheapna'
       · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
       · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf',
             ExprAddrWF_mono body (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2) (Core_step_heap_size_mono hcstep_sub)⟩
@@ -3430,6 +3440,8 @@ private theorem closureConvert_step_simulation
       · exact EnvCorrInj_assign henvCorr name cv
       · exact EnvAddrWF_assign henvwf name cv (by simp [ExprAddrWF] at hexprwf; exact hexprwf)
       · exact hheapvwf
+      · simp [sc']
+      · simp [sc']
       · simp only [sc']; simp [noCallFrameReturn]
       · simp only [sc']; simp [ExprAddrWF]; exact (by simp [ExprAddrWF] at hexprwf; exact hexprwf)
       · exact ⟨st, st, by simp only [sc']; simp [Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
@@ -3480,6 +3492,7 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
+      · exact hheapna'
       · simp [sc', noCallFrameReturn]; exact hncfr'
       · simp [sc', ExprAddrWF]; exact hexprwf'
       · exact ⟨st_a, st_a', by
@@ -3518,6 +3531,8 @@ private theorem closureConvert_step_simulation
         · exact henvCorr
         · exact henvwf
         · exact hheapvwf
+        · simp [sc']
+        · simp [sc']
         · simp [sc', noCallFrameReturn] at hncfr ⊢; exact hncfr.1
         · simp [sc', ExprAddrWF] at hexprwf ⊢; exact hexprwf.2.1
         · exact ⟨st, (Flat.convertExpr then_ scope envVar envMap st).snd, by
@@ -3539,6 +3554,8 @@ private theorem closureConvert_step_simulation
         · exact henvCorr
         · exact henvwf
         · exact hheapvwf
+        · simp [sc']
+        · simp [sc']
         · simp [sc', noCallFrameReturn] at hncfr ⊢; exact hncfr.2
         · simp [sc', ExprAddrWF] at hexprwf ⊢; exact hexprwf.2.2
         · exact ⟨(Flat.convertExpr then_ scope envVar envMap st).snd,
@@ -3605,6 +3622,7 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
+      · exact hheapna'
       · simp [sc', noCallFrameReturn]; exact ⟨⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.1.2⟩, by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
       · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf',
             ExprAddrWF_mono then_ (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.1) (Core_step_heap_size_mono hcstep_sub),
@@ -3648,6 +3666,8 @@ private theorem closureConvert_step_simulation
       · exact henvCorr
       · exact henvwf
       · exact hheapvwf
+      · simp [sc']
+      · simp [sc']
       · simp [sc', noCallFrameReturn] at hncfr ⊢; exact hncfr
       · simp [sc', ExprAddrWF] at hexprwf ⊢; exact hexprwf.2
       · exact ⟨st, (Flat.convertExpr b scope envVar envMap st).snd, by
@@ -3705,6 +3725,7 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
+      · exact hheapna'
       · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
       · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf',
             ExprAddrWF_mono b (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2) (Core_step_heap_size_mono hcstep_sub)⟩
@@ -3743,6 +3764,8 @@ private theorem closureConvert_step_simulation
       · exact henvCorr
       · exact henvwf
       · exact hheapvwf
+      · simp [sc']
+      · simp [sc']
       · simp only [sc']; simp [noCallFrameReturn]
       · simp only [sc']; simp [ExprAddrWF]; exact evalUnary_valueAddrWF op cv sc.heap.objects.size (by simp [ExprAddrWF] at hexprwf; exact hexprwf)
       · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
@@ -3795,6 +3818,7 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
+      · exact hheapna'
       · simp [sc', noCallFrameReturn]; exact hncfr'
       · simp [sc', ExprAddrWF]; exact hexprwf'
       · exact ⟨st_a, st_a', by
@@ -3835,6 +3859,8 @@ private theorem closureConvert_step_simulation
         · exact henvCorr
         · exact henvwf
         · exact hheapvwf
+        · simp [sc']
+        · simp [sc']
         · simp [sc', noCallFrameReturn]
         · simp [sc', ExprAddrWF]; exact evalBinary_valueAddrWF op lv rv sc.heap.objects.size
             (by simp [ExprAddrWF] at hexprwf; exact hexprwf.1)
@@ -3891,6 +3917,7 @@ private theorem closureConvert_step_simulation
         · exact henvCorr'
         · exact henvwf'
         · exact hheapvwf'
+        · exact hheapna'
         · simp [sc', noCallFrameReturn]; exact hncfr'
         · simp only [sc']; simp only [ExprAddrWF]; exact ⟨by
             exact ValueAddrWF_mono (by simp [ExprAddrWF] at hexprwf; exact hexprwf.1) (Core_step_heap_size_mono hcstep_sub), hexprwf'⟩
@@ -3951,6 +3978,7 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
+      · exact hheapna'
       · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
       · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf', by
             exact ExprAddrWF_mono rhs (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2) (Core_step_heap_size_mono hcstep_sub)⟩
@@ -4024,6 +4052,7 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
+      · exact hheapna'
       · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
       · simp only [sc', ExprAddrWF]; exact ⟨hexprwf',
             ExprAddrListWF_mono args
@@ -4076,6 +4105,7 @@ private theorem closureConvert_step_simulation
           · exact henvCorr
           · exact henvwf
           · exact hheapvwf
+          · simp [sc']
           · simp [sc', noCallFrameReturn]
           · simp [sc', ExprAddrWF, ValueAddrWF]
           · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, ?_⟩
@@ -4169,6 +4199,7 @@ private theorem closureConvert_step_simulation
           · exact henvCorr'
           · exact henvwf'
           · exact hheapvwf'
+          · exact hheapna'
           · -- noCallFrameReturn
             simp only [sc', noCallFrameReturn]
             rw [listNoCallFrameReturn_append, listNoCallFrameReturn_append]
@@ -4293,6 +4324,7 @@ private theorem closureConvert_step_simulation
           · exact henvCorr
           · exact henvwf
           · exact hheapvwf
+          · simp [sc']
           · simp [sc', noCallFrameReturn]
           · simp only [sc', ExprAddrWF, ValueAddrWF]
           · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
@@ -4316,6 +4348,7 @@ private theorem closureConvert_step_simulation
             · exact henvCorr
             · exact henvwf
             · exact hheapvwf
+            · simp [sc']
             · simp [sc', noCallFrameReturn]
             · simp only [sc', ExprAddrWF, coreResult]; split <;> simp [ValueAddrWF]
             · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
@@ -4340,6 +4373,7 @@ private theorem closureConvert_step_simulation
             · exact henvCorr
             · exact henvwf
             · exact hheapvwf
+            · simp [sc']
             · simp [sc', noCallFrameReturn]
             · simp only [sc', ExprAddrWF]
               exact hheapvwf addr haddr_wf props hprops kv (list_find?_mem hfind)
@@ -4367,6 +4401,8 @@ private theorem closureConvert_step_simulation
         · exact henvCorr
         · exact henvwf
         · exact hheapvwf
+        · simp [sc']
+        · simp [sc']
         · simp [sc', noCallFrameReturn]
         · simp only [sc', ExprAddrWF, coreResult]; split <;> simp [ValueAddrWF]
         · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
@@ -4388,6 +4424,8 @@ private theorem closureConvert_step_simulation
         · exact henvCorr
         · exact henvwf
         · exact hheapvwf
+        · simp [sc']
+        · simp [sc']
         · simp [sc', noCallFrameReturn]
         · simp [sc', ExprAddrWF, ValueAddrWF]
         · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
@@ -4439,6 +4477,7 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
+      · exact hheapna'
       · simp [sc', noCallFrameReturn]; exact hncfr'
       · simp [sc', ExprAddrWF]; exact hexprwf'
       · exact ⟨st_a, st_a', by
@@ -4562,6 +4601,7 @@ private theorem closureConvert_step_simulation
           · exact henvCorr
           · exact henvwf
           · exact hheapvwf
+          · simp [sc']
           · simp [sc', noCallFrameReturn]
           · have hvv_wf' : ValueAddrWF vv sc.heap.objects.size := by
               simp [ExprAddrWF] at hexprwf; exact hexprwf.2
@@ -4629,6 +4669,7 @@ private theorem closureConvert_step_simulation
         · exact henvCorr'
         · exact henvwf'
         · exact hheapvwf'
+        · exact hheapna'
         · simp [sc', noCallFrameReturn]; exact hncfr'
         · simp only [sc']; simp only [ExprAddrWF]
           have heap_mono := Core_step_heap_size_mono hcstep_sub
@@ -4690,6 +4731,7 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
+      · exact hheapna'
       · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
       · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf', by
             exact ExprAddrWF_mono value (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2) (Core_step_heap_size_mono hcstep_sub)⟩
@@ -4765,6 +4807,7 @@ private theorem closureConvert_step_simulation
             · exact henvCorr
             · exact henvwf
             · exact hheapvwf
+            · simp [sc']
             · simp [sc', noCallFrameReturn]
             · simp only [sc', ExprAddrWF, ValueAddrWF]
             · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
@@ -4786,6 +4829,7 @@ private theorem closureConvert_step_simulation
               · exact henvCorr
               · exact henvwf
               · exact hheapvwf
+              · simp [sc']
               · simp [sc', noCallFrameReturn]
               · simp only [sc', ExprAddrWF, coreResult]; split <;> simp [ValueAddrWF]
               · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
@@ -4809,6 +4853,7 @@ private theorem closureConvert_step_simulation
               · exact henvCorr
               · exact henvwf
               · exact hheapvwf
+              · simp [sc']
               · simp [sc', noCallFrameReturn]
               · simp only [sc', ExprAddrWF]
                 exact hheapvwf addr haddr_wf props hprops kv (list_find?_mem hfind)
@@ -4839,6 +4884,7 @@ private theorem closureConvert_step_simulation
           · exact henvCorr
           · exact henvwf
           · exact hheapvwf
+          · simp [sc']
           · simp [sc', noCallFrameReturn]
           · simp only [sc', ExprAddrWF, ValueAddrWF]
           · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
@@ -4913,6 +4959,7 @@ private theorem closureConvert_step_simulation
         · exact henvCorr'
         · exact henvwf'
         · exact hheapvwf'
+        · exact hheapna'
         · simp [sc', noCallFrameReturn]; exact hncfr'
         · simp only [sc']; simp only [ExprAddrWF]
           have heap_mono := Core_step_heap_size_mono hcstep_sub
@@ -4973,6 +5020,7 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
+      · exact hheapna'
       · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
       · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf', by
             exact ExprAddrWF_mono idx (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2) (Core_step_heap_size_mono hcstep_sub)⟩
@@ -5103,6 +5151,7 @@ private theorem closureConvert_step_simulation
             · exact henvCorr
             · exact henvwf
             · exact hheapvwf
+            · simp [sc']
             · simp [sc', noCallFrameReturn]
             · have hvv_wf' : ValueAddrWF vv sc.heap.objects.size := by
                 simp [ExprAddrWF] at hexprwf; exact hexprwf.2.2
@@ -5182,6 +5231,7 @@ private theorem closureConvert_step_simulation
           · exact henvCorr'
           · exact henvwf'
           · exact hheapvwf'
+          · exact hheapna'
           · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact ⟨hncfr.1, hncfr.2.1⟩⟩
           · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf', by
               constructor
@@ -5265,6 +5315,7 @@ private theorem closureConvert_step_simulation
         · exact henvCorr'
         · exact henvwf'
         · exact hheapvwf'
+        · exact hheapna'
         · simp [sc', noCallFrameReturn]; exact ⟨⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2.2⟩,
             by simp [noCallFrameReturn] at hncfr; exact hncfr.1⟩
         · simp only [sc']; simp only [ExprAddrWF]; constructor
@@ -5339,6 +5390,7 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
+      · exact hheapna'
       · simp [sc', noCallFrameReturn]; exact ⟨⟨hncfr', by
           simp [noCallFrameReturn] at hncfr; exact hncfr.1.2⟩, by
           simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
@@ -5448,6 +5500,8 @@ private theorem closureConvert_step_simulation
         · exact henvCorr
         · exact henvwf
         · exact hheapvwf
+        · simp [sc']
+        · simp [sc']
         · simp [sc', noCallFrameReturn]
         · simp [sc', ExprAddrWF, ValueAddrWF]
         · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
@@ -5499,6 +5553,7 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
+      · exact hheapna'
       · simp [sc', noCallFrameReturn]; exact hncfr'
       · simp [sc', ExprAddrWF]; exact hexprwf'
       · exact ⟨st_a, st_a', by
@@ -5536,6 +5591,8 @@ private theorem closureConvert_step_simulation
       · exact henvCorr
       · exact henvwf
       · exact hheapvwf
+      · simp [sc']
+      · simp [sc']
       · simp only [sc']; simp [noCallFrameReturn]
       · simp only [sc']; simp [ExprAddrWF, ValueAddrWF, coreResult]
       · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
@@ -5588,6 +5645,7 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
+      · exact hheapna'
       · simp [sc', noCallFrameReturn]; exact hncfr'
       · simp [sc', ExprAddrWF]; exact hexprwf'
       · exact ⟨st_a, st_a', by
@@ -5684,6 +5742,7 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
+      · exact hheapna'
       · -- noCallFrameReturn
         simp only [sc', noCallFrameReturn]
         rw [propListNoCallFrameReturn_append, propListNoCallFrameReturn_append]
@@ -5867,6 +5926,7 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
+      · exact hheapna'
       · -- noCallFrameReturn
         simp only [sc', noCallFrameReturn]
         rw [listNoCallFrameReturn_append, listNoCallFrameReturn_append]
@@ -5989,6 +6049,8 @@ private theorem closureConvert_step_simulation
       · exact henvCorr
       · exact henvwf
       · exact hheapvwf
+      · simp [sc']
+      · simp [sc']
       · simp [sc', noCallFrameReturn]
       · simp [sc', ExprAddrWF, ValueAddrWF]
       · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
@@ -6045,6 +6107,7 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
+      · exact hheapna'
       · simp [sc', noCallFrameReturn]; exact hncfr'
       · simp [sc', ExprAddrWF]; exact hexprwf'
       · exact ⟨st_a, st_a', by
@@ -6091,6 +6154,8 @@ private theorem closureConvert_step_simulation
         · exact henvCorr
         · exact henvwf
         · exact hheapvwf
+        · simp [sc']
+        · simp [sc']
         · simp [sc', noCallFrameReturn]
         · simp [sc', ExprAddrWF, ValueAddrWF]
         · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩,
@@ -6114,6 +6179,8 @@ private theorem closureConvert_step_simulation
         · exact henvCorr
         · exact henvwf
         · exact hheapvwf
+        · simp [sc']
+        · simp [sc']
         · simp [sc', noCallFrameReturn]
           simp [noCallFrameReturn] at hncfr
           exact ⟨hncfr.2.2.2, trivial⟩
@@ -6150,6 +6217,8 @@ private theorem closureConvert_step_simulation
     · exact henvCorr
     · exact henvwf
     · exact hheapvwf
+    · simp [sc']
+    · simp [sc']
     · simp [sc', noCallFrameReturn]; simp [noCallFrameReturn] at hncfr; exact ⟨hncfr.1, hncfr.2, hncfr.1, hncfr.2⟩
     · simp only [sc', ExprAddrWF, ValueAddrWF]; simp only [ExprAddrWF] at hexprwf
       exact ⟨hexprwf.1, ⟨hexprwf.2, hexprwf.1, hexprwf.2⟩, trivial⟩
@@ -6190,6 +6259,8 @@ private theorem closureConvert_step_simulation
     · exact henvCorr
     · exact henvwf
     · exact hheapvwf
+    · simp [sc']
+    · simp [sc']
     · simp [sc', noCallFrameReturn]
     · simp [sc', ExprAddrWF, ValueAddrWF]
     · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
@@ -6213,6 +6284,8 @@ private theorem closureConvert_step_simulation
     · exact henvCorr
     · exact henvwf
     · exact hheapvwf
+    · simp [sc']
+    · simp [sc']
     · simp [sc', noCallFrameReturn]
     · simp [sc', ExprAddrWF, ValueAddrWF]
     · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
@@ -6239,6 +6312,8 @@ private theorem closureConvert_step_simulation
       · exact henvCorr
       · exact henvwf
       · exact hheapvwf
+      · simp [sc']
+      · simp [sc']
       · simp [sc', noCallFrameReturn]
       · simp [sc', ExprAddrWF, ValueAddrWF]
       · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
@@ -6269,6 +6344,8 @@ private theorem closureConvert_step_simulation
         · exact henvCorr
         · exact henvwf
         · exact hheapvwf
+        · simp [sc']
+        · simp [sc']
         · simp [sc', noCallFrameReturn]
         · simp only [sc']; simp [ExprAddrWF] at hexprwf ⊢; exact hexprwf
         · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
@@ -6323,6 +6400,7 @@ private theorem closureConvert_step_simulation
         · exact henvCorr'
         · exact henvwf'
         · exact hheapvwf'
+        · exact hheapna'
         · simp [sc', noCallFrameReturn]; exact hncfr'
         · simp [sc', ExprAddrWF]; exact hexprwf'
         · exact ⟨st_a, st_a', by
@@ -6349,6 +6427,7 @@ private theorem closureConvert_step_simulation
     · exact henvCorr
     · exact henvwf
     · exact hheapvwf
+    · simp [sc']
     · show noCallFrameReturn sc'.expr = true
       simp [sc']; exact hncfr
     · show ExprAddrWF sc'.expr sc'.heap.objects.size
@@ -6377,6 +6456,8 @@ private theorem closureConvert_step_simulation
       · exact henvCorr
       · exact henvwf
       · exact hheapvwf
+      · simp [sc']
+      · simp [sc']
       · simp [sc', noCallFrameReturn]
       · simp [sc', ExprAddrWF, ValueAddrWF]
       · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
@@ -6407,6 +6488,8 @@ private theorem closureConvert_step_simulation
         · exact henvCorr
         · exact henvwf
         · exact hheapvwf
+        · simp [sc']
+        · simp [sc']
         · simp [sc', noCallFrameReturn]
         · simp only [sc']; simp [ExprAddrWF] at hexprwf ⊢; exact hexprwf
         · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
@@ -6461,6 +6544,7 @@ private theorem closureConvert_step_simulation
         · exact henvCorr'
         · exact henvwf'
         · exact hheapvwf'
+        · exact hheapna'
         · simp [sc', noCallFrameReturn]; exact hncfr'
         · simp [sc', ExprAddrWF]; exact hexprwf'
         · exact ⟨st_a, st_a', by
@@ -6494,6 +6578,8 @@ private theorem closureConvert_step_simulation
       · exact henvCorr
       · exact henvwf
       · exact hheapvwf
+      · simp [sc']
+      · simp [sc']
       · simp [sc', noCallFrameReturn]
       · simp only [sc']; simp [ExprAddrWF] at hexprwf ⊢; exact hexprwf
       · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
@@ -6548,6 +6634,7 @@ private theorem closureConvert_step_simulation
       · exact henvCorr'
       · exact henvwf'
       · exact hheapvwf'
+      · exact hheapna'
       · simp [sc', noCallFrameReturn]; exact hncfr'
       · simp [sc', ExprAddrWF]; exact hexprwf'
       · exact ⟨st_a, st_a', by
