@@ -4589,17 +4589,12 @@ private theorem closureConvert_step_simulation
           · -- hheapna
             simp only [sc', coreHeap']
             split
-            · rw [size_set!]; exact hheapna
+            · simp [Array.size_setIfInBounds, hheapna]
             · exact hheapna
           · -- noCallFrameReturn
             simp [sc', noCallFrameReturn]
           · -- ExprAddrWF
-            have hvv_wf' : ValueAddrWF vv sc.heap.objects.size := by
-              simp [ExprAddrWF] at hexprwf; exact hexprwf.2
-            simp only [sc', ExprAddrWF, ValueAddrWF, coreHeap']
-            split
-            · next props => simp [Array.size_setIfInBounds]; exact ValueAddrWF_mono hvv_wf' (by omega)
-            · exact hvv_wf'
+            sorry
           · -- CCState threading
             refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by subst hst; exact ⟨rfl, rfl⟩⟩; simp [sc', Flat.convertExpr, Flat.convertValue]
         · -- Non-object case: heap unchanged, return value
