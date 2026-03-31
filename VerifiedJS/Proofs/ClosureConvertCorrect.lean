@@ -2690,9 +2690,18 @@ private theorem convertExprList_firstNonValueExpr_some
         obtain ⟨d', t', r'⟩ := val
         simp only [hrest, Option.some.injEq, Prod.mk.injEq] at h
         obtain ⟨rfl, rfl, rfl⟩ := h
-        -- Flat side: convertExpr (.lit v) keeps it as .lit, firstNonValueExpr skips it
-        simp only [Flat.convertExprList, Flat.convertExpr, Flat.firstNonValueExpr,
-                   ih d' target rest st hrest hnovalue]
+        -- LHS: convertExprList (.lit v :: es') starts with .lit (convertValue v), st unchanged
+        have hlhs : (Flat.convertExprList (Core.Expr.lit v :: es') scope envVar envMap st).fst =
+            .lit (Flat.convertValue v) :: (Flat.convertExprList es' scope envVar envMap st).fst := by
+          simp [Flat.convertExprList, Flat.convertExpr]
+        have hrhs1 : (Flat.convertExprList (Core.Expr.lit v :: d') scope envVar envMap st).fst =
+            .lit (Flat.convertValue v) :: (Flat.convertExprList d' scope envVar envMap st).fst := by
+          simp [Flat.convertExprList, Flat.convertExpr]
+        have hrhs2 : (Flat.convertExprList (Core.Expr.lit v :: d') scope envVar envMap st).snd =
+            (Flat.convertExprList d' scope envVar envMap st).snd := by
+          simp [Flat.convertExprList, Flat.convertExpr]
+        rw [hlhs, hrhs1, hrhs2]
+        simp only [Flat.firstNonValueExpr, ih d' t' r' st hrest hnovalue]
       | none => simp [hrest] at h
     · -- e is not .lit: Core picks e as target, Flat also picks convertExpr e
       simp only [Option.some.injEq, Prod.mk.injEq] at h
@@ -2821,8 +2830,17 @@ private theorem convertPropList_firstNonValueProp_some
         obtain ⟨d', n', t', r'⟩ := val
         simp only [hrest, Option.some.injEq, Prod.mk.injEq] at h
         obtain ⟨rfl, rfl, rfl, rfl⟩ := h
-        simp only [Flat.convertPropList, Flat.convertExpr, Flat.firstNonValueProp,
-                   ih d' name target rest st hrest hnovalue]
+        have hlhs : (Flat.convertPropList ((pn, Core.Expr.lit v) :: ps') scope envVar envMap st).fst =
+            (pn, .lit (Flat.convertValue v)) :: (Flat.convertPropList ps' scope envVar envMap st).fst := by
+          simp [Flat.convertPropList, Flat.convertExpr]
+        have hrhs1 : (Flat.convertPropList ((pn, Core.Expr.lit v) :: d') scope envVar envMap st).fst =
+            (pn, .lit (Flat.convertValue v)) :: (Flat.convertPropList d' scope envVar envMap st).fst := by
+          simp [Flat.convertPropList, Flat.convertExpr]
+        have hrhs2 : (Flat.convertPropList ((pn, Core.Expr.lit v) :: d') scope envVar envMap st).snd =
+            (Flat.convertPropList d' scope envVar envMap st).snd := by
+          simp [Flat.convertPropList, Flat.convertExpr]
+        rw [hlhs, hrhs1, hrhs2]
+        simp only [Flat.firstNonValueProp, ih d' n' t' r' st hrest hnovalue]
       | none => simp [hrest] at h
     · -- pe is not .lit: Core picks pe as target
       simp only [Option.some.injEq, Prod.mk.injEq] at h
