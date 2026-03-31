@@ -1011,7 +1011,7 @@ private theorem HeapCorr_alloc_both {ch fh : Core.Heap} (hc : HeapCorr ch fh)
              { objects := fh.objects.push p, nextAddr := fh.nextAddr + 1 } := by
   have hsize := hc.1
   have hnext := hc.2.1
-  refine ⟨by simp only [Array.size_push]; omega, by omega, fun addr hlt => ?_⟩
+  refine ⟨by simp only [Array.size_push]; omega, by rw [hnext], fun addr hlt => ?_⟩
   simp [Array.size_push] at hlt
   rcases Nat.lt_or_ge addr ch.objects.size with h | h
   · simp only [Array.getElem?_push, show ¬(addr = ch.objects.size) from by omega,
@@ -2822,16 +2822,19 @@ private theorem convertPropList_firstNonValueProp_none
   | nil => simp [Flat.convertPropList, Flat.firstNonValueProp]
   | cons p ps' ih =>
     obtain ⟨pn, pe⟩ := p
-    unfold Core.firstNonValueProp at h
-    match pe with
-    | .lit v =>
-      simp only [Flat.convertPropList, Flat.convertExpr]
+    cases pe with
+    | lit v =>
+      unfold Core.firstNonValueProp at h
       cases hrest : Core.firstNonValueProp ps' with
       | some _ => simp [hrest] at h
       | none =>
+        have : (Flat.convertPropList ((pn, Core.Expr.lit v) :: ps') scope envVar envMap st).fst =
+            (pn, Flat.Expr.lit (Flat.convertValue v)) :: (Flat.convertPropList ps' scope envVar envMap st).fst := by
+          simp [Flat.convertPropList, Flat.convertExpr]
+        rw [this]
         simp only [Flat.firstNonValueProp, Flat.exprValue?]
         exact ih st hrest
-    | _ => all_goals simp at h
+    | _ => simp [Core.firstNonValueProp] at h
 
 /-- When all Core props are values, the filterMap results match through conversion. -/
 private theorem convertPropList_filterMap_eq
@@ -2846,16 +2849,19 @@ private theorem convertPropList_filterMap_eq
   | nil => simp [Flat.convertPropList]
   | cons p ps' ih =>
     obtain ⟨pn, pe⟩ := p
-    unfold Core.firstNonValueProp at h
-    match pe with
-    | .lit v =>
+    cases pe with
+    | lit v =>
+      unfold Core.firstNonValueProp at h
       cases hrest : Core.firstNonValueProp ps' with
       | some _ => simp [hrest] at h
       | none =>
-        simp only [Flat.convertPropList, Flat.convertExpr, List.filterMap,
-                    Flat.exprValue?, Core.exprValue?, flatToCoreValue_convertValue]
+        have : (Flat.convertPropList ((pn, Core.Expr.lit v) :: ps') scope envVar envMap st).fst =
+            (pn, Flat.Expr.lit (Flat.convertValue v)) :: (Flat.convertPropList ps' scope envVar envMap st).fst := by
+          simp [Flat.convertPropList, Flat.convertExpr]
+        rw [this]
+        simp only [List.filterMap, Flat.exprValue?, Core.exprValue?, flatToCoreValue_convertValue]
         exact congrArg _ (ih st hrest)
-    | _ => all_goals simp at h
+    | _ => simp [Core.firstNonValueProp] at h
 
 private theorem convertPropList_firstNonValueProp_some
     (ps : List (Core.PropName × Core.Expr))
