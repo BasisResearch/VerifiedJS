@@ -33,6 +33,14 @@ This affects 2-3 CC sorries previously thought provable.
 **Issue**: L2960 — Flat needs 2 steps, Core needs 1 for captured variable lookup.
 **Status**: Blocked. Subsumed by CCStateAgree fix (Path C would fix both).
 
+### Q. Missing FuncsCorr invariant — blocks L4090 (call function case) (FOUND 2026-03-31T13:05)
+**Owner**: UNASSIGNED (needs CC_SimRel or suffices extension)
+**Issue**: `CC_SimRel` and the suffices block at L3160 do NOT track function table correspondence (`sc.funcs[idx]?` ↔ `sf.funcs[idx]?`). The call function case (L4090) needs to prove `sc.funcs[idx]? = some coreClosure` when `.function idx` is the callee, but no hypothesis guarantees this. ExprAddrWF only checks `.object addr`, not `.function idx`.
+**Impact**: L4090 (the ONLY provable CC sorry) may be unprovable without adding a FuncsCorr invariant.
+**Possible fix — lightweight**: Add `FuncIdxWF` to `ValueAddrWF` (`.function idx => idx < funcs.size`), extend ExprAddrWF to thread funcs.size, prove it's maintained. Then `sc.funcs[idx]?` succeeds from ExprAddrWF + Array.getElem?.
+**Possible fix — full**: Add `FuncsCorr : Array Core.FuncClosure → Array Flat.FuncDef → Prop` to CC_SimRel, relating corresponding entries via convertFuncDef. Must prove preservation for ALL case arms.
+**Status**: jsspec is attempting L4090 but will hit this wall. Need architectural decision on which fix approach.
+
 ### O. hasBreakInHead_step?_error_aux is UNPROVABLE — blocks 40 ANF sorries
 **Owner**: proof agent
 **Issue**: Claims single-step `Flat.step?` produces error directly, but step? wraps results in parent context.

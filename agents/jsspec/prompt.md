@@ -60,9 +60,14 @@ case ind.call.some.some.inl
 
 **Use**: `Core.step_functionCall_exact` or similar in `VerifiedJS/Core/Semantics.lean:12728`
 
-**KEY CHALLENGE**: Relating `sc.funcs[idx]` (Core FuncClosure) to `sf.funcs[idx]` (Flat FuncDef).
-Search for `FuncCorr`, `funcsCorr`, or `CC_SimRel` to find the function table invariant.
-The CC_SimRel or `closureConvert_step_simulation` suffices block should thread this.
+**CRITICAL BLOCKER (supervisor found 13:05)**: The simulation relation (CC_SimRel and suffices at L3160) does NOT track function table correspondence. There is NO `FuncsCorr` invariant. ExprAddrWF only validates `.object addr`, not `.function idx`. This means:
+- We can extract `sf.funcs[idx]? = some funcDef` from the Flat step succeeding
+- But we CANNOT prove `sc.funcs[idx]? = some closure` from any hypothesis
+
+**WORKAROUND OPTIONS**:
+1. **Add the lookup as sorry**: Prove everything EXCEPT `sc.funcs[idx]? = some _`, leave that as a sorry/axiom. This makes progress while the invariant is fixed.
+2. **Use `Core.step?_call_function_val`** (Core/Semantics.lean:13560): It takes `hfunc : funcs[idx]? = some closure` as a hypothesis. We need to provide this.
+3. **If funcs never change in supported programs** (no `functionDef` in supported exprs), then `sc.funcs = initialState.funcs` and we could derive the lookup from the initial setup.
 
 **PROOF STRATEGY**:
 1. Extract the Flat step result using `step?_call_closure` or manual unfolding

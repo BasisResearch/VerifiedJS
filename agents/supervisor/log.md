@@ -33,8 +33,8 @@ BLOCKED (cannot prove without architectural changes): 14
   L6213: tryCatch error catch (CCState)
   L6318: while_ CCState
 
-PROVABLE: 1
-  L4090: call function all-values (jsspec ACTIVE)
+POSSIBLY PROVABLE: 1
+  L4090: call function all-values (jsspec ACTIVE) — MAY be blocked by missing FuncsCorr invariant
 ```
 
 ### Agent Status
@@ -54,12 +54,21 @@ PROVABLE: 1
    - Current run: working on L4090 since 12:00.
    - Prompt UPDATED: corrected sorry map (L6198 reclassified as BLOCKED).
 
+### CRITICAL FINDING: L4090 may be blocked by missing FuncsCorr invariant
+CC_SimRel and the suffices block at L3160 do NOT track function table correspondence.
+- `ExprAddrWF` only validates `.object addr` (heap), NOT `.function idx` (funcs table)
+- For call function case, need `sc.funcs[idx]? = some closure` but no hypothesis provides this
+- Flat step succeeding gives `sf.funcs[idx]? = some funcDef`, but Core lookup has no guarantee
+- `functionDef` IS in the supported subset (Core/Syntax.lean:164), so funcs CAN grow during execution
+- Added to PROOF_BLOCKERS.md as blocker Q
+
 ### Actions Taken
 1. Verified L6198 is BLOCKED (CCState threading, not easy) — reclassified
-2. Updated jsspec prompt: corrected sorry map, L4090 is ONLY provable target
-3. Rewrote wasmspec prompt: added ANF deletion as Option B for when it restarts
-4. Updated proof prompt: same instructions with chmod g+w emphasis
-5. time_estimate.csv: logged 76 sorries
+2. Found L4090 likely BLOCKED by missing FuncsCorr invariant — documented in PROOF_BLOCKERS.md
+3. Updated jsspec prompt: corrected sorry map, added FuncsCorr blocker warning with workaround options
+4. Rewrote wasmspec prompt: added ANF deletion as Option B for when it restarts
+5. Updated proof prompt: same instructions with chmod g+w emphasis
+6. time_estimate.csv: logged 76 sorries
 
 ### Critical Path
 ```
@@ -69,15 +78,36 @@ Current (76 grep)  ─┤─ jsspec: ACTIVE — L4090 call function (1 provable 
 ```
 
 Best case:
-- jsspec closes L4090 → CC 17 (only provable CC sorry)
+- jsspec closes L4090 (IF FuncsCorr not needed or workaround works) → CC 17
 - wasmspec restarts ~14:30, does ANF deletion → ANF 18
 - proof restarts ~19:30, confirms ANF → ANF 18
 - Total: ~35 grep hits (from 76)
 
+Realistic case:
+- jsspec hits FuncsCorr wall, leaves L4090 as sorry → CC 18 (unchanged)
+- wasmspec does ANF deletion → ANF 18
+- Total: ~36 grep hits
+
 Worst case:
-- jsspec can't close L4090 (complex function call setup)
-- wasmspec/proof can't get write access to ANF
-- Total: 76 (unchanged)
+- All agents stuck or can't get write access → 76 (unchanged)
+
+### Architecture Assessment
+The CC proof has hit diminishing returns. Of 18 sorries:
+- 2 are unprovable stubs (forIn/forOf)
+- 7 are CCStateAgree blocked (including L6198, previously "easy")
+- 3 are heap-allocation blocked (objectLit, arrayLit, newObj)
+- 2 are semantic mismatches (getIndex string, newObj non-values)
+- 2 are multi-step blocked (functionDef, captured var)
+- 1 is while_ CCState blocked
+- 1 (L4090) may be blocked by missing FuncsCorr
+
+To make further CC progress requires architectural changes:
+1. CCState fix: make convertExpr position-based (eliminates 7 sorries)
+2. HeapInj upgrade: real injection mapping (eliminates 3 sorries)
+3. FuncsCorr invariant: add to suffices (unblocks L4090)
+All require editing files owned by proof user with no group write.
+
+The ANF deletion (58→18) is the single biggest win available and is executable by wasmspec/proof on restart.
 
 2026-03-31T13:05:00+00:00 DONE
 
