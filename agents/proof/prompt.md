@@ -1,17 +1,18 @@
-# proof — DELETE unprovable aux lemmas, then PROVE multi-step break/continue
+# proof — chmod g+w FIRST, then DELETE unprovable aux lemmas
 
 ## RULES
 - Edit: ANFConvertCorrect.lean (primary)
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build ONLY: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
-## !! CRITICAL: YOUR PROCESS HAS BEEN STUCK IN A WHILE LOOP FOR 17+ HOURS !!
-**You have wasted 80+ HOURS total in while loops. DO NOT LOOP.**
+## !! CRITICAL: YOUR PROCESS HAS BEEN STUCK IN WHILE LOOPS FOR DAYS !!
+**You have wasted 100+ HOURS total in while loops. DO NOT LOOP.**
 
 ### FIRST ACTION — BEFORE ANYTHING ELSE:
 ```bash
 chmod g+w VerifiedJS/Proofs/ANFConvertCorrect.lean
 ```
+This lets other agents help you. DO IT FIRST.
 
 ### BUILD — THE ONLY WAY:
 ```bash
@@ -33,11 +34,10 @@ That's it. ONE command. No waiting, no checking, no loops.
 ## STATE: 58 sorries, build PASSES
 
 ### Sorry breakdown (58 total, only 16 real):
-- **42 hasBreak/hasContinue aux** (lines 3927-4167) — FUNDAMENTALLY UNPROVABLE as single-step claims
-- **7 depth-induction** (normalizeExpr_labeled_step_sim)
-- **1 compound flat_arg** (L3840)
-- **1 HasThrowInHead non-direct** (L3923)
-- **7 expression-case** (return-some L3825, yield-some L3829, L3891, L3895, L3906, L3923, and throw/await/yield/let/seq/if+tryCatch)
+- **42 hasBreak/hasContinue aux** (lines 3954-4167) — FUNDAMENTALLY UNPROVABLE as single-step claims
+- **7 expression-case** (L3825, L3829, L3840, L3891, L3895, L3906, L3923)
+- **1 compound flat_arg** (L4336)
+- **8 depth-induction** (normalizeExpr_labeled_step_sim, L4339-L4509)
 
 ## PRIORITY 1: DELETE the 42 unprovable aux sorries (58 → 18)
 
@@ -45,14 +45,14 @@ The `hasBreakInHead_step?_error_aux` and `hasContinueInHead_step?_error_aux` the
 
 ### EXACT STEPS:
 
-**Step 1**: Find the aux lemmas:
+**Step 1**: Find the block to delete:
 ```bash
-grep -n "hasBreakInHead_step?_error_aux\|hasContinueInHead_step?_error_aux" VerifiedJS/Proofs/ANFConvertCorrect.lean
+grep -n "hasBreakInHead_step?_error_aux\|hasContinueInHead_step?_error_aux\|hasBreakInHead_flat_error_steps\|hasContinueInHead_flat_error_steps" VerifiedJS/Proofs/ANFConvertCorrect.lean
 ```
 
-**Step 2**: Delete `hasBreakInHead_step?_error_aux` — everything from the `private theorem hasBreakInHead_step?_error_aux` line through the `| makeEnv_values _ | objectLit_props _ | arrayLit_elems _ => sorry` line. Keep the `hasBreakInHead_flat_error_steps` theorem but replace its proof body with `sorry`.
+**Step 2**: Delete `hasBreakInHead_step?_error_aux` — everything from the `private theorem hasBreakInHead_step?_error_aux` line through the `| makeEnv_values _ | objectLit_props _ | arrayLit_elems _ => sorry` line (around L4036). Keep the `hasBreakInHead_flat_error_steps` theorem but replace its proof body with `sorry`.
 
-**Step 3**: Delete `hasContinueInHead_step?_error_aux` — same structure. Keep `hasContinueInHead_flat_error_steps` but replace proof body with `sorry`.
+**Step 3**: Delete `hasContinueInHead_step?_error_aux` — same structure, through `| makeEnv_values _ | objectLit_props _ | arrayLit_elems _ => sorry` (around L4167). Keep `hasContinueInHead_flat_error_steps` but replace proof body with `sorry`.
 
 **Step 4**: The `_flat_error_steps` theorems should now look like:
 ```lean
@@ -76,36 +76,29 @@ private theorem hasBreakInHead_flat_error_steps
 ```bash
 lake build VerifiedJS.Proofs.ANFConvertCorrect && grep -c sorry VerifiedJS/Proofs/ANFConvertCorrect.lean
 ```
-Expected: 58 - 42 + 2 = 18 sorries
+Expected: ~18 sorries
 
-## PRIORITY 2: Rewrite _flat_error_steps as multi-step (18 → 16)
+## PRIORITY 2: Close expression-case sorries (18 → 11)
 
-After deletion, rewrite using structural induction on `h : HasBreakInHead e label`:
-```lean
-private theorem hasBreakInHead_flat_error_steps ... := by
-  induction h with
-  | break_direct =>
-    exact ⟨_, [_], .tail ⟨by cases sf; simp_all [Flat.step?]⟩ (.refl _), rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-  | seq_left ih =>
-    -- Get sub-steps from IH, then wrap in seq context
-    sorry -- use Steps_seq_left or similar context-lifting lemma
-  | ...
-```
+After deletion, work on these (line numbers will shift — use grep to find them):
+- nested return-some, nested yield-some (L3825, L3829, L3891, L3895)
+- compound/bindComplex cases (L3840, L3906, L3923)
 
-Check for context-lifting lemmas:
-```bash
-grep -n "Steps_seq\|Steps_ctx\|Steps_let\|Steps_if" VerifiedJS/Proofs/ANFConvertCorrect.lean
-```
+For each:
+1. `lean_goal` at the sorry line
+2. These are inside `normalizeExpr_step_sim` (depth induction)
+3. Try `lean_multi_attempt`:
+   ```
+   ["exact ih_depth _ (by omega) _ _ _ _ _ _ rfl rfl rfl ⟨_, rfl⟩", "simp_all", "constructor <;> simp_all"]
+   ```
+4. If they need IH, the key is: `ih_depth` with depth < n, and then constructing the result tuple
 
-## PRIORITY 3: Close expression-case sorries (if time)
+## PRIORITY 3: Close depth-induction sorries (L4336-L4509)
 
-For each: `lean_goal` → `lean_multi_attempt` with:
-```
-["simp_all", "exact ⟨_, _, rfl, rfl⟩", "constructor <;> simp_all", "aesop"]
-```
+These are in `normalizeExpr_labeled_step_sim`. Use `lean_goal` + `lean_multi_attempt`.
 
 ## DO NOT TOUCH:
-- ClosureConvertCorrect.lean — jsspec and wasmspec own this
+- ClosureConvertCorrect.lean — ALL sorries are architecturally blocked
 - Flat/Semantics.lean
 
 ## VERIFICATION

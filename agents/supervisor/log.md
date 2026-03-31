@@ -7431,3 +7431,67 @@ Effective provable sorry count: ANF ~16 + CC ~2 = ~18 real targets.
 
 ## Run: 2026-03-31T14:05:01+00:00
 
+
+### Metrics
+- **Sorry count (grep-c)**: ANF 58 + CC 18 + Lower 0 = 76 grep hits
+- **Delta from last run (13:05)**: ANF 58→58 (0), CC 18→18 (0). NET 0 grep hits.
+- **WHY FLAT**: ALL CC sorries confirmed BLOCKED (jsspec confirmed L4090 blocked by FuncsCorr 13:58). ANF file not writable (owned by proof, no group write). Zero provable targets accessible.
+- **BUILD**: BROKEN — 20 CC errors (L4109-5167) from jsspec's in-progress call function edits. ANF/Lower compile independently.
+- **LowerCorrect**: 0 sorries ✓
+- **Effective sorry count**: ~16 real provable sorries (all in ANF after aux deletion)
+
+### Agent Status
+1. **proof**: NOT RUNNING. Timed out. Restarts via cron at 14:30.
+   - Prompt UPDATED: chmod g+w + delete 42 aux lemmas + expression-case sorries.
+   - CRITICAL: Must chmod g+w immediately to unblock other agents.
+
+2. **wasmspec**: NOT RUNNING. Timed out. Restarts via cron at 14:15.
+   - Prompt REWRITTEN: wait for ANF to become writable, then help with expression-case sorries.
+   - CC work removed — all CC sorries blocked.
+
+3. **jsspec** (PID 501712, started 14:00): RUNNING — still working with old prompt on L4090.
+   - L4090 confirmed BLOCKED by FuncsCorr (jsspec found this at 13:58).
+   - Prompt REWRITTEN for next run: redirect to ANF work after proof opens file.
+   - Current run will likely waste time on L4090 until it gives up.
+
+### Key Finding: ZERO provable CC sorries
+jsspec confirmed L4090 (call function) is blocked by missing FuncsCorr invariant at 13:58.
+This means ALL 18 CC sorries are now classified as architecturally blocked:
+- 7 CCStateAgree (state threading equality)
+- 3 heap allocation (HeapInj_alloc_both)
+- 2 semantic mismatch (getIndex string, newObj)
+- 2 unprovable stubs (forIn, forOf)
+- 1 multi-step (functionDef)
+- 1 captured var (HeapInj refactor)
+- 1 call function (FuncsCorr)
+- 1 while_ CCState
+
+### Actions Taken
+1. Updated ALL 3 agent prompts with concrete Lean code and instructions
+2. Redirected wasmspec and jsspec to ANF work (CC fully blocked)
+3. Emphasized chmod g+w in proof prompt (gates all other agents)
+4. Updated PROOF_BLOCKERS.md with FuncsCorr confirmation
+5. time_estimate.csv: logged 76 sorries
+
+### Critical Path
+```
+                    ┌─ proof: restarts 14:30 → chmod g+w → delete 42 aux → ANF 58→18
+Current (76 grep)  ─┤─ wasmspec: restarts 14:15 → waits for ANF writable → expression-case sorries
+                    └─ jsspec: running (wasting time on blocked L4090) → next run helps ANF
+```
+
+Best case (by 16:00):
+- proof deletes aux (58→18), closes 3-4 expression-case sorries → ANF 14-15
+- wasmspec helps with 2-3 more expression-case sorries → ANF 11-13
+- Total: ~29-31 grep hits (from 76)
+
+Realistic case:
+- proof deletes aux (58→18) but gets stuck on expression cases → ANF 18
+- wasmspec helps with 1-2 → ANF 16-17
+- Total: ~34-35 grep hits
+
+Worst case:
+- proof gets stuck in while loop AGAIN → 76 (unchanged)
+
+2026-03-31T14:17:35+00:00 DONE
+2026-03-31T14:18:12+00:00 DONE

@@ -1,8 +1,9 @@
-# jsspec — Close CC call function case (L4090)
+# jsspec — Help with ANF sorries (CC is fully blocked)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
-- Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+- Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+- Build CC: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 
 ## !! DO NOT USE WHILE/UNTIL LOOPS !!
 Previous agents got PERMANENTLY STUCK. **NEVER use `while`, `until`, or `sleep` in a loop.**
@@ -10,99 +11,64 @@ Previous agents got PERMANENTLY STUCK. **NEVER use `while`, `until`, or `sleep` 
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE (13:05): CC has 18 grep-sorry hits. Build PASSING.
+## SITUATION (14:05)
+- **CC: ALL 18 sorries are BLOCKED.** DO NOT work on CC.
+  - L4090 (call function): BLOCKED by missing FuncsCorr invariant (you confirmed this)
+  - CCStateAgree sorries: BLOCKED by state threading
+  - Heap sorries: BLOCKED by HeapInj
+  - forIn/forOf: unprovable stubs
+- **ANF: 58 sorries.** proof agent should delete 42 aux lemmas at 14:30, leaving ~16-18.
+  - After deletion, ANF file should be group-writable (proof does `chmod g+w`).
 
-## SORRY MAP (run `grep -n sorry` to get CURRENT lines):
+## YOUR PLAN
+
+### Step 1: Check if ANF file is writable
+```bash
+test -w VerifiedJS/Proofs/ANFConvertCorrect.lean && echo "WRITABLE" || echo "NOT YET"
 ```
-PROVABLE (1 target):
-  L4090  call function all-values ← YOUR ONLY TARGET
+If not writable, `sleep 300` then check ONCE more. If still not writable, `sleep 300` and check ONE final time. 3 checks max. NO LOOPS.
 
-ALL OTHERS ARE BLOCKED — DO NOT TOUCH:
-  L1507, L1508: forIn/forOf stubs (unprovable)
-  L3211: captured var (needs HeapInj refactor)
-  L3546: CCStateAgree if-then (blocked)
-  L3570: CCStateAgree if-else x2 (blocked)
-  L4290: newObj (blocked — heap + semantic mismatch)
-  L4872: getIndex string (semantic mismatch)
-  L5667: objectLit all-values (blocked — heap size)
-  L5851: arrayLit all-values (blocked — heap size)
-  L6030: functionDef (multi-step, blocked)
-  L6198: tryCatch value+finally CCState (BLOCKED — CCState, NOT easy)
-  L6213: tryCatch error catch (BLOCKED — CCState threading)
-  L6318: while_ CCState (BLOCKED — CCState threading)
-```
-
-## CALL FUNCTION CASE (L4090) — CRITICAL ANALYSIS
-
-**Goal state** (from lean_goal):
-```
-case ind.call.some.some.inl
--- Core side: sc.expr = .call (.lit (.function idx)) args
--- Flat side: sf.expr = .call (.lit (.closure idx 0)) (.lit .null) flatArgs
--- hallv : Core.allValues args = some argVals  (all args are values)
--- hstep : Flat.step? sf = some (ev, sf')
+### Step 2: Once writable, count sorries and read the file
+```bash
+grep -n sorry VerifiedJS/Proofs/ANFConvertCorrect.lean
 ```
 
-**What Flat.step? does for call with `.closure idx 0`**:
-1. All args values → `valuesFromExprList? flatArgs = some flatArgVals`
-2. Callee `.closure idx 0` → looks up `sf.funcs[idx]?` for funcDef
-3. Binds params to args, envParam to `.null`, self-ref closure
-4. Wraps body in tryCatch, pushes env to callStack
-5. Returns `.silent` trace
+### Step 3: Work on remaining ANF sorries
 
-**Use this existing theorem**: `Flat.step?_call_closure` in `VerifiedJS/Flat/Semantics.lean:1106`
+After proof deletes the 42 aux lemmas, ~16 sorries remain. Focus on:
 
-**What Core.step? does for call with `.function idx`**:
-1. Looks up `sc.funcs[idx]?` for FuncClosure
-2. Binds params to args, captures closure env
-3. Wraps body in tryCatch, pushes env to callStack
-4. Returns `.silent` trace
+**Expression-case sorries** (in `normalizeExpr_step_sim`):
+- nested return-some, yield-some cases
+- compound/bindComplex cases
+- These need `ih_depth` (strong recursion IH) at smaller depth
 
-**Use**: `Core.step_functionCall_exact` or similar in `VerifiedJS/Core/Semantics.lean:12728`
+**Approach**:
+1. `lean_goal` at the sorry line
+2. Study the nearby proved cases for patterns
+3. Try `lean_multi_attempt` with:
+   ```
+   ["exact ih_depth _ (by omega) _ _ _ _ _ _ rfl rfl rfl ⟨_, rfl⟩", "simp_all", "constructor <;> simp_all", "aesop"]
+   ```
+4. For compound cases, you may need to unfold the expression first, then apply IH
 
-**CRITICAL BLOCKER (supervisor found 13:05)**: The simulation relation (CC_SimRel and suffices at L3160) does NOT track function table correspondence. There is NO `FuncsCorr` invariant. ExprAddrWF only validates `.object addr`, not `.function idx`. This means:
-- We can extract `sf.funcs[idx]? = some funcDef` from the Flat step succeeding
-- But we CANNOT prove `sc.funcs[idx]? = some closure` from any hypothesis
+**Depth-induction sorries** (in `normalizeExpr_labeled_step_sim`, L4336+):
+- Similar approach — `lean_goal` then `lean_multi_attempt`
+- These handle the labeled/break/continue stepping under normalization
 
-**WORKAROUND OPTIONS**:
-1. **Add the lookup as sorry**: Prove everything EXCEPT `sc.funcs[idx]? = some _`, leave that as a sorry/axiom. This makes progress while the invariant is fixed.
-2. **Use `Core.step?_call_function_val`** (Core/Semantics.lean:13560): It takes `hfunc : funcs[idx]? = some closure` as a hypothesis. We need to provide this.
-3. **If funcs never change in supported programs** (no `functionDef` in supported exprs), then `sc.funcs = initialState.funcs` and we could derive the lookup from the initial setup.
-
-**PROOF STRATEGY**:
-1. Extract the Flat step result using `step?_call_closure` or manual unfolding
-2. Construct Core step result
-3. For the convertExpr obligation on bodies: the Core body converts to Flat body via closure conversion
-4. For CCState: call enters new scope, so CCState from body conversion applies
-
-### TACTIC PATTERNS (from non-function call case at L4011-L4039):
-```lean
--- For constructing result:
-let sc' : Core.State := ⟨resultExpr, newEnv, sc.heap,
-  sc.trace ++ [.silent], newFuncs, sc.env :: sc.callStack⟩
-refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-· show Core.step? sc = some (.silent, sc')
-  have hsc' : sc = { sc with expr := .call (.lit (.function idx)) args } := by
-    obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-  rw [hsc']; exact Core_step?_call_func ...
-· simp [sc', htrace]
-· exact hinj  -- heap unchanged
-· -- EnvCorrInj for new body env
-· -- remaining invariants
-```
+### Step 4: If ANF never becomes writable
+If after 15 minutes ANF is still not writable, you cannot help. Log this and exit.
 
 ## DO NOT TOUCH:
-- ANFConvertCorrect.lean — proof agent owns this
-- ALL sorries except L4090 — they are all blocked (see sorry map above)
+- ClosureConvertCorrect.lean — ALL sorries are architecturally blocked
+- Any file you don't have write permission for
 
 ## WORKFLOW:
 1. `grep -n sorry` to find CURRENT line numbers (they shift!)
-2. `lean_goal` at target line (LSP takes ~3 min, just WAIT)
-3. Study nearby proved cases for patterns
-4. Build after each change
-5. Move to next target
+2. `lean_goal` at target line
+3. `lean_multi_attempt` with candidate tactics
+4. Edit the file with the working tactic
+5. Build after each change: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+6. Move to next target
 
 ## CRITICAL: LOG YOUR WORK
 **LAST ACTION**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`
-
-## TARGET: Close call function case (L4090) → CC grep from 18 to 17

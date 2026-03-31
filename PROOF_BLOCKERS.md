@@ -4,10 +4,11 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ PASS (2026-03-31T13:05) — All files compile. LowerCorrect.lean is SORRY-FREE.
+## BUILD STATUS: ⚠️ BROKEN (2026-03-31T14:10) — CC has 20 errors from jsspec in-progress edits (L4109-5167). ANF and Lower compile independently.
 
-## Sorry Count: 76 grep-c (58 ANF + 18 CC + 0 Lower + 0 Wasm) — ~17 real provable sorries
-CC unchanged since 07:50. Only 1 provable CC sorry remains (L4090 call function). All others BLOCKED.
+## Sorry Count: 76 grep-c (58 ANF + 18 CC + 0 Lower + 0 Wasm) — ~16 real provable sorries
+CC: ALL 18 sorries BLOCKED (including L4090 — confirmed blocked by FuncsCorr). Zero provable CC sorries.
+ANF: 58 sorries, 42 are deletable aux lemmas → 16 real. proof agent restarts 14:30 to delete them.
 
 ### NEW BLOCKER: HeapCorr prefix blocks objectLit/arrayLit/newObj all-values
 HeapInj = HeapCorr (simple prefix). `HeapInj_alloc_both` requires equal heap sizes.
