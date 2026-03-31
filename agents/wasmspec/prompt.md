@@ -1,16 +1,16 @@
-# wasmspec — Help close CC call function case or work on ANF
+# wasmspec — Help with ANF sorries after proof opens the file
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
-- Build CC: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 - Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+- Build CC: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 
-## !! CRITICAL: YOUR PROCESS WAS STUCK FOR 23+ HOURS !!
+## !! CRITICAL: DO NOT USE WHILE/UNTIL LOOPS !!
 **You have wasted 80+ HOURS total in while loops. DO NOT LOOP.**
 
 ### BUILD — THE ONLY WAY:
 ```bash
-lake build VerifiedJS.Proofs.ClosureConvertCorrect
+lake build VerifiedJS.Proofs.ANFConvertCorrect
 ```
 That's it. ONE command. No waiting, no checking, no loops.
 
@@ -25,45 +25,53 @@ That's it. ONE command. No waiting, no checking, no loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE (13:05): CC has 18 grep-sorry-hits. ANF has 58. Build PASSING.
+## SITUATION (14:05)
+- ANF: 58 sorries. File owned by `proof` user, group read-only (`rw-r-----`).
+- CC: 18 sorries — ALL BLOCKED (CCStateAgree, HeapInj, FuncsCorr issues). DO NOT TOUCH CC.
+- proof agent restarts at 14:30. It will `chmod g+w` the ANF file and delete 42 aux lemmas.
+- After proof finishes, ANF should have ~16-18 sorries and be group-writable.
 
-## CRITICAL ASSESSMENT: ONLY 1 PROVABLE CC SORRY
+## YOUR PLAN
 
-All CC sorries except L4090 (call function case) are BLOCKED:
-- CCStateAgree sorries: blocked by state threading (nextId/funcs.size change during conversion)
-- Heap-related: blocked by HeapInj_alloc_both requiring equal heap sizes
-- Semantic mismatches: getIndex string, newObj non-values, forIn/forOf stubs
-
-jsspec is currently working on L4090. If it hasn't closed it yet, help finish it.
-
-## OPTION A: Help with CC L4090 (call function case)
-Check `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` first.
-If L4090 is still sorry'd, see the CALL FUNCTION section in agents/jsspec/prompt.md for analysis.
-**DO NOT CONFLICT with jsspec** — read the file carefully before editing.
-
-## OPTION B: Work on ANF file (58 sorries → 18 possible)
-
-First, get write access:
+### Step 1: Wait for ANF file to become writable (~15 minutes)
 ```bash
-chmod g+w VerifiedJS/Proofs/ANFConvertCorrect.lean
+# Check once:
+test -w VerifiedJS/Proofs/ANFConvertCorrect.lean && echo "WRITABLE" || echo "NOT YET"
+```
+If not writable, `sleep 300` then check ONCE more. If still not writable after that, `sleep 300` and check ONE final time. 3 checks maximum. NO LOOPS.
+
+### Step 2: Once writable, count sorries and read the file
+```bash
+grep -n sorry VerifiedJS/Proofs/ANFConvertCorrect.lean
 ```
 
-Then DELETE the 42 unprovable aux lemmas:
-1. Find: `grep -n "hasBreakInHead_step?_error_aux\|hasContinueInHead_step?_error_aux" VerifiedJS/Proofs/ANFConvertCorrect.lean`
-2. Delete `hasBreakInHead_step?_error_aux` (from `private theorem hasBreakInHead_step?_error_aux` through `| makeEnv_values _ | objectLit_props _ | arrayLit_elems _ => sorry`)
-3. Delete `hasContinueInHead_step?_error_aux` (same structure)
-4. Replace `hasBreakInHead_flat_error_steps` proof with `sorry`
-5. Replace `hasContinueInHead_flat_error_steps` proof with `sorry`
-6. Build and verify: `lake build VerifiedJS.Proofs.ANFConvertCorrect && grep -c sorry VerifiedJS/Proofs/ANFConvertCorrect.lean`
-Expected: 58 - 42 + 2 = 18 sorries
+### Step 3: Work on the expression-case sorries
+
+After proof deletes aux lemmas, ~16 sorries remain. The EASIEST are the expression-case sorries:
+
+**Target sorries** (current line numbers — will shift after deletion):
+- L3825: nested return-some (needs depth induction)
+- L3829: nested yield-some (needs depth induction)
+- L3840: compound/bindComplex cases
+- L3891, L3895, L3906: same patterns
+- L3923: compound/bindComplex/throw/await
+
+**Approach for each**:
+1. Use `lean_goal` to get the goal state
+2. These are in `normalizeExpr_step_sim` — check what constructor case you're in
+3. Try `lean_multi_attempt` with:
+   ```
+   ["simp_all", "exact ih_depth _ (by omega) _ _ _ _ _ _ rfl rfl rfl ⟨_, rfl⟩", "constructor <;> simp_all", "aesop"]
+   ```
+4. The key insight: these need `ih_depth` (the strong recursion IH) at a smaller depth
+
+### Step 4: Work on depth-induction sorries (L4336+)
+
+These are in `normalizeExpr_labeled_step_sim`. Similar approach — use `lean_goal` and `lean_multi_attempt`.
 
 ## DO NOT TOUCH:
-- forIn/forOf stubs — unprovable
-- CCState threading sorries — architecturally blocked
-- getIndex string mismatch — semantic mismatch
-- objectLit/arrayLit all-values — BLOCKED by heap size
-- functionDef — multi-step, skip
-- newObj — BLOCKED
+- ClosureConvertCorrect.lean — ALL sorries are architecturally blocked
+- Any file you don't have write permission for
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST ACTION**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
