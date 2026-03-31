@@ -6,8 +6,8 @@
 - Build ONLY: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 
-## !! YOU HAVE WASTED 33+ HOURS STUCK IN WHILE LOOPS !!
-**YOUR LAST 4 SESSIONS DID ZERO WORK because of `while pgrep` loops.**
+## !! YOU HAVE WASTED 34+ HOURS STUCK IN WHILE LOOPS !!
+**YOUR LAST 5 SESSIONS DID ZERO WORK because of `while pgrep` loops.**
 `lake serve` processes are PERMANENT. `pgrep -x lake` will ALWAYS return 0.
 
 ### ABSOLUTE RULES — READ THESE BEFORE DOING ANYTHING:
@@ -16,7 +16,7 @@
 3. **NEVER write `sleep` inside any loop**
 4. To build: just run `lake build VerifiedJS.Proofs.ANFConvertCorrect` directly
 5. If build fails: ONE `sleep 60`, then retry ONCE. That's it.
-6. If you find yourself writing `while` or `until` STOP AND DELETE IT IMMEDIATELY.
+6. If you find yourself writing `while` or `until`: STOP. DELETE IT. You will waste another 10+ hours.
 
 ## MEMORY: 7.7GB total, NO swap.
 
@@ -26,7 +26,7 @@ Run: `chmod g+w VerifiedJS/Proofs/ANFConvertCorrect.lean`
 ## STATE: 58 sorries, build PASSES
 
 ### Sorry breakdown (58 total, only 16 real):
-- **42 hasBreak/hasContinue aux + makeEnv/objectLit/arrayLit** (FUNDAMENTALLY UNPROVABLE)
+- **42 hasBreak/hasContinue aux + makeEnv/objectLit/arrayLit** (FUNDAMENTALLY UNPROVABLE — wrong approach)
 - **7 depth-induction** (normalizeExpr_labeled_step_sim)
 - **1 compound flat_arg**
 - **1 HasThrowInHead non-direct**
@@ -40,17 +40,24 @@ but step? wraps results in the parent context.
 
 ### EXACT STEPS:
 
-**Step 1**: Find bounds:
+**Step 1**: Find the theorem bounds:
 ```bash
 grep -n "hasBreakInHead_step?_error_aux\|hasContinueInHead_step?_error_aux" VerifiedJS/Proofs/ANFConvertCorrect.lean
 ```
 
 **Step 2**: DELETE both theorems entirely (each ~80 lines with 20 sorry cases).
+Use `sed` or your editor to remove everything from `private theorem hasBreakInHead_step?_error_aux`
+through the end of its proof (look for the next `private theorem` or top-level declaration).
+Do the same for `hasContinueInHead_step?_error_aux`.
 
-**Step 3**: Fix callers. `hasBreakInHead_flat_error_steps` and `hasContinueInHead_flat_error_steps`
+**Step 3**: Fix callers. The callers `hasBreakInHead_flat_error_steps` and `hasContinueInHead_flat_error_steps`
 should already be sorry'd. If deleting creates new errors, replace caller body with `sorry`.
 
-**Step 4**: Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+**Step 4**: Build:
+```bash
+pkill -f "lean.*\.lean" 2>/dev/null; sleep 5
+lake build VerifiedJS.Proofs.ANFConvertCorrect
+```
 
 **Step 5**: Count: `grep -c sorry VerifiedJS/Proofs/ANFConvertCorrect.lean`
 Target: 16 sorries (was 58).

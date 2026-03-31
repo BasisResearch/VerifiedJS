@@ -11,58 +11,52 @@ Previous agents got PERMANENTLY STUCK. **NEVER use `while`, `until`, or `sleep` 
 
 ## MEMORY: 7.7GB total, NO swap.
 
-## STATE (05:05): CC has 17 sorries, build PASSES
+## STATE (06:05): CC has 17 sorries, build PASSES. File is 6464 lines.
 
-## CRITICAL CHANGE: CCStateAgree sorries are CONFIRMED BLOCKED
-Your analysis in the 03:00 and 04:00 runs was correct:
-- L2933, L3252, L3274, L5313 are architecturally impossible with current invariant
-- The monotone approach breaks chaining (you proved this)
-- Path A (state-independent conversion) requires editing ClosureConvert.lean (read-only for you)
-- **DO NOT work on these 4 sorries. They need definition changes.**
+## SORRY LOCATIONS (UPDATED — line numbers shifted!)
+```
+L1520  forIn stub (SKIP — unprovable)
+L1521  forOf stub (SKIP — unprovable)
+L2960  HeapInj refactor staging (SKIP)
+L3279  CCStateAgree if-then (SKIP — blocked)
+L3301  CCStateAgree if-else x2 (SKIP — blocked)
+L3807  call callee-is-value ← YOUR TARGET
+L3918  newObj ← YOUR TARGET
+L4486  getIndex string value mismatch (SKIP — Flat/Core semantic mismatch)
+L4658  setIndex value sub-case ← YOUR TARGET
+L4980  objectLit all-values ← YOUR TARGET (EASIEST)
+L5163  arrayLit all-values ← YOUR TARGET
+L5341  functionDef ← YOUR TARGET
+L5431  tryCatch ← YOUR TARGET (hardest)
+L5462  CCState threading while_ (SKIP — blocked)
+```
 
-## NEW MISSION: Take over wasmspec's value sub-cases
-wasmspec has been STUCK in a while loop for 15+ hours. You now own its targets.
+## YOUR PROVABLE TARGETS (7 sorries):
+1. **L4980 — objectLit all-values** (EASIEST, start here)
+2. **L5163 — arrayLit all-values** (same pattern as objectLit)
+3. **L4658 — setIndex value sub-case**
+4. **L3807 — call callee-is-value**
+5. **L3918 — newObj**
+6. **L5341 — functionDef**
+7. **L5431 — tryCatch** (hardest, skip if short on time)
 
-### YOUR TARGETS (7 sorries):
-1. **L4831 — objectLit all-values** (EASIEST, start here)
-2. **L5014 — arrayLit all-values** (same pattern as objectLit)
-3. **L4509 — setIndex value sub-case**
-4. **L3768 — call callee-is-value**
-5. **L3769 — newObj**
-6. **L5192 — functionDef**
-7. **L5282 — tryCatch** (hardest, skip if short on time)
-
-### HOW TO PROVE objectLit all-values (L4831):
+### HOW TO PROVE objectLit all-values (L4980):
 
 Context: `Core.firstNonValueProp props = none` means ALL props are `.lit _`.
 
-Key facts in scope at L4831:
+Key facts in scope:
 - `hcfnv : Core.firstNonValueProp props = none`
 - `hfexpr : sf.expr = Flat.Expr.objectLit (Flat.convertPropList props scope envVar envMap st).fst`
-- `hconv : (sf.expr, st') = Flat.convertExpr (.objectLit props) scope envVar envMap st`
-- `hstep : Flat.step? sf = some (ev, sf')`
+- `hconv` and `hstep` from parent
 
-The proof pattern (follow getProp value case at L3776-3867 for reference):
+The proof pattern (follow getProp value case at L3919-3939 for reference):
 1. When all props are values, `convertPropList` maps `(k, .lit v)` → `(k, .lit (convertValue v))`
 2. Flat.step? on objectLit with all-value props allocates a new heap object
 3. Core.step? on objectLit with all-value props also allocates a new heap object
 4. HeapInj extends naturally (both add one object at the end)
 5. CCState is unchanged (no freshVar/addFunc in value conversion)
 
-Try this approach:
-```lean
--- First check what Flat.step? does with all-value objectLit
-have hall : Flat.valuesFromPropList? (Flat.convertPropList props scope envVar envMap st).fst = some _ := by
-  sorry -- need to show all converted props are values
--- Then unfold the step
-simp [Flat.step?, hfexpr, hall] at hstep
-```
-
-Use `lean_goal` at L4831 to see the exact goal. The LSP takes ~3 minutes on this file — just
-run the command and WAIT. Do NOT use any loop to poll for results.
-
-### HOW TO PROVE arrayLit all-values (L5014):
-Identical pattern to objectLit but with `firstNonValueExpr` and `valuesFromExprList?`.
+Use `lean_goal` at L4980 to see the exact goal. LSP takes ~3 minutes — just WAIT.
 
 ### TACTIC PATTERNS (from proved cases nearby):
 ```lean
@@ -82,11 +76,12 @@ refine ⟨injMap', { sc with ... }, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, st, st', ?_,
 ## DO NOT TOUCH:
 - ANFConvertCorrect.lean — proof agent owns this
 - forIn/forOf stubs (L1520-1521) — unprovable
-- CCState threading sorries (L2933, L3252, L3274, L5313) — architecturally blocked
+- CCState threading sorries (L3279, L3301, L5462) — architecturally blocked
+- getIndex string mismatch (L4486) — Flat/Core semantic mismatch
 
 ## WORKFLOW:
-1. `lean_goal` at L4831 → read FULL goal (wait for LSP, ~3 min)
-2. Study nearby proved cases (getProp at L3776, setProp, deleteProp) for patterns
+1. `lean_goal` at target line → read FULL goal (wait for LSP, ~3 min)
+2. Study nearby proved cases (getProp at L3919, setProp, deleteProp) for patterns
 3. Build the proof step by step
 4. Build after every successful change
 5. Move to next target

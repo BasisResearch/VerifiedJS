@@ -6,7 +6,7 @@
 - Before building: `pkill -f "lean.*\.lean" 2>/dev/null; sleep 5`
 
 ## !! ABSOLUTE RULE: NEVER USE WHILE/UNTIL LOOPS !!
-**YOU HAVE WASTED 39+ HOURS STUCK IN WHILE LOOPS. YOUR LAST 3 SESSIONS DID ZERO WORK.**
+**YOU HAVE WASTED 40+ HOURS STUCK IN WHILE LOOPS. YOUR LAST 3 SESSIONS DID ZERO WORK.**
 
 The pattern `while pgrep -f "lake build"` is an INFINITE LOOP because pgrep matches
 YOUR OWN SHELL COMMAND (which contains "lake build" in the string).
@@ -21,25 +21,41 @@ YOUR OWN SHELL COMMAND (which contains "lake build" in the string).
 
 ## MEMORY: 7.7GB total, NO swap.
 
-## STATE: CC has 17 sorries, build PASSES
+## STATE (06:05): CC has 17 sorries, build PASSES. File is 6464 lines.
 
-## CHECK WHAT jsspec HAS DONE FIRST
-jsspec has been redirected to your value sub-cases while you were stuck.
-Run: `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean | head -25`
-See which of your targets jsspec already closed.
+## FIRST ACTION: Check what jsspec closed
+```bash
+grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean
+```
+
+## SORRY MAP (as of 06:05 — line numbers may shift if jsspec edits):
+```
+L1520  forIn stub (SKIP)
+L1521  forOf stub (SKIP)
+L2960  HeapInj refactor staging (SKIP)
+L3279  CCStateAgree if-then (SKIP — blocked)
+L3301  CCStateAgree if-else x2 (SKIP — blocked)
+L3807  call callee-is-value ← TARGET
+L3918  newObj ← TARGET
+L4486  getIndex string value mismatch (SKIP — Flat/Core mismatch)
+L4658  setIndex value sub-case ← TARGET
+L4980  objectLit all-values ← TARGET (EASIEST)
+L5163  arrayLit all-values ← TARGET
+L5341  functionDef ← TARGET
+L5431  tryCatch ← TARGET (hardest)
+L5462  CCState threading while_ (SKIP — blocked)
+```
 
 ### YOUR TARGETS (pick up whatever jsspec didn't finish):
-1. **L4831 — objectLit all-values** (EASIEST)
-2. **L5014 — arrayLit all-values**
-3. **L4509 — setIndex value sub-case**
-4. **L3768 — call callee-is-value**
-5. **L3769 — newObj**
-6. **L5192 — functionDef**
-7. **L5282 — tryCatch** (hardest)
+1. **L4980 — objectLit all-values** (EASIEST)
+2. **L5163 — arrayLit all-values** (same pattern)
+3. **L4658 — setIndex value sub-case**
+4. **L3807 — call callee-is-value**
+5. **L3918 — newObj**
+6. **L5341 — functionDef**
+7. **L5431 — tryCatch** (hardest)
 
-Line numbers may have shifted. Use grep to find current locations.
-
-### PROOF PATTERN (from getProp value case ~L3776):
+### PROOF PATTERN (from getProp value case ~L3919):
 ```lean
 have hlit : obj = .lit cv := by
   cases obj <;> simp [Core.exprValue?] at hcev; subst hcev; rfl
@@ -49,7 +65,7 @@ have hsf_eta : sf = { sf with expr := ... } := by cases sf; simp_all
 ```
 
 ### WORKFLOW:
-1. `grep -n sorry` to find current locations
+1. `grep -n sorry` to find current locations (they shift!)
 2. `lean_goal` at target line (LSP takes ~3 min, just WAIT)
 3. Study nearby proved cases for patterns
 4. Build after each change
@@ -57,7 +73,8 @@ have hsf_eta : sf = { sf with expr := ... } := by cases sf; simp_all
 
 ## DO NOT TOUCH:
 - ANFConvertCorrect.lean — proof agent owns
-- forIn/forOf stubs — unprovable
-- CCState sorries (L2933, L3252, L3274, L5313) — architecturally blocked
+- forIn/forOf stubs (L1520-1521) — unprovable
+- CCState sorries (L3279, L3301, L5462) — architecturally blocked
+- getIndex string mismatch (L4486) — Flat/Core semantic mismatch
 
 ## TARGET: Close at least 2 value sub-cases → CC down from wherever jsspec left it

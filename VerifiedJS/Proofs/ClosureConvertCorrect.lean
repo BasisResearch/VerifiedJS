@@ -3808,7 +3808,7 @@ private theorem closureConvert_step_simulation
       | none =>
         -- Some arg is not a value: step the first non-value arg
         cases hfnv_args : Core.firstNonValueExpr args with
-        | none => exact absurd (Core.allValues_firstNonValue_contra hallv hfnv_args) id
+        | none => exact (Core.allValues_firstNonValue_contra hallv hfnv_args).elim
         | some val =>
           obtain ⟨done_c, target_c, rest_c⟩ := val
           have htarget_not_lit := Core.firstNonValueExpr_not_lit hfnv_args
@@ -3851,8 +3851,8 @@ private theorem closureConvert_step_simulation
               exact ⟨se, rfl, hsf'eq.symm⟩
             | none =>
               exfalso
-              have : Flat.step? { sf with expr := .call (.lit (Flat.convertValue cv)) (.lit .null)
-                  (Flat.convertExprList args scope envVar envMap st).fst } = none := by
+              have : Flat.step? { sf with expr := (Flat.Expr.call (.lit (Flat.convertValue cv)) (.lit .null)
+                  (Flat.convertExprList args scope envVar envMap st).fst) } = none := by
                 simp [Flat.step?, Flat.exprValue?, hvals, hffnv, hm]
               rw [this] at hstep; exact absurd hstep (by simp)
           subst hsf'_eq
