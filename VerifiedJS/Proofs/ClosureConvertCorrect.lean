@@ -2831,9 +2831,7 @@ private theorem convertPropList_firstNonValueProp_none
         have : (Flat.convertPropList ((pn, Core.Expr.lit v) :: ps') scope envVar envMap st).fst =
             (pn, Flat.Expr.lit (Flat.convertValue v)) :: (Flat.convertPropList ps' scope envVar envMap st).fst := by
           simp [Flat.convertPropList, Flat.convertExpr]
-        rw [this]
-        simp only [Flat.firstNonValueProp, Flat.exprValue?]
-        exact ih st hrest
+        rw [this, Flat.firstNonValueProp, Flat.exprValue?, ih st hrest]
     | _ => simp [Core.firstNonValueProp] at h
 
 /-- When all Core props are values, the filterMap results match through conversion. -/
