@@ -5808,23 +5808,24 @@ private theorem closureConvert_step_simulation
       have hfmatch := convertPropList_filterMap_eq props scope envVar envMap st hcfnv
       have hst_eq : (Flat.convertPropList props scope envVar envMap st).snd = st :=
         convertPropList_state_none props scope envVar envMap st hcfnv
-      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-      · -- Core.step
+      -- Core step
+      have hcstep : Core.step? sc = some (.silent, sc') := by
         have hsc' : sc = { sc with expr := .objectLit props } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
         rw [hsc']
         have := Core.step?_objectLit_val props sc.env sc.heap sc.trace sc.funcs sc.callStack hcfnv
         simp only [Core.pushTrace, sc', cheap', cheapProps, caddr] at this ⊢; exact this
-      · -- trace
-        simp [sc', htrace]
-      · -- HeapInj: both heaps push same properties (via convertPropList_filterMap_eq)
-        simp only [sc', cheap', cheapProps, caddr]
+      -- HeapInj for the new heaps
+      have hinj' : HeapInj injMap cheap' { objects := sf.heap.objects.push
+          ((Flat.convertPropList props scope envVar envMap st).fst.filterMap fun (k, e) =>
+            match Flat.exprValue? e with | some v => some (k, Flat.flatToCoreValue v) | none => none),
+          nextAddr := sf.heap.nextAddr + 1 } := by
+        simp only [cheap', cheapProps, caddr]
         rw [← hfmatch]
         exact HeapInj_alloc_both hinj _
-      · exact henvCorr
-      · simp only [sc', cheap']; exact EnvAddrWF_mono henvwf (by simp [Array.size_push]; omega)
-      · -- HeapValuesWF
-        simp only [sc', cheap', cheapProps, caddr]
+      -- HeapValuesWF
+      have hheapvwf' : HeapValuesWF cheap' := by
+        simp only [cheap', cheapProps, caddr]
         intro addr haddr props' hprops' kv hkv
         simp [Array.size_push] at haddr
         rw [Array.getElem?_push] at hprops'
@@ -5853,9 +5854,18 @@ private theorem closureConvert_step_simulation
               rcases List.mem_cons.mp hmem' with rfl | h
               · simp only [ExprAddrWF, ValueAddrWF] at hps; exact hps.1
               · exact ih hps.2 h
-      · simp only [sc', cheap', caddr, Array.size_push]; rw [hheapna]; omega
-      · simp [sc', noCallFrameReturn]
-      · simp only [sc', ExprAddrWF, ValueAddrWF, cheap', caddr, Array.size_push]; rw [hheapna]; omega
+      refine ⟨injMap, sc', ⟨hcstep⟩, ?_, hinj', henvCorr,
+        ?_, hheapvwf', ?_, ?_, ?_, ?_⟩
+      · -- trace
+        simp [sc', htrace]
+      · -- EnvAddrWF
+        simp only [sc', cheap']; exact EnvAddrWF_mono henvwf (by simp [Array.size_push]; omega)
+      · -- hheapna
+        simp only [sc', cheap', caddr, Array.size_push]; rw [hheapna]; omega
+      · -- noCallFrameReturn
+        simp [sc', noCallFrameReturn]
+      · -- ExprAddrWF
+        simp only [sc', ExprAddrWF, ValueAddrWF, cheap', caddr, Array.size_push]; rw [hheapna]; omega
       · -- CCState threading
         refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by rw [hst, hst_eq]⟩
         simp only [sc', Flat.convertExpr, Flat.convertValue, caddr, hna_eq]
