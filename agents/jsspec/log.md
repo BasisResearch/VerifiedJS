@@ -2550,3 +2550,4 @@ Plan: Implement monotone output approach for CCStateAgree — weaken output from
 - tryCatch body=lit, finally_=none: fully proved by simp [Flat.convertOptExpr]
 - tryCatch body=lit, finally_=some: sorry (needs further work)
 - call function case (L4189): not attempted this run
+2026-04-01T04:00:01+00:00 SKIP: already running
