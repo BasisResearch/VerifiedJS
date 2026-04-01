@@ -4812,7 +4812,7 @@ private theorem normalizeExpr_await_step_sim
           have hstep_var : Flat.step? ⟨.var name, env, heap, trace, funcs, cs⟩ =
               some (.error ("ReferenceError: " ++ name),
                 ⟨.lit .undefined, env, heap, trace ++ [.error ("ReferenceError: " ++ name)], funcs, cs⟩) := by
-            simp [Flat.step?, Flat.Env.lookup, hlookup, Flat.pushTrace]
+            unfold Flat.step?; simp [hlookup]
           have hstep1 := step?_await_error ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ (.var name)
             (by simp [Flat.exprValue?]) ("ReferenceError: " ++ name) _ hstep_var
           obtain ⟨s1, hs1_eq, hs1_expr, hs1_env, hs1_heap, _, _, hs1_trace⟩ := hstep1
@@ -4862,7 +4862,7 @@ private theorem normalizeExpr_await_step_sim
           have hstep_this : Flat.step? ⟨.this, env, heap, trace, funcs, cs⟩ =
               some (.error ("ReferenceError: this"),
                 ⟨.lit .undefined, env, heap, trace ++ [.error "ReferenceError: this"], funcs, cs⟩) := by
-            simp [Flat.step?, Flat.exprValue?, Flat.Env.lookup, hlookup, Flat.pushTrace]
+            unfold Flat.step?; simp [Flat.exprValue?, hlookup]
           have hstep1 := step?_await_error ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ .this
             (by simp [Flat.exprValue?]) "ReferenceError: this" _ hstep_this
           obtain ⟨s1, hs1_eq, hs1_expr, hs1_env, hs1_heap, _, _, hs1_trace⟩ := hstep1

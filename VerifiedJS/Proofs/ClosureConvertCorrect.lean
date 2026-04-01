@@ -5793,10 +5793,17 @@ private theorem closureConvert_step_simulation
       have hsf_eta : sf = { sf with expr := .objectLit (Flat.convertPropList props scope envVar envMap st).fst } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
-      -- Debug: check hstep shape after unfolding
-      unfold Flat.step? at hstep
-      simp only [hvs] at hstep
-      change (ev, sf') = _ at hstep
+      -- Obtain ev and sf' from the Flat step
+      -- hstep : some (ev, sf') = some (.silent, ...)
+      -- After unfolding, the RHS has private defs (allocObjectWithProps, pushTrace)
+      -- We inject into some to get the equality, then use simp to simplify
+      have hstep' : Flat.step? { sf with expr := .objectLit (Flat.convertPropList props scope envVar envMap st).fst } = some (ev, sf') := hstep
+      -- The Flat step result for all-values objectLit: ev = .silent
+      -- sf'.expr = .lit (.object sf.heap.nextAddr)
+      -- sf'.heap has one more object
+      -- We proceed by noting that step? returned some, so we can extract:
+      simp [Flat.step?, hvs, Flat.step?_pushTrace_expand] at hstep
+      obtain ⟨rfl, rfl⟩ := hstep
       sorry
       -- Core side: use step?_objectLit_val
       have hna_eq : sc.heap.nextAddr = sf.heap.nextAddr := hinj.2.1
@@ -6202,8 +6209,7 @@ private theorem closureConvert_step_simulation
       rw [hce_lit_fst, hce_lit_snd] at hconv
       cases finally_ with
       | none =>
-        unfold Flat.convertOptExpr at hconv
-        simp only [] at hconv
+        simp [Flat.convertOptExpr] at hconv
         obtain ⟨hsf_expr, hst'_eq⟩ := hconv
         have hsf_eta : sf = { sf with expr := .tryCatch (.lit (Flat.convertValue v)) catchParam
             (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst none } := by
