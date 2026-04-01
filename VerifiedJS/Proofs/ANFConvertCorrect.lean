@@ -4851,33 +4851,10 @@ private theorem normalizeExpr_await_step_sim
           simp only [ANF.evalTrivial, hv_anf] at heval
           exact absurd heval (by simp)
       | none =>
-        have hv_anf : ANF.Env.lookup env "this" = none := by
-          simp only [ANF.Env.lookup, Flat.Env.lookup] at hlookup ⊢; exact hlookup
-        refine ⟨?_, ?_⟩
-        · intro val heval
-          simp [ANF.evalTrivial, hv_anf] at heval
-        · intro msg heval
-          simp [ANF.evalTrivial, hv_anf] at heval
-          subst heval
-          have hstep_this : Flat.step? ⟨.this, env, heap, trace, funcs, cs⟩ =
-              some (.error ("ReferenceError: this"),
-                ⟨.lit .undefined, env, heap, trace ++ [.error "ReferenceError: this"], funcs, cs⟩) := by
-            unfold Flat.step?; simp [Flat.exprValue?, hlookup]
-          have hstep1 := step?_await_error ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ .this
-            (by simp [Flat.exprValue?]) "ReferenceError: this" _ hstep_this
-          obtain ⟨s1, hs1_eq, hs1_expr, hs1_env, hs1_heap, _, _, hs1_trace⟩ := hstep1
-          have hstep2 : Flat.step? s1 =
-              some (.silent, ⟨.lit .undefined, env, heap,
-                (trace ++ [.error "ReferenceError: this"]) ++ [.silent], funcs, cs⟩) := by
-            have : s1 = ⟨.await (.lit .undefined), env, heap,
-                trace ++ [.error "ReferenceError: this"], funcs, cs⟩ := by
-              cases s1; simp_all
-            rw [this]; unfold Flat.step?; rfl
-          refine ⟨[.error "ReferenceError: this", .silent], _,
-            .tail ⟨hs1_eq⟩ (.tail ⟨hstep2⟩ (.refl _)),
-            rfl, rfl, rfl, ?_, ?_⟩
-          · simp only [List.append_assoc, List.cons_append, List.nil_append]
-          · simp only [observableTrace, List.filter]; rfl
+        -- Semantic mismatch: Flat .this with none lookup silently resolves to .undefined,
+        -- but ANF .var "this" produces ReferenceError. The error case needs ExprWellFormed
+        -- with VarFreeIn.await_arg (currently missing from VarFreeIn inductive).
+        sorry
     | «break» _ =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1

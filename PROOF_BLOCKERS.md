@@ -4,11 +4,11 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ CC PASSES. ANF and Lower compile independently. (2026-04-01T02:05)
+## BUILD STATUS: ✅ CC and ANF compile independently. (2026-04-01T03:05)
 
-## Sorry Count: 35 (18 ANF + 14 CC lines / ~15 stmts + 0 Lower) — down from 37 last run
-- ANF: 18 sorries. GROUP B (7 depth-recursive) BLOCKED. GROUP A (step_sim L4219-4392) — proof agent building HasAwaitInHead infrastructure. GROUP C (2 break/continue) unprovable. GROUP D (2 throw compound) deferred.
-- CC: 14 sorry lines. objectLit all-values CLOSED by wasmspec. tryCatch some-fin & CCState CLOSED. Remaining: L5998 (objectLit CCState sub-step), L6005 (arrayLit all-values), L6101 (arrayLit CCState sub-step), L6229 (tryCatch body non-value). ~6 blocked (CCStateAgree, FuncsCorr, semantic mismatch). 2 stubs. 1 functionDef.
+## Sorry Count: 36 actual (19 ANF + 17 CC actual + 0 Lower) — grep-c 39 (includes 3 CC comments)
+- ANF: 19 sorries (was 18). HasAwaitInHead infrastructure BUILT (440 lines). await_step_sim partially proved — 1 sorry → 2 decomposed sorries. Next: HasReturnInHead + return_step_sim. GROUP B (7) BLOCKED. GROUP C (2 break/continue) unprovable.
+- CC: 17 actual sorry lines. Agents actively decomposing: objectLit all-values partially expanded (L5807), tryCatch being worked (L6213 DEBUG2, L6243). Targets: objectLit CCState (L5982), arrayLit all-values (L5989), arrayLit CCState (L6085), tryCatch body-value (L6213, L6243). ~6 blocked (CCStateAgree, FuncsCorr, semantic mismatch). 2 stubs. 1 functionDef.
 - Lower: 0 sorries ✓ DONE.
 
 ### ~~HeapCorr prefix blocks objectLit/arrayLit/newObj all-values~~ — PARTIALLY RESOLVED
