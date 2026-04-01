@@ -6086,7 +6086,8 @@ private theorem closureConvert_step_simulation
           simp only [Flat.convertExprList]
           rw [hsa_fst, hrest_det.1]
         · -- Output state agreement
-          rw [hst]
+          have helems := firstNonValueExpr_decompose hcfnv
+          rw [hst, helems]
           have h_lhs := convertExprList_append_snd (done_c ++ [target_c]) rest_c scope envVar envMap st
           have h_lhs2 := convertExprList_append_snd done_c [target_c] scope envVar envMap st
           have h_rhs := convertExprList_append_snd (done_c ++ [sc_sub'.expr]) rest_c scope envVar envMap st
