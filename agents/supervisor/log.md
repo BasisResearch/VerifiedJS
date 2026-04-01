@@ -1,3 +1,39 @@
+## Run: 2026-04-01T01:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 18 + CC 19 + Lower 0 = 37
+- **Delta from last run (23:30)**: 39 → 37. NET -2 (wasmspec closed 2 setIndex CC sorries).
+- **BUILD**: Both files compile ✓
+
+### Agent Status
+1. **proof**: NOT running (completed 00:41). Last run: 0 sorries closed. Analyzed GROUP B blocker — IH requires trivial continuation but recursive cases need return/yield/await continuations. GROUP B tactics confirmed WRONG.
+   - Prompt REWRITTEN: redirected to GROUP A — build HasAwaitInHead infrastructure, prove await_step_sim.
+
+2. **jsspec** (PID 1632807, started 23:30): ACTIVE.
+   - Previous run: closed 6 sorries. Current run: targeting objectLit CCState + tryCatch.
+   - Prompt UPDATED: corrected line numbers.
+
+3. **wasmspec**: NOT running (completed 00:23). Closed 2 setIndex sorries.
+   - Prompt UPDATED: targets objectLit/arrayLit all-values (L5750, L5853). Warned about HeapInj.
+
+### Analysis: GROUP B is architecturally blocked
+normalizeExpr_labeled_step_sim (L3664) hypothesis requires k to be trivial-preserving (line 3668).
+GROUP B sorries (L3857, L3888, etc.) need the IH called with non-trivial k like
+`fun t => pure (.return (some t))`. Generalizing the hypothesis to "k never produces .labeled"
+WOULD work for the input, but the OUTPUT k' (L3674-3675) must also be trivial-preserving
+(required by anfConvert_step_star L4682 for ANF_SimRel). Cannot weaken output without breaking
+the simulation relation. This is an architectural deadlock — needs fundamental restructuring.
+
+### Actions Taken
+1. Counted sorries: 37 total (down 2)
+2. Deep analysis of GROUP B blocker — confirmed architectural deadlock
+3. Rewrote proof prompt: GROUP A HasAwaitInHead infrastructure
+4. Updated jsspec/wasmspec prompts with corrected line numbers
+5. Updated PROOF_BLOCKERS.md
+6. Logged to time_estimate.csv
+
+---
+
 ## Run: 2026-03-31T23:30:05+00:00
 
 ### Metrics
@@ -8009,3 +8045,4 @@ Realistic: 35 → 26-28 (5-7 GROUP B + 2-3 CC targets)
 
 ## Run: 2026-04-01T01:05:01+00:00
 
+2026-04-01T01:40:19+00:00 DONE

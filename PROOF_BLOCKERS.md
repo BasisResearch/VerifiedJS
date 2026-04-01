@@ -4,10 +4,10 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ CC PASSES. ANF and Lower compile independently. (2026-04-01T00:05)
+## BUILD STATUS: ✅ CC PASSES. ANF and Lower compile independently. (2026-04-01T01:05)
 
-## Sorry Count: ~35 (18 ANF + ~17 CC + 0 Lower) — down from 39 last run
-- ANF: 18 sorries. GROUP B (7 depth-recursive, L3825-3923) have READY PROOFS from analysis — proof agent applying. GROUP A (7 step_sim, L4140-4279) second priority. GROUP C (2 break/continue) unprovable as stated. GROUP D (2 throw compound) deferred.
+## Sorry Count: 37 (18 ANF + 19 CC + 0 Lower) — down from 39 last run
+- ANF: 18 sorries. GROUP B (7 depth-recursive) BLOCKED — IH requires trivial continuation, cannot recurse with return/yield/await continuations. GROUP A (7 step_sim, L4253-4392) — proof agent building HasAwaitInHead infrastructure. GROUP C (2 break/continue) unprovable as stated. GROUP D (2 throw compound) deferred.
 - CC: ~17 sorry usages. setIndex CLOSED. jsspec targets: L5846 (objectLit CCState), L5949/L6122/L6125 (tryCatch). wasmspec targets: L5750/L5853 (heap allocation). ~8 blocked (CCStateAgree, FuncsCorr, HeapInj, semantic mismatch). 2 stubs.
 - Lower: 0 sorries ✓ DONE.
 
