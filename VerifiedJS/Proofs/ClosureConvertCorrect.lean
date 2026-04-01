@@ -6066,7 +6066,8 @@ private theorem closureConvert_step_simulation
       simp only [hconv_body_fst, hconv_body_snd] at hconv
       cases hfin : finally_ with
       | none =>
-        simp only [Flat.convertOptExpr] at hconv
+        unfold Flat.convertOptExpr at hconv
+        simp only [Prod.mk.injEq] at hconv
         obtain ⟨hsfexpr, hst'eq⟩ := hconv
         have hsf_eta : sf = { sf with expr := .tryCatch (.lit (Flat.convertValue v)) catchParam
             (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst none } := by
@@ -6096,7 +6097,8 @@ private theorem closureConvert_step_simulation
           simp [ExprAddrWF] at hexprwf; exact hexprwf.1
         · exact ⟨st, st, by simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, by rw [hst'eq]; exact ⟨rfl, rfl⟩⟩
       | some fin =>
-        simp only [Flat.convertOptExpr] at hconv
+        unfold Flat.convertOptExpr at hconv
+        simp only [Prod.mk.injEq] at hconv
         obtain ⟨hsfexpr, hst'eq⟩ := hconv
         have hsf_eta : sf = { sf with expr := .tryCatch (.lit (Flat.convertValue v)) catchParam
             (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst

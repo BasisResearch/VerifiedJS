@@ -3865,7 +3865,7 @@ private theorem normalizeExpr_labeled_step_sim :
                 unfold ANF.normalizeExpr at hnorm
                 simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
                 generalize hbf : ANF.normalizeExpr b_flat
-                  (fun t => pure (ANF.Expr.return (some t))) n = res at hnorm
+                  (fun t => pure (ANF.Expr.yield (some t) delegate)) n = res at hnorm
                 cases res with
                 | error msg => simp at hnorm
                 | ok v =>
@@ -3947,11 +3947,65 @@ private theorem normalizeExpr_labeled_step_sim :
           | «return» arg =>
             cases arg with
             | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-            | some _ => sorry -- nested return-some: recursive, needs induction on depth
+            | some inner_val =>
+              simp only [ANF.normalizeExpr] at hnorm
+              cases inner_val with
+              | labeled l b_flat =>
+                unfold ANF.normalizeExpr at hnorm
+                simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+                generalize hbf : ANF.normalizeExpr b_flat
+                  (fun t => pure (ANF.Expr.return (some t))) n = res at hnorm
+                cases res with
+                | error msg => simp at hnorm
+                | ok v =>
+                  simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
+                  obtain ⟨⟨rfl, rfl⟩, rfl⟩ := hnorm
+                  have hstep_ret : ∃ s', Flat.step? sf = some (.silent, s') ∧
+                      s'.expr = .yield (some (.return (some b_flat))) delegate ∧
+                      s'.env = sf.env ∧ s'.heap = sf.heap ∧
+                      s'.trace = sf.trace ++ [Core.TraceEvent.silent] := by
+                    have hsf_eq : sf = { sf with expr := Flat.Expr.yield (some (Flat.Expr.return (some (Flat.Expr.labeled label b_flat)))) delegate } := by
+                      cases sf; simp_all
+                    rw [hsf_eq]; unfold Flat.step?; simp [Flat.exprValue?, Flat.step?]
+                  obtain ⟨s', hstep_s, hexpr_s, henv_s, hheap_s, htrace_s⟩ := hstep_ret
+                  refine ⟨[.silent], s', .tail ⟨hstep_s⟩ (.refl _), ?_, henv_s, hheap_s, ?_, rfl, ?_⟩
+                  · refine ⟨fun arg => pure (.trivial arg), n, v.2, ?_, ?_⟩
+                    · rw [hexpr_s]; simp only [ANF.normalizeExpr, StateT.run]; exact hbf
+                    · intro arg n''; exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
+                  · rw [htrace_s, observableTrace_append]; simp [observableTrace]; decide
+                  · rw [hexpr_s, henv_s]; intro x hfx; cases hfx
+              | _ => sorry -- non-labeled inner value: needs eval context lifting
           | yield arg delegate' =>
             cases arg with
             | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-            | some _ => sorry -- nested yield-some: recursive, needs induction on depth
+            | some inner_val =>
+              simp only [ANF.normalizeExpr] at hnorm
+              cases inner_val with
+              | labeled l b_flat =>
+                unfold ANF.normalizeExpr at hnorm
+                simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
+                generalize hbf : ANF.normalizeExpr b_flat
+                  (fun t => pure (ANF.Expr.yield (some t) delegate')) n = res at hnorm
+                cases res with
+                | error msg => simp at hnorm
+                | ok v =>
+                  simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
+                  obtain ⟨⟨rfl, rfl⟩, rfl⟩ := hnorm
+                  have hstep_ret : ∃ s', Flat.step? sf = some (.silent, s') ∧
+                      s'.expr = .yield (some (.yield (some b_flat) delegate')) delegate ∧
+                      s'.env = sf.env ∧ s'.heap = sf.heap ∧
+                      s'.trace = sf.trace ++ [Core.TraceEvent.silent] := by
+                    have hsf_eq : sf = { sf with expr := Flat.Expr.yield (some (Flat.Expr.yield (some (Flat.Expr.labeled label b_flat)) delegate')) delegate } := by
+                      cases sf; simp_all
+                    rw [hsf_eq]; unfold Flat.step?; simp [Flat.exprValue?, Flat.step?]
+                  obtain ⟨s', hstep_s, hexpr_s, henv_s, hheap_s, htrace_s⟩ := hstep_ret
+                  refine ⟨[.silent], s', .tail ⟨hstep_s⟩ (.refl _), ?_, henv_s, hheap_s, ?_, rfl, ?_⟩
+                  · refine ⟨fun arg => pure (.trivial arg), n, v.2, ?_, ?_⟩
+                    · rw [hexpr_s]; simp only [ANF.normalizeExpr, StateT.run]; exact hbf
+                    · intro arg n''; exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
+                  · rw [htrace_s, observableTrace_append]; simp [observableTrace]; decide
+                  · rw [hexpr_s, henv_s]; intro x hfx; cases hfx
+              | _ => sorry -- non-labeled inner value: needs eval context lifting
           | while_ _ _ =>
             exfalso; unfold ANF.normalizeExpr at hnorm
             simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
