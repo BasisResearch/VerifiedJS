@@ -6279,7 +6279,130 @@ private theorem normalizeExpr_yield_step_sim
         sf'.expr = .lit .undefined ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
         sf'.trace = sf.trace ++ evs ∧
         observableTrace evs = observableTrace [.error msg]) := by
-  sorry
+  have hyield := ANF.normalizeExpr_yield_implies_hasYieldInHead sf.expr k hk arg delegate n m hnorm
+  cases sf with
+  | mk e env heap trace funcs cs =>
+  simp only [Flat.State.expr] at hnorm hewf hyield
+  cases hyield with
+  | yield_none_direct =>
+    rename_i d_val
+    -- e = .yield none d_val, normalizeExpr produces pure (.yield none d_val)
+    simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
+    obtain ⟨rfl, rfl⟩ := hnorm
+    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
+    refine ⟨?_, ?_, ?_⟩
+    · -- none case: yield without argument → lit undefined (silent)
+      intro _
+      refine ⟨[.silent], _,
+        .tail ⟨by unfold Flat.step?; rfl⟩ (.refl _),
+        rfl, rfl, rfl, rfl, rfl⟩
+    · -- some ok case: vacuous (arg = none ≠ some t)
+      intro t _ h; exact absurd h (by simp)
+    · -- some error case: vacuous
+      intro t _ h; exact absurd h (by simp)
+  | yield_some_direct =>
+    rename_i inner_val delegate'
+    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
+    -- normalizeExpr (.yield (some inner_val) delegate') k ignores k
+    have hnorm' : (ANF.normalizeExpr inner_val (fun t => pure (ANF.Expr.yield (some t) delegate'))).run n =
+        .ok (.yield arg delegate, m) := by
+      simp only [ANF.normalizeExpr] at hnorm; exact hnorm
+    cases inner_val with
+    | lit v =>
+      simp only [ANF.normalizeExpr, ANF.trivialOfFlatValue] at hnorm'
+      cases v <;> (
+        simp only [pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
+        obtain ⟨rfl, rfl⟩ := hnorm'
+        refine ⟨?_, ?_, ?_⟩
+        · intro h; exact absurd h (by simp)
+        · intro t val harg heval
+          simp only [Option.some.injEq] at harg; subst harg
+          simp only [ANF.evalTrivial, ANF.trivialValue?, Except.ok.injEq] at heval
+          subst heval
+          exact ⟨_, _, .tail ⟨by unfold Flat.step?; rfl⟩ (.refl _), rfl, rfl, rfl, rfl, rfl⟩
+        · intro t msg harg heval
+          simp only [Option.some.injEq] at harg; subst harg
+          simp only [ANF.evalTrivial, ANF.trivialValue?] at heval
+          exact absurd heval (by simp))
+    | var name =>
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
+      obtain ⟨rfl, rfl⟩ := hnorm'
+      -- By ExprWellFormed, env.lookup name must succeed
+      have hwf_var : env.lookup name ≠ none := by
+        apply hewf; exact VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.var name)
+      obtain ⟨v, hv_flat⟩ := Option.ne_none_iff_exists'.mp hwf_var
+      have hv_anf : ANF.Env.lookup env name = some v := by
+        simp only [ANF.Env.lookup, Flat.Env.lookup] at hv_flat ⊢; exact hv_flat
+      have hv_flat_env : Flat.Env.lookup env name = some v := by
+        simp only [Flat.Env.lookup, ANF.Env.lookup] at hv_flat ⊢; exact hv_flat
+      refine ⟨?_, ?_, ?_⟩
+      · intro h; exact absurd h (by simp)
+      · intro t val harg heval
+        simp only [Option.some.injEq] at harg; subst harg
+        simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval
+        subst heval
+        -- Step 1: .yield (some (.var name)) d → .yield (some (.lit v)) d
+        have hstep1 : Flat.step? ⟨.yield (some (.var name)) delegate', env, heap, trace, funcs, cs⟩ =
+            some (.silent, ⟨.yield (some (.lit v)) delegate', env, heap, trace ++ [.silent], funcs, cs⟩) := by
+          unfold Flat.step?; simp [Flat.exprValue?, hv_flat_env, Flat.step?]
+        -- Step 2: .yield (some (.lit v)) d → .lit v (silent)
+        have hstep2 : Flat.step? ⟨.yield (some (.lit v)) delegate', env, heap, trace ++ [.silent], funcs, cs⟩ =
+            some (.silent,
+              ⟨.lit v, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
+          unfold Flat.step?; simp [Flat.exprValue?]
+        refine ⟨[.silent, .silent], _,
+          .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)),
+          rfl, rfl, rfl, ?_, ?_⟩
+        · simp only [List.append_assoc, List.cons_append, List.nil_append]
+        · simp only [observableTrace, List.filter]; rfl
+      · intro t msg harg heval
+        simp only [Option.some.injEq] at harg; subst harg
+        simp only [ANF.evalTrivial, hv_anf] at heval
+        exact absurd heval (by simp)
+    | this =>
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
+      obtain ⟨rfl, rfl⟩ := hnorm'
+      have hwf_this : env.lookup "this" ≠ none := by
+        apply hewf; exact VarFreeIn.yield_some_arg _ _ _ VarFreeIn.this_var
+      obtain ⟨v, hv_flat⟩ := Option.ne_none_iff_exists'.mp hwf_this
+      have hv_anf : ANF.Env.lookup env "this" = some v := by
+        simp only [ANF.Env.lookup, Flat.Env.lookup] at hv_flat ⊢; exact hv_flat
+      have hv_flat_env : Flat.Env.lookup env "this" = some v := by
+        simp only [Flat.Env.lookup, ANF.Env.lookup] at hv_flat ⊢; exact hv_flat
+      refine ⟨?_, ?_, ?_⟩
+      · intro h; exact absurd h (by simp)
+      · intro t val harg heval
+        simp only [Option.some.injEq] at harg; subst harg
+        simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval
+        subst heval
+        -- Step 1: .yield (some .this) d → .yield (some (.lit v)) d
+        have hstep1 : Flat.step? ⟨.yield (some .this) delegate', env, heap, trace, funcs, cs⟩ =
+            some (.silent, ⟨.yield (some (.lit v)) delegate', env, heap, trace ++ [.silent], funcs, cs⟩) := by
+          unfold Flat.step?; simp [Flat.exprValue?, hv_flat_env, Flat.step?]
+        -- Step 2: .yield (some (.lit v)) d → .lit v (silent)
+        have hstep2 : Flat.step? ⟨.yield (some (.lit v)) delegate', env, heap, trace ++ [.silent], funcs, cs⟩ =
+            some (.silent,
+              ⟨.lit v, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
+          unfold Flat.step?; simp [Flat.exprValue?]
+        refine ⟨[.silent, .silent], _,
+          .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)),
+          rfl, rfl, rfl, ?_, ?_⟩
+        · simp only [List.append_assoc, List.cons_append, List.nil_append]
+        · simp only [observableTrace, List.filter]; rfl
+      · intro t msg harg heval
+        simp only [Option.some.injEq] at harg; subst harg
+        simp only [ANF.evalTrivial, hv_anf] at heval
+        exact absurd heval (by simp)
+    | «break» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
+    | «continue» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
+    | _ => sorry -- compound inner_val: seq, let, assign, if, call, throw, etc.
+  | _ =>
+    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
+    sorry -- compound HasYieldInHead cases: seq_left, seq_right, let_init, etc.
 
 /-- If normalizeExpr sf.expr k produces .let name rhs body (with trivial-preserving k),
     then one ANF step on the let can be simulated by Flat steps. -/
