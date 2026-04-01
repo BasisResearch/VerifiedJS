@@ -4224,11 +4224,21 @@ theorem ANF.normalizeExpr_tryCatch_not_return_none (body : Flat.Expr) (cp : Flat
   | none =>
     simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure,
       StateT.pure, Except.pure] at h
-    split at h <;> [simp at h; split at h <;> [simp at h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1]]
+    split at h
+    · simp at h
+    · split at h
+      · simp at h
+      · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
   | some f =>
     simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure,
       StateT.pure, Except.pure] at h
-    split at h <;> [simp at h; split at h <;> [simp at h; split at h <;> [simp at h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1]]]
+    split at h
+    · simp at h
+    · split at h
+      · simp at h
+      · split at h
+        · simp at h
+        · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
 
 theorem ANF.normalizeExpr_tryCatch_not_return_some (body : Flat.Expr) (cp : Flat.VarName)
     (cb : Flat.Expr) (fin : Option Flat.Expr)
@@ -4240,11 +4250,21 @@ theorem ANF.normalizeExpr_tryCatch_not_return_some (body : Flat.Expr) (cp : Flat
   | none =>
     simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure,
       StateT.pure, Except.pure] at h
-    split at h <;> [simp at h; split at h <;> [simp at h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1]]
+    split at h
+    · simp at h
+    · split at h
+      · simp at h
+      · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
   | some f =>
     simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure,
       StateT.pure, Except.pure] at h
-    split at h <;> [simp at h; split at h <;> [simp at h; split at h <;> [simp at h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1]]]
+    split at h
+    · simp at h
+    · split at h
+      · simp at h
+      · split at h
+        · simp at h
+        · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
 
 /-! ## normalizeExprList/Props return_or_k helpers -/
 
@@ -4257,14 +4277,15 @@ private theorem normalizeExprList_return_none_or_k
     (h : (ANF.normalizeExprList es k).run n = .ok (ANF.Expr.return none, m)) :
     HasReturnInHeadList es ∨ ∃ (ts : List ANF.Trivial) (n' m' : Nat), (k ts).run n' = .ok (ANF.Expr.return none, m') := by
   induction es generalizing k n m with
-  | nil => right; exact ⟨[], n, m, h⟩
-  | cons e rest ihl =>
+  | nil => right; simp only [ANF.normalizeExprList] at h; exact ⟨[], n, m, h⟩
+  | cons e rest ih_list =>
     simp only [ANF.normalizeExprList] at h
-    rcases ih e (List.mem_cons_self e rest) _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+    rcases ih e (@List.mem_cons_self _ e rest) _ _ _ h with hleft | ⟨t, n', m', hkt⟩
     · exact Or.inl (HasReturnInHeadList.head hleft)
-    · rcases ihl (fun e' he' => ih e' (List.mem_cons_of_mem e he')) _ _ _ hkt with hleft | hright
+    · rcases ih_list (fun e' he' => ih e' (List.mem_cons_of_mem _ he')) _ _ _ hkt with hleft | hright
       · exact Or.inl (HasReturnInHeadList.tail hleft)
-      · exact Or.inr hright
+      · obtain ⟨ts, n'', m'', hkts⟩ := hright
+        exact Or.inr ⟨t :: ts, n'', m'', hkts⟩
 
 private theorem normalizeExprList_return_some_or_k
     (es : List Flat.Expr)
@@ -4274,15 +4295,16 @@ private theorem normalizeExprList_return_some_or_k
     (k : List ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat)
     (h : (ANF.normalizeExprList es k).run n = .ok (.return (some arg), m)) :
     HasReturnInHeadList es ∨ ∃ (ts : List ANF.Trivial) (n' m' : Nat), (k ts).run n' = .ok (.return (some arg), m') := by
-  induction es generalizing k n m with
-  | nil => right; exact ⟨[], n, m, h⟩
-  | cons e rest ihl =>
+  induction es generalizing k arg n m with
+  | nil => right; simp only [ANF.normalizeExprList] at h; exact ⟨[], n, m, h⟩
+  | cons e rest ih_list =>
     simp only [ANF.normalizeExprList] at h
-    rcases ih e (List.mem_cons_self e rest) _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+    rcases ih e (@List.mem_cons_self _ e rest) _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
     · exact Or.inl (HasReturnInHeadList.head hleft)
-    · rcases ihl (fun e' he' => ih e' (List.mem_cons_of_mem e he')) _ _ _ _ hkt with hleft | hright
+    · rcases ih_list (fun e' he' => ih e' (List.mem_cons_of_mem _ he')) _ _ _ _ hkt with hleft | hright
       · exact Or.inl (HasReturnInHeadList.tail hleft)
-      · exact Or.inr hright
+      · obtain ⟨ts, n'', m'', hkts⟩ := hright
+        exact Or.inr ⟨t :: ts, n'', m'', hkts⟩
 
 private theorem normalizeProps_return_none_or_k
     (props : List (Flat.PropName × Flat.Expr))
@@ -4294,15 +4316,15 @@ private theorem normalizeProps_return_none_or_k
     (h : (ANF.normalizeProps props k).run n = .ok (ANF.Expr.return none, m)) :
     HasReturnInHeadProps props ∨ ∃ (ts : List (ANF.PropName × ANF.Trivial)) (n' m' : Nat), (k ts).run n' = .ok (ANF.Expr.return none, m') := by
   induction props generalizing k n m with
-  | nil => right; exact ⟨[], n, m, h⟩
-  | cons p rest ihl =>
-    obtain ⟨pname, pe⟩ := p
-    simp only [ANF.normalizeProps] at h
-    rcases ih pname pe (List.mem_cons_self _ _) _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+  | nil => right; simp only [ANF.normalizeProps] at h; exact ⟨[], n, m, h⟩
+  | cons p rest ih_list =>
+    unfold ANF.normalizeProps at h
+    rcases ih p.1 p.2 (@List.mem_cons_self _ _ rest) _ _ _ h with hleft | ⟨t, n', m', hkt⟩
     · exact Or.inl (HasReturnInHeadProps.head hleft)
-    · rcases ihl (fun name e he => ih name e (List.mem_cons_of_mem _ he)) _ _ _ hkt with hleft | hright
+    · rcases ih_list (fun name e he => ih name e (List.mem_cons_of_mem _ he)) _ _ _ hkt with hleft | hright
       · exact Or.inl (HasReturnInHeadProps.tail hleft)
-      · exact Or.inr hright
+      · obtain ⟨ts, n'', m'', hkts⟩ := hright
+        exact Or.inr ⟨(p.1, t) :: ts, n'', m'', hkts⟩
 
 private theorem normalizeProps_return_some_or_k
     (props : List (Flat.PropName × Flat.Expr))
@@ -4313,16 +4335,16 @@ private theorem normalizeProps_return_some_or_k
     (k : List (ANF.PropName × ANF.Trivial) → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat)
     (h : (ANF.normalizeProps props k).run n = .ok (.return (some arg), m)) :
     HasReturnInHeadProps props ∨ ∃ (ts : List (ANF.PropName × ANF.Trivial)) (n' m' : Nat), (k ts).run n' = .ok (.return (some arg), m') := by
-  induction props generalizing k n m with
-  | nil => right; exact ⟨[], n, m, h⟩
-  | cons p rest ihl =>
-    obtain ⟨pname, pe⟩ := p
-    simp only [ANF.normalizeProps] at h
-    rcases ih pname pe (List.mem_cons_self _ _) _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+  induction props generalizing k arg n m with
+  | nil => right; simp only [ANF.normalizeProps] at h; exact ⟨[], n, m, h⟩
+  | cons p rest ih_list =>
+    unfold ANF.normalizeProps at h
+    rcases ih p.1 p.2 (@List.mem_cons_self _ _ rest) _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
     · exact Or.inl (HasReturnInHeadProps.head hleft)
-    · rcases ihl (fun name e he => ih name e (List.mem_cons_of_mem _ he)) _ _ _ _ hkt with hleft | hright
+    · rcases ih_list (fun name e he => ih name e (List.mem_cons_of_mem _ he)) _ _ _ _ hkt with hleft | hright
       · exact Or.inl (HasReturnInHeadProps.tail hleft)
-      · exact Or.inr hright
+      · obtain ⟨ts, n'', m'', hkts⟩ := hright
+        exact Or.inr ⟨(p.1, t) :: ts, n'', m'', hkts⟩
 
 /-! ## Main theorem: normalizeExpr_return_or_k (none case) -/
 

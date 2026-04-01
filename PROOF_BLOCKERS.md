@@ -4,11 +4,11 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ CC and ANF compile independently. (2026-04-01T03:05)
+## BUILD STATUS: ✅ CC and ANF compile independently. (2026-04-01T04:05)
 
-## Sorry Count: 36 actual (19 ANF + 17 CC actual + 0 Lower) — grep-c 39 (includes 3 CC comments)
-- ANF: 19 sorries (was 18). HasAwaitInHead infrastructure BUILT (440 lines). await_step_sim partially proved — 1 sorry → 2 decomposed sorries. Next: HasReturnInHead + return_step_sim. GROUP B (7) BLOCKED. GROUP C (2 break/continue) unprovable.
-- CC: 17 actual sorry lines. Agents actively decomposing: objectLit all-values partially expanded (L5807), tryCatch being worked (L6213 DEBUG2, L6243). Targets: objectLit CCState (L5982), arrayLit all-values (L5989), arrayLit CCState (L6085), tryCatch body-value (L6213, L6243). ~6 blocked (CCStateAgree, FuncsCorr, semantic mismatch). 2 stubs. 1 functionDef.
+## Sorry Count: 36 actual (20 ANF + 16 CC actual + 0 Lower)
+- ANF: 20 sorries. HasReturnInHead infrastructure BUILT (L4103-4892). normalizeExpr_return_step_sim DEFINED (L5466) but body sorry (L5493). Main theorem return case (L5942+) already uses it. GROUP B (7) BLOCKED. GROUP C (2 break/continue) unprovable. 7 compound/eval-context sorries need depth induction.
+- CC: 16 actual sorry statements. jsspec closed tryCatch body-value none. Actionable: objectLit sub-step (L5967, wasmspec), objectLit all-values (L5974, wasmspec), arrayLit sub-step (L6070, jsspec), tryCatch with-finally (L6197, jsspec), tryCatch body non-value (L6200, jsspec). ~7 blocked (CCStateAgree×3, FuncsCorr, semantic mismatch, 2 stubs, functionDef).
 - Lower: 0 sorries ✓ DONE.
 
 ### ~~HeapCorr prefix blocks objectLit/arrayLit/newObj all-values~~ — PARTIALLY RESOLVED
