@@ -5292,7 +5292,7 @@ private theorem closureConvert_step_simulation
           subst hsf'_eq
           have hdepth : value.depth < n := by simp [Core.Expr.depth] at hd; omega
           have hncfr_v : noCallFrameReturn value = true := by
-            simp [noCallFrameReturn] at hncfr; exact hncfr.2.2
+            simp [noCallFrameReturn] at hncfr; exact hncfr
           have hexprwf_v : ExprAddrWF value sc.heap.objects.size := by
             simp [ExprAddrWF] at hexprwf; exact hexprwf.2.2
           have hcv_wf : ValueAddrWF cv sc.heap.objects.size := by
@@ -5331,7 +5331,7 @@ private theorem closureConvert_step_simulation
             · simp only [sc', Flat.convertExpr, Flat.convertValue]
               rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from (congrArg Prod.fst hconv').symm]
               rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
-            · rw [hst]; rw [hst_iv]; exact hAgreeOut
+            · subst hst; exact hAgreeOut
       | none =>
         -- idx needs stepping; obj is already a value
         have hfnv_i : Flat.exprValue? (Flat.convertExpr idx scope envVar envMap st).fst = none :=
@@ -5357,14 +5357,14 @@ private theorem closureConvert_step_simulation
                 (Flat.convertExpr idx scope envVar envMap st).snd).fst hfnv_i t sa hm
               rw [heq] at hstep; simp at hstep
               obtain ⟨rfl, hsf'eq⟩ := hstep
-              exact ⟨sa, rfl, by rw [← hsf'eq]; congr 1⟩
+              exact ⟨sa, rfl, hsf'eq.symm⟩
             · have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr := convertValue_not_object cv hno
               have heq := Flat_step?_setIndex_nonobject_step_idx sf (Flat.convertValue cv) _
                 (Flat.convertExpr value scope envVar envMap
                   (Flat.convertExpr idx scope envVar envMap st).snd).fst hno_flat hfnv_i t sa hm
               rw [heq] at hstep; simp at hstep
               obtain ⟨rfl, hsf'eq⟩ := hstep
-              exact ⟨sa, rfl, by rw [← hsf'eq]; congr 1⟩
+              exact ⟨sa, rfl, hsf'eq.symm⟩
           | none =>
             have heq := Flat_step?_setIndex_value_idx_none sf (Flat.convertValue cv) _ (Flat.convertExpr value scope envVar envMap
               (Flat.convertExpr idx scope envVar envMap st).snd).fst hfnv_i hm
@@ -5372,7 +5372,7 @@ private theorem closureConvert_step_simulation
         subst hsf'_eq
         have hdepth : idx.depth < n := by simp [Core.Expr.depth] at hd; omega
         have hncfr_i : noCallFrameReturn idx = true := by
-          simp [noCallFrameReturn] at hncfr; exact hncfr.1.2
+          simp [noCallFrameReturn] at hncfr; exact hncfr.1
         have hexprwf_i : ExprAddrWF idx sc.heap.objects.size := by
           simp [ExprAddrWF] at hexprwf; exact hexprwf.2.1
         have hcv_wf : ValueAddrWF cv sc.heap.objects.size := by
@@ -5401,8 +5401,8 @@ private theorem closureConvert_step_simulation
         · exact henvwf'
         · exact hheapvwf'
         · exact hheapna'
-        · simp [sc', noCallFrameReturn]; exact ⟨⟨hncfr', by
-            simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩⟩
+        · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by
+            simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
         · simp only [sc']; simp only [ExprAddrWF]
           have heap_mono := Core_step_heap_size_mono hcstep_sub
           refine ⟨ValueAddrWF_mono hcv_wf heap_mono, hexprwf', ?_⟩

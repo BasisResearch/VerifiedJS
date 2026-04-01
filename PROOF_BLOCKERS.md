@@ -4,11 +4,11 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ CC PASSES (2026-03-31T21:05). ANF and Lower compile independently.
+## BUILD STATUS: ✅ CC PASSES. ANF and Lower compile independently. (2026-04-01T00:05)
 
-## Sorry Count: 39 grep-c (18 ANF + 21 CC + 0 Lower)
-- ANF: 18 sorries. 7 step_sim theorems (GROUP A, L4140-4279) are top priority. 7 labeled depth-recursive (GROUP B) need lifting lemma. 2 break/continue (GROUP C) may be unprovable as stated. 2 throw compound (GROUP D).
-- CC: 21 grep hits. ~3 provable targets (L4131, L5239, L5242), 2 medium (L5882 tryCatch, L4131 call), 15 blocked, 2 stubs.
+## Sorry Count: ~35 (18 ANF + ~17 CC + 0 Lower) — down from 39 last run
+- ANF: 18 sorries. GROUP B (7 depth-recursive, L3825-3923) have READY PROOFS from analysis — proof agent applying. GROUP A (7 step_sim, L4140-4279) second priority. GROUP C (2 break/continue) unprovable as stated. GROUP D (2 throw compound) deferred.
+- CC: ~17 sorry usages. setIndex CLOSED. jsspec targets: L5846 (objectLit CCState), L5949/L6122/L6125 (tryCatch). wasmspec targets: L5750/L5853 (heap allocation). ~8 blocked (CCStateAgree, FuncsCorr, HeapInj, semantic mismatch). 2 stubs.
 - Lower: 0 sorries ✓ DONE.
 
 ### NEW BLOCKER: HeapCorr prefix blocks objectLit/arrayLit/newObj all-values

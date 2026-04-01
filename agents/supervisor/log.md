@@ -7948,3 +7948,60 @@ Realistic case:
 
 ## Run: 2026-04-01T00:05:01+00:00
 
+
+## Run: 2026-04-01T00:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 18 + CC ~17 + Lower 0 = ~35
+- **Delta from last run (23:30)**: 39 → 35. NET -4.
+- **Breakdown**: CC 21→17 (jsspec closed consoleLog helpers, non-function callee, noCallFrameReturn; wasmspec fixed 17 regressions). ANF steady at 18 (proof agent analyzing, not yet applying). Lower 0 ✓.
+- **BUILD**: Both ANF and CC compile ✓
+
+### Agent Status
+1. **proof** (PID 1632509, started 23:30): ACTIVE. Large lean worker (1.5GB) on ANFConvertCorrect.lean. Last log: analyzed all 18 sorries, confirmed GROUP B ih approach found by wasmspec. Hasn't applied proofs yet.
+   - Prompt REWRITTEN: GROUP B proofs pasted in with exact tactics. Should close 7 sorries immediately.
+
+2. **jsspec** (PID 1632807, started 23:30): ACTIVE. Last major achievement: closed 6 CC sorries (consoleLog helpers, non-function callee, noCallFrameReturn).
+   - Prompt UPDATED: redirected to L5846 (objectLit CCState), L5949/L6122/L6125 (tryCatch cases).
+
+3. **wasmspec** (PID 1632927, started 23:30): ACTIVE. Last major achievement: fixed 17 CC regressions (38→21). Has ready proofs for 7 ANF GROUP B sorries but can't write ANF.
+   - Prompt UPDATED: redirected to L5750/L5853 (objectLit/arrayLit heap allocation).
+
+### Key Findings
+- ANF file now group-writable (rw-rw----). Was blocking wasmspec and jsspec previously.
+- wasmspec found working ih tactics for GROUP B but couldn't apply due to permissions. Now in proof prompt.
+- CC setIndex sorries (L5239/5242) fully CLOSED by wasmspec.
+- L4149 (call function) BLOCKED — needs FuncsCorr invariant not in codebase.
+
+### Sorry Classification (updated)
+```
+ANF (18):
+  GROUP B (7, L3825-3923): READY PROOFS — proof agent applying
+  GROUP C (2, L3940/3953): unprovable as stated
+  GROUP D (2, L4106/4109): deferred (context lifting)
+  GROUP A (7, L4140-4279): step_sim — second priority
+
+CC (~17 usages):
+  STUBS (2): L1507/1508 forIn/forOf
+  BLOCKED (8): L3280 HeapInj, L3608/3631x2 CCStateAgree, L4149 FuncsCorr, L4347 newObj, L4937 getIndex mismatch, L6157 while_
+  TARGETS (5): L5750 objectLit heap(wasmspec), L5846 objectLit CCState(jsspec), L5853 arrayLit heap(wasmspec), L5949/L6122/L6125 tryCatch(jsspec), L5950 functionDef(skip)
+```
+
+### Critical Path
+```
+                    ┌─ proof: 7 GROUP B (ready) → ANF 18→11
+Current (~35)      ─┤─ jsspec: L5846+L5949+L6122+L6125 → CC 17→13
+                    └─ wasmspec: L5750+L5853 → CC 13→11
+```
+Best case: 35 → 22 (7 ANF GROUP B + 6 CC targets)
+Realistic: 35 → 26-28 (5-7 GROUP B + 2-3 CC targets)
+
+### Actions Taken
+1. Counted sorries: ANF 18, CC ~17, Lower 0 = ~35 (down 4 from 39)
+2. REWROTE proof prompt: pasted GROUP B ready proofs with exact tactics
+3. Updated jsspec prompt: new targets L5846, L5949, L6122, L6125
+4. Updated wasmspec prompt: new targets L5750, L5853
+5. Updated PROOF_BLOCKERS.md sorry count and status
+6. Logged to time_estimate.csv
+
+---

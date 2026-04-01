@@ -1,4 +1,4 @@
-# wasmspec — Close CC setIndex sorries (L5239, L5242)
+# wasmspec — Close CC objectLit/arrayLit/tryCatch sorries
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,46 +11,42 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC 21 grep-sorry hits. ANF 18, Lower 0.
+## STATE: CC ~17 sorry usages (down from 21). setIndex sorries CLOSED. Many blocked.
 
-## CURRENT CC SORRY LOCATIONS (verified grep -n)
+## CURRENT CC SORRY LOCATIONS (verified grep -n, 2026-04-01 00:05)
 ```
 L1507, L1508: forIn/forOf stubs (SKIP)
-L3262: captured var (SKIP)
-L3590, L3613 x2: CCStateAgree (SKIP)
-L4131: call (jsspec TARGET)
-L4329: newObj (SKIP)
-L4919: getIndex string (SKIP)
-L5239: setIndex value-stepping (YOUR TARGET 1)
-L5242: setIndex idx-stepping (YOUR TARGET 2)
-L5574: objectLit (SKIP)
-L5670, L5677: arrayLit (SKIP)
-L5773, L5774: arrayLit CCState + functionDef (SKIP)
-L5882, L5885: tryCatch (jsspec TARGET)
-L5917: while_ CCState (SKIP)
+L3280: HeapInj refactor (SKIP)
+L3608, L3631 x2: CCStateAgree (SKIP)
+L4149: call function (BLOCKED - needs FuncsCorr)
+L4347: newObj (SKIP)
+L4937: getIndex string (SKIP - semantic mismatch)
+L5750: objectLit all-values heap (YOUR TARGET 1)
+L5846: objectLit CCState sub-step (jsspec TARGET)
+L5853: arrayLit all-values heap (YOUR TARGET 2)
+L5949, L5950: tryCatch + functionDef (jsspec/SKIP)
+L6122, L6125: tryCatch body (jsspec TARGET)
+L6157: while_ CCState (SKIP)
 ```
 
-## YOUR TARGETS (in priority order)
+## YOUR TARGETS
 
-### Target 1: setIndex value-stepping (L5239) — MEDIUM
+### Target 1: objectLit all-values heap (L5750)
+When all props are values: Core allocates object on heap, Flat does same.
+1. `lean_goal` at L5750
+2. Pattern: all props are values → Core.step? produces heap allocation
+3. Need to show Flat also allocates matching object
+4. Key: `allValues` on prop list → can extract values, match heap addresses
 
-Obj and idx are values but value arg needs stepping.
-1. `lean_goal` at L5239 to see full proof state
-2. Need IH on `value` (third arg of setIndex)
-3. Core steps the inner value expression; Flat does same with converted version
-4. Reconstruct setIndex with stepped value and unchanged obj/idx
-5. `lean_multi_attempt` with IH-based approaches
+### Target 2: arrayLit all-values heap (L5853)
+Same pattern as objectLit but for arrays.
+1. `lean_goal` at L5853
+2. All elements are values → heap allocation
 
-### Target 2: setIndex idx-stepping (L5242) — MEDIUM
-
-Obj is a value but idx needs stepping.
-1. `lean_goal` at L5242
-2. Need IH on `idx`
-3. Core steps idx; Flat does same
-4. Reconstruct setIndex with stepped idx
+**Note**: These are marked "heap allocation (same class as other value sub-cases)" — they may share infrastructure with setIndex both-values which you already proved. Check if similar helpers apply.
 
 ### COLLISION AVOIDANCE
-jsspec works on L4100-4200 and L5800-5950. You work on L5000-5650. Do NOT edit the same regions.
+jsspec works on L5800-6200. You work on L5000-5800. Do NOT edit overlapping regions.
 
 ## WORKFLOW:
 1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers
