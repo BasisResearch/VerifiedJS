@@ -4802,17 +4802,17 @@ private theorem normalizeExpr_await_step_sim
         refine ⟨?_, ?_⟩
         · -- ok case: vacuous since env.lookup = none
           intro val heval
-          simp only [ANF.evalTrivial, hv_anf] at heval
+          simp [ANF.evalTrivial, hv_anf] at heval
         · -- error case: evalTrivial gives ReferenceError
           intro msg heval
-          simp only [ANF.evalTrivial, hv_anf, Except.error.injEq] at heval
+          simp [ANF.evalTrivial, hv_anf] at heval
           subst heval
           -- Flat steps: .await (.var name) with lookup failure
           -- Step 1: .var name produces ReferenceError → .await wraps it
           have hstep_var : Flat.step? ⟨.var name, env, heap, trace, funcs, cs⟩ =
               some (.error ("ReferenceError: " ++ name),
                 ⟨.lit .undefined, env, heap, trace ++ [.error ("ReferenceError: " ++ name)], funcs, cs⟩) := by
-            unfold Flat.step?; simp [Flat.Env.lookup, hlookup]
+            simp [Flat.step?, Flat.Env.lookup, hlookup, Flat.pushTrace]
           have hstep1 := step?_await_error ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ (.var name)
             (by simp [Flat.exprValue?]) ("ReferenceError: " ++ name) _ hstep_var
           obtain ⟨s1, hs1_eq, hs1_expr, hs1_env, hs1_heap, _, _, hs1_trace⟩ := hstep1
@@ -4855,14 +4855,14 @@ private theorem normalizeExpr_await_step_sim
           simp only [ANF.Env.lookup, Flat.Env.lookup] at hlookup ⊢; exact hlookup
         refine ⟨?_, ?_⟩
         · intro val heval
-          simp only [ANF.evalTrivial, hv_anf] at heval
+          simp [ANF.evalTrivial, hv_anf] at heval
         · intro msg heval
-          simp only [ANF.evalTrivial, hv_anf, Except.error.injEq] at heval
+          simp [ANF.evalTrivial, hv_anf] at heval
           subst heval
           have hstep_this : Flat.step? ⟨.this, env, heap, trace, funcs, cs⟩ =
               some (.error ("ReferenceError: this"),
                 ⟨.lit .undefined, env, heap, trace ++ [.error "ReferenceError: this"], funcs, cs⟩) := by
-            unfold Flat.step?; simp [Flat.Env.lookup, hlookup]
+            simp [Flat.step?, Flat.exprValue?, Flat.Env.lookup, hlookup, Flat.pushTrace]
           have hstep1 := step?_await_error ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ .this
             (by simp [Flat.exprValue?]) "ReferenceError: this" _ hstep_this
           obtain ⟨s1, hs1_eq, hs1_expr, hs1_env, hs1_heap, _, _, hs1_trace⟩ := hstep1
