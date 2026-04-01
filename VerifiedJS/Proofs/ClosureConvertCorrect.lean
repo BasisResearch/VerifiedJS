@@ -6059,20 +6059,11 @@ private theorem closureConvert_step_simulation
         cases body <;> simp [Core.exprValue?] at hbv; subst hbv; rfl
       subst hlit
       -- body = .lit v: convertExpr (.lit v) = (.lit (convertValue v), st), so st1 = st
-      -- After simp [Flat.convertExpr] at hconv, hconv is a conjunction:
-      -- hconv.1 : sf.expr = .tryCatch (...) and hconv.2 : st' = (...)
-      -- Now simplify the body part (convertExpr (.lit v) = (.lit (convertValue v), st))
-      have hconv_body_fst : (Flat.convertExpr (Core.Expr.lit v) scope envVar envMap st).fst =
-          .lit (Flat.convertValue v) := by simp [Flat.convertExpr]
-      have hconv_body_snd : (Flat.convertExpr (Core.Expr.lit v) scope envVar envMap st).snd = st := by
-        simp [Flat.convertExpr]
-      rw [hconv_body_fst, hconv_body_snd] at hconv
-      obtain ⟨hsf_expr, hst'_eq⟩ := hconv
       cases hfin : finally_ with
       | none =>
-        simp [Flat.convertOptExpr] at hsf_expr hst'_eq
         have hsf_eta : sf = { sf with expr := .tryCatch (.lit (Flat.convertValue v)) catchParam
             (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst none } := by
+          have h := hconv; simp [Flat.convertExpr, Flat.convertOptExpr] at h
           cases sf; simp_all
         rw [hsf_eta] at hstep
         have hstep_rw := Flat_step?_tryCatch_body_value sf (Flat.convertValue v) catchParam
@@ -6097,13 +6088,14 @@ private theorem closureConvert_step_simulation
         · simp [sc', noCallFrameReturn]
         · simp [sc', ExprAddrWF, ValueAddrWF]
           simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-        · exact ⟨st, st, by simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, by rw [hst'_eq]; exact ⟨rfl, rfl⟩⟩
+        · refine ⟨st, st, by simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, ?_⟩
+          have h := hconv; simp [Flat.convertExpr, Flat.convertOptExpr] at h; rw [h.2]; exact ⟨rfl, rfl⟩
       | some fin =>
-        simp [Flat.convertOptExpr] at hsf_expr hst'_eq
         have hsf_eta : sf = { sf with expr := .tryCatch (.lit (Flat.convertValue v)) catchParam
             (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst
             (some (Flat.convertExpr fin scope envVar envMap
               (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).snd).fst) } := by
+          have h := hconv; simp [Flat.convertExpr, Flat.convertOptExpr] at h
           cases sf; simp_all
         rw [hsf_eta] at hstep
         have hstep_rw := Flat_step?_tryCatch_body_value_finally sf (Flat.convertValue v) catchParam
