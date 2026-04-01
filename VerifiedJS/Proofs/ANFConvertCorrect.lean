@@ -6306,11 +6306,10 @@ private theorem normalizeExpr_yield_step_sim
       intro t _ h; exact absurd h (by simp)
     · -- some error case: vacuous
       intro t _ h; exact absurd h (by simp)
-  | yield_some_direct =>
-    rename_i inner_val delegate'
+  | @yield_some_direct inner_val src_delegate =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
-    -- normalizeExpr (.yield (some inner_val) delegate') k ignores k
-    have hnorm' : (ANF.normalizeExpr inner_val (fun t => pure (ANF.Expr.yield (some t) delegate'))).run n =
+    -- normalizeExpr (.yield (some inner_val) src_delegate) k ignores k
+    have hnorm' : (ANF.normalizeExpr inner_val (fun t => pure (ANF.Expr.yield (some t) src_delegate))).run n =
         .ok (.yield arg delegate, m) := by
       simp only [ANF.normalizeExpr] at hnorm; exact hnorm
     cases inner_val with
