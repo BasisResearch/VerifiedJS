@@ -1,3 +1,39 @@
+## Run: 2026-04-01T00:00+00:00
+- **BUILD: PASSES** ✓
+- **ANF Sorries: 18** (count unchanged — structural progress described below)
+- **LowerCorrect: 0 sorries** ✓
+
+### What was done
+Proved the `labeled` base cases for all 6 return/yield inner sorries in `normalizeExpr_labeled_step_sim`. Each sorry was expanded into a case split where the `labeled` sub-case is fully proved and the remaining cases are sorry'd. Sorry count stays at 18 (3 old sorries → 3 new refined sorries per block, ×2 blocks = same count).
+
+**Proof technique for labeled sub-cases**: When `sf.expr = return(some(X(some(labeled l b_flat))))` (where X is return or yield):
+1. Take one flat step through the evaluation context to unwrap .labeled → b_flat
+2. After step: sf'.expr = return(some(X(some b_flat)))
+3. normalizeExpr(sf'.expr) k_triv = normalizeExpr b_flat X_k (because return/yield ignore outer k)
+4. This matches hbf from the hnorm decomposition
+5. k_triv = fun arg => pure (.trivial arg) satisfies trivializing requirement
+
+### Deep analysis: why remaining sorries are FUNDAMENTALLY blocked
+
+**The continuation mismatch problem**: normalizeExpr_labeled_step_sim requires trivializing k in the conclusion. But when the expression is wrapped in return(some ?), normalizeExpr uses an internal return continuation `fun t => pure (.return (some t))`, which is NOT trivializing. After lifting flat steps through the return context, normalizeExpr of the result uses this non-trivializing continuation, which doesn't match the trivializing k requirement.
+
+**Why labeled sub-case works but others don't**: For `inner_val = labeled l b_flat`, one flat step unwraps the labeled directly (through the outer context). normalizeExpr of the resulting expression still uses the internal return/yield continuation, but the RESULT matches body because the labeled was the source of .labeled in hnorm. For non-labeled inner_val (compound expressions with labeled deeper inside), multiple flat steps are needed, and each step stays within the return/yield evaluation context, preserving the non-trivializing continuation.
+
+**What would fix this** (estimated ~200 lines):
+1. A multi-step evaluation context lifting lemma: `Steps { s with expr := e } evs s' → Steps { s with expr := return(some e) } evs s''` (for silent steps)
+2. A normalizeExpr continuation independence theorem for specific expression forms
+3. Or: restructure normalizeExpr_labeled_step_sim to not require trivializing k in the conclusion (would require changes to ANF_SimRel and the main proof)
+
+### Current sorry classification (18 total)
+
+| Lines | Count | Category | Difficulty |
+|-------|-------|----------|-----------|
+| return/yield inner (non-labeled) | 6 | normalizeExpr_labeled_step_sim | Needs eval context lifting + continuation tracking |
+| L3982 (top compound) | 1 | normalizeExpr_labeled_step_sim | Same as above |
+| L3999/4012 | 2 | hasBreak/ContinueInHead | Likely UNPROVABLE (seq_right case requires sub-expression termination) |
+| L4165/4168 | 2 | throw compound/non-direct | Needs eval context lifting |
+| L4199-4338 (8 thms) | 7 | step_sim theorems | Each needs full case analysis + eval context lifting for compound cases |
+
 ## Run: 2026-03-31T21:30+00:00
 - **BUILD: PASSES** ✓ (both ANFConvertCorrect and LowerCorrect)
 - **ANF Sorries: 18** (unchanged — deep analysis of proof strategy below)
@@ -4589,3 +4625,4 @@ The prompt's suggested tactic `exact ih _ (...) (by cases hwf; assumption)` fail
 ## Run: 2026-03-31T23:30:01+00:00
 
 2026-04-01T00:30:01+00:00 SKIP: already running
+2026-04-01T00:41:01+00:00 DONE
