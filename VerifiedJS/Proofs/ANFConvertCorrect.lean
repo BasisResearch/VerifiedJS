@@ -99,6 +99,8 @@ private inductive VarFreeIn : String → Flat.Expr → Prop where
   | tryCatch_catch (x : String) (b : Flat.Expr) (cp : String) (cb : Flat.Expr) (fin : Option Flat.Expr) :
       VarFreeIn x cb → VarFreeIn x (.tryCatch b cp cb fin)
   | this_var : VarFreeIn "this" .this
+  | return_some_arg (x : String) (v : Flat.Expr) : VarFreeIn x v → VarFreeIn x (.«return» (some v))
+  | await_arg (x : String) (arg : Flat.Expr) : VarFreeIn x arg → VarFreeIn x (.await arg)
 
 /-- An expression is well-formed w.r.t. an environment if all free vars are bound. -/
 def ExprWellFormed (expr : Flat.Expr) (env : Flat.Env) : Prop :=
