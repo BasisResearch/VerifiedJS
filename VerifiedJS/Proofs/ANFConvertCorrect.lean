@@ -4773,59 +4773,111 @@ private theorem normalizeExpr_await_step_sim
           simp only [ANF.evalTrivial, ANF.trivialValue?] at heval
           exact absurd heval (by simp))
     | var name =>
-      -- normalizeExpr (.var name) k' = k' (.var name)
       simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
       obtain ⟨rfl, rfl⟩ := hnorm'
-      -- By ExprWellFormed, env.lookup name must succeed
-      have hwf_var : env.lookup name ≠ none := by
-        apply hewf; exact VarFreeIn.await_arg _ (VarFreeIn.var name)
-      obtain ⟨v, hv_flat⟩ := Option.ne_none_iff_exists'.mp hwf_var
-      have hv_anf : ANF.Env.lookup env name = some v := by
-        simp only [ANF.Env.lookup, Flat.Env.lookup] at hv_flat ⊢; exact hv_flat
-      refine ⟨?_, ?_⟩
-      · -- ok case: evalTrivial env (.var name) = .ok v
-        intro val heval
-        simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval
-        subst heval
-        have hv_flat_env : Flat.Env.lookup env name = some v := by
-          simp only [Flat.Env.lookup, ANF.Env.lookup] at hv_flat ⊢; exact hv_flat
-        -- Step 1: resolve var inside await
-        have hstep1 := Flat.step?_await_var_ok name v env heap trace funcs cs hv_flat_env
-        -- Step 2: await with literal value → lit v
-        have hstep2 := Flat.step?_await_lit_eq v env heap (trace ++ [.silent]) funcs cs
-        refine ⟨[.silent, .silent], _,
-          .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)),
-          rfl, rfl, rfl, ?_, ?_⟩
-        · simp only [List.append_assoc, List.cons_append, List.nil_append]
-        · simp only [observableTrace, List.filter]; rfl
-      · -- error case: vacuous since env.lookup name = some v
-        intro msg heval
-        simp only [ANF.evalTrivial, hv_anf] at heval
-        exact absurd heval (by simp)
+      -- Case split on env lookup (may succeed or fail)
+      cases hlookup : Flat.Env.lookup env name with
+      | some v =>
+        have hv_anf : ANF.Env.lookup env name = some v := by
+          simp only [ANF.Env.lookup, Flat.Env.lookup] at hlookup ⊢; exact hlookup
+        refine ⟨?_, ?_⟩
+        · -- ok case: evalTrivial env (.var name) = .ok v
+          intro val heval
+          simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval
+          subst heval
+          have hstep1 := Flat.step?_await_var_ok name v env heap trace funcs cs hlookup
+          have hstep2 := Flat.step?_await_lit_eq v env heap (trace ++ [.silent]) funcs cs
+          refine ⟨[.silent, .silent], _,
+            .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)),
+            rfl, rfl, rfl, ?_, ?_⟩
+          · simp only [List.append_assoc, List.cons_append, List.nil_append]
+          · simp only [observableTrace, List.filter]; rfl
+        · -- error case: vacuous since env.lookup name = some v
+          intro msg heval
+          simp only [ANF.evalTrivial, hv_anf] at heval
+          exact absurd heval (by simp)
+      | none =>
+        have hv_anf : ANF.Env.lookup env name = none := by
+          simp only [ANF.Env.lookup, Flat.Env.lookup] at hlookup ⊢; exact hlookup
+        refine ⟨?_, ?_⟩
+        · -- ok case: vacuous since env.lookup = none
+          intro val heval
+          simp only [ANF.evalTrivial, hv_anf] at heval
+        · -- error case: evalTrivial gives ReferenceError
+          intro msg heval
+          simp only [ANF.evalTrivial, hv_anf, Except.error.injEq] at heval
+          subst heval
+          -- Flat steps: .await (.var name) with lookup failure
+          -- Step 1: .var name produces ReferenceError → .await wraps it
+          have hstep_var : Flat.step? ⟨.var name, env, heap, trace, funcs, cs⟩ =
+              some (.error ("ReferenceError: " ++ name),
+                ⟨.lit .undefined, env, heap, trace ++ [.error ("ReferenceError: " ++ name)], funcs, cs⟩) := by
+            unfold Flat.step?; simp [Flat.Env.lookup, hlookup]
+          have hstep1 := step?_await_error ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ (.var name)
+            (by simp [Flat.exprValue?]) ("ReferenceError: " ++ name) _ hstep_var
+          obtain ⟨s1, hs1_eq, hs1_expr, hs1_env, hs1_heap, _, _, hs1_trace⟩ := hstep1
+          -- Step 2: .await (.lit .undefined) → .lit .undefined with silent
+          have hstep2 : Flat.step? s1 =
+              some (.silent, ⟨.lit .undefined, env, heap,
+                (trace ++ [.error ("ReferenceError: " ++ name)]) ++ [.silent], funcs, cs⟩) := by
+            have : s1 = ⟨.await (.lit .undefined), env, heap,
+                trace ++ [.error ("ReferenceError: " ++ name)], funcs, cs⟩ := by
+              cases s1; simp_all
+            rw [this]; unfold Flat.step?; rfl
+          refine ⟨[.error ("ReferenceError: " ++ name), .silent], _,
+            .tail ⟨hs1_eq⟩ (.tail ⟨hstep2⟩ (.refl _)),
+            rfl, rfl, rfl, ?_, ?_⟩
+          · simp only [List.append_assoc, List.cons_append, List.nil_append]
+          · simp only [observableTrace, List.filter]; rfl
     | this =>
       simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
       obtain ⟨rfl, rfl⟩ := hnorm'
-      have hwf_this : env.lookup "this" ≠ none := by
-        apply hewf; exact VarFreeIn.await_arg _ VarFreeIn.this_var
-      obtain ⟨v, hv_flat⟩ := Option.ne_none_iff_exists'.mp hwf_this
-      have hv_anf : ANF.Env.lookup env "this" = some v := by
-        simp only [ANF.Env.lookup, Flat.Env.lookup] at hv_flat ⊢; exact hv_flat
-      refine ⟨?_, ?_⟩
-      · intro val heval
-        simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval
-        subst heval
-        have hv_flat_env : Flat.Env.lookup env "this" = some v := by
-          simp only [Flat.Env.lookup, ANF.Env.lookup] at hv_flat ⊢; exact hv_flat
-        have hstep1 := Flat.step?_await_this_ok v env heap trace funcs cs hv_flat_env
-        have hstep2 := Flat.step?_await_lit_eq v env heap (trace ++ [.silent]) funcs cs
-        refine ⟨[.silent, .silent], _,
-          .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)),
-          rfl, rfl, rfl, ?_, ?_⟩
-        · simp only [List.append_assoc, List.cons_append, List.nil_append]
-        · simp only [observableTrace, List.filter]; rfl
-      · intro msg heval
-        simp only [ANF.evalTrivial, hv_anf] at heval
-        exact absurd heval (by simp)
+      cases hlookup : Flat.Env.lookup env "this" with
+      | some v =>
+        have hv_anf : ANF.Env.lookup env "this" = some v := by
+          simp only [ANF.Env.lookup, Flat.Env.lookup] at hlookup ⊢; exact hlookup
+        refine ⟨?_, ?_⟩
+        · intro val heval
+          simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval
+          subst heval
+          have hstep1 := Flat.step?_await_this_ok v env heap trace funcs cs hlookup
+          have hstep2 := Flat.step?_await_lit_eq v env heap (trace ++ [.silent]) funcs cs
+          refine ⟨[.silent, .silent], _,
+            .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)),
+            rfl, rfl, rfl, ?_, ?_⟩
+          · simp only [List.append_assoc, List.cons_append, List.nil_append]
+          · simp only [observableTrace, List.filter]; rfl
+        · intro msg heval
+          simp only [ANF.evalTrivial, hv_anf] at heval
+          exact absurd heval (by simp)
+      | none =>
+        have hv_anf : ANF.Env.lookup env "this" = none := by
+          simp only [ANF.Env.lookup, Flat.Env.lookup] at hlookup ⊢; exact hlookup
+        refine ⟨?_, ?_⟩
+        · intro val heval
+          simp only [ANF.evalTrivial, hv_anf] at heval
+        · intro msg heval
+          simp only [ANF.evalTrivial, hv_anf, Except.error.injEq] at heval
+          subst heval
+          have hstep_this : Flat.step? ⟨.this, env, heap, trace, funcs, cs⟩ =
+              some (.error ("ReferenceError: this"),
+                ⟨.lit .undefined, env, heap, trace ++ [.error "ReferenceError: this"], funcs, cs⟩) := by
+            unfold Flat.step?; simp [Flat.Env.lookup, hlookup]
+          have hstep1 := step?_await_error ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ .this
+            (by simp [Flat.exprValue?]) "ReferenceError: this" _ hstep_this
+          obtain ⟨s1, hs1_eq, hs1_expr, hs1_env, hs1_heap, _, _, hs1_trace⟩ := hstep1
+          have hstep2 : Flat.step? s1 =
+              some (.silent, ⟨.lit .undefined, env, heap,
+                (trace ++ [.error "ReferenceError: this"]) ++ [.silent], funcs, cs⟩) := by
+            have : s1 = ⟨.await (.lit .undefined), env, heap,
+                trace ++ [.error "ReferenceError: this"], funcs, cs⟩ := by
+              cases s1; simp_all
+            rw [this]; unfold Flat.step?; rfl
+          refine ⟨[.error "ReferenceError: this", .silent], _,
+            .tail ⟨hs1_eq⟩ (.tail ⟨hstep2⟩ (.refl _)),
+            rfl, rfl, rfl, ?_, ?_⟩
+          · simp only [List.append_assoc, List.cons_append, List.nil_append]
+          · simp only [observableTrace, List.filter]; rfl
     | «break» _ =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
