@@ -5830,9 +5830,8 @@ private theorem closureConvert_step_simulation
         simp [Array.size_push] at haddr
         rw [Array.getElem?_push] at hprops'
         split at hprops'
-        · have haddr' : addr < sc.heap.objects.size := by omega
-          exact ValueAddrWF_mono (hheapvwf addr haddr' props' hprops' kv hkv) (by simp [Array.size_push]; omega)
-        · simp only [Option.some.injEq] at hprops'; subst hprops'
+        · -- addr = sc.heap.objects.size → new object (the pushed cheapProps)
+          simp only [Option.some.injEq] at hprops'; subst hprops'
           have hwf_props : ExprAddrPropListWF props sc.heap.objects.size := by
             simp [ExprAddrWF] at hexprwf; exact hexprwf
           obtain ⟨⟨k, e⟩, hmem, hfm⟩ := List.mem_filterMap.mp hkv
@@ -5854,21 +5853,23 @@ private theorem closureConvert_step_simulation
               rcases List.mem_cons.mp hmem' with rfl | h
               · simp only [ExprAddrWF, ValueAddrWF] at hps; exact hps.1
               · exact ih hps.2 h
-      refine ⟨injMap, sc', ⟨hcstep⟩, ?_, hinj', henvCorr,
-        ?_, hheapvwf', ?_, ?_, ?_, ?_⟩
-      · -- trace
-        simp [sc', htrace]
-      · -- EnvAddrWF
-        simp only [sc', cheap']; exact EnvAddrWF_mono henvwf (by simp [Array.size_push]; omega)
-      · -- hheapna
-        simp only [sc', cheap', caddr, Array.size_push]; rw [hheapna]; omega
-      · -- noCallFrameReturn
-        simp [sc', noCallFrameReturn]
-      · -- ExprAddrWF
-        simp only [sc', ExprAddrWF, ValueAddrWF, cheap', caddr, Array.size_push]; rw [hheapna]; omega
-      · -- CCState threading
-        refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by rw [hst, hst_eq]⟩
-        simp only [sc', Flat.convertExpr, Flat.convertValue, caddr, hna_eq]
+        · -- addr ≠ sc.heap.objects.size → old object
+          next hne =>
+          have haddr' : addr < sc.heap.objects.size := by omega
+          exact ValueAddrWF_mono (hheapvwf addr haddr' props' hprops' kv hkv) (by simp [Array.size_push]; omega)
+      exact ⟨injMap, sc', ⟨hcstep⟩,
+        by simp [sc', htrace],
+        hinj',
+        henvCorr,
+        EnvAddrWF_mono henvwf (by simp only [sc', cheap']; simp [Array.size_push]; omega),
+        hheapvwf',
+        by simp only [sc', cheap', caddr, Array.size_push]; rw [hheapna]; omega,
+        by simp [sc', noCallFrameReturn],
+        by simp only [sc', ExprAddrWF, ValueAddrWF, cheap', caddr, Array.size_push]; rw [hheapna]; omega,
+        st, st,
+        by simp only [sc', Flat.convertExpr, Flat.convertValue, caddr, hna_eq],
+        ⟨rfl, rfl⟩,
+        by rw [hst, hst_eq]⟩
     | some val =>
       obtain ⟨done_c, propName_c, target_c, rest_c⟩ := val
       have htarget_not_lit := Core.firstNonValueProp_not_lit hcfnv

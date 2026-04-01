@@ -1,4 +1,4 @@
-# proof — Prove normalizeExpr_return_step_sim, then yield
+# proof — Prove yield_step_sim then let/seq/if/tryCatch_step_sim
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -12,66 +12,59 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: ANF 20 sorries. Lower 0 ✓. CC — OTHER AGENTS OWN IT.
+## STATE: ANF 21 sorries. Lower 0 ✓. CC — OTHER AGENTS OWN IT.
 
-## EXCELLENT PROGRESS: HasReturnInHead infrastructure DONE ✓
-You have built:
-- `HasReturnInHead` inductive (L4103-4131)
-- `normalizeExpr_return_or_k` lemmas (through L4851+)
-- `normalizeExpr_return_implies_hasReturnInHead` (L4878)
-- `normalizeExpr_return_step_sim` DEFINED at L5466 but body is SORRY (L5493)
-- The main theorem's return case (L5942+) already USES normalizeExpr_return_step_sim — it works!
+## YOUR IMMEDIATE TASK: normalizeExpr_yield_step_sim (L5841)
 
-## YOUR IMMEDIATE TASK: Prove normalizeExpr_return_step_sim (L5493)
+This is the EXACT SAME PATTERN as normalizeExpr_return_step_sim. You already have:
+- HasReturnInHead + normalizeExpr_return_implies_hasReturnInHead
+- normalizeExpr_return_step_sim with partial proof (L5634, L5637 still sorry)
 
-The theorem is at L5466-5493. It takes `hnorm`, `hk` (trivial-preserving k), `hewf` and produces 3 conjuncts:
-1. `arg = none` → return without argument
-2. `∀ t v, arg = some t → evalTrivial ok` → return with successful arg
-3. `∀ t msg, arg = some t → evalTrivial error` → return with failed arg
+For yield: Build `HasYieldInHead` + `normalizeExpr_yield_or_k` + `normalizeExpr_yield_implies_hasYieldInHead`.
+Copy the HasReturnInHead infrastructure directly, replacing `.return` with `.yield`.
 
-**Strategy**: Apply the EXACT SAME pattern as your await_step_sim proof:
-1. Use `normalizeExpr_return_implies_hasReturnInHead` to get `HasReturnInHead sf.expr`
-2. Induction on `HasReturnInHead sf.expr`
-3. For each constructor:
-   - `return_none_direct`: Flat.step? on .return none → trivially produces the required events
-   - `return_some_direct`: Flat.step? on .return (some v) → evaluate v, produce events
-   - `seq_left`, `let_init`, etc.: decompose, use IH
+Then the proof follows the same structure:
+1. Get `HasYieldInHead sf.expr` from `normalizeExpr_yield_implies_hasYieldInHead`
+2. Case split on the inductive
+3. Direct cases: `yield_none_direct`, `yield_some_direct` — use `Flat.step?` unfolding
+4. Compound cases: sorry (same as return compound cases)
 
-**Key helpers you already have from await work:**
-- `Flat.step?_await_lit_eq`, `Flat.step?_await_var_ok`, `Flat.step?_await_this_ok`
-- Analogues for return: you need `Flat.step?_return_none_eq` and `Flat.step?_return_some_eq`
-  Build these first if they don't exist!
+This should CLOSE the monolithic yield_step_sim sorry by decomposing into specific cases.
 
-```lean
--- Template:
-private theorem Flat.step?_return_none_eq (env : Flat.Env) (heap : Core.Heap)
-    (trace : List Core.TraceEvent) (funcs : Array Flat.FuncDef) (cs : List Flat.Env) :
-    Flat.step? ⟨.return none, env, heap, trace, funcs, cs⟩ =
-    some (.error "return:undefined",
-      ⟨.lit .undefined, env, heap, trace ++ [.error "return:undefined"], funcs, cs⟩) := by
-  unfold Flat.step?; rfl
-```
+## PRIORITY 2: let_step_sim (L5862)
 
-### Priority 2: After L5493 is done, build HasYieldInHead + yield_step_sim
-Same pattern. Copy HasReturnInHead → HasYieldInHead. Build yield helpers.
+The let case should be relatively simple:
+- `normalizeExpr` produces `.let name rhs body` → this comes from wrapping sub-expressions
+- ANF.step? on `.let` evaluates the complex RHS → need to show Flat steps simulate
+- Key: use `normalizeExpr` inversion to find which source expression produced the `.let`
 
-### Priority 3: Compound cases (L5097, L5128, L5139, L5217, L5248, L5259, L5276)
-These are "non-labeled inner value" and "compound/bindComplex" cases. They need depth induction.
+## PRIORITY 3: seq_step_sim (L5883), if_step_sim (L5904), tryCatch_step_sim (L5925)
+
+Same pattern as let — invert normalizeExpr to find source, then simulate.
 
 ## DO NOT ATTEMPT:
-- GROUP B (architecturally blocked)
-- hasBreak/ContinueInHead (L5293, L5306) — potentially unprovable as stated
+- Compound cases in return/await (L5118-5298, L5481-5484, L5634, L5637, L5800, L5807, L5810) — these all need depth induction, do them LAST
+- hasBreak/ContinueInHead (L5315, L5328) — potentially unprovable
 
-## CURRENT ANF SORRY LOCATIONS (file is 7562 lines):
+## CURRENT ANF SORRY LOCATIONS (file is 7706 lines):
 ```
-Decomposed await: L5097, L5128, L5139, L5217, L5248, L5259, L5276
-hasBreak/ContinueInHead: L5293, L5306
-await flat_arg compound: L5459, L5462
-return_step_sim BODY: L5493 (YOUR #1 TARGET)
-await inner_arg: L5656, L5663, L5666
-yield/seq/if/let/tryCatch: L5697, L5718, L5739, L5760, L5781
+Decomposed await inner value/compound: L5118, L5150, L5161, L5239, L5270, L5281, L5298
+hasBreak/ContinueInHead: L5315, L5328
+await flat_arg compound: L5481, L5484
+return compound cases: L5634, L5637
+await this-none semantic mismatch: L5800
+await compound inner_arg: L5807, L5810
+yield_step_sim: L5841 (YOUR #1 TARGET)
+let_step_sim: L5862 (YOUR #2 TARGET)
+seq_step_sim: L5883 (YOUR #3 TARGET)
+if_step_sim: L5904
+tryCatch_step_sim: L5925
 ```
 
 ## DO NOT TOUCH:
 - ClosureConvertCorrect.lean — jsspec and wasmspec are editing it
 - LowerCorrect.lean — DONE (0 sorries)
+
+## CRITICAL: LOG YOUR WORK
+**FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`
+**LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`

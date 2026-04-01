@@ -13,7 +13,7 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## STATE: CC 16 actual sorry statements. You previously closed objectLit all-values heap and 2 setIndex sorries. Excellent work.
 
-## CURRENT CC SORRY LOCATIONS (verified grep -n, 2026-04-01 04:05)
+## CURRENT CC SORRY LOCATIONS (verified grep -n, 2026-04-01 05:05)
 ```
 L1507, L1508: forIn/forOf stubs (SKIP)
 L3320: HeapInj refactor (SKIP)
@@ -21,28 +21,28 @@ L3648, L3671 x2: CCStateAgree (SKIP)
 L4189: call function (BLOCKED)
 L4387: newObj (SKIP)
 L4977: getIndex string (SKIP)
-L5967: objectLit sub-step (YOUR TARGET 1)
-L5974: objectLit all-values (YOUR TARGET 2)
-L6070: arrayLit sub-step (jsspec TARGET — DO NOT TOUCH)
-L6071: functionDef (SKIP)
-L6197, L6200: tryCatch (jsspec TARGET — DO NOT TOUCH)
-L6232: while_ CCState (SKIP)
+L5968: objectLit sub-step (YOUR TARGET 1)
+L5975: objectLit all-values (YOUR TARGET 2)
+L6071: arrayLit sub-step (jsspec TARGET — DO NOT TOUCH)
+L6072: functionDef (SKIP)
+L6227, L6230: tryCatch (jsspec TARGET — DO NOT TOUCH)
+L6262: while_ CCState (SKIP)
 ```
 
 ## YOUR TARGETS
 
-### Target 1: objectLit sub-step sorry (L5967)
+### Target 1: objectLit sub-step sorry (L5968)
 A property sub-expression steps. You need:
 - IH on the stepping sub-expression
 - CCState threading through the prop list prefix (already converted)
 - Connect IH output to the objectLit step conclusion
 
 Look at your previous setIndex sub-step proof for the pattern. The key is:
-1. Get the goal with `lean_goal` at L5967
+1. Get the goal with `lean_goal` at L5968
 2. Apply IH, then thread CCState via `convertExpr_state_determined`
 3. Construct the `Core.step?_objectLit_step_prop` / analogous stepping lemma
 
-### Target 2: objectLit all-values (L5974)
+### Target 2: objectLit all-values (L5975)
 All elements are values → heap allocation. You proved this for one pattern already.
 Apply `HeapInj_alloc_both` + `convertPropList_filterMap_eq`.
 

@@ -8173,3 +8173,33 @@ Realistic: 35 → 26-28 (5-7 GROUP B + 2-3 CC targets)
 
 ## Run: 2026-04-01T05:05:01+00:00
 
+### Metrics
+- **Sorry count**: ANF 21 + CC 16 actual (18 grep-c, 3 comment-only lines) + Lower 0 = 37 actual
+- **Delta from last run (04:05)**: 36 → 37. NET +1. ANF went 20→21 (+1 from proof agent decomposition of return_step_sim into sub-cases). CC unchanged at 16.
+- **BUILD**: jsspec freshly started (05:00). wasmspec running since 01:15 (4 hours). Proof agent EXITED at 04:57.
+
+### Agent Status
+1. **proof**: EXITED (ran 03:30-04:57). Built HasReturnInHead infrastructure, decomposed return_step_sim. File grew 7562→7706 lines. Prompt REWRITTEN: focus on yield_step_sim (L5841) then let/seq/if/tryCatch_step_sims.
+
+2. **jsspec** (PID 1927031, started 05:00): JUST STARTED. Fresh run.
+   - Prompt UPDATED: corrected line numbers (L6071, L6227, L6230).
+
+3. **wasmspec** (PID 1745288, started 01:15): ACTIVE (4 hours). Long-running.
+   - Prompt UPDATED: corrected line numbers (L5968, L5975).
+   - Has been running nearly 4 hours — may exit soon from turn limit.
+
+### Analysis
+- Proof agent made good structural progress (HasReturnInHead) but no net sorry reduction. The +1 is expected decomposition. The agent needs to be restarted.
+- CC sorry count FLAT at 16 — jsspec just restarted, wasmspec has been quiet (possibly stuck on objectLit sub-step or building).
+- Total trend: 25→35→37 (decomposition phase) with 0 LowerCorrect sorries achieved. The compound cases remain the hard blocker.
+- Key insight: The 5 big _step_sim theorems at L5841-5925 (yield, let, seq, if, tryCatch) are each fully sorry. These are independent and the proof agent should tackle them in order.
+
+### Actions Taken
+1. Counted sorries: 37 actual (net +1, explained by decomposition).
+2. REWROTE proof prompt: yield_step_sim as #1, let/seq/if/tryCatch as #2-5. Current line numbers.
+3. Updated jsspec prompt: corrected sorry line numbers (shifted by ~30 lines in tryCatch area).
+4. Updated wasmspec prompt: corrected sorry line numbers (L5968, L5975).
+5. Logged to time_estimate.csv.
+
+2026-04-01T05:08:20+00:00 DONE
+2026-04-01T05:08:25+00:00 DONE
