@@ -5189,8 +5189,7 @@ private theorem normalizeExpr_labeled_step_sim :
                 · rw [hexpr_s]; simp only [ANF.normalizeExpr, StateT.run]; exact hbf
                 · intro arg n''; exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
               · rw [htrace_s, observableTrace_append]; simp [observableTrace]; decide
-              · rw [hexpr_s, henv_s]; intro x hfx; cases hfx with
-                | return_some_arg _ _ hinner => exact hwf x (VarFreeIn.return_some_arg _ _ (VarFreeIn.labeled_body _ _ _ hinner))
+              · rw [hexpr_s, henv_s]; intro x hfx; cases hfx
           | var name =>
             exfalso
             simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
@@ -5513,7 +5512,129 @@ private theorem normalizeExpr_return_step_sim
         sf'.expr = .lit .undefined ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
         sf'.trace = sf.trace ++ evs ∧
         observableTrace evs = observableTrace [.error msg]) := by
-  sorry
+  have hret := ANF.normalizeExpr_return_implies_hasReturnInHead sf.expr k hk arg n m hnorm
+  cases sf with
+  | mk e env heap trace funcs cs =>
+  simp only [Flat.State.expr] at hnorm hewf hret
+  cases hret with
+  | return_none_direct =>
+    -- sf.expr = .return none, normalizeExpr produces pure (.return none), so arg = none
+    simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
+    obtain ⟨rfl, rfl⟩ := hnorm
+    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
+    refine ⟨?_, ?_, ?_⟩
+    · -- none case
+      intro _
+      refine ⟨[.error "return:undefined"], _,
+        .tail ⟨by unfold Flat.step?; rfl⟩ (.refl _),
+        rfl, rfl, rfl, rfl, rfl⟩
+    · -- some ok case: vacuous (arg = none ≠ some t)
+      intro t _ h; exact absurd h (by simp)
+    · -- some error case: vacuous
+      intro t _ h; exact absurd h (by simp)
+  | return_some_direct =>
+    rename_i inner_val
+    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
+    -- normalizeExpr (.return (some inner_val)) k = normalizeExpr inner_val (fun t => pure (.return (some t)))
+    have hnorm' : (ANF.normalizeExpr inner_val (fun t => pure (ANF.Expr.return (some t)))).run n =
+        .ok (.return arg, m) := by
+      simp only [ANF.normalizeExpr] at hnorm; exact hnorm
+    cases inner_val with
+    | lit v =>
+      simp only [ANF.normalizeExpr, ANF.trivialOfFlatValue] at hnorm'
+      cases v <;> (
+        simp only [pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
+        obtain ⟨rfl, rfl⟩ := hnorm'
+        refine ⟨?_, ?_, ?_⟩
+        · intro h; exact absurd h (by simp)
+        · intro t val harg heval
+          simp only [Option.some.injEq] at harg; subst harg
+          simp only [ANF.evalTrivial, ANF.trivialValue?, Except.ok.injEq] at heval
+          subst heval
+          exact ⟨_, _, .tail ⟨by unfold Flat.step?; rfl⟩ (.refl _), rfl, rfl, rfl, rfl, rfl⟩
+        · intro t msg harg heval
+          simp only [Option.some.injEq] at harg; subst harg
+          simp only [ANF.evalTrivial, ANF.trivialValue?] at heval
+          exact absurd heval (by simp))
+    | var name =>
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
+      obtain ⟨rfl, rfl⟩ := hnorm'
+      -- By ExprWellFormed, env.lookup name must succeed
+      have hwf_var : env.lookup name ≠ none := by
+        apply hewf; exact VarFreeIn.return_some_arg _ _ (VarFreeIn.var name)
+      obtain ⟨v, hv_flat⟩ := Option.ne_none_iff_exists'.mp hwf_var
+      have hv_anf : ANF.Env.lookup env name = some v := by
+        simp only [ANF.Env.lookup, Flat.Env.lookup] at hv_flat ⊢; exact hv_flat
+      have hv_flat_env : Flat.Env.lookup env name = some v := by
+        simp only [Flat.Env.lookup, ANF.Env.lookup] at hv_flat ⊢; exact hv_flat
+      refine ⟨?_, ?_, ?_⟩
+      · intro h; exact absurd h (by simp)
+      · intro t val harg heval
+        simp only [Option.some.injEq] at harg; subst harg
+        simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval
+        subst heval
+        -- Step 1: .return (some (.var name)) → .return (some (.lit v))
+        have hstep1 : Flat.step? ⟨.return (some (.var name)), env, heap, trace, funcs, cs⟩ =
+            some (.silent, ⟨.return (some (.lit v)), env, heap, trace ++ [.silent], funcs, cs⟩) := by
+          unfold Flat.step?; simp [Flat.exprValue?, hv_flat_env, Flat.step?]
+        -- Step 2: .return (some (.lit v)) → .lit v with error
+        have hstep2 : Flat.step? ⟨.return (some (.lit v)), env, heap, trace ++ [.silent], funcs, cs⟩ =
+            some (.error ("return:" ++ Flat.valueToString v),
+              ⟨.lit v, env, heap, (trace ++ [.silent]) ++ [.error ("return:" ++ Flat.valueToString v)], funcs, cs⟩) := by
+          unfold Flat.step?; simp [Flat.exprValue?]
+        refine ⟨[.silent, .error ("return:" ++ Flat.valueToString v)], _,
+          .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)),
+          rfl, rfl, rfl, ?_, ?_⟩
+        · simp only [List.append_assoc, List.cons_append, List.nil_append]
+        · simp only [observableTrace, List.filter]; rfl
+      · intro t msg harg heval
+        simp only [Option.some.injEq] at harg; subst harg
+        simp only [ANF.evalTrivial, hv_anf] at heval
+        exact absurd heval (by simp)
+    | this =>
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
+      obtain ⟨rfl, rfl⟩ := hnorm'
+      have hwf_this : env.lookup "this" ≠ none := by
+        apply hewf; exact VarFreeIn.return_some_arg _ _ VarFreeIn.this_var
+      obtain ⟨v, hv_flat⟩ := Option.ne_none_iff_exists'.mp hwf_this
+      have hv_anf : ANF.Env.lookup env "this" = some v := by
+        simp only [ANF.Env.lookup, Flat.Env.lookup] at hv_flat ⊢; exact hv_flat
+      have hv_flat_env : Flat.Env.lookup env "this" = some v := by
+        simp only [Flat.Env.lookup, ANF.Env.lookup] at hv_flat ⊢; exact hv_flat
+      refine ⟨?_, ?_, ?_⟩
+      · intro h; exact absurd h (by simp)
+      · intro t val harg heval
+        simp only [Option.some.injEq] at harg; subst harg
+        simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval
+        subst heval
+        -- Step 1: .return (some .this) → .return (some (.lit v))
+        have hstep1 : Flat.step? ⟨.return (some .this), env, heap, trace, funcs, cs⟩ =
+            some (.silent, ⟨.return (some (.lit v)), env, heap, trace ++ [.silent], funcs, cs⟩) := by
+          unfold Flat.step?; simp [Flat.exprValue?, hv_flat_env, Flat.step?]
+        -- Step 2: .return (some (.lit v)) → .lit v with error
+        have hstep2 : Flat.step? ⟨.return (some (.lit v)), env, heap, trace ++ [.silent], funcs, cs⟩ =
+            some (.error ("return:" ++ Flat.valueToString v),
+              ⟨.lit v, env, heap, (trace ++ [.silent]) ++ [.error ("return:" ++ Flat.valueToString v)], funcs, cs⟩) := by
+          unfold Flat.step?; simp [Flat.exprValue?]
+        refine ⟨[.silent, .error ("return:" ++ Flat.valueToString v)], _,
+          .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)),
+          rfl, rfl, rfl, ?_, ?_⟩
+        · simp only [List.append_assoc, List.cons_append, List.nil_append]
+        · simp only [observableTrace, List.filter]; rfl
+      · intro t msg harg heval
+        simp only [Option.some.injEq] at harg; subst harg
+        simp only [ANF.evalTrivial, hv_anf] at heval
+        exact absurd heval (by simp)
+    | «break» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
+    | «continue» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
+    | _ => sorry -- compound inner_val: seq, let, assign, if, call, throw, etc.
+  | _ =>
+    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
+    sorry -- compound HasReturnInHead cases: seq_left, seq_right, let_init, etc.
 
 /-- step? on .await (.lit v) resolves immediately to .lit v with silent event. -/
 private theorem Flat.step?_await_lit_eq (v : Flat.Value)
