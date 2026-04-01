@@ -1,4 +1,4 @@
-# proof — Build HasReturnInHead + HasYieldInHead, prove return/yield_step_sim
+# proof — Prove normalizeExpr_return_step_sim, then yield
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -12,42 +12,64 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: ANF 19 sorries. Lower 0 ✓. CC — OTHER AGENTS OWN IT.
+## STATE: ANF 20 sorries. Lower 0 ✓. CC — OTHER AGENTS OWN IT.
 
-## EXCELLENT PROGRESS: HasAwaitInHead DONE ✓
-You built HasAwaitInHead + normalizeExpr_await_or_k + normalizeExpr_await_implies_hasAwaitInHead (440 lines).
-await_step_sim partially proved: await_direct base cases done, 2 sorries remain (compound + non-direct).
-This is GREAT. Now replicate for return and yield.
+## EXCELLENT PROGRESS: HasReturnInHead infrastructure DONE ✓
+You have built:
+- `HasReturnInHead` inductive (L4103-4131)
+- `normalizeExpr_return_or_k` lemmas (through L4851+)
+- `normalizeExpr_return_implies_hasReturnInHead` (L4878)
+- `normalizeExpr_return_step_sim` DEFINED at L5466 but body is SORRY (L5493)
+- The main theorem's return case (L5942+) already USES normalizeExpr_return_step_sim — it works!
 
-## YOUR NEXT TASK: Build HasReturnInHead + HasYieldInHead
+## YOUR IMMEDIATE TASK: Prove normalizeExpr_return_step_sim (L5493)
 
-### Priority 1: normalizeExpr_return_step_sim (L4694)
-This is a full `sorry`. Apply the SAME pattern as await_step_sim:
-1. Build `HasReturnInHead` (copy HasAwaitInHead, replace await_direct with return_none_direct + return_some_direct)
-2. Build `normalizeExpr_return_or_k` (copy normalizeExpr_await_or_k)
-3. Build `normalizeExpr_return_implies_hasReturnInHead`
-4. Decompose return_step_sim into HasReturnInHead case analysis
+The theorem is at L5466-5493. It takes `hnorm`, `hk` (trivial-preserving k), `hewf` and produces 3 conjuncts:
+1. `arg = none` → return without argument
+2. `∀ t v, arg = some t → evalTrivial ok` → return with successful arg
+3. `∀ t msg, arg = some t → evalTrivial error` → return with failed arg
 
-Note: return has TWO sub-cases: `arg = none` and `arg = some t`. Both need handling.
+**Strategy**: Apply the EXACT SAME pattern as your await_step_sim proof:
+1. Use `normalizeExpr_return_implies_hasReturnInHead` to get `HasReturnInHead sf.expr`
+2. Induction on `HasReturnInHead sf.expr`
+3. For each constructor:
+   - `return_none_direct`: Flat.step? on .return none → trivially produces the required events
+   - `return_some_direct`: Flat.step? on .return (some v) → evaluate v, produce events
+   - `seq_left`, `let_init`, etc.: decompose, use IH
 
-### Priority 2: normalizeExpr_yield_step_sim (after return is decomposed)
-Same pattern for yield.
+**Key helpers you already have from await work:**
+- `Flat.step?_await_lit_eq`, `Flat.step?_await_var_ok`, `Flat.step?_await_this_ok`
+- Analogues for return: you need `Flat.step?_return_none_eq` and `Flat.step?_return_some_eq`
+  Build these first if they don't exist!
 
-### Priority 3: Compound cases in await_step_sim (L4660, L4663)
-These need depth induction on normalizeExpr for compound expressions inside await.
+```lean
+-- Template:
+private theorem Flat.step?_return_none_eq (env : Flat.Env) (heap : Core.Heap)
+    (trace : List Core.TraceEvent) (funcs : Array Flat.FuncDef) (cs : List Flat.Env) :
+    Flat.step? ⟨.return none, env, heap, trace, funcs, cs⟩ =
+    some (.error "return:undefined",
+      ⟨.lit .undefined, env, heap, trace ++ [.error "return:undefined"], funcs, cs⟩) := by
+  unfold Flat.step?; rfl
+```
+
+### Priority 2: After L5493 is done, build HasYieldInHead + yield_step_sim
+Same pattern. Copy HasReturnInHead → HasYieldInHead. Build yield helpers.
+
+### Priority 3: Compound cases (L5097, L5128, L5139, L5217, L5248, L5259, L5276)
+These are "non-labeled inner value" and "compound/bindComplex" cases. They need depth induction.
 
 ## DO NOT ATTEMPT:
-- GROUP B (L4298, L4329, L4340, L4418, L4449, L4460, L4477) — architecturally blocked
-- hasBreakInHead/hasContinueInHead (L4494, L4507) — potentially unprovable as stated
+- GROUP B (architecturally blocked)
+- hasBreak/ContinueInHead (L5293, L5306) — potentially unprovable as stated
 
-## CURRENT ANF SORRY LOCATIONS (file is 6786 lines):
+## CURRENT ANF SORRY LOCATIONS (file is 7562 lines):
 ```
-GROUP B (SKIP): L4298, L4329, L4340, L4418, L4449, L4460, L4477
-hasBreak/ContinueInHead: L4494, L4507
-await compound: L4660, L4663
-return_step_sim: L4694 (YOUR TARGET)
-await helpers + step_sim decomposed: L4887, L4890
-seq/if/let/tryCatch_step_sim: L4921, L4942, L4963, L4984, L5005
+Decomposed await: L5097, L5128, L5139, L5217, L5248, L5259, L5276
+hasBreak/ContinueInHead: L5293, L5306
+await flat_arg compound: L5459, L5462
+return_step_sim BODY: L5493 (YOUR #1 TARGET)
+await inner_arg: L5656, L5663, L5666
+yield/seq/if/let/tryCatch: L5697, L5718, L5739, L5760, L5781
 ```
 
 ## DO NOT TOUCH:

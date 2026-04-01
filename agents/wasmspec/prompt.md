@@ -1,4 +1,4 @@
-# wasmspec — Close CC objectLit/arrayLit all-values heap sorries
+# wasmspec — Close CC objectLit sorries, then arrayLit
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,9 +11,9 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC 17 actual sorry lines. You previously closed objectLit all-values and 2 setIndex sorries. Excellent work.
+## STATE: CC 16 actual sorry statements. You previously closed objectLit all-values heap and 2 setIndex sorries. Excellent work.
 
-## CURRENT CC SORRY LOCATIONS (verified grep -n, 2026-04-01 03:05)
+## CURRENT CC SORRY LOCATIONS (verified grep -n, 2026-04-01 04:05)
 ```
 L1507, L1508: forIn/forOf stubs (SKIP)
 L3320: HeapInj refactor (SKIP)
@@ -21,39 +21,34 @@ L3648, L3671 x2: CCStateAgree (SKIP)
 L4189: call function (BLOCKED)
 L4387: newObj (SKIP)
 L4977: getIndex string (SKIP)
-L5807: objectLit all-values (YOUR TARGET 1 — you left a sorry here)
-L5982: objectLit CCState sub-step (jsspec TARGET)
-L5989: arrayLit all-values heap (YOUR TARGET 2)
-L6085: arrayLit CCState sub-step (jsspec TARGET)
-L6086: functionDef (SKIP)
-L6213, L6243, L6246: tryCatch (jsspec TARGET)
-L6278: while_ CCState (SKIP)
+L5967: objectLit sub-step (YOUR TARGET 1)
+L5974: objectLit all-values (YOUR TARGET 2)
+L6070: arrayLit sub-step (jsspec TARGET — DO NOT TOUCH)
+L6071: functionDef (SKIP)
+L6197, L6200: tryCatch (jsspec TARGET — DO NOT TOUCH)
+L6232: while_ CCState (SKIP)
 ```
 
 ## YOUR TARGETS
 
-### Target 1: objectLit all-values — finish the sorry at L5807
-You partially expanded this proof but left a sorry at L5807. You have the HeapInj pattern from
-your previous objectLit success. The proof structure around L5807 already has:
-- `simp [Flat.step?, hvs, Flat.step?_pushTrace_expand] at hstep`
-- `obtain ⟨rfl, rfl⟩ := hstep`
-- Then sorry
+### Target 1: objectLit sub-step sorry (L5967)
+A property sub-expression steps. You need:
+- IH on the stepping sub-expression
+- CCState threading through the prop list prefix (already converted)
+- Connect IH output to the objectLit step conclusion
 
-After the simp/obtain, you need:
-- Construct the Core step (Core.step?_objectLit_val)
-- Show HeapInj for the new heap (HeapInj_alloc_both)
-- Show EnvCorrInj preservation
-- Show trace/env/heap relationships
+Look at your previous setIndex sub-step proof for the pattern. The key is:
+1. Get the goal with `lean_goal` at L5967
+2. Apply IH, then thread CCState via `convertExpr_state_determined`
+3. Construct the `Core.step?_objectLit_step_prop` / analogous stepping lemma
 
-Look at the proof just below L5807 (L5808-5850) — you already wrote the Core side setup.
-The sorry replaces the actual refine/construction. Connect your setup to the conclusion.
-
-### Target 2: arrayLit all-values heap (L5989)
-Same pattern as objectLit all-values. After finishing Target 1, adapt the proof.
+### Target 2: objectLit all-values (L5974)
+All elements are values → heap allocation. You proved this for one pattern already.
+Apply `HeapInj_alloc_both` + `convertPropList_filterMap_eq`.
 
 ### COLLISION AVOIDANCE
-You work on L5000-5989. jsspec works on L5982-6280.
-Do NOT edit L5982+ (that's jsspec territory). L5989 is your last line.
+You work on L5000-5989. jsspec works on L6000-6280.
+Do NOT edit L6000+ — that's jsspec territory.
 
 ## WORKFLOW:
 1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers

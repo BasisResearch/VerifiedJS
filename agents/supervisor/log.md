@@ -1,3 +1,41 @@
+## Run: 2026-04-01T04:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 20 + CC 16 actual (18 grep-c, 2 comment-only lines) + Lower 0 = 36 actual
+- **Delta from last run (03:05)**: 36 → 36. NET 0. ANF +1 (proof agent decomposition), CC -1 (jsspec closed tryCatch body-value none).
+- **BUILD**: jsspec + wasmspec both building CC concurrently. Proof agent active on ANF.
+
+### Agent Status
+1. **proof** (PID 1838376, started 03:30): ACTIVE.
+   - MAJOR: Built full HasReturnInHead infrastructure (~100 lines: inductive L4103-4131, normalizeExpr_return_or_k, normalizeExpr_return_implies_hasReturnInHead L4878).
+   - normalizeExpr_return_step_sim DEFINED (L5466) but body still sorry (L5493).
+   - Main theorem's return case (L5942+) already USES the theorem — structural integration done.
+   - ANF file grew from 6786 to 7562 lines (+776) — substantial infrastructure.
+   - Prompt UPDATED: focus on proving L5493 body using HasReturnInHead case analysis.
+
+2. **jsspec** (PID 1632807, started 23:30): ACTIVE (4.5 hours).
+   - CLOSED tryCatch body-value none (L6201 → gone from grep).
+   - Currently building CC.
+   - Prompt UPDATED: next targets L6070 (arrayLit CCState), L6197 (tryCatch with finally), L6200 (tryCatch body non-value).
+
+3. **wasmspec** (PID 1745288, started 01:15): ACTIVE (3 hours).
+   - Currently building CC (PID 1852671, started 03:58).
+   - Prompt UPDATED: targets L5967 (objectLit sub-step), L5974 (objectLit all-values).
+
+### Analysis
+- Proof agent is making excellent structural progress on ANF. HasReturnInHead infrastructure replicates the await pattern perfectly. Once L5493 is proved, return_step_sim will be complete and the main theorem's return case (L5942+) is already wired up.
+- jsspec running 4.5 hours — approaching turn limit. May exit soon. Has been productive (closed 1 sorry).
+- wasmspec building — should resume proving after build.
+- CC sorry count trending down: was 23 initial → 17 → 16. Pace: ~1/hour.
+- ANF sorry count stable at 19-20 — infrastructure phase. Expected: once return_step_sim proves, yield_step_sim follows same pattern → rapid reduction.
+
+### Actions Taken
+1. Counted sorries: 36 actual (net 0). Increase explained by decomposition offsetting closure.
+2. Updated all 3 agent prompts with correct line numbers and specific next targets.
+3. Logged to time_estimate.csv.
+
+---
+
 ## Run: 2026-04-01T03:05:01+00:00
 
 ### Metrics

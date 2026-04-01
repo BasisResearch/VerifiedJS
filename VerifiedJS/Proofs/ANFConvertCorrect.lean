@@ -4224,13 +4224,11 @@ theorem ANF.normalizeExpr_tryCatch_not_return_none (body : Flat.Expr) (cp : Flat
   | none =>
     simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure,
       StateT.pure, Except.pure] at h
-    split at h <;> (simp only [Except.ok.injEq, Prod.mk.injEq] at h; try exact ANF.Expr.noConfusion h.1)
-    split at h <;> (simp only [Except.ok.injEq, Prod.mk.injEq, Except.bind] at h; try exact ANF.Expr.noConfusion h.1)
-    split at h <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h <;> exact ANF.Expr.noConfusion h.1
+    split at h <;> [simp at h; split at h <;> [simp at h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1]]
   | some f =>
     simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure,
       StateT.pure, Except.pure] at h
-    split at h <;> (try split at h) <;> (simp only [Except.ok.injEq, Prod.mk.injEq, Except.bind] at h; try exact ANF.Expr.noConfusion h.1) <;> split at h <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h <;> exact ANF.Expr.noConfusion h.1
+    split at h <;> [simp at h; split at h <;> [simp at h; split at h <;> [simp at h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1]]]
 
 theorem ANF.normalizeExpr_tryCatch_not_return_some (body : Flat.Expr) (cp : Flat.VarName)
     (cb : Flat.Expr) (fin : Option Flat.Expr)
@@ -4242,13 +4240,11 @@ theorem ANF.normalizeExpr_tryCatch_not_return_some (body : Flat.Expr) (cp : Flat
   | none =>
     simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure,
       StateT.pure, Except.pure] at h
-    split at h <;> (simp only [Except.ok.injEq, Prod.mk.injEq] at h; try exact ANF.Expr.noConfusion h.1)
-    split at h <;> (simp only [Except.ok.injEq, Prod.mk.injEq, Except.bind] at h; try exact ANF.Expr.noConfusion h.1)
-    split at h <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h <;> exact ANF.Expr.noConfusion h.1
+    split at h <;> [simp at h; split at h <;> [simp at h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1]]
   | some f =>
     simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure,
       StateT.pure, Except.pure] at h
-    split at h <;> (try split at h) <;> (simp only [Except.ok.injEq, Prod.mk.injEq, Except.bind] at h; try exact ANF.Expr.noConfusion h.1) <;> split at h <;> simp only [Except.ok.injEq, Prod.mk.injEq] at h <;> exact ANF.Expr.noConfusion h.1
+    split at h <;> [simp at h; split at h <;> [simp at h; split at h <;> [simp at h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1]]]
 
 /-! ## normalizeExprList/Props return_or_k helpers -/
 
