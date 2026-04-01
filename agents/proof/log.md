@@ -4629,3 +4629,48 @@ The prompt's suggested tactic `exact ih _ (...) (by cases hwf; assumption)` fail
 
 ## Run: 2026-04-01T01:30:01+00:00
 
+### Added HasAwaitInHead infrastructure (fully proved, 0 new sorries)
+
+**Build: PASSES. Sorry count: 18 (unchanged).**
+
+Added ~440 lines of new infrastructure for `normalizeExpr_await_or_k` inversion between throw infrastructure and `normalizeExpr_labeled_step_sim`. All fully proved with no sorry.
+
+#### New definitions and theorems:
+
+1. **`HasAwaitInHead` mutual inductive** (+ `HasAwaitInHeadList`, `HasAwaitInHeadProps`):
+   - Parallel to `HasThrowInHead` but with `.await_direct` instead of `.throw_direct`
+   - Also has `.throw_arg` (await propagates through throw's argument)
+   - `HasAwaitInHead_not_value` helper
+
+2. **`ANF.bindComplex_never_await_general`**: bindComplex always produces `.let`, never `.await`
+
+3. **Wrapping constructor lemmas**:
+   - `ANF.normalizeExpr_labeled_not_await`: `.labeled` produces `.labeled`, never `.await`
+   - `ANF.normalizeExpr_while_not_await`: `.while_` produces `.seq`, never `.await`
+   - `ANF.normalizeExpr_tryCatch_not_await`: `.tryCatch` produces `.tryCatch`, never `.await`
+
+4. **List/Props helpers**:
+   - `normalizeExprList_await_or_k`: await in list result comes from element or k
+   - `normalizeProps_await_or_k`: await in props result comes from prop value or k
+
+5. **Main inversion `ANF.normalizeExpr_await_or_k`** (with `_aux` by depth induction):
+   - If `normalizeExpr e k` produces `.await arg`, then either `HasAwaitInHead e` or k produced `.await`
+   - Handles all ~35 Flat.Expr constructors
+   - Uses `bindComplex_never_await_general` for compound cases
+
+6. **Master inversion `ANF.normalizeExpr_await_implies_hasAwaitInHead`**:
+   - With trivial-preserving k, `.await` output implies `HasAwaitInHead e`
+   - Eliminates k case using `ANF.Expr.noConfusion`
+
+### What this unblocks
+
+The `normalizeExpr_await_step_sim` (L4718) can now use `normalizeExpr_await_implies_hasAwaitInHead` to get `HasAwaitInHead sf.expr`, then case-split on the inductive to construct flat steps. This is the same pattern used by `normalizeExpr_throw_step_sim` with `HasThrowInHead`.
+
+The same pattern could be replicated for `.return` and `.yield` (creating `HasReturnInHead` / `HasYieldInHead` + `normalizeExpr_return_or_k` / `normalizeExpr_yield_or_k`) to unblock `normalizeExpr_return_step_sim` (L4694) and `normalizeExpr_yield_step_sim` (L4749).
+
+### Next priorities
+1. Prove `normalizeExpr_await_step_sim` using the new infrastructure
+2. Build `HasReturnInHead` + `normalizeExpr_return_or_k` for return_step_sim
+3. Build `HasYieldInHead` + `normalizeExpr_yield_or_k` for yield_step_sim
+
+2026-04-01T02:30:01+00:00 SKIP: already running

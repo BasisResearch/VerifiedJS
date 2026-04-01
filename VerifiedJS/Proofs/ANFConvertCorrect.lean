@@ -4693,6 +4693,33 @@ private theorem normalizeExpr_return_step_sim
         observableTrace evs = observableTrace [.error msg]) := by
   sorry
 
+/-- step? on .await (.lit v) resolves immediately to .lit v with silent event. -/
+private theorem Flat.step?_await_lit_eq (v : Flat.Value)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env) :
+    Flat.step? ⟨.await (.lit v), env, heap, trace, funcs, cs⟩ =
+    some (.silent,
+      ⟨.lit v, env, heap, trace ++ [.silent], funcs, cs⟩) := by
+  unfold Flat.step?; rfl
+
+/-- step? on .await (.var name) when lookup succeeds: resolves var, keeps await. -/
+private theorem Flat.step?_await_var_ok (name : Flat.VarName) (v : Flat.Value)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+    (h : Flat.Env.lookup env name = some v) :
+    Flat.step? ⟨.await (.var name), env, heap, trace, funcs, cs⟩ =
+    some (.silent, ⟨.await (.lit v), env, heap, trace ++ [.silent], funcs, cs⟩) := by
+  simp only [Flat.step?, Flat.exprValue?, h]; rfl
+
+/-- step? on .await .this when lookup "this" succeeds: resolves this, keeps await. -/
+private theorem Flat.step?_await_this_ok (v : Flat.Value)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+    (h : Flat.Env.lookup env "this" = some v) :
+    Flat.step? ⟨.await .this, env, heap, trace, funcs, cs⟩ =
+    some (.silent, ⟨.await (.lit v), env, heap, trace ++ [.silent], funcs, cs⟩) := by
+  simp only [Flat.step?, Flat.exprValue?, h]; rfl
+
 /-- If normalizeExpr sf.expr k produces .await arg (with trivial-preserving k),
     then there exist Flat steps from sf matching the ANF await step. -/
 private theorem normalizeExpr_await_step_sim
@@ -4715,7 +4742,100 @@ private theorem normalizeExpr_await_step_sim
         sf'.expr = .lit .undefined ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
         sf'.trace = sf.trace ++ evs ∧
         observableTrace evs = observableTrace [.error msg]) := by
-  sorry
+  have hawait := ANF.normalizeExpr_await_implies_hasAwaitInHead sf.expr k hk arg n m hnorm
+  cases sf with
+  | mk e env heap trace funcs cs =>
+  simp only [Flat.State.expr] at hnorm hewf hawait
+  cases hawait with
+  | await_direct =>
+    rename_i inner_arg
+    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
+    -- hnorm : normalizeExpr (.await inner_arg) k = .ok (.await arg, m)
+    -- simplify to: normalizeExpr inner_arg (fun t => pure (.await t)) = .ok (.await arg, m)
+    have hnorm' : (ANF.normalizeExpr inner_arg (fun t => pure (ANF.Expr.await t))).run n =
+        .ok (.await arg, m) := by
+      simp only [ANF.normalizeExpr] at hnorm; exact hnorm
+    -- Case split on inner_arg for base cases
+    cases inner_arg with
+    | lit v =>
+      -- normalizeExpr (.lit v) k' produces k' (trivialOfFlatValue v)
+      simp only [ANF.normalizeExpr, ANF.trivialOfFlatValue] at hnorm'
+      -- Extract arg per value constructor; evalTrivial always gives .ok for literals
+      cases v <;> (
+        simp only [pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
+        obtain ⟨rfl, rfl⟩ := hnorm'
+        refine ⟨?_, ?_⟩
+        · intro val heval
+          simp only [ANF.evalTrivial, ANF.trivialValue?, Except.ok.injEq] at heval
+          subst heval
+          exact ⟨_, _, .tail ⟨by unfold Flat.step?; rfl⟩ (.refl _), rfl, rfl, rfl, rfl, rfl⟩
+        · intro msg heval
+          simp only [ANF.evalTrivial, ANF.trivialValue?] at heval
+          exact absurd heval (by simp))
+    | var name =>
+      -- normalizeExpr (.var name) k' = k' (.var name)
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
+      obtain ⟨rfl, rfl⟩ := hnorm'
+      -- By ExprWellFormed, env.lookup name must succeed
+      have hwf_var : env.lookup name ≠ none := by
+        apply hewf; exact VarFreeIn.await_arg _ (VarFreeIn.var name)
+      obtain ⟨v, hv_flat⟩ := Option.ne_none_iff_exists'.mp hwf_var
+      have hv_anf : ANF.Env.lookup env name = some v := by
+        simp only [ANF.Env.lookup, Flat.Env.lookup] at hv_flat ⊢; exact hv_flat
+      refine ⟨?_, ?_⟩
+      · -- ok case: evalTrivial env (.var name) = .ok v
+        intro val heval
+        simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval
+        subst heval
+        have hv_flat_env : Flat.Env.lookup env name = some v := by
+          simp only [Flat.Env.lookup, ANF.Env.lookup] at hv_flat ⊢; exact hv_flat
+        -- Step 1: resolve var inside await
+        have hstep1 := Flat.step?_await_var_ok name v env heap trace funcs cs hv_flat_env
+        -- Step 2: await with literal value → lit v
+        have hstep2 := Flat.step?_await_lit_eq v env heap (trace ++ [.silent]) funcs cs
+        refine ⟨[.silent, .silent], _,
+          .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)),
+          rfl, rfl, rfl, ?_, ?_⟩
+        · simp only [List.append_assoc, List.cons_append, List.nil_append]
+        · simp only [observableTrace, List.filter]; rfl
+      · -- error case: vacuous since env.lookup name = some v
+        intro msg heval
+        simp only [ANF.evalTrivial, hv_anf] at heval
+        exact absurd heval (by simp)
+    | this =>
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
+      obtain ⟨rfl, rfl⟩ := hnorm'
+      have hwf_this : env.lookup "this" ≠ none := by
+        apply hewf; exact VarFreeIn.await_arg _ VarFreeIn.this_var
+      obtain ⟨v, hv_flat⟩ := Option.ne_none_iff_exists'.mp hwf_this
+      have hv_anf : ANF.Env.lookup env "this" = some v := by
+        simp only [ANF.Env.lookup, Flat.Env.lookup] at hv_flat ⊢; exact hv_flat
+      refine ⟨?_, ?_⟩
+      · intro val heval
+        simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval
+        subst heval
+        have hv_flat_env : Flat.Env.lookup env "this" = some v := by
+          simp only [Flat.Env.lookup, ANF.Env.lookup] at hv_flat ⊢; exact hv_flat
+        have hstep1 := Flat.step?_await_this_ok v env heap trace funcs cs hv_flat_env
+        have hstep2 := Flat.step?_await_lit_eq v env heap (trace ++ [.silent]) funcs cs
+        refine ⟨[.silent, .silent], _,
+          .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)),
+          rfl, rfl, rfl, ?_, ?_⟩
+        · simp only [List.append_assoc, List.cons_append, List.nil_append]
+        · simp only [observableTrace, List.filter]; rfl
+      · intro msg heval
+        simp only [ANF.evalTrivial, hv_anf] at heval
+        exact absurd heval (by simp)
+    | «break» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
+    | «continue» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
+    | _ => sorry -- compound inner_arg: seq, let, assign, if, call, throw, etc.
+  | _ =>
+    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
+    sorry
 
 /-- If normalizeExpr sf.expr k produces .yield arg delegate (with trivial-preserving k),
     then there exist Flat steps from sf matching the ANF yield step. -/
