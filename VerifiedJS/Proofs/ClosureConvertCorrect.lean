@@ -5747,7 +5747,87 @@ private theorem closureConvert_step_simulation
     obtain ⟨hfexpr, hst⟩ := hconv
     cases hcfnv : Core.firstNonValueProp props with
     | none =>
-      sorry -- all props are values: heap allocation (same class as other value sub-cases)
+      -- All props are values: both Core and Flat allocate an object on heap.
+      have hffnv := convertPropList_firstNonValueProp_none props scope envVar envMap st hcfnv
+      have ⟨vs, hvs⟩ := firstNonValueProp_none_implies_values _ hffnv
+      have hsf_eta : sf = { sf with expr := .objectLit (Flat.convertPropList props scope envVar envMap st).fst } := by
+        cases sf; simp_all
+      rw [hsf_eta] at hstep
+      -- Unfold Flat.step? for objectLit all-values
+      unfold Flat.step? at hstep
+      simp only [hvs] at hstep
+      simp only [Flat.allocObjectWithProps, Flat.pushTrace] at hstep
+      simp only [Prod.mk.injEq, Option.some.injEq] at hstep
+      obtain ⟨hev, hsf'⟩ := hstep; subst hev
+      -- Core side: use step?_objectLit_val
+      let caddr := sc.heap.nextAddr
+      let cheapProps := props.filterMap fun (k, e) =>
+        match Core.exprValue? e with | some v => some (k, v) | none => none
+      let cheap' : Core.Heap := { objects := sc.heap.objects.push cheapProps, nextAddr := caddr + 1 }
+      let sc' : Core.State := ⟨.lit (.object caddr), sc.env, cheap',
+        sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      · -- Core.step
+        have hsc' : sc = { sc with expr := .objectLit props } := by
+          obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+        rw [hsc']
+        have := Core.step?_objectLit_val props sc.env sc.heap sc.trace sc.funcs sc.callStack hcfnv
+        simp only [Core.pushTrace, sc', cheap', cheapProps, caddr] at this ⊢; exact this
+      · -- trace
+        subst hsf'; simp [sc', htrace]
+      · -- HeapInj: both push same props
+        simp only [sc', cheap', cheapProps, caddr]
+        have hfmatch := convertPropList_filterMap_eq props scope envVar envMap st hcfnv
+        rw [← hfmatch]
+        exact HeapInj_alloc_both hinj _
+      · -- EnvCorrInj
+        exact henvCorr
+      · -- EnvAddrWF
+        simp only [sc', cheap']
+        exact EnvAddrWF_mono henvwf (by simp [Array.size_push]; omega)
+      · -- HeapValuesWF
+        simp only [sc', cheap', cheapProps, caddr]
+        intro addr haddr props' hprops' kv hkv
+        simp [Array.size_push] at haddr
+        rw [Array.getElem?_push] at hprops'
+        split at hprops'
+        · -- Old object
+          have haddr' : addr < sc.heap.objects.size := by omega
+          have := hheapvwf addr haddr' props' hprops' kv hkv
+          exact ValueAddrWF_mono this (by simp [Array.size_push]; omega)
+        · -- New object (the pushed props)
+          simp only [Option.some.injEq] at hprops'; subst hprops'
+          have hkv_mem := List.mem_filterMap.mp hkv
+          obtain ⟨⟨k, e⟩, hmem, hfm⟩ := hkv_mem
+          cases he : Core.exprValue? e with
+          | none => simp [he] at hfm
+          | some v =>
+            simp [he] at hfm; subst hfm
+            have hlit : e = .lit v := by cases e <;> simp [Core.exprValue?] at he; subst he; rfl
+            subst hlit
+            have hwf_props : ExprAddrPropListWF props sc.heap.objects.size := by
+              simp [ExprAddrWF] at hexprwf; exact hexprwf
+            have : ValueAddrWF v sc.heap.objects.size := by
+              clear hfmatch hvs hffnv -- prevent unused variable issues
+              induction props generalizing with
+              | nil => exact absurd hmem (List.not_mem_nil _)
+              | cons p ps ih =>
+                obtain ⟨pn, pe⟩ := p
+                simp [ExprAddrPropListWF] at hwf_props
+                rcases List.mem_cons.mp hmem with rfl | hmem'
+                · simp only [ExprAddrWF, ValueAddrWF] at hwf_props; exact hwf_props.1
+                · exact ih hmem' hwf_props.2
+            exact ValueAddrWF_mono this (by simp [Array.size_push]; omega)
+      · -- hheapna
+        simp [sc', cheap', Array.size_push, hheapna]; omega
+      · -- noCallFrameReturn
+        simp [sc', noCallFrameReturn]
+      · -- ExprAddrWF
+        simp only [sc', ExprAddrWF, ValueAddrWF, cheap', Array.size_push]
+        rw [hheapna]; omega
+      · -- CCState threading
+        refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by rw [hst]; exact ⟨rfl, rfl⟩⟩
+        subst hsf'; simp [sc', Flat.convertExpr]
     | some val =>
       obtain ⟨done_c, propName_c, target_c, rest_c⟩ := val
       have htarget_not_lit := Core.firstNonValueProp_not_lit hcfnv
