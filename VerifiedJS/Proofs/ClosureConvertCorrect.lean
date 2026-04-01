@@ -6059,15 +6059,15 @@ private theorem closureConvert_step_simulation
         cases body <;> simp [Core.exprValue?] at hbv; subst hbv; rfl
       subst hlit
       -- body = .lit v: convertExpr (.lit v) = (.lit (convertValue v), st), so st1 = st
-      -- Extract sf.expr and st' from hconv (keeping hconv intact)
-      have hsf_expr : sf.expr = .tryCatch (.lit (Flat.convertValue v)) catchParam
-          (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst
-          (Flat.convertOptExpr finally_ scope envVar envMap
-            (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).snd).fst := by
-        have h := congrArg Prod.fst hconv; simp [Flat.convertExpr] at h; exact h
-      have hst'_eq : st' = (Flat.convertOptExpr finally_ scope envVar envMap
-          (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).snd).snd := by
-        have h := congrArg Prod.snd hconv; simp [Flat.convertExpr] at h; exact h
+      -- After simp [Flat.convertExpr] at hconv, hconv is a conjunction:
+      -- hconv.1 : sf.expr = .tryCatch (...) and hconv.2 : st' = (...)
+      -- Now simplify the body part (convertExpr (.lit v) = (.lit (convertValue v), st))
+      have hconv_body_fst : (Flat.convertExpr (Core.Expr.lit v) scope envVar envMap st).fst =
+          .lit (Flat.convertValue v) := by simp [Flat.convertExpr]
+      have hconv_body_snd : (Flat.convertExpr (Core.Expr.lit v) scope envVar envMap st).snd = st := by
+        simp [Flat.convertExpr]
+      rw [hconv_body_fst, hconv_body_snd] at hconv
+      obtain ⟨hsf_expr, hst'_eq⟩ := hconv
       cases hfin : finally_ with
       | none =>
         simp [Flat.convertOptExpr] at hsf_expr hst'_eq
