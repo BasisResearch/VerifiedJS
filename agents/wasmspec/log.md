@@ -4822,3 +4822,6 @@ try-catch bodies(2), while_ CCState(1)
 
 **Build status:** Compiles. Only pre-existing errors at L3261 (missing case arms from sorry'd stubs) and L6056+ (tryCatch — jsspec's target).
 2026-04-01T00:23:47+00:00 DONE
+
+## Run: 2026-04-01T01:15:01+00:00
+
