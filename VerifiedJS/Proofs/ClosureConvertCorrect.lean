@@ -5793,9 +5793,9 @@ private theorem closureConvert_step_simulation
       have hsf_eta : sf = { sf with expr := .objectLit (Flat.convertPropList props scope envVar envMap st).fst } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
-      -- simp with Flat.step? fully unfolds and normalizes the step, substituting ev and sf'
+      -- simp unfolds step?, substituting ev=.silent and sf' with the concrete Flat result
       simp [Flat.step?, hvs, Flat.step?_pushTrace_expand] at hstep
-      -- Core side: use step?_objectLit_val
+      -- Now ev and sf' are substituted in the goal. Provide the Core step result.
       have hna_eq : sc.heap.nextAddr = sf.heap.nextAddr := hinj.2.1
       have hsize_eq : sc.heap.objects.size = sf.heap.objects.size := hinj.1
       let caddr := sc.heap.nextAddr
@@ -5804,6 +5804,9 @@ private theorem closureConvert_step_simulation
       let cheap' : Core.Heap := { objects := sc.heap.objects.push cheapProps, nextAddr := caddr + 1 }
       let sc' : Core.State := ⟨.lit (.object caddr), sc.env, cheap',
         sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+      have hfmatch := convertPropList_filterMap_eq props scope envVar envMap st hcfnv
+      have hst_eq : (Flat.convertPropList props scope envVar envMap st).snd = st :=
+        convertPropList_state_none props scope envVar envMap st hcfnv
       refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
       · -- Core.step
         have hsc' : sc = { sc with expr := .objectLit props } := by
@@ -5812,25 +5815,20 @@ private theorem closureConvert_step_simulation
         have := Core.step?_objectLit_val props sc.env sc.heap sc.trace sc.funcs sc.callStack hcfnv
         simp only [Core.pushTrace, sc', cheap', cheapProps, caddr] at this ⊢; exact this
       · -- trace
-        rw [hsf'_trace]; simp [sc', htrace]
-      · -- HeapInj
+        simp [sc', htrace]
+      · -- HeapInj: both heaps push same properties
         simp only [sc', cheap', cheapProps, caddr]
-        have hfmatch := convertPropList_filterMap_eq props scope envVar envMap st hcfnv
-        constructor
-        · simp [Array.size_push, hsize_eq, hsf'_hsize]
-        constructor
-        · simp [hna_eq, hsf'_hna]
-        · intro addr haddr
-          simp [Array.size_push] at haddr
-          rcases Nat.lt_or_ge addr sc.heap.objects.size with h | h
-          · rw [Array.getElem?_push]; simp [show addr ≠ sc.heap.objects.size from by omega]
-            rw [hinj.2.2 addr h, hsize_eq]
-            rw [← hsf'_old addr (by omega)]
-          · have haddr_eq : addr = sc.heap.objects.size := by omega
-            subst haddr_eq
-            rw [Array.getElem?_push]; simp
-            rw [hsf'_new, hsize_eq]; simp
-            exact hfmatch.symm
+        refine ⟨by simp [Array.size_push, hsize_eq], by simp [hna_eq], fun addr haddr => ?_⟩
+        simp [Array.size_push] at haddr
+        rw [Array.getElem?_push]
+        rcases Nat.lt_or_ge addr sc.heap.objects.size with h | h
+        · simp [show addr ≠ sc.heap.objects.size from by omega]
+          rw [hinj.2.2 addr h]
+          rw [Array.getElem?_push]; simp [show addr ≠ sf.heap.objects.size from by rw [← hsize_eq]; omega]
+        · have haddr_eq : addr = sc.heap.objects.size := by omega
+          subst haddr_eq; simp
+          rw [Array.getElem?_push, hsize_eq]; simp
+          exact hfmatch.symm
       · exact henvCorr
       · simp only [sc', cheap']; exact EnvAddrWF_mono henvwf (by simp [Array.size_push]; omega)
       · -- HeapValuesWF
@@ -5867,13 +5865,8 @@ private theorem closureConvert_step_simulation
       · simp [sc', noCallFrameReturn]
       · simp only [sc', ExprAddrWF, ValueAddrWF, cheap', caddr, Array.size_push]; rw [hheapna]; omega
       · -- CCState threading
-        have hst_eq : (Flat.convertPropList props scope envVar envMap st).snd = st :=
-          convertPropList_state_none props scope envVar envMap st hcfnv
         refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by rw [hst, hst_eq]⟩
-        simp only [sc', Flat.convertExpr, Flat.convertValue, caddr]
-        constructor
-        · rw [hsf'_expr]; exact congrArg Flat.Expr.lit (congrArg Flat.Value.object hna_eq)
-        · rfl
+        simp only [sc', Flat.convertExpr, Flat.convertValue, caddr, hna_eq]
     | some val =>
       obtain ⟨done_c, propName_c, target_c, rest_c⟩ := val
       have htarget_not_lit := Core.firstNonValueProp_not_lit hcfnv
@@ -6199,7 +6192,7 @@ private theorem closureConvert_step_simulation
       rw [hce_lit_fst, hce_lit_snd] at hconv
       cases finally_ with
       | none => simp [Flat.convertOptExpr] at hconv
-      | some fin => simp [Flat.convertOptExpr] at hconv
+      | some fin => simp [Flat.convertOptExpr] at hconv; sorry
     | none =>
       -- Body is not a value; step the body via IH
       sorry
