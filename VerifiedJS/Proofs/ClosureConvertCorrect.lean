@@ -5793,45 +5793,37 @@ private theorem closureConvert_step_simulation
       have hsf_eta : sf = { sf with expr := .objectLit (Flat.convertPropList props scope envVar envMap st).fst } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
-      -- Rewrite Flat.step? using the all-values lemma
       rw [Flat.step?_objectLit_allValues _ _ _ hvs] at hstep
       simp only [Prod.mk.injEq, Option.some.injEq] at hstep
       obtain ⟨rfl, rfl⟩ := hstep
       have hna_eq : sc.heap.nextAddr = sf.heap.nextAddr := hinj.2.1
-      have hsize_eq : sc.heap.objects.size = sf.heap.objects.size := hinj.1
+      have hfmatch := convertPropList_filterMap_eq props scope envVar envMap st hcfnv
+      have hst_eq : (Flat.convertPropList props scope envVar envMap st).snd = st :=
+        convertPropList_state_none props scope envVar envMap st hcfnv
       let caddr := sc.heap.nextAddr
       let cheapProps := props.filterMap fun (k, e) =>
         match Core.exprValue? e with | some v => some (k, v) | none => none
       let cheap' : Core.Heap := { objects := sc.heap.objects.push cheapProps, nextAddr := caddr + 1 }
       let sc' : Core.State := ⟨.lit (.object caddr), sc.env, cheap',
         sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-      have hfmatch := convertPropList_filterMap_eq props scope envVar envMap st hcfnv
-      have hst_eq : (Flat.convertPropList props scope envVar envMap st).snd = st :=
-        convertPropList_state_none props scope envVar envMap st hcfnv
-      -- Core step
       have hcstep : Core.step? sc = some (.silent, sc') := by
         have hsc' : sc = { sc with expr := .objectLit props } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
         rw [hsc']
         have := Core.step?_objectLit_val props sc.env sc.heap sc.trace sc.funcs sc.callStack hcfnv
         simp only [Core.pushTrace, sc', cheap', cheapProps, caddr] at this ⊢; exact this
-      -- HeapInj for the new heaps
-      let fheapProps := (Flat.convertPropList props scope envVar envMap st).fst.filterMap fun (k, e) =>
-        match Flat.exprValue? e with | some v => some (k, Flat.flatToCoreValue v) | none => none
-      let fheap' : Core.Heap := ⟨sf.heap.objects.push fheapProps, sf.heap.nextAddr + 1⟩
-      have hinj' : HeapInj injMap cheap' fheap' := by
-        simp only [cheap', cheapProps, caddr, fheap', fheapProps]
-        rw [← hfmatch]
-        exact HeapInj_alloc_both hinj _
-      -- HeapValuesWF
-      have hheapvwf' : HeapValuesWF cheap' := by
+      have hinj' : HeapInj injMap cheap' ⟨sf.heap.objects.push
+          ((Flat.convertPropList props scope envVar envMap st).fst.filterMap fun (k, e) =>
+            match Flat.exprValue? e with | some v => some (k, Flat.flatToCoreValue v) | none => none),
+          sf.heap.nextAddr + 1⟩ := by
         simp only [cheap', cheapProps, caddr]
+        rw [← hfmatch]; exact HeapInj_alloc_both hinj _
+      have hheapvwf' : HeapValuesWF cheap' := by
         intro addr haddr props' hprops' kv hkv
-        simp [Array.size_push] at haddr
+        simp only [cheap', cheapProps, caddr, Array.size_push] at haddr
         rw [Array.getElem?_push] at hprops'
         split at hprops'
-        · -- addr = sc.heap.objects.size → new object (the pushed cheapProps)
-          simp only [Option.some.injEq] at hprops'; subst hprops'
+        · simp only [Option.some.injEq] at hprops'; subst hprops'
           have hwf_props : ExprAddrPropListWF props sc.heap.objects.size := by
             simp [ExprAddrWF] at hexprwf; exact hexprwf
           obtain ⟨⟨k, e⟩, hmem, hfm⟩ := List.mem_filterMap.mp hkv
@@ -5853,21 +5845,17 @@ private theorem closureConvert_step_simulation
               rcases List.mem_cons.mp hmem' with rfl | h
               · simp only [ExprAddrWF, ValueAddrWF] at hps; exact hps.1
               · exact ih hps.2 h
-        · -- addr ≠ sc.heap.objects.size → old object
-          next hne =>
+        · next hne =>
           have haddr' : addr < sc.heap.objects.size := by omega
           exact ValueAddrWF_mono (hheapvwf addr haddr' props' hprops' kv hkv) (by simp [Array.size_push]; omega)
-      exact ⟨injMap, sc', ⟨hcstep⟩,
-        by simp [sc', htrace],
-        hinj',
-        henvCorr,
-        EnvAddrWF_mono henvwf (by simp only [sc', cheap']; simp [Array.size_push]; omega),
+      refine ⟨injMap, sc', ⟨hcstep⟩, by simp [sc', htrace], hinj', henvCorr,
+        EnvAddrWF_mono henvwf (by simp [sc', cheap', Array.size_push]; omega),
         hheapvwf',
-        by simp only [sc', cheap', caddr, Array.size_push]; rw [hheapna]; omega,
+        by simp [sc', cheap', caddr, Array.size_push, hheapna],
         by simp [sc', noCallFrameReturn],
-        by simp only [sc', ExprAddrWF, ValueAddrWF, cheap', caddr, Array.size_push]; rw [hheapna]; omega,
+        by simp [sc', ExprAddrWF, ValueAddrWF, cheap', caddr, Array.size_push, hheapna],
         st, st,
-        by simp only [sc', Flat.convertExpr, Flat.convertValue, caddr, hna_eq],
+        by simp [sc', Flat.convertExpr, Flat.convertValue, caddr, hna_eq],
         ⟨rfl, rfl⟩,
         by rw [hst, hst_eq]⟩
     | some val =>
@@ -6068,7 +6056,43 @@ private theorem closureConvert_step_simulation
           (by simp [ExprAddrWF] at hexprwf; exact hexprwf) hexprwf'
           (Core_step_heap_size_mono hcstep_sub)
       · -- CCState agreement (arrayLit sub-step)
-        sorry
+        -- IH gives: hconv' at st_a, hAgreeIn : CCStateAgree (convertExprList done_c st).snd st_a
+        --           hAgreeOut : CCStateAgree (convertExpr target_c (convertExprList done_c st).snd).snd st_a'
+        have hsub_det := convertExpr_state_determined sc_sub'.expr scope envVar envMap
+          (Flat.convertExprList done_c scope envVar envMap st).snd st_a hAgreeIn.1 hAgreeIn.2
+        have hsa_fst : (Flat.convertExpr sc_sub'.expr scope envVar envMap
+            (Flat.convertExprList done_c scope envVar envMap st).snd).fst = sa.expr :=
+          hsub_det.1.trans (congrArg Prod.fst hconv').symm
+        have hsa_snd_eq : (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' :=
+          (congrArg Prod.snd hconv').symm
+        have hstate_sub_agree : CCStateAgree
+            (Flat.convertExpr sc_sub'.expr scope envVar envMap
+              (Flat.convertExprList done_c scope envVar envMap st).snd).snd st_a' :=
+          ⟨hsub_det.2.1.trans (hsa_snd_eq ▸ rfl), hsub_det.2.2.trans (hsa_snd_eq ▸ rfl)⟩
+        have hrest_in_agree : CCStateAgree
+            (Flat.convertExpr sc_sub'.expr scope envVar envMap
+              (Flat.convertExprList done_c scope envVar envMap st).snd).snd
+            (Flat.convertExpr target_c scope envVar envMap
+              (Flat.convertExprList done_c scope envVar envMap st).snd).snd :=
+          ⟨hstate_sub_agree.1.trans hAgreeOut.1.symm, hstate_sub_agree.2.trans hAgreeOut.2.symm⟩
+        have hrest_det := convertExprList_state_determined rest_c scope envVar envMap
+          _ _ hrest_in_agree.1 hrest_in_agree.2
+        refine ⟨st, (Flat.convertExprList (done_c ++ [sc_sub'.expr] ++ rest_c) scope envVar envMap st).snd,
+          ?_, ⟨rfl, rfl⟩, ?_⟩
+        · -- Conversion expression matches sf'.expr
+          simp only [sc', Flat.convertExpr]
+          congr 1
+          rw [convertExprList_append, convertExprList_append, convertExprList_append_snd]
+          simp only [Flat.convertExprList]
+          rw [hsa_fst, hrest_det.1]
+        · -- Output state agreement
+          rw [hst]
+          have h_lhs := convertExprList_append_snd (done_c ++ [target_c]) rest_c scope envVar envMap st
+          have h_lhs2 := convertExprList_append_snd done_c [target_c] scope envVar envMap st
+          have h_rhs := convertExprList_append_snd (done_c ++ [sc_sub'.expr]) rest_c scope envVar envMap st
+          have h_rhs2 := convertExprList_append_snd done_c [sc_sub'.expr] scope envVar envMap st
+          simp only [h_lhs, h_lhs2, h_rhs, h_rhs2, Flat.convertExprList]
+          exact hrest_det.2
   | functionDef fname params body isAsync isGen => sorry
   | throw val =>
     rw [hsc] at hconv hncfr hexprwf hd
