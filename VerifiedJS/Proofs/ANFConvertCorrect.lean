@@ -101,6 +101,7 @@ private inductive VarFreeIn : String → Flat.Expr → Prop where
   | this_var : VarFreeIn "this" .this
   | return_some_arg (x : String) (v : Flat.Expr) : VarFreeIn x v → VarFreeIn x (.«return» (some v))
   | await_arg (x : String) (arg : Flat.Expr) : VarFreeIn x arg → VarFreeIn x (.await arg)
+  | yield_some_arg (x : String) (v : Flat.Expr) (d : Bool) : VarFreeIn x v → VarFreeIn x (.yield (some v) d)
 
 /-- An expression is well-formed w.r.t. an environment if all free vars are bound. -/
 def ExprWellFormed (expr : Flat.Expr) (env : Flat.Env) : Prop :=
@@ -4914,6 +4915,446 @@ theorem ANF.normalizeExpr_return_implies_hasReturnInHead
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hk_ret)).1
 
 end ReturnInHead
+
+/-! ## HasYieldInHead: tracks .yield in CPS-head position -/
+
+section YieldInHead
+
+set_option autoImplicit true in
+mutual
+/-- An expression has .yield reachable through normalizeExpr's CPS evaluation path. -/
+inductive HasYieldInHead : Flat.Expr → Prop where
+  | yield_none_direct : HasYieldInHead (.yield none d)
+  | yield_some_direct : HasYieldInHead (.yield (some v) d)
+  | seq_left : HasYieldInHead a → HasYieldInHead (.seq a b)
+  | seq_right : HasYieldInHead b → HasYieldInHead (.seq a b)
+  | let_init : HasYieldInHead init → HasYieldInHead (.let name init body)
+  | getProp_obj : HasYieldInHead obj → HasYieldInHead (.getProp obj prop)
+  | setProp_obj : HasYieldInHead obj → HasYieldInHead (.setProp obj prop val)
+  | setProp_val : HasYieldInHead val → HasYieldInHead (.setProp obj prop val)
+  | binary_lhs : HasYieldInHead lhs → HasYieldInHead (.binary op lhs rhs)
+  | binary_rhs : HasYieldInHead rhs → HasYieldInHead (.binary op lhs rhs)
+  | unary_arg : HasYieldInHead arg → HasYieldInHead (.unary op arg)
+  | typeof_arg : HasYieldInHead arg → HasYieldInHead (.typeof arg)
+  | deleteProp_obj : HasYieldInHead obj → HasYieldInHead (.deleteProp obj prop)
+  | assign_val : HasYieldInHead val → HasYieldInHead (.assign name val)
+  | call_func : HasYieldInHead f → HasYieldInHead (.call f env args)
+  | call_env : HasYieldInHead env → HasYieldInHead (.call f env args)
+  | call_args : HasYieldInHeadList args → HasYieldInHead (.call f env args)
+  | newObj_func : HasYieldInHead f → HasYieldInHead (.newObj f env args)
+  | newObj_env : HasYieldInHead env → HasYieldInHead (.newObj f env args)
+  | newObj_args : HasYieldInHeadList args → HasYieldInHead (.newObj f env args)
+  | if_cond : HasYieldInHead c → HasYieldInHead (.if c t e)
+  | throw_arg : HasYieldInHead arg → HasYieldInHead (.throw arg)
+  | return_some_arg : HasYieldInHead v → HasYieldInHead (.return (some v))
+  | await_arg : HasYieldInHead arg → HasYieldInHead (.await arg)
+  | getIndex_obj : HasYieldInHead obj → HasYieldInHead (.getIndex obj idx)
+  | getIndex_idx : HasYieldInHead idx → HasYieldInHead (.getIndex obj idx)
+  | setIndex_obj : HasYieldInHead obj → HasYieldInHead (.setIndex obj idx val)
+  | setIndex_idx : HasYieldInHead idx → HasYieldInHead (.setIndex obj idx val)
+  | setIndex_val : HasYieldInHead val → HasYieldInHead (.setIndex obj idx val)
+  | getEnv_env : HasYieldInHead env → HasYieldInHead (.getEnv env idx)
+  | makeClosure_env : HasYieldInHead env → HasYieldInHead (.makeClosure funcIdx env)
+  | makeEnv_values : HasYieldInHeadList values → HasYieldInHead (.makeEnv values)
+  | objectLit_props : HasYieldInHeadProps props → HasYieldInHead (.objectLit props)
+  | arrayLit_elems : HasYieldInHeadList elems → HasYieldInHead (.arrayLit elems)
+
+/-- HasYieldInHead for lists (some element has yield in head) -/
+inductive HasYieldInHeadList : List Flat.Expr → Prop where
+  | head : HasYieldInHead e → HasYieldInHeadList (e :: rest)
+  | tail : HasYieldInHeadList rest → HasYieldInHeadList (e :: rest)
+
+/-- HasYieldInHead for prop lists (some prop value has yield in head) -/
+inductive HasYieldInHeadProps : List (Flat.PropName × Flat.Expr) → Prop where
+  | head : HasYieldInHead e → HasYieldInHeadProps ((name, e) :: rest)
+  | tail : HasYieldInHeadProps rest → HasYieldInHeadProps (p :: rest)
+end
+
+/-- HasYieldInHead expressions are never values. -/
+private theorem HasYieldInHead_not_value (e : Flat.Expr)
+    (h : HasYieldInHead e) : Flat.exprValue? e = none := by
+  cases h <;> simp [Flat.exprValue?]
+
+/-! ## Helper: bindComplex never produces .yield -/
+
+/-- bindComplex always wraps its result in .let, so it can NEVER produce .yield. -/
+theorem ANF.bindComplex_never_yield_general (rhs : ANF.ComplexExpr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (arg : Option ANF.Trivial) (delegate : Bool) (n m : Nat)
+    (h : (ANF.bindComplex rhs k).run n = .ok (.yield arg delegate, m)) : False := by
+  unfold ANF.bindComplex at h
+  unfold ANF.freshName at h
+  simp only [bind, Bind.bind, StateT.bind, StateT.run, get, getThe, MonadStateOf.get,
+    StateT.get, Except.bind, set, MonadStateOf.set, StateT.set, pure, Pure.pure,
+    StateT.pure, Except.pure] at h
+  split at h <;> simp_all
+
+/-! ## Helpers: wrapping constructors never produce .yield -/
+
+/-- normalizeExpr (.labeled l body) k never produces .yield — result is always .labeled -/
+theorem ANF.normalizeExpr_labeled_not_yield (l : Flat.LabelName) (body : Flat.Expr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : Option ANF.Trivial) (delegate : Bool) (n m : Nat)
+    (h : (ANF.normalizeExpr (.labeled l body) k).run n = .ok (.yield arg delegate, m)) : False := by
+  simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run,
+    Except.bind, pure, Pure.pure, StateT.pure, Except.pure] at h
+  split at h <;> simp_all
+
+/-- normalizeExpr (.while_ cond body) k never produces .yield — result is always .seq -/
+theorem ANF.normalizeExpr_while_not_yield (cond_ body : Flat.Expr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : Option ANF.Trivial) (delegate : Bool) (n m : Nat)
+    (h : (ANF.normalizeExpr (.while_ cond_ body) k).run n = .ok (.yield arg delegate, m)) : False := by
+  simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run,
+    Except.bind, pure, Pure.pure, StateT.pure, Except.pure] at h
+  split at h <;> (try split at h) <;> (try split at h) <;> simp_all
+
+/-- normalizeExpr (.tryCatch body cp cb fin) k never produces .yield — always .tryCatch -/
+theorem ANF.normalizeExpr_tryCatch_not_yield (body : Flat.Expr) (cp : Flat.VarName)
+    (cb : Flat.Expr) (fin : Option Flat.Expr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : Option ANF.Trivial) (delegate : Bool) (n m : Nat)
+    (h : (ANF.normalizeExpr (.tryCatch body cp cb fin) k).run n = .ok (.yield arg delegate, m)) : False := by
+  simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run,
+    Except.bind, pure, Pure.pure, StateT.pure, Except.pure, Functor.map, StateT.map] at h
+  cases fin with
+  | none =>
+    simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure,
+      StateT.pure, Except.pure] at h
+    split at h <;> (try split at h) <;> simp_all
+  | some f =>
+    simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure,
+      StateT.pure, Except.pure] at h
+    split at h <;> (try split at h) <;> (try split at h) <;> simp_all
+
+/-! ## normalizeExprList/Props yield_or_k helpers -/
+
+private theorem normalizeExprList_yield_or_k
+    (es : List Flat.Expr)
+    (ih : ∀ e, e ∈ es → ∀ (k' : ANF.Trivial → ANF.ConvM ANF.Expr)
+      (arg : Option ANF.Trivial) (delegate : Bool) (n m : Nat),
+      (ANF.normalizeExpr e k').run n = .ok (.yield arg delegate, m) →
+      HasYieldInHead e ∨ ∃ (t : ANF.Trivial) (n' m' : Nat), (k' t).run n' = .ok (.yield arg delegate, m'))
+    (k : List ANF.Trivial → ANF.ConvM ANF.Expr)
+    (arg : Option ANF.Trivial) (delegate : Bool) (n m : Nat)
+    (h : (ANF.normalizeExprList es k).run n = .ok (.yield arg delegate, m)) :
+    HasYieldInHeadList es ∨ ∃ (ts : List ANF.Trivial) (n' m' : Nat), (k ts).run n' = .ok (.yield arg delegate, m') := by
+  induction es generalizing k arg delegate n m with
+  | nil => right; simp only [ANF.normalizeExprList] at h; exact ⟨[], n, m, h⟩
+  | cons e rest ih_list =>
+    simp only [ANF.normalizeExprList] at h
+    rcases ih e (@List.mem_cons_self _ e rest) _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+    · exact Or.inl (HasYieldInHeadList.head hleft)
+    · rcases ih_list (fun e' he' => ih e' (List.mem_cons_of_mem _ he')) _ _ _ _ _ hkt with hleft | hright
+      · exact Or.inl (HasYieldInHeadList.tail hleft)
+      · obtain ⟨ts, n'', m'', hkts⟩ := hright
+        exact Or.inr ⟨t :: ts, n'', m'', hkts⟩
+
+/-- normalizeProps: yield in result comes from some prop value or from k. -/
+private theorem normalizeProps_yield_or_k
+    (props : List (Flat.PropName × Flat.Expr))
+    (ih : ∀ (name : Flat.PropName) (e : Flat.Expr), (name, e) ∈ props →
+      ∀ (k' : ANF.Trivial → ANF.ConvM ANF.Expr)
+      (arg : Option ANF.Trivial) (delegate : Bool) (n m : Nat),
+      (ANF.normalizeExpr e k').run n = .ok (.yield arg delegate, m) →
+      HasYieldInHead e ∨ ∃ (t : ANF.Trivial) (n' m' : Nat), (k' t).run n' = .ok (.yield arg delegate, m'))
+    (k : List (ANF.PropName × ANF.Trivial) → ANF.ConvM ANF.Expr)
+    (arg : Option ANF.Trivial) (delegate : Bool) (n m : Nat)
+    (h : (ANF.normalizeProps props k).run n = .ok (.yield arg delegate, m)) :
+    HasYieldInHeadProps props ∨ ∃ (ts : List (ANF.PropName × ANF.Trivial)) (n' m' : Nat), (k ts).run n' = .ok (.yield arg delegate, m') := by
+  induction props generalizing k arg delegate n m with
+  | nil => right; simp only [ANF.normalizeProps] at h; exact ⟨[], n, m, h⟩
+  | cons p rest ih_list =>
+    unfold ANF.normalizeProps at h
+    rcases ih p.1 p.2 (@List.mem_cons_self _ _ rest) _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+    · exact Or.inl (HasYieldInHeadProps.head hleft)
+    · rcases ih_list (fun name e he => ih name e (List.mem_cons_of_mem _ he)) _ _ _ _ _ hkt with hleft | hright
+      · exact Or.inl (HasYieldInHeadProps.tail hleft)
+      · obtain ⟨ts, n'', m'', hkts⟩ := hright
+        exact Or.inr ⟨(p.1, t) :: ts, n'', m'', hkts⟩
+
+/-! ## Main theorem: normalizeExpr_yield_or_k -/
+
+/-- If normalizeExpr e k produces .yield arg delegate, then either e has yield in
+    CPS-head position or k produced .yield arg delegate. -/
+theorem ANF.normalizeExpr_yield_or_k
+    (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (arg : Option ANF.Trivial) (delegate : Bool) (n m : Nat)
+    (h : (ANF.normalizeExpr e k).run n = .ok (.yield arg delegate, m)) :
+    HasYieldInHead e ∨ ∃ (t : ANF.Trivial) (n' m' : Nat), (k t).run n' = .ok (.yield arg delegate, m') :=
+  normalizeExpr_yield_or_k_aux e.depth e (Nat.le_refl _) k arg delegate n m h
+where
+  /-- Helper: general yield characterization by strong induction on expression depth. -/
+  normalizeExpr_yield_or_k_aux (d : Nat) (e : Flat.Expr) (hd : e.depth ≤ d)
+      (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : Option ANF.Trivial) (delegate : Bool) (n m : Nat)
+      (h : (ANF.normalizeExpr e k).run n = .ok (.yield arg delegate, m)) :
+      HasYieldInHead e ∨ ∃ (t : ANF.Trivial) (n' m' : Nat), (k t).run n' = .ok (.yield arg delegate, m') := by
+    induction d generalizing e k arg delegate n m with
+    | zero =>
+      cases e with
+      | var name => right; simp only [ANF.normalizeExpr] at h; exact ⟨.var name, n, m, h⟩
+      | this => right; simp only [ANF.normalizeExpr] at h; exact ⟨.var "this", n, m, h⟩
+      | lit v =>
+        right; simp only [ANF.normalizeExpr] at h
+        cases htv : ANF.trivialOfFlatValue v with
+        | error msg =>
+          rw [htv] at h
+          change StateT.lift (Except.error msg) n = _ at h
+          simp [StateT.lift, Functor.map, Except.map] at h
+        | ok triv => rw [htv] at h; exact ⟨triv, n, m, h⟩
+      | «break» l =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+        exact absurd h (by simp)
+      | «continue» l =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+        exact absurd h (by simp)
+      | throw _ => simp [Flat.Expr.depth] at hd
+      | «return» arg_r =>
+        cases arg_r with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+          exact absurd h (by simp)
+        | some _ => simp [Flat.Expr.depth] at hd
+      | yield arg_y _ =>
+        cases arg_y with
+        | none => exact Or.inl HasYieldInHead.yield_none_direct
+        | some _ => simp [Flat.Expr.depth] at hd
+      | await _ => simp [Flat.Expr.depth] at hd
+      | tryCatch _ _ _ fin => cases fin <;> (simp [Flat.Expr.depth] at hd; try omega)
+      | _ => simp [Flat.Expr.depth] at hd; try omega
+    | succ d' ih =>
+      cases e with
+      | yield arg_y dlg =>
+        cases arg_y with
+        | none => exact Or.inl HasYieldInHead.yield_none_direct
+        | some _ => exact Or.inl HasYieldInHead.yield_some_direct
+      | var name => right; simp only [ANF.normalizeExpr] at h; exact ⟨.var name, n, m, h⟩
+      | this => right; simp only [ANF.normalizeExpr] at h; exact ⟨.var "this", n, m, h⟩
+      | lit v =>
+        right; simp only [ANF.normalizeExpr] at h
+        cases htv : ANF.trivialOfFlatValue v with
+        | error msg =>
+          rw [htv] at h
+          change StateT.lift (Except.error msg) n = _ at h
+          simp [StateT.lift, Functor.map, Except.map] at h
+        | ok triv => rw [htv] at h; exact ⟨triv, n, m, h⟩
+      | «break» l =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+        exact absurd h (by simp)
+      | «continue» l =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+        exact absurd h (by simp)
+      | throw arg_flat =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : arg_flat.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih arg_flat ha _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasYieldInHead.throw_arg hleft)
+        · simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hkt
+      | «return» arg_r =>
+        cases arg_r with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+          exact absurd h (by simp)
+        | some v =>
+          simp only [ANF.normalizeExpr] at h
+          have hv : v.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+          rcases ih v hv _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+          · exact Or.inl (HasYieldInHead.return_some_arg hleft)
+          · simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hkt
+      | await arg_a =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : arg_a.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih arg_a ha _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasYieldInHead.await_arg hleft)
+        · simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hkt
+      | seq a b =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : a.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hb : b.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih a ha _ _ _ _ _ h with hleft | ⟨_, n', m', hkb⟩
+        · exact Or.inl (HasYieldInHead.seq_left hleft)
+        · rcases ih b hb _ _ _ _ _ hkb with hleft | hright
+          · exact Or.inl (HasYieldInHead.seq_right hleft)
+          · exact Or.inr hright
+      | «let» name init body =>
+        simp only [ANF.normalizeExpr] at h
+        have hi : init.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih init hi _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasYieldInHead.let_init hleft)
+        · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure,
+            Except.pure, Except.bind] at hkt
+          split at hkt <;> simp_all
+      | labeled l body =>
+        exact absurd h (ANF.normalizeExpr_labeled_not_yield l body k arg delegate n m)
+      | while_ c b =>
+        exact absurd h (ANF.normalizeExpr_while_not_yield c b k arg delegate n m)
+      | tryCatch body cp cb fin =>
+        exact absurd h (ANF.normalizeExpr_tryCatch_not_yield body cp cb fin k arg delegate n m)
+      | «if» c t e =>
+        simp only [ANF.normalizeExpr] at h
+        have hc : c.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih c hc _ _ _ _ _ h with hleft | ⟨tv, n', m', hkt⟩
+        · exact Or.inl (HasYieldInHead.if_cond hleft)
+        · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure,
+            Except.pure, Except.bind] at hkt
+          split at hkt <;> (try simp_all)
+          split at hkt <;> simp_all
+      | assign name val =>
+        simp only [ANF.normalizeExpr] at h
+        have hv : val.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih val hv _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasYieldInHead.assign_val hleft)
+        · exact absurd hkt (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+      | getProp obj prop =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasYieldInHead.getProp_obj hleft)
+        · exact absurd hkt (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+      | deleteProp obj prop =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasYieldInHead.deleteProp_obj hleft)
+        · exact absurd hkt (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+      | typeof arg_t =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : arg_t.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih arg_t ha _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasYieldInHead.typeof_arg hleft)
+        · exact absurd hkt (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+      | unary op arg_u =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : arg_u.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih arg_u ha _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasYieldInHead.unary_arg hleft)
+        · exact absurd hkt (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+      | getEnv envPtr idx =>
+        simp only [ANF.normalizeExpr] at h
+        have he : envPtr.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih envPtr he _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasYieldInHead.getEnv_env hleft)
+        · exact absurd hkt (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+      | makeClosure funcIdx env =>
+        simp only [ANF.normalizeExpr] at h
+        have he : env.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih env he _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasYieldInHead.makeClosure_env hleft)
+        · exact absurd hkt (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+      | setProp obj prop val =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hv : val.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasYieldInHead.setProp_obj hleft)
+        · rcases ih val hv _ _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasYieldInHead.setProp_val hleft)
+          · exact absurd hk₂ (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+      | binary op lhs rhs =>
+        simp only [ANF.normalizeExpr] at h
+        have hl : lhs.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hr : rhs.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih lhs hl _ _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasYieldInHead.binary_lhs hleft)
+        · rcases ih rhs hr _ _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasYieldInHead.binary_rhs hleft)
+          · exact absurd hk₂ (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+      | getIndex obj idx =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hi : idx.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasYieldInHead.getIndex_obj hleft)
+        · rcases ih idx hi _ _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasYieldInHead.getIndex_idx hleft)
+          · exact absurd hk₂ (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+      | setIndex obj idx val =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hi : idx.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hv : val.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasYieldInHead.setIndex_obj hleft)
+        · rcases ih idx hi _ _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasYieldInHead.setIndex_idx hleft)
+          · rcases ih val hv _ _ _ _ _ hk₂ with hleft | ⟨t₃, n₃, m₃, hk₃⟩
+            · exact Or.inl (HasYieldInHead.setIndex_val hleft)
+            · exact absurd hk₃ (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+      | call f env args =>
+        simp only [ANF.normalizeExpr] at h
+        have hf : f.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have henv : env.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hargs : Flat.Expr.listDepth args ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih f hf _ _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasYieldInHead.call_func hleft)
+        · rcases ih env henv _ _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasYieldInHead.call_env hleft)
+          · have args_ih : ∀ e, e ∈ args → ∀ k' (arg' : Option ANF.Trivial) (dlg : Bool) n m,
+                (ANF.normalizeExpr e k').run n = .ok (.yield arg' dlg, m) →
+                HasYieldInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.yield arg' dlg, m') :=
+              fun e he => ih e (by have := Flat.Expr.mem_listDepth_lt he; omega)
+            rcases normalizeExprList_yield_or_k args args_ih _ _ _ _ _ hk₂ with hleft | ⟨ts, n₃, m₃, hk₃⟩
+            · exact Or.inl (HasYieldInHead.call_args hleft)
+            · exact absurd hk₃ (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+      | newObj f env args =>
+        simp only [ANF.normalizeExpr] at h
+        have hf : f.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have henv : env.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hargs : Flat.Expr.listDepth args ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih f hf _ _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasYieldInHead.newObj_func hleft)
+        · rcases ih env henv _ _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasYieldInHead.newObj_env hleft)
+          · have args_ih : ∀ e, e ∈ args → ∀ k' (arg' : Option ANF.Trivial) (dlg : Bool) n m,
+                (ANF.normalizeExpr e k').run n = .ok (.yield arg' dlg, m) →
+                HasYieldInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.yield arg' dlg, m') :=
+              fun e he => ih e (by have := Flat.Expr.mem_listDepth_lt he; omega)
+            rcases normalizeExprList_yield_or_k args args_ih _ _ _ _ _ hk₂ with hleft | ⟨ts, n₃, m₃, hk₃⟩
+            · exact Or.inl (HasYieldInHead.newObj_args hleft)
+            · exact absurd hk₃ (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+      | makeEnv values =>
+        simp only [ANF.normalizeExpr] at h
+        have hvals : Flat.Expr.listDepth values ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have vals_ih : ∀ e, e ∈ values → ∀ k' (arg' : Option ANF.Trivial) (dlg : Bool) n m,
+            (ANF.normalizeExpr e k').run n = .ok (.yield arg' dlg, m) →
+            HasYieldInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.yield arg' dlg, m') :=
+          fun e he => ih e (by have := Flat.Expr.mem_listDepth_lt he; omega)
+        rcases normalizeExprList_yield_or_k values vals_ih _ _ _ _ _ h with hleft | ⟨ts, n', m', hk⟩
+        · exact Or.inl (HasYieldInHead.makeEnv_values hleft)
+        · exact absurd hk (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+      | objectLit props =>
+        simp only [ANF.normalizeExpr] at h
+        have hprops : Flat.Expr.propListDepth props ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have props_ih : ∀ (name : Flat.PropName) (e : Flat.Expr), (name, e) ∈ props →
+            ∀ k' (arg' : Option ANF.Trivial) (dlg : Bool) n m,
+            (ANF.normalizeExpr e k').run n = .ok (.yield arg' dlg, m) →
+            HasYieldInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.yield arg' dlg, m') :=
+          fun name e he => ih e (by have := Flat.Expr.mem_propListDepth_lt he; omega)
+        rcases normalizeProps_yield_or_k props props_ih _ _ _ _ _ h with hleft | ⟨ts, n', m', hk⟩
+        · exact Or.inl (HasYieldInHead.objectLit_props hleft)
+        · exact absurd hk (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+      | arrayLit elems =>
+        simp only [ANF.normalizeExpr] at h
+        have helems : Flat.Expr.listDepth elems ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have elems_ih : ∀ e, e ∈ elems → ∀ k' (arg' : Option ANF.Trivial) (dlg : Bool) n m,
+            (ANF.normalizeExpr e k').run n = .ok (.yield arg' dlg, m) →
+            HasYieldInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.yield arg' dlg, m') :=
+          fun e he => ih e (by have := Flat.Expr.mem_listDepth_lt he; omega)
+        rcases normalizeExprList_yield_or_k elems elems_ih _ _ _ _ _ h with hleft | ⟨ts, n', m', hk⟩
+        · exact Or.inl (HasYieldInHead.arrayLit_elems hleft)
+        · exact absurd hk (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+
+/-- If normalizeExpr produces .yield with trivial-preserving k, then e has .yield in head. -/
+theorem ANF.normalizeExpr_yield_implies_hasYieldInHead
+    (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (hk : ∀ (t : ANF.Trivial) (n : Nat), ∃ m, (k t).run n = .ok (.trivial t, m))
+    (arg : Option ANF.Trivial) (delegate : Bool) (n m : Nat)
+    (h : (ANF.normalizeExpr e k).run n = .ok (.yield arg delegate, m)) :
+    HasYieldInHead e := by
+  rcases ANF.normalizeExpr_yield_or_k e k arg delegate n m h with hleft | ⟨t, n', m', hk_yield⟩
+  · exact hleft
+  · obtain ⟨m'', hm''⟩ := hk t n'
+    rw [hm''] at hk_yield
+    exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hk_yield)).1
+
+end YieldInHead
 
 /-- When normalizeExpr sf.expr k produces .labeled label body, there exist Flat steps
     from sf to sf' such that normalizeExpr sf'.expr k' produces body (with k' trivial-preserving).
