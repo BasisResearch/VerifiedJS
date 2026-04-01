@@ -4765,3 +4765,4 @@ Replaced full `sorry` with structured proof using `HasAwaitInHead`:
 
 ## Run: 2026-04-01T05:30:01+00:00
 
+### 2026-04-01T05:30:14+00:00 Starting run — yield_step_sim decomposition
