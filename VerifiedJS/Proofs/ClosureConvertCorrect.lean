@@ -6073,11 +6073,7 @@ private theorem closureConvert_step_simulation
       rw [hce_lit_fst, hce_lit_snd] at hconv
       cases hfin : finally_ with
       | none =>
-        -- convertOptExpr none ... = (none, ...) simplification
-        have hcoe : ∀ s : Flat.CCState,
-            Flat.convertOptExpr none scope envVar envMap s = (none, s) := by
-          intro; simp only [Flat.convertOptExpr]
-        simp [hcoe] at hconv
+        sorry /- DEBUG: check hconv shape -/
         obtain ⟨hsf_expr, hst'_eq⟩ := hconv
         have hsf_eta : sf = { sf with expr := .tryCatch (.lit (Flat.convertValue v)) catchParam
             (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst none } := by
