@@ -3822,17 +3822,11 @@ private theorem normalizeExpr_labeled_step_sim :
           | «return» arg =>
             cases arg with
             | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-            | some _ =>
-              refine ⟨[], sf, Flat.Steps.refl sf, ⟨fun t => pure (.trivial t), n, m, ?_, fun arg n' => ⟨n', by simp [pure, StateT.run]⟩⟩, rfl, rfl, rfl, rfl, ?_⟩
-              · rw [hsf]; unfold ANF.normalizeExpr; exact hnorm
-              · rw [hsf]; exact hwf
+            | some _ => sorry -- nested return-some: recursive, needs induction on depth
           | yield arg delegate =>
             cases arg with
             | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-            | some _ =>
-              refine ⟨[], sf, Flat.Steps.refl sf, ⟨fun t => pure (.trivial t), n, m, ?_, fun arg n' => ⟨n', by simp [pure, StateT.run]⟩⟩, rfl, rfl, rfl, rfl, ?_⟩
-              · rw [hsf]; unfold ANF.normalizeExpr; exact hnorm
-              · rw [hsf]; exact hwf
+            | some _ => sorry -- nested yield-some: recursive, needs induction on depth
           | while_ _ _ =>
             exfalso; unfold ANF.normalizeExpr at hnorm
             simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
@@ -3843,10 +3837,7 @@ private theorem normalizeExpr_labeled_step_sim :
             cases ‹Option Flat.Expr› with
             | none => simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
             | some _ => simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-          | _ =>
-            refine ⟨[], sf, Flat.Steps.refl sf, ⟨fun t => pure (.trivial t), n, m, ?_, fun arg n' => ⟨n', by simp [pure, StateT.run]⟩⟩, rfl, rfl, rfl, rfl, ?_⟩
-            · rw [hsf]; unfold ANF.normalizeExpr; exact hnorm
-            · rw [hsf]; exact hwf
+          | _ => sorry -- compound/bindComplex cases: needs induction on depth
       | yield arg delegate =>
         cases arg with
         | none =>
