@@ -6347,11 +6347,11 @@ private theorem normalizeExpr_yield_step_sim
         simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval
         subst heval
         -- Step 1: .yield (some (.var name)) d → .yield (some (.lit v)) d
-        have hstep1 : Flat.step? ⟨.yield (some (.var name)) delegate', env, heap, trace, funcs, cs⟩ =
-            some (.silent, ⟨.yield (some (.lit v)) delegate', env, heap, trace ++ [.silent], funcs, cs⟩) := by
+        have hstep1 : Flat.step? ⟨.yield (some (.var name)) src_delegate, env, heap, trace, funcs, cs⟩ =
+            some (.silent, ⟨.yield (some (.lit v)) src_delegate, env, heap, trace ++ [.silent], funcs, cs⟩) := by
           unfold Flat.step?; simp [Flat.exprValue?, hv_flat_env, Flat.step?]
         -- Step 2: .yield (some (.lit v)) d → .lit v (silent)
-        have hstep2 : Flat.step? ⟨.yield (some (.lit v)) delegate', env, heap, trace ++ [.silent], funcs, cs⟩ =
+        have hstep2 : Flat.step? ⟨.yield (some (.lit v)) src_delegate, env, heap, trace ++ [.silent], funcs, cs⟩ =
             some (.silent,
               ⟨.lit v, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
           unfold Flat.step?; simp [Flat.exprValue?]
@@ -6381,11 +6381,11 @@ private theorem normalizeExpr_yield_step_sim
         simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval
         subst heval
         -- Step 1: .yield (some .this) d → .yield (some (.lit v)) d
-        have hstep1 : Flat.step? ⟨.yield (some .this) delegate', env, heap, trace, funcs, cs⟩ =
-            some (.silent, ⟨.yield (some (.lit v)) delegate', env, heap, trace ++ [.silent], funcs, cs⟩) := by
+        have hstep1 : Flat.step? ⟨.yield (some .this) src_delegate, env, heap, trace, funcs, cs⟩ =
+            some (.silent, ⟨.yield (some (.lit v)) src_delegate, env, heap, trace ++ [.silent], funcs, cs⟩) := by
           unfold Flat.step?; simp [Flat.exprValue?, hv_flat_env, Flat.step?]
         -- Step 2: .yield (some (.lit v)) d → .lit v (silent)
-        have hstep2 : Flat.step? ⟨.yield (some (.lit v)) delegate', env, heap, trace ++ [.silent], funcs, cs⟩ =
+        have hstep2 : Flat.step? ⟨.yield (some (.lit v)) src_delegate, env, heap, trace ++ [.silent], funcs, cs⟩ =
             some (.silent,
               ⟨.lit v, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
           unfold Flat.step?; simp [Flat.exprValue?]
