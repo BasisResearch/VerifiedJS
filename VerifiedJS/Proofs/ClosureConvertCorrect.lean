@@ -5848,15 +5848,18 @@ private theorem closureConvert_step_simulation
         · next hne =>
           have haddr' : addr < sc.heap.objects.size := by omega
           exact ValueAddrWF_mono (hheapvwf addr haddr' props' hprops' kv hkv) (by simp only [cheap', Array.size_push]; omega)
-      refine ⟨injMap, sc', ⟨hcstep⟩, ?_, hinj', ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-      · simp [sc', htrace]
-      · exact EnvAddrWF_mono henvwf (by simp only [sc', cheap', Array.size_push]; omega)
-      · exact hheapvwf'
-      · simp only [sc', cheap', caddr, Array.size_push]; rw [hheapna]; omega
-      · simp [sc', noCallFrameReturn]
-      · simp only [sc', ExprAddrWF, ValueAddrWF, cheap', caddr, Array.size_push]; rw [hheapna]; omega
-      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, caddr, hna_eq],
-          ⟨rfl, rfl⟩, by rw [hst, hst_eq]; exact ⟨rfl, rfl⟩⟩
+      refine ⟨injMap, sc', ⟨hcstep⟩, ?trace_, ?hinj_, ?envcorr_, ?envwf_, ?hvwf_,
+        ?hna_, ?ncfr_, ?ewf_, ?ccst_⟩
+      case trace_ => simp [sc', htrace]
+      case hinj_ => exact hinj'
+      case envcorr_ => exact henvCorr
+      case envwf_ => exact EnvAddrWF_mono henvwf (by simp only [sc', cheap', Array.size_push]; omega)
+      case hvwf_ => exact hheapvwf'
+      case hna_ => simp only [sc', cheap', caddr, Array.size_push]; rw [hheapna]; omega
+      case ncfr_ => simp [sc', noCallFrameReturn]
+      case ewf_ => simp only [sc', ExprAddrWF, ValueAddrWF, cheap', caddr, Array.size_push]; rw [hheapna]; omega
+      case ccst_ => exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, caddr, hna_eq],
+        ⟨rfl, rfl⟩, by rw [hst, hst_eq]; exact ⟨rfl, rfl⟩⟩
     | some val =>
       obtain ⟨done_c, propName_c, target_c, rest_c⟩ := val
       have htarget_not_lit := Core.firstNonValueProp_not_lit hcfnv
