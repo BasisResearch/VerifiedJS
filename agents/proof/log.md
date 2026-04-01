@@ -1,3 +1,61 @@
+## Run: 2026-04-01T03:30+00:00
+- **BUILD: PASSES** ✓
+- **ANF Sorries: 21** (was 20 — 1 sorry decomposed into 2, with base cases fully proved)
+- **LowerCorrect: 0 sorries** ✓
+
+### What was done: HasReturnInHead infrastructure + return_step_sim decomposition
+
+**~650 lines of new proof infrastructure** added to ANFConvertCorrect.lean:
+
+1. **VarFreeIn extended** (2 new constructors):
+   - `return_some_arg`: tracks free vars through `.return (some v)`
+   - `await_arg`: tracks free vars through `.await arg`
+   - Fixed 3 existing proofs that did `cases hfx` on VarFreeIn (needed to handle new constructors)
+
+2. **HasReturnInHead mutual inductive** (~50 lines):
+   - Tracks `.return` in CPS-head position
+   - Key difference from HasAwaitInHead/HasThrowInHead: TWO direct constructors (`return_none_direct`, `return_some_direct`) since both `.return none` and `.return (some v)` unconditionally produce `.return` in normalizeExpr output
+   - All compound expression constructors (seq, let, if, binary, call, etc.)
+
+3. **bindComplex_never_return helpers** (~30 lines):
+   - `bindComplex_never_return_none_general` and `bindComplex_never_return_some_general`
+   - `normalizeExpr_labeled_not_return_{none,some}`, `normalizeExpr_while_not_return_{none,some}`, `normalizeExpr_tryCatch_not_return_{none,some}`
+
+4. **normalizeExprList/Props helpers** (~80 lines):
+   - `normalizeExprList_return_{none,some}_or_k`
+   - `normalizeProps_return_{none,some}_or_k`
+
+5. **normalizeExpr_return_{none,some}_or_k** main induction (~400 lines):
+   - Two separate theorems for none/some cases (unlike throw/await which have single theorems)
+   - Full depth induction covering all 30+ Flat.Expr constructors per theorem
+
+6. **normalizeExpr_return_implies_hasReturnInHead** (~15 lines):
+   - Master inversion: if normalizeExpr with trivial-preserving k produces `.return arg`, then HasReturnInHead e
+   - Eliminates k case using trivial-preserving assumption
+
+7. **return_step_sim decomposition** (~120 lines):
+   - `return_none_direct`: fully proved (1 flat step: `.return none → .lit .undefined` with error "return:undefined")
+   - `return_some_direct` with `.lit v`: fully proved (1 flat step per value constructor)
+   - `return_some_direct` with `.var name`: fully proved (2 flat steps: resolve var, then return)
+   - `return_some_direct` with `.this`: fully proved (2 flat steps: resolve this, then return)
+   - `return_some_direct` with `.break`/`.continue`: proved impossible (noConfusion)
+   - `return_some_direct` with compound: sorry (needs eval context lifting)
+   - Compound HasReturnInHead cases: sorry (needs depth induction)
+
+### Sorry classification (21 total)
+
+| Lines | Count | Category | Status |
+|-------|-------|----------|--------|
+| L5118/5150/5239/5270 | 4 | normalizeExpr_labeled_step_sim non-labeled | Same as before |
+| L5161/5281 | 2 | normalizeExpr_labeled_step_sim compound | Same as before |
+| L5298 | 1 | normalizeExpr_labeled_step_sim top compound | Same as before |
+| L5315/5328 | 2 | hasBreak/ContinueInHead | Same as before |
+| L5481/5484 | 2 | throw compound + non-direct | Same as before |
+| **L5634** | **1** | **return_some_direct compound inner** | **NEW (was part of L4694)** |
+| **L5637** | **1** | **return compound HasReturnInHead** | **NEW (was part of L4694)** |
+| L5800/5807/5810 | 3 | await compound + non-direct | Same as before |
+| L5841/5862/5883/5904/5925 | 5 | seq/if/let/tryCatch/yield_step_sim | Same as before |
+
 ## Run: 2026-04-01T00:00+00:00
 - **BUILD: PASSES** ✓
 - **ANF Sorries: 18** (count unchanged — structural progress described below)
@@ -4703,3 +4761,4 @@ Replaced full `sorry` with structured proof using `HasAwaitInHead`:
 ## Run: 2026-04-01T03:30:01+00:00
 
 2026-04-01T04:30:27+00:00 SKIP: already running
+2026-04-01T04:57:04+00:00 DONE
