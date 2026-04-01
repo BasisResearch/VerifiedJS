@@ -6059,11 +6059,15 @@ private theorem closureConvert_step_simulation
         cases body <;> simp [Core.exprValue?] at hbv; subst hbv; rfl
       subst hlit
       -- body = .lit v: fbody = .lit (convertValue v), st1 = st
+      -- Need to re-simp hconv now that body = .lit v
+      simp only [Flat.convertExpr] at hconv
       cases hfin : finally_ with
       | none =>
+        simp [Flat.convertOptExpr] at hconv
+        obtain ⟨hsfexpr, hst'eq⟩ := hconv
         have hsf_eta : sf = { sf with expr := .tryCatch (.lit (Flat.convertValue v)) catchParam
             (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst none } := by
-          cases sf; simp_all [Flat.convertExpr, Flat.convertOptExpr]
+          cases sf; simp_all
         rw [hsf_eta] at hstep
         rw [Flat_step?_tryCatch_body_value _ _ _ _ hncf] at hstep
         simp at hstep
@@ -6085,15 +6089,15 @@ private theorem closureConvert_step_simulation
         · simp [sc', noCallFrameReturn]
         · simp [sc', ExprAddrWF, ValueAddrWF]
           simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-        · refine ⟨st, st, by simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, ?_⟩
-          simp [Flat.convertExpr, Flat.convertOptExpr, CCStateAgree] at hconv ⊢
-          exact hconv.2
+        · exact ⟨st, st, by simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, by rw [hst'eq]; exact ⟨rfl, rfl⟩⟩
       | some fin =>
+        simp [Flat.convertOptExpr] at hconv
+        obtain ⟨hsfexpr, hst'eq⟩ := hconv
         have hsf_eta : sf = { sf with expr := .tryCatch (.lit (Flat.convertValue v)) catchParam
             (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst
             (some (Flat.convertExpr fin scope envVar envMap
               (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).snd).fst) } := by
-          cases sf; simp_all [Flat.convertExpr, Flat.convertOptExpr]
+          cases sf; simp_all
         rw [hsf_eta] at hstep
         rw [Flat_step?_tryCatch_body_value_finally _ _ _ _ _ hncf] at hstep
         simp at hstep
@@ -6118,7 +6122,7 @@ private theorem closureConvert_step_simulation
         · simp [sc', ExprAddrWF]
           simp [ExprAddrWF] at hexprwf
           exact ⟨hexprwf.2.2, hexprwf.1⟩
-        · -- CCState agreement: choose st_a matching the output structure
+        · -- CCState agreement for some fin case
           sorry
     | none =>
       -- Body is not a value; step the body via IH
