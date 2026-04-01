@@ -6210,6 +6210,7 @@ private theorem closureConvert_step_simulation
       cases finally_ with
       | none =>
         simp [Flat.convertOptExpr] at hconv
+        sorry /- DEBUG2 -/
         obtain ⟨hsf_expr, hst'_eq⟩ := hconv
         have hsf_eta : sf = { sf with expr := .tryCatch (.lit (Flat.convertValue v)) catchParam
             (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst none } := by
