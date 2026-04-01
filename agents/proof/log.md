@@ -4668,9 +4668,20 @@ The `normalizeExpr_await_step_sim` (L4718) can now use `normalizeExpr_await_impl
 
 The same pattern could be replicated for `.return` and `.yield` (creating `HasReturnInHead` / `HasYieldInHead` + `normalizeExpr_return_or_k` / `normalizeExpr_yield_or_k`) to unblock `normalizeExpr_return_step_sim` (L4694) and `normalizeExpr_yield_step_sim` (L4749).
 
+### Partially proved `normalizeExpr_await_step_sim`
+
+Added stepping helpers: `Flat.step?_await_lit_eq`, `Flat.step?_await_var_ok`, `Flat.step?_await_this_ok`.
+
+Replaced full `sorry` with structured proof using `HasAwaitInHead`:
+- **`await_direct` case**: `.lit v`, `.var name`, `.this` fully proved (both ok+error)
+- `.break`/`.continue`: contradiction
+- Compound inner_arg + non-await_direct cases: **sorry** (2 sorries replacing 1)
+
+**Note**: `VarFreeIn` lacks `await_arg`, so both ok/error eval paths handled explicitly.
+
+**Sorry count: 19** (was 18; net +1 from splitting one sorry into two more specific ones)
+
 ### Next priorities
-1. Prove `normalizeExpr_await_step_sim` using the new infrastructure
+1. Prove compound inner_arg case in await_step_sim (needs depth induction on normalizeExpr)
 2. Build `HasReturnInHead` + `normalizeExpr_return_or_k` for return_step_sim
 3. Build `HasYieldInHead` + `normalizeExpr_yield_or_k` for yield_step_sim
-
-2026-04-01T02:30:01+00:00 SKIP: already running
