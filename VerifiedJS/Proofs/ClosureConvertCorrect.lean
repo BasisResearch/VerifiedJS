@@ -3126,6 +3126,45 @@ private theorem valuesFromExprList_none_of_firstNonValueProp
       | none => rw [hrest] at h; simp at h
     | _ => simp [List.map, Flat.valuesFromExprList?, Flat.exprValue?]
 
+/-- When all Core props are values (firstNonValueProp = none), convertPropList preserves CCState. -/
+private theorem convertPropList_state_none
+    (ps : List (Core.PropName × Core.Expr))
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState)
+    (h : Core.firstNonValueProp ps = none) :
+    (Flat.convertPropList ps scope envVar envMap st).snd = st := by
+  induction ps generalizing st with
+  | nil => simp [Flat.convertPropList]
+  | cons p ps' ih =>
+    obtain ⟨pn, pe⟩ := p
+    cases pe with
+    | lit v =>
+      unfold Core.firstNonValueProp at h
+      cases hrest : Core.firstNonValueProp ps' with
+      | some _ => simp [hrest] at h
+      | none =>
+        simp [Flat.convertPropList, Flat.convertExpr]
+        exact ih st hrest
+    | _ => simp [Core.firstNonValueProp] at h
+
+/-- When all Core elems are values (firstNonValueExpr = none), convertExprList preserves CCState. -/
+private theorem convertExprList_state_none
+    (es : List Core.Expr)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState)
+    (h : Core.firstNonValueExpr es = none) :
+    (Flat.convertExprList es scope envVar envMap st).snd = st := by
+  induction es generalizing st with
+  | nil => simp [Flat.convertExprList]
+  | cons e es' ih =>
+    cases e with
+    | lit v =>
+      unfold Core.firstNonValueExpr at h
+      cases hrest : Core.firstNonValueExpr es' with
+      | some _ => simp [hrest] at h
+      | none =>
+        simp [Flat.convertExprList, Flat.convertExpr]
+        exact ih st hrest
+    | _ => simp [Core.firstNonValueExpr] at h
+
 private theorem convertPropList_firstNonValueProp_none
     (ps : List (Core.PropName × Core.Expr))
     (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState)
@@ -5847,15 +5886,18 @@ private theorem closureConvert_step_simulation
               · simp only [ExprAddrWF, ValueAddrWF] at hps; exact hps.1
               · exact ih hps.2 h
       · -- hheapna
-        simp [sc', cheap', Array.size_push, hheapna]; omega
+        simp only [sc', cheap', caddr, Array.size_push]
+        rw [hheapna]; omega
       · -- noCallFrameReturn
         simp [sc', noCallFrameReturn]
       · -- ExprAddrWF
-        simp only [sc', ExprAddrWF, ValueAddrWF, cheap', Array.size_push]
+        simp only [sc', ExprAddrWF, ValueAddrWF, cheap', caddr, Array.size_push]
         rw [hheapna]; omega
       · -- CCState threading
         have hna_eq : sc.heap.nextAddr = sf.heap.nextAddr := hinj.2.1
-        refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by rw [hst]; exact ⟨rfl, rfl⟩⟩
+        have hst_eq : (Flat.convertPropList props scope envVar envMap st).snd = st :=
+          convertPropList_state_none props scope envVar envMap st hcfnv
+        refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by rw [hst, hst_eq]⟩
         subst hsf'; simp only [sc', Flat.convertExpr, Flat.convertValue, caddr]
         exact ⟨congrArg Flat.Expr.lit (congrArg Flat.Value.object hna_eq.symm), rfl⟩
     | some val =>
