@@ -2642,3 +2642,5 @@ Plan: Implement monotone output approach for CCStateAgree — weaken output from
 
 ## Run: 2026-04-01T20:00:01+00:00
 
+2026-04-01T20:00:04+00:00 EXIT: code 1
+2026-04-01T20:00:04+00:00 DONE
