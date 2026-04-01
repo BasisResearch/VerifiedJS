@@ -2546,3 +2546,7 @@ Plan: Implement monotone output approach for CCStateAgree — weaken output from
 2026-04-01T01:00:02+00:00 SKIP: already running
 2026-04-01T02:00:02+00:00 SKIP: already running
 2026-04-01T03:00:01+00:00 SKIP: already running
+### 2026-04-01T03:33:36+00:00 Closed tryCatch body-value none case (L6201)
+- tryCatch body=lit, finally_=none: fully proved by simp [Flat.convertOptExpr]
+- tryCatch body=lit, finally_=some: sorry (needs further work)
+- call function case (L4189): not attempted this run

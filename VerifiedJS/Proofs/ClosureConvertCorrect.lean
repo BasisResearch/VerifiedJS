@@ -6192,7 +6192,7 @@ private theorem closureConvert_step_simulation
       rw [hce_lit_fst, hce_lit_snd] at hconv
       cases finally_ with
       | none => simp [Flat.convertOptExpr] at hconv
-      | some fin => simp [Flat.convertOptExpr] at hconv; sorry
+      | some fin => simp [Flat.convertOptExpr] at hconv; exact hconv
     | none =>
       -- Body is not a value; step the body via IH
       sorry
