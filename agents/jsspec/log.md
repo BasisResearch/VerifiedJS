@@ -2551,3 +2551,9 @@ Plan: Implement monotone output approach for CCStateAgree — weaken output from
 - tryCatch body=lit, finally_=some: sorry (needs further work)
 - call function case (L4189): not attempted this run
 2026-04-01T04:00:01+00:00 SKIP: already running
+### 2026-04-01T04:33:22+00:00 Run complete — closed tryCatch body-value/none sorry
+- Proved: tryCatch body=(.lit v), finally_=none case (was L5891)
+- Remaining sorry at L6216: tryCatch body=(.lit v), finally_=(some fin) — blocked by CCStateAgree
+- Target 1 (call L4189): not attempted — needs FuncsCorr infrastructure
+- Build: ClosureConvertCorrect.lean has 0 errors
+2026-04-01T04:33:49+00:00 DONE

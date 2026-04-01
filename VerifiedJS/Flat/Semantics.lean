@@ -1917,4 +1917,32 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
 @[simp] theorem step?_pushTrace_expand (s : State) (t : Core.TraceEvent) :
     pushTrace s t = { s with trace := s.trace ++ [t] } := rfl
 
+/-- When all objectLit props are values, Flat.step? allocates on heap. -/
+theorem step?_objectLit_allValues (s : State)
+    (props : List (PropName × Expr))
+    (vs : List Value)
+    (hvs : valuesFromExprList? (props.map Prod.snd) = some vs) :
+    step? { s with expr := .objectLit props } =
+      some (.silent,
+        ⟨.lit (.object s.heap.nextAddr), s.env,
+         ⟨s.heap.objects.push (props.filterMap fun (k, e) =>
+            match exprValue? e with | some v => some (k, flatToCoreValue v) | none => none),
+          s.heap.nextAddr + 1⟩,
+         s.trace ++ [.silent], s.funcs, s.callStack⟩) := by
+  unfold step?; simp only [hvs, allocObjectWithProps, pushTrace]
+
+/-- When all arrayLit elems are values, Flat.step? allocates on heap. -/
+theorem step?_arrayLit_allValues (s : State)
+    (elems : List Expr)
+    (vs : List Value)
+    (hvs : valuesFromExprList? elems = some vs) :
+    step? { s with expr := .arrayLit elems } =
+      some (.silent,
+        ⟨.lit (.object s.heap.nextAddr), s.env,
+         ⟨s.heap.objects.push (elems.zipIdx.filterMap fun (e, i) =>
+            match exprValue? e with | some v => some (toString i, flatToCoreValue v) | none => none),
+          s.heap.nextAddr + 1⟩,
+         s.trace ++ [.silent], s.funcs, s.callStack⟩) := by
+  unfold step?; simp only [hvs, allocObjectWithProps, pushTrace]
+
 end VerifiedJS.Flat

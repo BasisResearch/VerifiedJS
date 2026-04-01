@@ -5145,7 +5145,8 @@ private theorem normalizeExpr_labeled_step_sim :
                     · rw [hexpr_s]; simp only [ANF.normalizeExpr, StateT.run]; exact hbf
                     · intro arg n''; exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
                   · rw [htrace_s, observableTrace_append]; simp [observableTrace]; decide
-                  · rw [hexpr_s, henv_s]; intro x hfx; cases hfx
+                  · rw [hexpr_s, henv_s]; intro x hfx; cases hfx with
+                    | return_some_arg _ _ h1 => cases h1
               | _ => sorry -- non-labeled inner value: needs eval context lifting
           | while_ _ _ =>
             exfalso; unfold ANF.normalizeExpr at hnorm
