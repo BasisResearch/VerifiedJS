@@ -4806,3 +4806,19 @@ try-catch bodies(2), while_ CCState(1)
 
 ### 2026-03-31T23:30:16+00:00 Starting run
 2026-04-01T00:15:01+00:00 SKIP: already running
+
+### 2026-04-01T00:00:00+00:00 Run complete — closed 2 setIndex sorries
+
+**Targets closed:**
+1. **setIndex value-stepping (was L5248)** — proved the case where obj+idx are values and value needs stepping. Added CCState simplification (`hst_iv`) to handle Flat.convertExpr (.lit iv) state threading. Used IH on value sub-expression with `Core_step?_setIndex_value_step_value` and `Flat_step?_setIndex_{object,nonobject}_step_value`.
+
+2. **setIndex idx-stepping (was L5251)** — proved the case where obj is a value and idx needs stepping. Used IH on idx sub-expression with `Core_step?_setIndex_value_step_idx` and `Flat_step?_setIndex_{object,nonobject}_step_idx`. CCState threading propagates through `convertExpr_state_determined` for the value arg.
+
+**Helper lemmas added (around L2826):**
+- `Flat_step?_setIndex_value_idx_none` — when obj is value, idx step returns none, setIndex step returns none
+- `Flat_step?_setIndex_value_value_none` — when obj+idx are values, value step returns none, setIndex step returns none
+
+**Sorry count: 21 → 19 (17 actual, 2 are comments)**
+
+**Build status:** Compiles. Only pre-existing errors at L3261 (missing case arms from sorry'd stubs) and L6056+ (tryCatch — jsspec's target).
+2026-04-01T00:23:47+00:00 DONE
