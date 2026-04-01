@@ -287,4 +287,116 @@ def isDynamicImportStmt : Program -> Bool
   | .ok toks => newlineDoesNotForceRegex toks
   | .error _ => false
 
+-- === Arrow function edge cases ===
+
+-- Single-param arrow without parens: x => x + 1
+def isSingleParamArrow : Expr -> Bool
+  | .arrowFunction [.ident "x" none] (.expr (.binary .add (.ident "x") (.lit (.number _)))) => true
+  | _ => false
+
+#guard
+  match parseExpr "x => x + 1" with
+  | .ok e => isSingleParamArrow e
+  | .error _ => false
+
+-- Arrow with block body: (x) => { return x; }
+def isBlockBodyArrow : Expr -> Bool
+  | .arrowFunction [.ident "x" none] (.block [.return (some (.ident "x"))]) => true
+  | _ => false
+
+#guard
+  match parseExpr "(x) => { return x; }" with
+  | .ok e => isBlockBodyArrow e
+  | .error _ => false
+
+-- No-param arrow: () => 42
+def isNoParamArrow : Expr -> Bool
+  | .arrowFunction [] (.expr (.lit (.number _))) => true
+  | _ => false
+
+#guard
+  match parseExpr "() => 42" with
+  | .ok e => isNoParamArrow e
+  | .error _ => false
+
+-- === Template literal edge cases ===
+
+-- Simple template: `hello`
+def isSimpleTemplate : Expr -> Bool
+  | .template none [.string "hello" _] => true
+  | _ => false
+
+#guard
+  match parseExpr "`hello`" with
+  | .ok e => isSimpleTemplate e
+  | .error _ => false
+
+-- Template with expression: `x is ${x}`
+def isTemplateWithExpr : Expr -> Bool
+  | .template none [.string "x is " _, .expr (.ident "x")] => true
+  | _ => false
+
+#guard
+  match parseExpr "`x is ${x}`" with
+  | .ok e => isTemplateWithExpr e
+  | .error _ => false
+
+-- === Optional chaining edge cases ===
+
+-- Simple optional member: a?.b
+def isOptionalMember : Expr -> Bool
+  | .optionalChain (.ident "a") [.member "b"] => true
+  | _ => false
+
+#guard
+  match parseExpr "a?.b" with
+  | .ok e => isOptionalMember e
+  | .error _ => false
+
+-- Optional call: a?.b()
+def isOptionalCall : Expr -> Bool
+  | .optionalChain (.ident "a") [.member "b", .call []] => true
+  | _ => false
+
+#guard
+  match parseExpr "a?.b()" with
+  | .ok e => isOptionalCall e
+  | .error _ => false
+
+-- Optional index: a?.[0]
+def isOptionalIndex : Expr -> Bool
+  | .optionalChain (.ident "a") [.index (.lit (.number _))] => true
+  | _ => false
+
+#guard
+  match parseExpr "a?.[0]" with
+  | .ok e => isOptionalIndex e
+  | .error _ => false
+
+-- === Destructuring pattern edge cases ===
+
+-- Array destructuring: var [a, b] = arr;
+def isArrayDestructuring : Program -> Bool
+  | .script
+      [ .varDecl .var [.mk (.array [some (.ident "a" none), some (.ident "b" none)] none) (some (.ident "arr"))]
+      ] => true
+  | _ => false
+
+#guard
+  match parse "var [a, b] = arr;" with
+  | .ok p => isArrayDestructuring p
+  | .error _ => false
+
+-- Object destructuring: var {x, y} = obj;
+def isObjectDestructuring : Program -> Bool
+  | .script
+      [ .varDecl .var [.mk (.object [.shorthand "x" none, .shorthand "y" none] none) (some (.ident "obj"))]
+      ] => true
+  | _ => false
+
+#guard
+  match parse "var {x, y} = obj;" with
+  | .ok p => isObjectDestructuring p
+  | .error _ => false
+
 end Tests

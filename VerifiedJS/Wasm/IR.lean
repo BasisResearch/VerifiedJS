@@ -22,6 +22,7 @@ inductive IRInstr where
   | globalSet (idx : Nat)
   | load (t : IRType) (offset : Nat)
   | store (t : IRType) (offset : Nat)
+  | store8 (offset : Nat)  -- i32.store8: store low byte of i32 to memory
   | binOp (t : IRType) (op : String) -- e.g., "add", "sub"
   | unOp (t : IRType) (op : String)
   | call (funcIdx : Nat)
@@ -53,6 +54,8 @@ structure IRModule where
   exports : Array (String × Nat)  -- name, func idx
   dataSegments : Array (Nat × ByteArray) -- offset, data
   startFunc : Option Nat
+  /-- Function table for indirect calls. Pairs: (tableSize, list of funcIdx to populate). -/
+  tableEntries : Array Nat := #[]
   deriving Repr
 
 end VerifiedJS.Wasm.IR

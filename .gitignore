@@ -1,42 +1,8 @@
-# Lean build artifacts
 .lake/
-lake-packages/
-build/
-
-# Output files
+.cache/
+.claude-*/
 *.wasm
-*.wat
-output/
-
-# Logs
-agent_logs/*.log
+/fail/
+/uv.lock
+/kickoff.sh
 test_logs/
-
-# Editor
-.vscode/settings.json
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Python
-__pycache__/
-*.pyc
-.venv/
-
-# Sorry report (auto-generated)
-SORRY_REPORT.md
-
-# Task locks (transient)
-current_tasks/*.txt
-
-.agent_locks/
-.agent_state/
-monitoring/frontend/dist/
-monitoring/frontend/node_modules/
-.worktrees/
-.claude/worktrees/

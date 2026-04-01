@@ -96,6 +96,7 @@ private partial def emitInstr (s : EmitState) : IR.IRInstr → Except String (Li
   | .store .i64 offset => .ok [.i64Store { offset := offset, align := 3 }]
   | .store .f64 offset => .ok [.f64Store { offset := offset, align := 3 }]
   | .store .ptr offset => .ok [.i32Store { offset := offset, align := 2 }]
+  | .store8 offset => .ok [.i32Store8 { offset := offset, align := 0 }]
   | .binOp .i32 op => .ok [emitI32BinOp op]
   | .binOp .i64 op => .ok [emitI64BinOp op]
   | .binOp .f64 op => .ok (emitF64BinOp op)
@@ -115,8 +116,9 @@ private partial def emitInstr (s : EmitState) : IR.IRInstr → Except String (Li
     let bodyInstrs ← emitInstrs s' body
     .ok [.loop .none bodyInstrs]
   | .if_ result then_ else_ => do
-    let thenInstrs ← emitInstrs s then_
-    let elseInstrs ← emitInstrs s else_
+    let s' := pushLabel s "__if"
+    let thenInstrs ← emitInstrs s' then_
+    let elseInstrs ← emitInstrs s' else_
     let bt := match result with
       | some t => .valType (irTypeToValType t)
       | none => .none
@@ -138,11 +140,14 @@ where
     | "or" => .i32Or
     | "xor" => .i32Xor
     | "add" => .i32Add | "sub" => .i32Sub | "mul" => .i32Mul
-    | "div" => .i32DivS | "mod" => .i32RemS
+    | "div" => .i32DivS | "div_u" => .i32DivU | "mod" => .i32RemS
     | "bit_and" => .i32And | "bit_or" => .i32Or | "bit_xor" => .i32Xor
     | "shl" => .i32Shl | "shr" => .i32ShrS | "ushr" => .i32ShrU
     | "eq" | "strict_eq" => .i32Eq | "neq" | "strict_neq" => .i32Ne
-    | "lt" => .i32Lts | "gt" => .i32Gts | "le" => .i32Les | "ge" => .i32Ges
+    | "lt" => .i32Lts | "lt_u" => .i32Ltu
+    | "gt" => .i32Gts | "gt_u" => .i32Gtu
+    | "le" => .i32Les | "le_u" => .i32Leu
+    | "ge" => .i32Ges | "ge_u" => .i32Geu
     | _ => .nop  -- fallback for unrecognized ops
 
   emitI64BinOp (op : String) : Instr :=
@@ -161,6 +166,7 @@ where
     | "ge" => .i64Ges
     | "add" => .i64Add | "sub" => .i64Sub | "mul" => .i64Mul
     | "div" => .i64DivS | "mod" => .i64RemS
+    | "div_u" => .i64DivU | "rem_u" => .i64RemU
     | _ => .nop
 
   emitF64BinOp (op : String) : List Instr :=
@@ -210,6 +216,9 @@ where
     match op with
     | "eqz" => [.i64Eqz]
     | "reinterpret_f64" => [.i64ReinterpretF64]
+    | "trunc_f64_s" => [.i64TruncF64s]
+    | "extend_i32_s" => [.i64ExtendI32s]
+    | "extend_i32_u" => [.i64ExtendI32u]
     | _ => [.nop]
 
   emitF64UnOp (op : String) : List Instr :=
@@ -248,13 +257,13 @@ where
       .ok (instrs ++ restInstrs)
 
 /-- Accumulator for emit: types, type map, and funcs -/
-private structure EmitAcc where
+structure EmitAcc where
   types : Array FuncType := #[]
   typeMap : List (FuncType × Nat) := []
   funcs : Array Func := #[]
 
 /-- Process one IR function, deduplicating its type -/
-private def emitOneFunc (acc : EmitAcc) (f : IR.IRFunc) : Except String EmitAcc := do
+def emitOneFunc (acc : EmitAcc) (f : IR.IRFunc) : Except String EmitAcc := do
   let (func, funcType) ← emitFunc f
   match acc.typeMap.find? (fun (ft, _) => ft == funcType) with
   | some (_, idx) =>
@@ -265,22 +274,15 @@ private def emitOneFunc (acc : EmitAcc) (f : IR.IRFunc) : Except String EmitAcc 
           typeMap := (funcType, idx) :: acc.typeMap
           funcs := acc.funcs.push { func with typeIdx := idx } }
 
-/-- Emit a Wasm AST module from Wasm IR -/
-def emit (m : IR.IRModule) : Except String Module := do
+/-- Build the final Wasm module from an IR module and emitted function accumulator. -/
+def buildModule (m : IR.IRModule) (acc : EmitAcc) : Module :=
   let hostImportType : FuncType := { params := [.i32, .i32, .i32, .i32], results := [.i32] }
-
-  -- Emit all functions, collecting types
-  let acc ← m.functions.toList.foldlM emitOneFunc {}
-
-  -- Ensure the host print import type exists.
   let (types, hostImportTypeIdx) :=
     match acc.typeMap.find? (fun (ft, _) => ft == hostImportType) with
     | some (_, idx) => (acc.types, idx)
     | none =>
       let idx := acc.types.size
       (acc.types.push hostImportType, idx)
-
-  -- Convert globals
   let globals := m.globals.toList.map fun (t, isMut, initStr) =>
     let valType := irTypeToValType t
     let mutability := if isMut then Mut.var else Mut.const_
@@ -296,21 +298,15 @@ def emit (m : IR.IRModule) : Except String Module := do
             [.f64Const (parseF64Literal? initStr |>.getD 0.0)]
       | .f32 => [.f32Const (0.0)]
     { type := { val := valType, mutability := mutability }, init := initExpr : Global }
-
-  -- Convert exports
   let funcExports := m.exports.toList.map fun (name, funcIdx) =>
     { name := name, desc := ExportDesc.func funcIdx : Export }
   let memExport : Export := { name := "memory", desc := ExportDesc.memory 0 }
   let exports := (funcExports ++ [memExport]).toArray
-
-  -- Convert data segments
   let datas := m.dataSegments.toList.map fun (offset, bytes) =>
     { memIdx := 0
       offset := [Instr.i32Const (UInt32.ofNat offset)]
       init := bytes : DataSegment }
-
-  .ok {
-    types := types
+  { types := types
     imports := #[
       { module_ := "wasi_snapshot_preview1"
       , name := "fd_write"
@@ -318,13 +314,38 @@ def emit (m : IR.IRModule) : Except String Module := do
       }
     ]
     funcs := acc.funcs
-    tables := #[]
+    tables := if m.tableEntries.isEmpty then #[]
+               else #[{ elem := .funcref, lim := { min := m.tableEntries.size, max := some m.tableEntries.size } }]
     memories := m.memories.toList.toArray
     globals := globals.toArray
     exports := exports
     start := m.startFunc
-    elems := #[]
+    elems := if m.tableEntries.isEmpty then #[]
+             else #[{ tableIdx := 0, offset := [.i32Const 0], funcIdxs := m.tableEntries.toList }]
     datas := datas.toArray
   }
+
+@[simp] theorem buildModule_start (m : IR.IRModule) (acc : EmitAcc) :
+    (buildModule m acc).start = m.startFunc := by rfl
+
+@[simp] theorem buildModule_imports_size (m : IR.IRModule) (acc : EmitAcc) :
+    (buildModule m acc).imports.size = 1 := by rfl
+
+/-- Emit a Wasm AST module from Wasm IR -/
+def emit (m : IR.IRModule) : Except String Module := do
+  -- Pre-register arity types: type index n = (f64^n) -> f64, for n in 0..8.
+  -- This ensures callIndirect n in the IR maps to the correct Wasm type index.
+  let initAcc : EmitAcc := Id.run do
+    let mut acc : EmitAcc := {}
+    for n in List.range 9 do
+      let ft : FuncType := { params := List.replicate n .f64, results := [.f64] }
+      acc := { types := acc.types.push ft
+               typeMap := (ft, n) :: acc.typeMap
+               funcs := acc.funcs }
+    pure acc
+
+  -- Emit all functions, collecting types (reusing pre-registered arity types)
+  let acc ← m.functions.toList.foldlM emitOneFunc initAcc
+  .ok (buildModule m acc)
 
 end VerifiedJS.Wasm

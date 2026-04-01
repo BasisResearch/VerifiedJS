@@ -6,6 +6,7 @@
 
 import VerifiedJS.ANF.Syntax
 import VerifiedJS.Flat.Syntax
+import VerifiedJS.Flat.Semantics
 import VerifiedJS.Core.Semantics
 
 namespace VerifiedJS.ANF
@@ -50,10 +51,12 @@ def Env.assign (env : Env) (name : VarName) (v : Flat.Value) : Env :=
 def Env.extend (env : Env) (name : VarName) (v : Flat.Value) : Env :=
   (name, v) :: env
 
-private def pushTrace (s : State) (t : Core.TraceEvent) : State :=
+/-- Append a trace event to the state's trace list. -/
+def pushTrace (s : State) (t : Core.TraceEvent) : State :=
   { s with trace := s.trace ++ [t] }
 
 /-- Convert an ANF literal-like trivial to a Flat value when possible. -/
+@[simp]
 def trivialValue? : Trivial → Option Flat.Value
   | .var _ => none
   | .litNull => some .null
@@ -64,7 +67,8 @@ def trivialValue? : Trivial → Option Flat.Value
   | .litObject addr => some (.object addr)
   | .litClosure funcIdx envPtr => some (.closure funcIdx envPtr)
 
-private def trivialOfValue : Flat.Value → Trivial
+/-- Convert a Flat value to its corresponding ANF literal trivial. -/
+def trivialOfValue : Flat.Value → Trivial
   | .null => .litNull
   | .undefined => .litUndefined
   | .bool b => .litBool b
@@ -72,6 +76,11 @@ private def trivialOfValue : Flat.Value → Trivial
   | .string s => .litStr s
   | .object addr => .litObject addr
   | .closure funcIdx envPtr => .litClosure funcIdx envPtr
+
+/-- trivialOfValue never produces a variable reference — it always produces a literal. -/
+theorem trivialOfValue_ne_var (v : Flat.Value) (name : VarName) :
+    trivialOfValue v ≠ .var name := by
+  cases v <;> simp [trivialOfValue]
 
 /-- Evaluate a trivial in the current environment (variables may fail with ReferenceError). -/
 def evalTrivial (env : Env) : Trivial → Except String Flat.Value
@@ -160,6 +169,11 @@ private def encodeEnvProps (values : List Flat.Value) : List (PropName × Core.V
 private def allocFreshObject (h : Core.Heap) : Nat × Core.Heap :=
   let addr := h.nextAddr
   let h' : Core.Heap := { objects := h.objects.push [], nextAddr := addr + 1 }
+  (addr, h')
+
+private def allocObjectWithProps (h : Core.Heap) (props : List (Core.PropName × Core.Value)) : Nat × Core.Heap :=
+  let addr := h.nextAddr
+  let h' : Core.Heap := { objects := h.objects.push props, nextAddr := addr + 1 }
   (addr, h')
 
 private def allocEnvObject (h : Core.Heap) (values : List Flat.Value) : Nat × Core.Heap :=
@@ -278,13 +292,17 @@ def evalComplex (s : State) (rhs : ComplexExpr) : ComplexResult :=
   | .objectLit props =>
       match props.mapM (fun (_, t) => evalTrivial s.env t) with
       | .ok _ =>
-          let (addr, heap') := allocFreshObject s.heap
+          let heapProps := props.filterMap fun (k, t) =>
+            match evalTrivial s.env t with | .ok v => some (k, flatToCoreValue v) | .error _ => none
+          let (addr, heap') := allocObjectWithProps s.heap heapProps
           { event := .silent, env := s.env, heap := heap', value := .object addr }
       | .error msg => mkError msg s
   | .arrayLit elems =>
       match evalTrivialList s.env elems with
       | .ok _ =>
-          let (addr, heap') := allocFreshObject s.heap
+          let heapProps : List (Core.PropName × Core.Value) := elems.zipIdx.filterMap fun (t, i) =>
+            match evalTrivial s.env t with | .ok v => some (toString i, flatToCoreValue v) | .error _ => none
+          let (addr, heap') := allocObjectWithProps s.heap heapProps
           { event := .silent, env := s.env, heap := heap', value := .object addr }
       | .error msg => mkError msg s
   | .unary op arg =>
@@ -298,13 +316,14 @@ def evalComplex (s : State) (rhs : ComplexExpr) : ComplexResult :=
       | _, .error msg => mkError msg s
 
 /-- Check whether an ANF expression is already a value expression. -/
+@[simp]
 def exprValue? : Expr → Option Flat.Value
   | .trivial t => trivialValue? t
   | _ => none
 
 /-- One deterministic ANF small-step transition with emitted trace event. -/
-partial def step? (s : State) : Option (Core.TraceEvent × State) :=
-  match s.expr with
+def step? (s : State) : Option (Core.TraceEvent × State) :=
+  match h : s.expr with
   | .trivial t =>
       match t with
       | .var name =>
@@ -357,9 +376,10 @@ partial def step? (s : State) : Option (Core.TraceEvent × State) :=
           | none => none
   | .throw arg =>
       match evalTrivial s.env arg with
-      | .ok _ =>
-          let s' := pushTrace { s with expr := .trivial .litUndefined } (.error "throw")
-          some (.error "throw", s')
+      | .ok v =>
+          let msg := Flat.valueToString v
+          let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
+          some (.error msg, s')
       | .error msg =>
           let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
           some (.error msg, s')
@@ -391,13 +411,14 @@ partial def step? (s : State) : Option (Core.TraceEvent × State) :=
   | .«return» arg =>
       match arg with
       | none =>
-          let s' := pushTrace { s with expr := .trivial .litUndefined } .silent
-          some (.silent, s')
+          let s' := pushTrace { s with expr := .trivial .litUndefined } (.error "return:undefined")
+          some (.error "return:undefined", s')
       | some t =>
           match evalTrivial s.env t with
           | .ok v =>
-              let s' := pushTrace { s with expr := .trivial (trivialOfValue v) } .silent
-              some (.silent, s')
+              let msg := "return:" ++ Flat.valueToString v
+              let s' := pushTrace { s with expr := .trivial (trivialOfValue v) } (.error msg)
+              some (.error msg, s')
           | .error msg =>
               let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
               some (.error msg, s')
@@ -436,6 +457,8 @@ partial def step? (s : State) : Option (Core.TraceEvent × State) :=
       let msg := "continue:" ++ l
       let s' := pushTrace { s with expr := .trivial .litUndefined } (.error msg)
       some (.error msg, s')
+  termination_by s.expr.depth
+  decreasing_by all_goals (try cases ‹Option Expr›) <;> simp_all [Expr.depth] <;> omega
 
 /-- Small-step relation induced by `step?`. -/
 inductive Step : State → Core.TraceEvent → State → Prop where
@@ -453,12 +476,400 @@ inductive Steps : State → List Core.TraceEvent → State → Prop where
 
 /-- Initial ANF machine state for a program entry expression. -/
 def initialState (p : Program) : State :=
-  { expr := p.main, env := Env.empty, heap := Core.Heap.empty, trace := [] }
+  let consoleProps : List (Core.PropName × Core.Value) := [("log", .function Core.consoleLogIdx)]
+  let heap : Core.Heap := { objects := #[consoleProps], nextAddr := 1 }
+  { expr := p.main, env := Env.empty.extend "console" (.object 0), heap := heap, trace := [] }
 
 /-- Program behavior as finite terminating trace sequence. -/
 def Behaves (p : Program) (b : List Core.TraceEvent) : Prop :=
   ∃ sFinal,
     Steps (initialState p) b sFinal ∧
     step? sFinal = none
+
+/-- ANF literal trivials are final values and do not step. -/
+@[simp]
+theorem step?_litNull (s : State) :
+    step? { s with expr := .trivial .litNull } = none := by
+  simp [step?]
+
+@[simp]
+theorem step?_litUndefined (s : State) :
+    step? { s with expr := .trivial .litUndefined } = none := by
+  simp [step?]
+
+@[simp]
+theorem step?_litBool (s : State) (b : Bool) :
+    step? { s with expr := .trivial (.litBool b) } = none := by
+  simp [step?]
+
+@[simp]
+theorem step?_litNum (s : State) (n : Float) :
+    step? { s with expr := .trivial (.litNum n) } = none := by
+  simp [step?]
+
+@[simp]
+theorem step?_litStr (s : State) (str : String) :
+    step? { s with expr := .trivial (.litStr str) } = none := by
+  simp [step?]
+
+@[simp]
+theorem step?_litObject (s : State) (addr : Nat) :
+    step? { s with expr := .trivial (.litObject addr) } = none := by
+  simp [step?]
+
+@[simp]
+theorem step?_litClosure (s : State) (f e : Nat) :
+    step? { s with expr := .trivial (.litClosure f e) } = none := by
+  simp [step?]
+
+/-- Variable lookup that succeeds produces the looked-up value. -/
+@[simp]
+theorem step?_var_found (s : State) (name : VarName) (v : Flat.Value)
+    (h : s.env.lookup name = some v) :
+    step? { s with expr := .trivial (.var name) } =
+      some (.silent, pushTrace { s with expr := .trivial (trivialOfValue v) } .silent) := by
+  simp [step?, h]
+
+/-- Variable lookup that fails produces a ReferenceError. -/
+@[simp]
+theorem step?_var_not_found (s : State) (name : VarName)
+    (h : s.env.lookup name = none) :
+    step? { s with expr := .trivial (.var name) } =
+      some (.error s!"ReferenceError: {name}",
+            pushTrace { s with expr := .trivial .litUndefined } (.error s!"ReferenceError: {name}")) := by
+  simp [step?, h]
+
+/-- Let-binding always steps by evaluating the complex RHS immediately. -/
+theorem step?_let (s : State) (name : VarName) (rhs : ComplexExpr) (body : Expr) :
+    let r := evalComplex { s with expr := .let name rhs body } rhs
+    step? { s with expr := .let name rhs body } =
+      some (r.event, pushTrace { s with expr := body, env := r.env.extend name r.value, heap := r.heap } r.event) := by
+  simp [step?]
+
+/-- If-then-else with successful condition eval always steps. -/
+@[simp]
+theorem step?_if_ok (s : State) (cond : Trivial) (then_ else_ : Expr) (v : Flat.Value)
+    (h : evalTrivial s.env cond = .ok v) :
+    step? { s with expr := .if cond then_ else_ } =
+      some (.silent, pushTrace { s with expr := if toBoolean v then then_ else else_ } .silent) := by
+  simp [step?, h]
+
+/-- If-then-else with failed condition eval produces an error. -/
+@[simp]
+theorem step?_if_error (s : State) (cond : Trivial) (then_ else_ : Expr) (msg : String)
+    (h : evalTrivial s.env cond = .error msg) :
+    step? { s with expr := .if cond then_ else_ } =
+      some (.error msg, pushTrace { s with expr := .trivial .litUndefined } (.error msg)) := by
+  simp [step?, h]
+
+/-- Labeled expression always steps by unwrapping to body. -/
+@[simp]
+theorem step?_labeled (s : State) (label : String) (body : Expr) :
+    step? { s with expr := .labeled label body } =
+      some (.silent, pushTrace { s with expr := body } .silent) := by
+  simp [step?]
+
+/-- Break always steps silently (control-flow signal handled by while/labeled). -/
+@[simp]
+theorem step?_break (s : State) (label : Option String) :
+    step? { s with expr := .break label } =
+      some (.error ("break:" ++ label.getD ""),
+            pushTrace { s with expr := .trivial .litUndefined } (.error ("break:" ++ label.getD ""))) := by
+  simp [step?]
+
+/-- Continue always steps with an error event (control-flow signal handled by while/labeled). -/
+@[simp]
+theorem step?_continue (s : State) (label : Option String) :
+    step? { s with expr := .continue label } =
+      some (.error ("continue:" ++ label.getD ""),
+            pushTrace { s with expr := .trivial .litUndefined } (.error ("continue:" ++ label.getD ""))) := by
+  simp [step?]
+
+/-- Throw with successful eval always steps with an error event. -/
+@[simp]
+theorem step?_throw_ok (s : State) (arg : Trivial) (v : Flat.Value)
+    (h : evalTrivial s.env arg = .ok v) :
+    step? { s with expr := .throw arg } =
+      some (.error (Flat.valueToString v),
+            pushTrace { s with expr := .trivial .litUndefined } (.error (Flat.valueToString v))) := by
+  simp [step?, h]
+
+/-- Throw with failed eval always steps with an error event. -/
+@[simp]
+theorem step?_throw_error (s : State) (arg : Trivial) (msg : String)
+    (h : evalTrivial s.env arg = .error msg) :
+    step? { s with expr := .throw arg } =
+      some (.error msg,
+            pushTrace { s with expr := .trivial .litUndefined } (.error msg)) := by
+  simp [step?, h]
+
+/-- Return with no argument always steps. -/
+@[simp]
+theorem step?_return_none (s : State) :
+    step? { s with expr := .return none } =
+      some (.error "return:undefined",
+            pushTrace { s with expr := .trivial .litUndefined } (.error "return:undefined")) := by
+  simp [step?]
+
+/-- Return with successful arg eval always steps. -/
+@[simp]
+theorem step?_return_some_ok (s : State) (t : Trivial) (v : Flat.Value)
+    (h : evalTrivial s.env t = .ok v) :
+    step? { s with expr := .return (some t) } =
+      some (.error ("return:" ++ Flat.valueToString v),
+            pushTrace { s with expr := .trivial (trivialOfValue v) } (.error ("return:" ++ Flat.valueToString v))) := by
+  simp [step?, h]
+
+/-- Return with failed arg eval produces an error. -/
+@[simp]
+theorem step?_return_some_error (s : State) (t : Trivial) (msg : String)
+    (h : evalTrivial s.env t = .error msg) :
+    step? { s with expr := .return (some t) } =
+      some (.error msg,
+            pushTrace { s with expr := .trivial .litUndefined } (.error msg)) := by
+  simp [step?, h]
+
+/-- Await with successful eval always steps. -/
+@[simp]
+theorem step?_await_ok (s : State) (arg : Trivial) (v : Flat.Value)
+    (h : evalTrivial s.env arg = .ok v) :
+    step? { s with expr := .await arg } =
+      some (.silent, pushTrace { s with expr := .trivial (trivialOfValue v) } .silent) := by
+  simp [step?, h]
+
+/-- Await with failed eval produces an error. -/
+@[simp]
+theorem step?_await_error (s : State) (arg : Trivial) (msg : String)
+    (h : evalTrivial s.env arg = .error msg) :
+    step? { s with expr := .await arg } =
+      some (.error msg,
+            pushTrace { s with expr := .trivial .litUndefined } (.error msg)) := by
+  simp [step?, h]
+
+/-! ### Non-trivial expressions always step -/
+
+/-- Let-binding expressions always step (step? ≠ none).
+    Useful for proving halt contradictions: if an ANF state has a let-binding,
+    it cannot be halted. -/
+theorem step?_let_ne_none (s : State) (name : VarName) (rhs : ComplexExpr) (body : Expr) :
+    step? { s with expr := .let name rhs body } ≠ none := by
+  simp [step?]
+
+/-- Labeled expressions always step. -/
+theorem step?_labeled_ne_none (s : State) (label : String) (body : Expr) :
+    step? { s with expr := .labeled label body } ≠ none := by
+  simp [step?]
+
+/-- Break always steps. -/
+theorem step?_break_ne_none (s : State) (label : Option String) :
+    step? { s with expr := .break label } ≠ none := by
+  simp [step?]
+
+/-- Continue always steps. -/
+theorem step?_continue_ne_none (s : State) (label : Option String) :
+    step? { s with expr := .continue label } ≠ none := by
+  simp [step?]
+
+/-- If-then-else always steps. -/
+theorem step?_if_ne_none (s : State) (cond : Trivial) (then_ else_ : Expr) :
+    step? { s with expr := .if cond then_ else_ } ≠ none := by
+  simp [step?]
+  cases evalTrivial s.env cond <;> simp
+
+/-- Throw always steps. -/
+theorem step?_throw_ne_none (s : State) (arg : Trivial) :
+    step? { s with expr := .throw arg } ≠ none := by
+  simp [step?]
+  cases evalTrivial s.env arg <;> simp
+
+/-- Return always steps. -/
+theorem step?_return_ne_none (s : State) (arg : Option Trivial) :
+    step? { s with expr := .return arg } ≠ none := by
+  simp [step?]
+  cases arg with
+  | none => simp
+  | some t =>
+    intro h; cases h1 : evalTrivial s.env t <;> simp_all
+
+/-- Await always steps. -/
+theorem step?_await_ne_none (s : State) (arg : Trivial) :
+    step? { s with expr := .await arg } ≠ none := by
+  simp [step?]
+  cases evalTrivial s.env arg <;> simp
+
+/-- Yield always steps. -/
+theorem step?_yield_ne_none (s : State) (arg : Option Trivial) (delegate : Bool) :
+    step? { s with expr := .yield arg delegate } ≠ none := by
+  simp [step?]
+  cases arg with
+  | none => simp
+  | some t =>
+    intro h; cases h1 : evalTrivial s.env t <;> simp_all
+
+/-- While with a value condition always steps.
+    Note: while_ with a non-value cond that can't step might NOT step. -/
+theorem step?_while_value_ne_none (s : State) (cond : Expr) (body : Expr) (v : Flat.Value)
+    (h : exprValue? cond = some v) :
+    step? { s with expr := .while_ cond body } ≠ none := by
+  unfold step?; simp only [h]; exact fun h => by simp at h
+
+/-- Seq with a value first expression always steps. -/
+theorem step?_seq_value_ne_none (s : State) (a b : Expr) (v : Flat.Value)
+    (h : exprValue? a = some v) :
+    step? { s with expr := .seq a b } ≠ none := by
+  unfold step?; simp only [h]; exact fun h => by simp at h
+
+/-- TryCatch with a value body always steps. -/
+theorem step?_tryCatch_value_ne_none (s : State) (body : Expr) (catchParam : VarName)
+    (catchBody : Expr) (finally_ : Option Expr) (v : Flat.Value)
+    (h : exprValue? body = some v) :
+    step? { s with expr := .tryCatch body catchParam catchBody finally_ } ≠ none := by
+  unfold step?; simp only [h]; cases finally_ <;> exact fun h => by simp at h
+
+/-- A trivial is a literal value (not a variable reference). -/
+def Trivial.isLit : Trivial → Bool
+  | .var _ => false
+  | _ => true
+
+/-- Literal trivials always have a value. -/
+@[simp] theorem trivialValue?_isLit (t : Trivial) (h : t.isLit = true) :
+    ∃ v, trivialValue? t = some v := by
+  cases t <;> simp [Trivial.isLit, trivialValue?] at *
+
+/-- Literal trivial expressions have values. -/
+theorem exprValue?_trivial_lit (t : Trivial) (h : t.isLit = true) :
+    ∃ v, exprValue? (.trivial t) = some v := by
+  simp [exprValue?]; exact trivialValue?_isLit t h
+
+/-- If step? returns none, the expression must be a literal trivial.
+    This is the fundamental halting characterization for ANF:
+    the only ANF states that cannot step are those with literal trivial expressions.
+    Key lemma for anfConvert_halt_star non-lit cases.
+    Proved by strong induction on expression depth (Expr is mutually inductive). -/
+theorem step?_none_implies_trivial_lit (s : State) (h : step? s = none) :
+    ∃ t, s.expr = .trivial t ∧ t.isLit = true := by
+  -- Strong induction on expression depth since Expr is mutually inductive
+  suffices ∀ (n : Nat) (expr : Expr) (env : Env) (heap : Core.Heap) (trace : List Core.TraceEvent),
+      expr.depth ≤ n → step? ⟨expr, env, heap, trace⟩ = none →
+      ∃ t, expr = .trivial t ∧ t.isLit = true by
+    exact this s.expr.depth s.expr s.env s.heap s.trace (Nat.le_refl _)
+      (by cases s; exact h)
+  intro n
+  induction n with
+  | zero =>
+    intro e env heap trace hd h
+    cases e with
+    | trivial t =>
+      cases t with
+      | var name => simp [step?] at h; split at h <;> simp at h
+      | _ => exact ⟨_, rfl, rfl⟩
+    | throw => simp [step?] at h; split at h <;> simp at h
+    | «return» arg => simp [step?] at h; cases arg <;> simp at h <;> split at h <;> simp at h
+    | yield arg d =>
+      simp [step?] at h; cases arg <;> simp at h <;> split at h <;> simp at h
+    | await => simp [step?] at h; split at h <;> simp at h
+    | «break» => simp [step?] at h
+    | «continue» => simp [step?] at h
+    | «let» _ _ body => simp [Expr.depth] at hd
+    | seq a b => simp [Expr.depth] at hd
+    | «if» _ _ _ => simp [Expr.depth] at hd
+    | while_ _ _ => simp [Expr.depth] at hd
+    | tryCatch _ _ _ fin => cases fin <;> simp [Expr.depth] at hd
+    | labeled _ _ => simp [Expr.depth] at hd
+  | succ n ih =>
+    intro e env heap trace hd h
+    cases e with
+    | trivial t =>
+      cases t with
+      | var name => simp [step?] at h; split at h <;> simp at h
+      | _ => exact ⟨_, rfl, rfl⟩
+    | «let» => simp [step?] at h
+    | «if» => simp [step?] at h; split at h <;> simp at h
+    | throw => simp [step?] at h; split at h <;> simp at h
+    | «return» arg => simp [step?] at h; cases arg <;> simp at h <;> split at h <;> simp at h
+    | yield arg d =>
+      simp [step?] at h; cases arg <;> simp at h <;> split at h <;> simp at h
+    | await => simp [step?] at h; split at h <;> simp at h
+    | labeled => simp [step?] at h
+    | «break» => simp [step?] at h
+    | «continue» => simp [step?] at h
+    | seq a b =>
+      -- step? on seq returns none iff exprValue? a = none AND step? a = none
+      unfold step? at h; dsimp at h
+      split at h
+      · simp at h
+      · split at h
+        · simp at h
+        · -- By IH: a is a literal trivial
+          rename_i hstep
+          have hda : a.depth ≤ n := by simp [Expr.depth] at hd; omega
+          have ⟨t, ht, hlit⟩ := ih a env heap trace hda hstep
+          -- But exprValue? a ≠ none for literal trivials — contradiction with the split
+          cases t <;> simp [Trivial.isLit] at hlit <;> simp_all [exprValue?, trivialValue?]
+    | while_ c b =>
+      unfold step? at h; dsimp at h
+      split at h
+      · simp at h
+      · split at h
+        · simp at h
+        · rename_i hstep
+          have hdc : c.depth ≤ n := by simp [Expr.depth] at hd; omega
+          have ⟨t, ht, hlit⟩ := ih c env heap trace hdc hstep
+          cases t <;> simp [Trivial.isLit] at hlit <;> simp_all [exprValue?, trivialValue?]
+    | tryCatch body cp cb fin =>
+      unfold step? at h; dsimp at h
+      split at h
+      · cases fin <;> simp at h  -- exprValue? body = some _
+      · -- exprValue? body = none, split on step? body match (3 arms)
+        split at h
+        · simp at h  -- case: step? body = some (.error msg, sb)
+        · simp at h  -- case: step? body = some (t, sb) (non-error)
+        · -- case: step? body = none
+          rename_i hstep
+          have hdb : body.depth ≤ n := by
+            cases fin <;> simp [Expr.depth] at hd <;> omega
+          have ⟨t, ht, hlit⟩ := ih body env heap trace hdb hstep
+          cases t <;> simp [Trivial.isLit] at hlit <;> simp_all [exprValue?, trivialValue?]
+
+/-- Comprehensive: if an ANF expression is not a literal trivial (not .litNull,
+    .litUndefined, .litBool, .litNum, .litStr, .litObject, .litClosure) but IS
+    a variable, let, if, throw, return, await, yield, labeled, break, or continue,
+    then step? ≠ none. For seq/while_/tryCatch, step? may return none if a
+    sub-expression is stuck — those cases need separate handling.
+    Key lemma for anfConvert_halt_star: halted ANF states must be literal trivials. -/
+theorem step?_ne_none_of_var (s : State) (name : VarName) :
+    step? { s with expr := .trivial (.var name) } ≠ none := by
+  simp [step?]
+  cases s.env.lookup name <;> simp
+
+/-- Step relation is equivalent to step? returning some. -/
+theorem Step_iff (s : State) (t : Core.TraceEvent) (s' : State) :
+    Step s t s' ↔ step? s = some (t, s') :=
+  ⟨fun ⟨h⟩ => h, fun h => ⟨h⟩⟩
+
+/-- Steps.refl is the only way to produce an empty trace. -/
+theorem Steps_nil_iff (s s' : State) :
+    Steps s [] s' ↔ s = s' :=
+  ⟨fun h => by cases h; rfl, fun h => h ▸ Steps.refl s⟩
+
+/-! ## Structural theorems for ANF Step/Steps -/
+
+/-- ANF.Step is deterministic. -/
+theorem Step_deterministic {s : State} {t1 t2 : Core.TraceEvent} {s1 s2 : State} :
+    Step s t1 s1 → Step s t2 s2 → t1 = t2 ∧ s1 = s2 := by
+  intro ⟨h1⟩ ⟨h2⟩; rw [h1] at h2; simp only [Option.some.injEq, Prod.mk.injEq] at h2; exact h2
+
+/-- ANF.Steps is transitive. -/
+theorem Steps_trans {s1 s2 s3 : State} {t1 t2 : List Core.TraceEvent} :
+    Steps s1 t1 s2 → Steps s2 t2 s3 → Steps s1 (t1 ++ t2) s3 := by
+  intro h1 h2
+  induction h1 with
+  | refl _ => exact h2
+  | tail hstep _ ih => exact Steps.tail hstep (ih h2)
+
+/-- If step? returns none, no Step can be taken. -/
+theorem step?_none_no_step {s : State} (h : step? s = none) :
+    ∀ t s', ¬ Step s t s' := by
+  intro t s' ⟨hs⟩; rw [hs] at h; exact absurd h (by simp)
 
 end VerifiedJS.ANF

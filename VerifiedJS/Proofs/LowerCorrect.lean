@@ -4,7 +4,8 @@
 -/
 
 import VerifiedJS.Wasm.Lower
-import VerifiedJS.ANF.Syntax
+import VerifiedJS.Wasm.Semantics
+import VerifiedJS.ANF.Semantics
 
 namespace VerifiedJS.Proofs
 
@@ -19,11 +20,11 @@ theorem runtimeIdx_getGlobal_after_numeric_helpers :
   decide
 
 /-- Lowering pass structural correctness milestone:
-    successful lowering yields a concrete Wasm start function. -/
+    successful lowering yields no Wasm start section (WASI uses _start export). -/
 theorem lower_correct (s : ANF.Program) (t : Wasm.IR.IRModule)
     (h : Wasm.lower s = .ok t) :
-    ∃ startIdx, t.startFunc = some startIdx := by
-  exact Wasm.lower_startFunc_some s t h
+    t.startFunc = none := by
+  exact Wasm.lower_startFunc_none s t h
 
 theorem lower_exports_correct (s : ANF.Program) (t : Wasm.IR.IRModule)
     (h : Wasm.lower s = .ok t) :
@@ -34,5 +35,23 @@ theorem lower_memory_correct (s : ANF.Program) (t : Wasm.IR.IRModule)
     (h : Wasm.lower s = .ok t) :
     t.memories = #[{ lim := { min := 1, max := none } }] := by
   exact Wasm.lower_memory_shape s t h
+
+/-! ### Behavioral Correctness: ANF.Behaves → IR.IRBehavesObs
+
+The REAL correctness theorem for lowering: if the ANF program produces a
+trace, the lowered IR module produces the corresponding IR trace (up to
+observable events). The lowering is a stuttering simulation: one ANF step
+may produce multiple IR steps, so exact trace matching is too strong.
+ANF uses Core.TraceEvent; IR uses IR.TraceEvent. The mapping is via
+IR.traceFromCore (log↦log, error↦error, silent↦silent). -/
+
+/-- Lowering preserves behavior: every ANF trace maps to an IR trace
+    with matching observable events. This is the correct formulation for
+    a stuttering simulation where one ANF step may produce multiple IR steps. -/
+theorem lower_behavioral_correct (s : ANF.Program) (t : Wasm.IR.IRModule)
+    (h : Wasm.lower s = .ok t) :
+    ∀ trace, ANF.Behaves s trace →
+      IR.IRBehavesObs t (IR.observableEvents (IR.traceListFromCore trace)) :=
+  IR.lower_behavioral_correct' s t h
 
 end VerifiedJS.Proofs

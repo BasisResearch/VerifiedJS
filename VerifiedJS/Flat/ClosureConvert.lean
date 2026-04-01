@@ -79,6 +79,8 @@ partial def freeVars : Core.Expr → List String
       | some e => freeVars e
     dedupStrings (fBody ++ fCatch ++ fFinally) []
   | .while_ cond body => dedupStrings (freeVars cond ++ freeVars body) []
+  | .forIn _binding obj body => dedupStrings (freeVars obj ++ freeVars body) []
+  | .forOf _binding iterable body => dedupStrings (freeVars iterable ++ freeVars body) []
   | .«break» _ => []
   | .«continue» _ => []
   | .«return» arg => match arg with
@@ -114,7 +116,7 @@ def indexedMap : List String → Nat → List (String × Nat)
 mutual
 
 /-- Convert a list of expressions, threading state. -/
-partial def convertExprList
+def convertExprList
     (es : List Core.Expr) (scope : List String) (envVar : String)
     (envMap : EnvMapping) (st : CCState)
     : List Flat.Expr × CCState :=
@@ -124,9 +126,11 @@ partial def convertExprList
     let (e', st1) := convertExpr e scope envVar envMap st
     let (rest', st2) := convertExprList rest scope envVar envMap st1
     (e' :: rest', st2)
+  termination_by sizeOf es
+  decreasing_by all_goals simp_all <;> omega
 
 /-- Convert a list of (PropName × Expr) pairs, threading state. -/
-partial def convertPropList
+def convertPropList
     (ps : List (Core.PropName × Core.Expr)) (scope : List String) (envVar : String)
     (envMap : EnvMapping) (st : CCState)
     : List (PropName × Flat.Expr) × CCState :=
@@ -136,9 +140,11 @@ partial def convertPropList
     let (e', st1) := convertExpr e scope envVar envMap st
     let (rest', st2) := convertPropList rest scope envVar envMap st1
     ((pname, e') :: rest', st2)
+  termination_by sizeOf ps
+  decreasing_by all_goals simp_all <;> omega
 
 /-- Convert an optional Core.Expr, threading state. -/
-partial def convertOptExpr
+def convertOptExpr
     (oe : Option Core.Expr) (scope : List String) (envVar : String)
     (envMap : EnvMapping) (st : CCState)
     : Option Flat.Expr × CCState :=
@@ -147,9 +153,11 @@ partial def convertOptExpr
   | some e =>
     let (e', st1) := convertExpr e scope envVar envMap st
     (some e', st1)
+  termination_by sizeOf oe
+  decreasing_by all_goals simp_all <;> omega
 
 /-- Main expression conversion: Core.Expr → Flat.Expr with state threading. -/
-partial def convertExpr
+def convertExpr
     (e : Core.Expr) (scope : List String) (envVar : String)
     (envMap : EnvMapping) (st : CCState)
     : Flat.Expr × CCState :=
@@ -225,6 +233,11 @@ partial def convertExpr
     let bodyFree := freeVars body
     let bound := params
     let free := bodyFree.filter (fun v => !(bound.elem v))
+    -- For named functions, exclude self-reference from captures (handled via self-call)
+    let selfName := fname
+    let free := match selfName with
+      | some n => free.filter (· != n)
+      | none => free
     let captured := dedupStrings free []
     -- Build inner environment mapping for captured variables
     let innerEnvMap := indexedMap captured 0
@@ -263,6 +276,12 @@ partial def convertExpr
     let (cond', st1) := convertExpr cond scope envVar envMap st
     let (body', st2) := convertExpr body scope envVar envMap st1
     (.while_ cond' body', st2)
+  | .forIn _binding _obj _body =>
+    -- for-in not in Flat.Expr; desugar to undefined (excluded by SupportedExpr precondition)
+    (.lit .undefined, st)
+  | .forOf _binding _iterable _body =>
+    -- for-of not in Flat.Expr; desugar to undefined (excluded by SupportedExpr precondition)
+    (.lit .undefined, st)
   | .«break» label => (.«break» label, st)
   | .«continue» label => (.«continue» label, st)
   | .«return» arg =>
@@ -277,15 +296,19 @@ partial def convertExpr
   | .await arg =>
     let (arg', st1) := convertExpr arg scope envVar envMap st
     (.await arg', st1)
+  termination_by sizeOf e
+  decreasing_by all_goals (try cases ‹Option Core.Expr›) <;> simp_all <;> omega
 
 /-- Convert a Core.FuncDef to a Flat.FuncDef (top-level, no captures). -/
-partial def convertFuncDef (fd : Core.FuncDef) (st : CCState) : FuncDef × CCState :=
+def convertFuncDef (fd : Core.FuncDef) (st : CCState) : FuncDef × CCState :=
   let envVar := "__env_top"
   let (body', st1) := convertExpr fd.body fd.params envVar [] st
   ({ name := fd.name, params := fd.params, envParam := envVar, body := body' }, st1)
+  termination_by sizeOf fd
+  decreasing_by all_goals simp_all <;> omega
 
 /-- Convert top-level functions array, threading state. -/
-partial def convertFuncDefs (fds : List Core.FuncDef) (st : CCState)
+def convertFuncDefs (fds : List Core.FuncDef) (st : CCState)
     : List FuncDef × CCState :=
   match fds with
   | [] => ([], st)
@@ -293,6 +316,8 @@ partial def convertFuncDefs (fds : List Core.FuncDef) (st : CCState)
     let (fd', st1) := convertFuncDef fd st
     let (rest', st2) := convertFuncDefs rest st1
     (fd' :: rest', st2)
+  termination_by sizeOf fds
+  decreasing_by all_goals simp_all <;> omega
 
 end -- mutual
 
@@ -306,5 +331,38 @@ def closureConvert (prog : Core.Program) : Except String Program :=
   -- Convert the main body expression
   let (mainExpr, st3) := convertExpr prog.body [] "__env_main" [] st2
   .ok { functions := st3.funcs, main := mainExpr }
+
+theorem convertExpr_let_unfold (name : VarName) (init body : Core.Expr)
+    (scope : List String) (envVar : String) (envMap : EnvMapping) (st : CCState) :
+    (convertExpr (.«let» name init body) scope envVar envMap st) =
+    let (initE, st') := convertExpr init scope envVar envMap st
+    let (bodyE, st'') := convertExpr body (name :: scope) envVar envMap st'
+    (Flat.Expr.«let» name initE bodyE, st'') := by
+  simp [convertExpr]
+
+theorem convertExpr_if_unfold (cond then_ else_ : Core.Expr)
+    (scope : List String) (envVar : String) (envMap : EnvMapping) (st : CCState) :
+    (convertExpr (.«if» cond then_ else_) scope envVar envMap st) =
+    let (condE, st1) := convertExpr cond scope envVar envMap st
+    let (thenE, st2) := convertExpr then_ scope envVar envMap st1
+    let (elseE, st3) := convertExpr else_ scope envVar envMap st2
+    (Flat.Expr.«if» condE thenE elseE, st3) := by
+  simp [convertExpr]
+
+theorem convertExpr_seq_unfold (a b : Core.Expr)
+    (scope : List String) (envVar : String) (envMap : EnvMapping) (st : CCState) :
+    (convertExpr (.seq a b) scope envVar envMap st) =
+    let (aE, st1) := convertExpr a scope envVar envMap st
+    let (bE, st2) := convertExpr b scope envVar envMap st1
+    (Flat.Expr.seq aE bE, st2) := by
+  simp [convertExpr]
+
+theorem convertExpr_binary_unfold (op : Core.BinOp) (lhs rhs : Core.Expr)
+    (scope : List String) (envVar : String) (envMap : EnvMapping) (st : CCState) :
+    (convertExpr (.binary op lhs rhs) scope envVar envMap st) =
+    let (lhsE, st1) := convertExpr lhs scope envVar envMap st
+    let (rhsE, st2) := convertExpr rhs scope envVar envMap st1
+    (Flat.Expr.binary op lhsE rhsE, st2) := by
+  simp [convertExpr]
 
 end VerifiedJS.Flat

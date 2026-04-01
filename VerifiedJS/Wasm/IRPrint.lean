@@ -19,6 +19,7 @@ partial def printInstr (instr : IRInstr) (indent : Nat := 0) : String :=
   | .globalSet idx => s!"{i}global.set {idx}"
   | .load t offset => s!"{i}{printIRType t}.load offset={offset}"
   | .store t offset => s!"{i}{printIRType t}.store offset={offset}"
+  | .store8 offset => s!"{i}i32.store8 offset={offset}"
   | .binOp t op => s!"{i}{printIRType t}.{op}"
   | .unOp t op => s!"{i}{printIRType t}.{op}"
   | .call funcIdx => s!"{i}call {funcIdx}"

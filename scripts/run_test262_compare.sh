@@ -177,32 +177,7 @@ extract_case_value() {
 }
 
 limitation_reason() {
-  local file="$1"
-
-  if has_frontmatter_pattern "$file" '^features:.*iterator-helpers'; then
-    echo "iterator-helpers"
-    return
-  fi
-  if [[ "$file" == *"/annexB/"* ]]; then
-    echo "annex-b"
-    return
-  fi
-  if [[ "$file" == *"/language/statements/for/dstr/"* ]]; then
-    echo "destructuring-for-statement"
-    return
-  fi
-  if grep -Eq '\?\.|\?\?' "$file"; then
-    echo "optional-chaining-or-nullish"
-    return
-  fi
-  if grep -Eq '(^|[^[:alnum:]_])class[[:space:]]+[[:alpha:]_$]' "$file"; then
-    echo "class-declaration"
-    return
-  fi
-  if grep -Eq 'for[[:space:]]*\([^\)]*\b(in|of)\b' "$file"; then
-    echo "for-in-of"
-    return
-  fi
+  # All limitations removed — compiler should handle everything
   echo ""
 }
 
@@ -214,20 +189,8 @@ is_meta_skip() {
     return
   fi
 
-  if has_frontmatter_pattern "$file" '^negative:'; then
-    echo "negative"
-    return
-  fi
-
-  if has_frontmatter_pattern "$file" '^flags:.*\b(module|async|raw|CanBlockIsTrue)\b'; then
-    echo "unsupported-flags"
-    return
-  fi
-
-  if grep -q '\$DONOTEVALUATE();' "$file"; then
-    echo "parse-only"
-    return
-  fi
+  # All features enabled — the compiler should handle everything.
+  # negative tests, async, modules, parse-only — all attempted.
 
   echo ""
 }
@@ -398,6 +361,16 @@ for file in "${FILES[@]}"; do
   compile_log="$TMP_ROOT/compile.log"
 
   if "$VERIFIEDJS_BIN" "$source_file" -o "$out_file" >"$compile_log" 2>&1; then
+    # Negative tests that compile successfully = FAIL (should have been rejected)
+    if has_frontmatter_pattern "$file" '^negative:' || grep -q '\$DONOTEVALUATE()' "$file"; then
+      echo "TEST262_FAIL negative-not-rejected ${file}"
+      FAIL=$((FAIL + 1))
+      if [[ "$FAIL" -ge "$MAX_FAIL" ]]; then
+        echo "TEST262_ABORT too-many-failures=${FAIL}"
+        break
+      fi
+      continue
+    fi
     wasm_stdout="$TMP_ROOT/wasm.stdout"
     wasm_stderr="$TMP_ROOT/wasm.stderr"
     wasm_rc=0
@@ -485,7 +458,11 @@ for file in "${FILES[@]}"; do
     fi
   else
     first_err="$(grep -E 'Compilation error:|Pipeline error:|Elaboration error:' "$compile_log" | head -n1 || true)"
-    if [[ "$first_err" == *"unbound variable"* ]] || [[ "$first_err" == *"stub"* ]]; then
+    # Negative tests: compilation failure is EXPECTED (the test wants rejection)
+    if has_frontmatter_pattern "$file" '^negative:' || grep -q '\$DONOTEVALUATE()' "$file"; then
+      echo "TEST262_PASS ${file}"
+      PASS=$((PASS + 1))
+    elif [[ "$first_err" == *"unbound variable"* ]] || [[ "$first_err" == *"stub"* ]]; then
       echo "TEST262_XFAIL known-limitation ${file} :: ${first_err}"
       XFAIL=$((XFAIL + 1))
     else

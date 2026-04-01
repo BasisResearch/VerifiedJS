@@ -4,3 +4,4 @@ while (i < 5) {
   sum = sum + i;
   i = i + 1;
 }
+console.log(sum);

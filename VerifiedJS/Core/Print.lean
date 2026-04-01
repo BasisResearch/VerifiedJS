@@ -78,6 +78,10 @@ partial def printExpr (e : Expr) (indent : Nat := 0) : String :=
     i ++ "try {\n" ++ printExpr body (indent+1) ++ "\n" ++ i ++ "} catch (" ++ catchParam ++ ") {\n" ++ printExpr catchBody (indent+1) ++ "\n" ++ i ++ "}" ++ fin
   | .while_ cond body =>
     i ++ "while (" ++ printExpr cond 0 ++ ") {\n" ++ printExpr body (indent+1) ++ "\n" ++ i ++ "}"
+  | .forIn binding obj body =>
+    i ++ "for (" ++ binding ++ " in " ++ printExpr obj 0 ++ ") {\n" ++ printExpr body (indent+1) ++ "\n" ++ i ++ "}"
+  | .forOf binding iterable body =>
+    i ++ "for (" ++ binding ++ " of " ++ printExpr iterable 0 ++ ") {\n" ++ printExpr body (indent+1) ++ "\n" ++ i ++ "}"
   | .«break» label => match label with | some l => "break " ++ l | none => "break"
   | .«continue» label => match label with | some l => "continue " ++ l | none => "continue"
   | .«return» arg => match arg with | some a => "return " ++ printExpr a 0 | none => "return"

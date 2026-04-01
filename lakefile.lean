@@ -6,26 +6,16 @@ package verifiedjs where
     ⟨`autoImplicit, false⟩
   ]
 
--- Dependencies
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4" @ "master"
+  "https://github.com/leanprover-community/mathlib4" @ "4fea51b80cc00b717429ad3314d1bbecac56cb80"
 
-require Canonical from git
-  "https://github.com/chasenorman/CanonicalLean" @ "master"
-
-require duper from git
-  "https://github.com/leanprover-community/duper" @ "main"
-
--- Main library
 @[default_target]
 lean_lib VerifiedJS where
 
--- CLI executable
 lean_exe verifiedjs where
   srcDir := "VerifiedJS"
   root := `Driver
 
--- Test library
 lean_lib Tests where
   srcDir := "tests/unit"
 

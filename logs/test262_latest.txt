@@ -1,0 +1,90 @@
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Temporal/PlainMonthDay/prototype/toString/calendarname-auto.js :: wasm_rc=134
+TEST262_SKIP negative tests/test262/test/language/expressions/assignment/dstr/array-rest-before-element.js
+TEST262_FAIL runtime-exec tests/test262/test/language/expressions/generators/forbidden-ext/b2/gen-func-expr-forbidden-ext-indirect-access-prop-caller.js :: wasm_rc=134
+TEST262_SKIP unsupported-flags tests/test262/test/language/statements/class/elements/async-gen-private-method-static/yield-star-next-then-non-callable-object-fulfillpromise.js
+TEST262_SKIP limitation:annex-b tests/test262/test/annexB/built-ins/String/prototype/link/not-a-constructor.js
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Math/trunc/not-a-constructor.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/String/prototype/padEnd/observable-operations.js :: wasm_rc=134
+TEST262_XFAIL known-backend:wasm-validation tests/test262/test/harness/proxytrapshelper-overrides.js
+TEST262_FAIL runtime-exec tests/test262/test/language/expressions/class/elements/new-no-sc-line-method-rs-private-setter.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/language/statementList/eval-fn-array-literal-with-item.js :: wasm_rc=134
+TEST262_XFAIL known-backend:wasm-validation tests/test262/test/language/statements/function/scope-param-elem-var-close.js
+TEST262_SKIP unsupported-flags tests/test262/test/built-ins/Atomics/waitAsync/bigint/no-spurious-wakeup-on-xor.js
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Proxy/has/return-false-target-prop-exists-using-with.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Temporal/ZonedDateTime/prototype/toPlainDate/prop-desc.js :: wasm_rc=134
+TEST262_XFAIL known-backend:wasm-validation tests/test262/test/language/expressions/bitwise-not/S11.4.8_A2.2_T1.js
+TEST262_FAIL runtime-exec tests/test262/test/language/expressions/object/ident-name-prop-name-literal-else-escaped.js :: wasm_rc=134
+TEST262_SKIP limitation:class-declaration tests/test262/test/language/statements/class/subclass/builtin-objects/GeneratorFunction/super-must-be-called.js
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Array/prototype/every/15.4.4.16-7-c-i-2.js :: wasm_rc=134
+TEST262_XFAIL known-backend:wasm-validation tests/test262/test/built-ins/Object/defineProperties/15.2.3.7-6-a-71.js
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Temporal/Instant/prototype/round/roundingmode-undefined.js :: wasm_rc=134
+TEST262_SKIP limitation:for-in-of tests/test262/test/intl402/Temporal/ZonedDateTime/non-canonical-utc.js
+TEST262_FAIL tests/test262/test/language/expressions/compound-assignment/sub-whitespace.js :: 
+TEST262_SKIP unsupported-flags tests/test262/test/language/statements/class/dstr/async-private-gen-meth-static-ary-ptrn-elem-id-init-fn-name-class.js
+TEST262_FAIL runtime-exec tests/test262/test/staging/Intl402/Temporal/old/yearmonth-toLocaleString.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/FinalizationRegistry/prop-desc.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/RegExp/prototype/Symbol.matchAll/name.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/TypedArray/prototype/slice/speciesctor-get-species-custom-ctor-returns-another-instance.js :: wasm_rc=134
+TEST262_SKIP limitation:class-declaration tests/test262/test/language/expressions/class/dstr/gen-meth-static-ary-ptrn-elision-exhausted.js
+TEST262_PASS tests/test262/test/language/identifiers/part-unicode-9.0.0.js
+TEST262_SKIP unsupported-flags tests/test262/test/language/statements/for-await-of/async-gen-dstr-var-async-obj-ptrn-prop-ary.js
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Array/prototype/reduce/15.4.4.21-4-2.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Object/getOwnPropertyDescriptor/15.2.3.3-4-226.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Temporal/PlainDateTime/prototype/until/roundingincrement-wrong-type.js :: wasm_rc=134
+TEST262_SKIP negative tests/test262/test/language/expressions/arrow-function/dstr/syntax-error-ident-ref-instanceof-escaped.js
+TEST262_FAIL runtime-exec tests/test262/test/language/expressions/function/eval-var-scope-syntax-err.js :: wasm_rc=134
+TEST262_SKIP limitation:class-declaration tests/test262/test/language/statements/class/elements/after-same-line-method-static-private-methods-with-fields.js
+TEST262_FAIL runtime-exec tests/test262/test/staging/sm/strict/15.4.4.9.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Math/atan2/S15.8.2.5_A1.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/String/prototype/concat/S15.5.4.6_A1_T9.js :: wasm_rc=134
+TEST262_SKIP limitation:for-in-of tests/test262/test/built-ins/global/S10.2.3_A2.3_T4.js
+TEST262_SKIP unsupported-flags tests/test262/test/language/expressions/class/elements/async-gen-private-method/yield-star-next-then-returns-abrupt.js
+TEST262_SKIP unsupported-flags tests/test262/test/language/module-code/top-level-await/syntax/export-var-await-expr-array-literal.js
+TEST262_FAIL runtime-exec tests/test262/test/language/statements/function/S14_A3.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Atomics/and/bad-range.js :: wasm_rc=134
+TEST262_SKIP unsupported-flags tests/test262/test/built-ins/Promise/reject-via-abrupt.js
+TEST262_SKIP limitation:for-in-of tests/test262/test/built-ins/Temporal/ZonedDateTime/prototype/getTimeZoneTransition/direction-wrong-type.js
+TEST262_SKIP unsupported-flags tests/test262/test/language/expressions/async-generator/expression-yield-as-operand.js
+TEST262_FAIL runtime-exec tests/test262/test/language/expressions/object/dstr/gen-meth-obj-ptrn-rest-getter.js :: wasm_rc=134
+TEST262_SKIP negative tests/test262/test/language/statements/class/gen-method-static/yield-as-binding-identifier.js
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Array/prototype/at/index-non-numeric-argument-tointeger-invalid.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Object/defineProperties/15.2.3.7-6-a-118.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Temporal/Duration/prototype/total/precision-exact-mathematical-values-1.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/intl402/Segmenter/prototype/segment/prop-desc.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/language/expressions/compound-assignment/S11.13.2_A4.4_T2.6.js :: wasm_rc=134
+TEST262_SKIP unsupported-flags tests/test262/test/language/statements/class/dstr/async-gen-meth-static-dflt-ary-ptrn-elem-ary-rest-init.js
+TEST262_FAIL runtime-exec tests/test262/test/language/statements/with/cptn-abrupt-empty.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Date/prototype/setUTCDate/prop-desc.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/RegExp/property-escapes/generated/Script_Extensions_-_SignWriting.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/TypedArray/prototype/reduce/this-is-not-object.js :: wasm_rc=134
+TEST262_SKIP unsupported-flags tests/test262/test/language/expressions/class/dstr/async-private-gen-meth-static-dflt-obj-ptrn-id-init-fn-name-arrow.js
+TEST262_FAIL runtime-exec tests/test262/test/language/function-code/10.4.3-1-67-s.js :: wasm_rc=134
+TEST262_SKIP unsupported-flags tests/test262/test/language/statements/for-await-of/async-gen-dstr-let-ary-ptrn-elem-ary-val-null.js
+TEST262_PASS tests/test262/test/built-ins/Array/prototype/map/15.4.4.19-5-1.js
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Object/freeze/15.2.3.9-2-a-14.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Temporal/PlainDateTime/prototype/since/argument-string.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/language/expressions/array/spread-err-sngl-err-itr-get-call.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/language/expressions/equals/bigint-and-number.js :: wasm_rc=134
+TEST262_SKIP limitation:class-declaration tests/test262/test/language/statements/class/dstr/private-meth-dflt-ary-ptrn-rest-id-exhausted.js
+TEST262_XFAIL known-backend:wasm-validation tests/test262/test/staging/sm/lexical-environment/block-scoped-functions-hoisted-tdz.js
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/JSON/stringify/value-function.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/SharedArrayBuffer/prototype/maxByteLength/this-has-no-arraybufferdata-internal.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/WeakSet/prototype/add/returns-this-symbol.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/language/expressions/class/elements/after-same-line-static-gen-computed-names.js :: wasm_rc=134
+TEST262_SKIP fixture tests/test262/test/language/module-code/namespace/internals/get-nested-namespace-props-nrml-1_FIXTURE.js
+TEST262_SKIP limitation:destructuring-for-statement tests/test262/test/language/statements/for/dstr/var-ary-ptrn-elision.js
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/ArrayBuffer/prototype/transfer/this-is-not-object.js :: wasm_rc=134
+TEST262_SKIP unsupported-flags tests/test262/test/built-ins/Promise/any/resolve-from-reject-catch.js
+TEST262_SKIP limitation:for-in-of tests/test262/test/built-ins/Temporal/PlainYearMonth/prototype/with/overflow-invalid-string.js
+TEST262_SKIP unsupported-flags tests/test262/test/language/expressions/async-generator/dstr/dflt-obj-ptrn-prop-ary.js
+TEST262_SKIP unsupported-flags tests/test262/test/language/expressions/object/dstr/async-gen-meth-dflt-ary-ptrn-rest-id-elision.js
+TEST262_SKIP negative tests/test262/test/language/statements/class/elements/syntax/early-errors/delete/method-delete-covered-err-delete-call-expression-privatename.js
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Array/S15.4.2.1_A2.2_T1.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Object/defineProperties/15.2.3.7-5-b-109.js :: wasm_rc=134
+TEST262_FAIL runtime-exec tests/test262/test/built-ins/Temporal/Duration/prototype/add/no-calendar-units.js :: wasm_rc=134
+TEST262_SKIP limitation:for-in-of tests/test262/test/intl402/NumberFormat/prototype/formatToParts/signDisplay-de-DE.js
+TEST262_FAIL runtime-exec tests/test262/test/language/expressions/class/scope-setter-paramsbody-var-open.js :: wasm_rc=134
+TEST262_SKIP limitation:class-declaration tests/test262/test/language/statements/class/definition/side-effects-in-extends.js
+TEST262_FAIL runtime-exec tests/test262/test/language/statements/variable/dstr/ary-ptrn-elem-obj-prop-id-init.js :: wasm_rc=134
+TEST262_ABORT too-many-failures=50
+TEST262_SUMMARY mode=fast pass=2 fail=50 xfail=5 skip=31 total=88

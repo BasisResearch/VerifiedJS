@@ -263,6 +263,23 @@ private partial def runInstr (m : IRModule) (instr : IRInstr) (fuel : Nat) (s : 
           | none =>
               let (sig, s') := trapState s "stack underflow in store"
               (sig, s', f)
+      | .store8 offset =>
+          match pop2? s.stack with
+          | some (value, addrV, rest) =>
+              match parseNatLike? addrV, s.memories[0]? with
+              | some addr, some mem =>
+                  let mem' := mem.insert (addr + offset) value
+                  let memories' := s.memories.set! 0 mem'
+                  (.ok, { s with stack := rest, memories := memories' }, f)
+              | _, none =>
+                  let (sig, s') := trapState s "no memory segment at index 0"
+                  (sig, s', f)
+              | none, _ =>
+                  let (sig, s') := trapState s s!"invalid store8 address: {addrV}"
+                  (sig, s', f)
+          | none =>
+              let (sig, s') := trapState s "stack underflow in store8"
+              (sig, s', f)
       | .binOp _ op =>
           match pop2? s.stack with
           | some (rhs, lhs, rest) =>

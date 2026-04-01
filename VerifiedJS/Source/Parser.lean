@@ -19,6 +19,7 @@ namespace VerifiedJS.Source
 structure ParserState where
   tokens : Array Token
   pos : Nat
+  noIn : Bool := false  -- ECMA-262 §13.7: suppress `in` as binary operator inside for-loop headers
   deriving Repr
 
 private def parseKeywordLiteral (s : String) : Option Expr :=
@@ -167,6 +168,23 @@ private partial def parseImportDeclStmt : ParserM Stmt := do
     match tk.kind with
     | .string s => let _ <- bump; pure s
     | _ => throw "Expected import source string literal"
+  -- ECMA-262 §16.2.2 Import Attributes: skip optional `with { ... }` after source
+  let skipImportAttributes : ParserM Unit := do
+    skipNewlines
+    if (← consumeKeyword? "with") then
+      skipNewlines
+      expectPunct "{"
+      let rec skipBraces (depth : Nat) : ParserM Unit := do
+        if depth = 0 then pure ()
+        else
+          let t <- bump
+          match t.kind with
+          | .eof => throw "Unterminated import attributes"
+          | .punct "{" => skipBraces (depth + 1)
+          | .punct "}" => skipBraces (depth - 1)
+          | _ => skipBraces depth
+      skipBraces 1
+    else pure ()
 
   let parseNamedSpecifiers : ParserM (List ImportSpecifier) := do
     expectPunct "{"
@@ -203,15 +221,20 @@ private partial def parseImportDeclStmt : ParserM Stmt := do
   match next.kind with
   | .string source =>
     let _ <- bump
+    skipImportAttributes
     pure (.import_ [] source)
   | .punct "*" =>
     let ns <- parseNamespaceSpecifier
     expectWord "from"
-    pure (.import_ [ns] (← parseSourceString))
+    let src <- parseSourceString
+    skipImportAttributes
+    pure (.import_ [ns] src)
   | .punct "{" =>
     let named <- parseNamedSpecifiers
     expectWord "from"
-    pure (.import_ named (← parseSourceString))
+    let src <- parseSourceString
+    skipImportAttributes
+    pure (.import_ named src)
   | .ident _ | .kw _ =>
     let defaultBinding <- parseIdentLike
     let defaultSpec := ImportSpecifier.default_ defaultBinding
@@ -226,10 +249,14 @@ private partial def parseImportDeclStmt : ParserM Stmt := do
           pure (defaultSpec :: named)
         | _ => throw "Expected `*` or `{` after default import binding"
       expectWord "from"
-      pure (.import_ combined (← parseSourceString))
+      let src <- parseSourceString
+      skipImportAttributes
+      pure (.import_ combined src)
     else
       expectWord "from"
-      pure (.import_ [defaultSpec] (← parseSourceString))
+      let src <- parseSourceString
+      skipImportAttributes
+      pure (.import_ [defaultSpec] src)
   | _ =>
     throw "Invalid import declaration"
 
@@ -238,6 +265,7 @@ private def asAssignTarget (e : Expr) : Option AssignTarget :=
   | .ident n => some (.ident n)
   | .member obj prop => some (.member obj prop)
   | .index obj prop => some (.index obj prop)
+  | .privateMember obj name => some (.privateMember obj name)
   | _ => none
 
 private def parsePatternFromIdent (name : String) : Pattern :=
@@ -292,6 +320,25 @@ private partial def parsePatternFromExpr (e : Expr) : Option Pattern :=
         | .pattern p => some (.assign p rhs)
         | _ => none
       | _ => none
+    | .array elems =>
+      let rec goElems (es : List (Option Expr)) (acc : List (Option Pattern)) :
+          Option (List (Option Pattern) × Option Pattern) :=
+        match es with
+        | [] => some (acc.reverse, none)
+        | some (.spread spreadExpr) :: [] =>
+          match go spreadExpr with
+          | some restPat => some (acc.reverse, some restPat)
+          | none => none
+        | e :: tl =>
+          match e with
+          | none => goElems tl (none :: acc)
+          | some expr =>
+            match go expr with
+            | some pat => goElems tl (some pat :: acc)
+            | none => none
+      match goElems elems [] with
+      | some (patElems, rest) => some (.array patElems rest)
+      | none => none
     | .object props =>
       let rec goProps (ps : List Property) (acc : List PatternProp) (rest : Option Pattern) :
           Option (List PatternProp × Option Pattern) :=
@@ -413,9 +460,9 @@ private partial def parseParamList : ParserM (List Pattern) := do
   parseParamListAfterOpen
 
 private partial def parseFunctionBody : ParserM (List Stmt) := do
-  expectPunct "{"
-  skipBalancedBlock 1
-  pure []
+  match (← parseBlockStmt) with
+  | .block stmts => pure stmts
+  | s => pure [s]
 
 private partial def parsePropertyKey : ParserM PropertyKey := do
   if (← consumePunct? "#") then
@@ -451,13 +498,36 @@ private partial def parseObjectLiteral : ParserM Expr := do
       let spreadExpr <- parseAssignmentM
       let _ <- consumePunct? ","
       loop (.spread spreadExpr :: acc)
-    else if (← consumePunct? "*") then
-      let key <- parsePropertyKey
-      let params <- parseParamList
-      let body <- parseFunctionBody
-      let _ <- consumePunct? ","
-      loop (.method .method key params body false true :: acc)
     else
+      -- Handle async/get/set/generator modifiers (ECMA-262 §12.2.6)
+      let isAsync <- do
+        let t <- peek
+        let t1 <- peekN 1
+        match t.kind with
+        | .ident "async" | .kw "async" =>
+          if !tokenIsPunct t1 "(" && !tokenIsPunct t1 ":" && !tokenIsPunct t1 ","
+             && !tokenIsPunct t1 "}" then
+            let _ <- bump; pure true
+          else pure false
+        | _ => pure false
+      if (← consumePunct? "*") then
+        let key <- parsePropertyKey
+        let params <- parseParamList
+        let body <- parseFunctionBody
+        let _ <- consumePunct? ","
+        loop (.method .method key params body isAsync true :: acc)
+      else
+      let methodKind : MethodKind <- do
+        let t <- peek
+        let t1 <- peekN 1
+        let isModifier := !tokenIsPunct t1 "(" && !tokenIsPunct t1 ":"
+            && !tokenIsPunct t1 "," && !tokenIsPunct t1 "}"
+        match t.kind with
+        | .ident "get" | .kw "get" =>
+          if isModifier then let _ <- bump; pure MethodKind.get else pure MethodKind.method
+        | .ident "set" | .kw "set" =>
+          if isModifier then let _ <- bump; pure MethodKind.set else pure MethodKind.method
+        | _ => pure MethodKind.method
       let key <- parsePropertyKey
       if (← consumePunct? ":") then
         let value <- parseAssignmentM
@@ -473,8 +543,16 @@ private partial def parseObjectLiteral : ParserM Expr := do
         else
           match key with
           | .ident name =>
-            let _ <- consumePunct? ","
-            loop (.shorthand name :: acc)
+            -- Check for shorthand with default value: { x = expr }
+            -- This is valid in destructuring assignment patterns (ECMA-262 §12.15.5)
+            if (← consumePunct? "=") then
+              let defaultExpr <- parseAssignmentM
+              let _ <- consumePunct? ","
+              loop (.keyValue (.ident name)
+                (.assign .assign (.ident name) defaultExpr) :: acc)
+            else
+              let _ <- consumePunct? ","
+              loop (.shorthand name :: acc)
           | _ =>
             throw "Object literal property must be key:value or method"
   loop []
@@ -501,13 +579,38 @@ private partial def parseArrayLiteral : ParserM Expr := do
   loop []
 
 private partial def parseClassElement : ParserM ClassMember := do
-  let isStatic <- consumeKeyword? "static"
-  let kind : MethodKind <-
-    if (← consumeKeyword? "get") then pure .get
-    else if (← consumeKeyword? "set") then pure .set
-    else pure .method
+  let isStatic <- consumeWord? "static"
+  -- Static initialization block: static { ... } (ECMA-262 §14.6 ClassStaticBlock)
+  if isStatic then do
+    let t <- peek
+    if tokenIsPunct t "{" then do
+      let _ <- bump  -- consume '{'
+      skipBalancedBlock 1
+      return .staticBlock []
+  -- Contextual keywords: [async] [*] [get|set] name (ECMA-262 §14.6)
+  -- async must be checked first since syntax is: async *generator()
+  let isAsync <- do
+    let t <- peek
+    let t1 <- peekN 1
+    match t.kind with
+    | .ident "async" | .kw "async" =>
+      if !tokenIsPunct t1 "(" && !tokenIsPunct t1 "=" then
+        let _ <- bump; pure true
+      else pure false
+    | _ => pure false
   let isGenerator <- consumePunct? "*"
-  let isAsync <- consumeKeyword? "async"
+  -- get/set are modifiers only when followed by a property name (not '(' or '=')
+  let kind : MethodKind <- do
+    let t <- peek
+    let t1 <- peekN 1
+    let isModifier := !tokenIsPunct t1 "(" && !tokenIsPunct t1 "="
+        && !tokenIsPunct t1 ";" && !tokenIsPunct t1 "}" && !tokenIsPunct t1 ","
+    match t.kind with
+    | .ident "get" | .kw "get" =>
+      if isModifier then let _ <- bump; pure .get else pure .method
+    | .ident "set" | .kw "set" =>
+      if isModifier then let _ <- bump; pure .set else pure .method
+    | _ => pure .method
   let key <- parsePropertyKey
   if (← consumePunct? "(") then
     let st <- get
@@ -537,8 +640,10 @@ private partial def parseClassBody : ParserM (List ClassMember) := do
 
 private partial def parseFunctionExpr : ParserM Expr := do
   expectKeyword "function"
+  skipNewlines
   let isGen <- consumePunct? "*"
   let _ := isGen
+  skipNewlines
   let name <- (do
     let t <- peek
     match t.kind with
@@ -546,6 +651,7 @@ private partial def parseFunctionExpr : ParserM Expr := do
       let _ <- bump
       pure (some n)
     | _ => pure none)
+  skipNewlines
   let params <- parseParamList
   skipNewlines
   let body <- parseFunctionBody
@@ -619,8 +725,9 @@ private partial def parsePrimaryM : ParserM Expr := do
     match parseKeywordLiteral k with
     | some e => pure e
     | none =>
-      if k = "import" then
-        pure (.ident "import")
+      -- yield/await/let/of can be used as identifiers in sloppy mode (ECMA-262 §12.1)
+      if k = "import" || k = "yield" || k = "await" || k = "let" || k = "of" then
+        pure (.ident k)
       else
         throw s!"Unsupported keyword expression `{k}` at {t.pos.line}:{t.pos.col}"
   | .template parts =>
@@ -637,8 +744,7 @@ private partial def parsePrimaryM : ParserM Expr := do
     parseObjectLiteral
   | _ => failExpected "expression"
 
-private partial def parsePostfixM : ParserM Expr := do
-  let base <- parsePrimaryM
+private partial def parsePostfixFrom (base : Expr) : ParserM Expr := do
   let rec loop (e : Expr) : ParserM Expr := do
     skipNewlines
     if (← consumePunct? ".") then
@@ -687,6 +793,10 @@ private partial def parsePostfixM : ParserM Expr := do
   else
     pure withPost
 
+private partial def parsePostfixM : ParserM Expr := do
+  let base <- parsePrimaryM
+  parsePostfixFrom base
+
 private partial def parseUnaryM : ParserM Expr := do
   -- Prefix operators may appear after line terminators inside expressions.
   skipNewlines
@@ -699,7 +809,8 @@ private partial def parseUnaryM : ParserM Expr := do
     let _ <- bump
     let _ <- bump
     let _ <- bump
-    return .newTarget
+    -- ECMA-262 §12.3.7: new.target is a MetaProperty that supports postfix ops (e.g. new.target?.())
+    return (← parsePostfixFrom .newTarget)
   | _, _, _ => pure ()
   if (← consumePunct? "++") then
     return .unary .preInc (← parseUnaryM)
@@ -720,17 +831,29 @@ private partial def parseUnaryM : ParserM Expr := do
   if (← consumeKeyword? "delete") then
     return .unary .delete (← parseUnaryM)
   if (← consumeKeyword? "await") then
+    -- In non-async context, 'await' can be used as an identifier (ECMA-262 §12.1.1)
+    let t <- peek
+    match t.kind with
+    | .newline | .punct ";" | .punct ")" | .punct "}" | .punct "]"
+    | .punct "," | .punct "." | .punct "?" | .eof =>
+      return .ident "await"
+    | _ => pure ()
     return .await (← parseUnaryM)
   if (← consumeKeyword? "yield") then
     let delegated <- consumePunct? "*"
-    let t <- peek
-    match t.kind with
-    | .newline | .punct ";" | .punct ")" | .eof =>
-      return .yield none delegated
-    | _ =>
-      return .yield (some (← parseAssignmentM)) delegated
+    if !delegated then
+      -- In sloppy mode, 'yield' can be used as an identifier (ECMA-262 §12.1.1)
+      -- Treat bare 'yield' (not followed by an expression) as an identifier reference
+      let t <- peek
+      match t.kind with
+      | .newline | .punct ";" | .punct ")" | .punct "}" | .punct "]"
+      | .punct "," | .punct "." | .punct "?" | .eof =>
+        return .ident "yield"
+      | _ => pure ()
+    return .yield (some (← parseAssignmentM)) delegated
   if (← consumeKeyword? "new") then
-    let callee <- parsePostfixM
+    -- ECMA-262 §12.3: NewExpression allows nested `new` (e.g. `new new Foo()`)
+    let callee <- if tokenIsKeyword (← peek) "new" then parseUnaryM else parsePostfixM
     let args <- if (← consumePunct? "(") then parseExprListUntil ")" else pure []
     return .new callee args
   parsePostfixM
@@ -802,14 +925,19 @@ private partial def parseRelationalM : ParserM Expr := do
     else if (← consumePunct? ">") then
       let rhs <- parseShiftM
       loop (.binary .gt acc rhs)
-    else if (← consumeKeyword? "in") then
-      let rhs <- parseShiftM
-      loop (.binary .in acc rhs)
     else if (← consumeKeyword? "instanceof") then
       let rhs <- parseShiftM
       loop (.binary .instanceof acc rhs)
     else
-      pure acc
+      -- ECMA-262 §13.7: `in` suppressed in for-loop initializer (Expression[~In])
+      if !(← get).noIn then
+        if (← consumeKeyword? "in") then
+          let rhs <- parseShiftM
+          loop (.binary .in acc rhs)
+        else
+          pure acc
+      else
+        pure acc
   loop lhs
 
 private partial def parseEqualityM : ParserM Expr := do
@@ -1029,10 +1157,9 @@ private partial def parseExprM : ParserM Expr := do
       | many => pure (.sequence many)
   loop [first]
 
-end
-
 private partial def parseVarDecl : ParserM VarDeclarator := do
   let pat <- parseBindingPatternM
+  skipNewlines
   let init <-
     if (← consumePunct? "=") then
       some <$> parseAssignmentM
@@ -1050,7 +1177,7 @@ private partial def parseVarDecls : ParserM (List VarDeclarator) := do
       pure acc.reverse
   loop [first]
 
-private def expectStringLit : ParserM String := do
+private partial def expectStringLit : ParserM String := do
   let t <- peek
   match t.kind with
   | .string s =>
@@ -1106,17 +1233,15 @@ private partial def parseImportSpecifiers : ParserM (List ImportSpecifier) := do
     else
       pure [defaultSpec]
 
-private def parseForLHSFromExpr (e : Expr) : Except String ForLHS :=
+private partial def parseForLHSFromExpr (e : Expr) : Except String ForLHS :=
   match parsePatternFromExpr e with
   | some p => pure (.pattern p)
   | none => .error "Invalid for-in/of left-hand side"
 
-private def parseForLHSFromDecls (kind : VarKind) (decls : List VarDeclarator) : Except String ForLHS :=
+private partial def parseForLHSFromDecls (kind : VarKind) (decls : List VarDeclarator) : Except String ForLHS :=
   match decls with
   | [ .mk pat _ ] => pure (.varDecl kind pat)
   | _ => .error "for-in/of with declarations requires exactly one binding"
-
-mutual
 
 private partial def parseBlockStmt : ParserM Stmt := do
   expectPunct "{"
@@ -1162,13 +1287,18 @@ private partial def parseForStmt : ParserM Stmt := do
   expectKeyword "for"
   let asyncForOf <- consumeKeyword? "await"
   expectPunct "("
+  -- ECMA-262 §13.7: Newlines inside for(...) header are not significant (no ASI).
+  skipNewlines
   if (← consumePunct? ";") then
-    let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* expectPunct ";")
-    let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* expectPunct ")")
+    skipNewlines
+    let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ";"))
+    skipNewlines
+    let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ")"))
     let body <- parseStmt
     pure (.for none cond update body)
   else if (← consumeKeyword? "var") then
     let decls <- parseVarDecls
+    skipNewlines
     if (← consumeKeyword? "in") then
       let rhs <- parseExprM
       expectPunct ")"
@@ -1186,12 +1316,24 @@ private partial def parseForStmt : ParserM Stmt := do
         pure (.forOf (some .var) lhs rhs body)
     else
       expectPunct ";"
-      let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* expectPunct ";")
-      let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* expectPunct ")")
+      skipNewlines
+      let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ";"))
+      skipNewlines
+      let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ")"))
       let body <- parseStmt
       pure (.for (some (.varDecl .var decls)) cond update body)
-  else if (← consumeKeyword? "let") then
+  else if (← do
+    -- ECMA-262 §13.7: `let` in for-header is a keyword declaration ONLY when followed
+    -- by an identifier or `[` (destructuring). If followed by `in`, `of`, `;`, etc.,
+    -- it is an identifier reference (sloppy mode). Peek ahead before consuming.
+    let t0 <- peek
+    if !tokenIsKeyword t0 "let" then return false
+    let t1 <- peekN 1
+    match t1.kind with
+    | .ident _ | .punct "[" | .punct "{" | .kw "yield" | .kw "await" => let _ <- bump; return true
+    | _ => return false) then
     let decls <- parseVarDecls
+    skipNewlines
     if (← consumeKeyword? "in") then
       let rhs <- parseExprM
       expectPunct ")"
@@ -1209,12 +1351,15 @@ private partial def parseForStmt : ParserM Stmt := do
         pure (.forOf (some .let_) lhs rhs body)
     else
       expectPunct ";"
-      let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* expectPunct ";")
-      let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* expectPunct ")")
+      skipNewlines
+      let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ";"))
+      skipNewlines
+      let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ")"))
       let body <- parseStmt
       pure (.for (some (.varDecl .let_ decls)) cond update body)
   else if (← consumeKeyword? "const") then
     let decls <- parseVarDecls
+    skipNewlines
     if (← consumeKeyword? "in") then
       let rhs <- parseExprM
       expectPunct ")"
@@ -1232,12 +1377,19 @@ private partial def parseForStmt : ParserM Stmt := do
         pure (.forOf (some .const_) lhs rhs body)
     else
       expectPunct ";"
-      let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* expectPunct ";")
-      let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* expectPunct ")")
+      skipNewlines
+      let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ";"))
+      skipNewlines
+      let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ")"))
       let body <- parseStmt
       pure (.for (some (.varDecl .const_ decls)) cond update body)
   else
+    -- ECMA-262 §13.7: for-loop initializer uses Expression[~In] to disambiguate for-in/of
+    let saved <- get
+    set { saved with noIn := true }
     let initExpr <- parseExprM
+    let st <- get
+    set { st with noIn := saved.noIn }
     if (← consumeKeyword? "in") then
       let rhs <- parseExprM
       expectPunct ")"
@@ -1255,15 +1407,20 @@ private partial def parseForStmt : ParserM Stmt := do
         pure (.forOf none lhs rhs body)
     else
       expectPunct ";"
-      let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* expectPunct ";")
-      let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* expectPunct ")")
+      skipNewlines
+      let cond <- if (← consumePunct? ";") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ";"))
+      skipNewlines
+      let update <- if (← consumePunct? ")") then pure none else (some <$> parseExprM <* (skipNewlines *> expectPunct ")"))
       let body <- parseStmt
       pure (.for (some (.expr initExpr)) cond update body)
 
 private partial def parseFunctionDecl (isAsync : Bool) : ParserM Stmt := do
   expectKeyword "function"
+  skipNewlines
   let isGenerator <- consumePunct? "*"
+  skipNewlines
   let name <- expectIdent
+  skipNewlines
   let params <- parseParamList
   skipNewlines
   let body <- match (← parseBlockStmt) with
@@ -1279,7 +1436,7 @@ private partial def parseClassDecl : ParserM Stmt := do
   pure (.classDecl name superClass body)
 
 private partial def parseStmt : ParserM Stmt := do
-  skipSeparators
+  skipNewlines
   let t <- peek
   match t.kind with
   | .eof => failExpected "statement"
@@ -1305,6 +1462,9 @@ private partial def parseStmt : ParserM Stmt := do
   | .kw "do" =>
     let _ <- bump
     let body <- parseStmt
+    -- ECMA-262 §13.7.2: `do Statement while ( Expression ) ;`
+    -- Newlines between the closing `}` and `while` are NOT semicolons here.
+    skipNewlines
     expectKeyword "while"
     expectPunct "("
     let cond <- parseExprM
@@ -1466,6 +1626,11 @@ private partial def parseStmt : ParserM Stmt := do
         match tk.kind with
         | .string s => let _ <- bump; pure s
         | _ => throw "Expected export source string literal")
+      skipNewlines
+      if (← consumeKeyword? "with") then
+        skipNewlines
+        expectPunct "{"
+        skipBalancedPunct "{" "}"
       parseSemiOpt
       pure (.export_ (.all source alias_))
     else if (← consumePunct? "{") then
@@ -1497,7 +1662,14 @@ private partial def parseStmt : ParserM Stmt := do
         if (← consumeWord? "from") then
           let tk <- peek
           match tk.kind with
-          | .string s => let _ <- bump; pure (some s)
+          | .string s =>
+            let _ <- bump
+            skipNewlines
+            if (← consumeKeyword? "with") then
+              skipNewlines
+              expectPunct "{"
+              skipBalancedPunct "{" "}"
+            pure (some s)
           | _ => throw "Expected export source string literal"
         else
           pure none

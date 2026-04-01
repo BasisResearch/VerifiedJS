@@ -82,6 +82,23 @@ structure FuncDef where
   body : Expr
   deriving Repr, BEq
 
+/-- Expression depth for well-founded recursion in step?. -/
+def Expr.depth : Expr → Nat
+  | .trivial _ => 0
+  | .«let» _ _ body => Expr.depth body + 1
+  | .seq a b => Expr.depth a + Expr.depth b + 1
+  | .«if» _ then_ else_ => Expr.depth then_ + Expr.depth else_ + 1
+  | .while_ cond body => Expr.depth cond + Expr.depth body + 1
+  | .throw _ => 0
+  | .tryCatch body _ catchBody (some fin) => Expr.depth body + Expr.depth catchBody + Expr.depth fin + 1
+  | .tryCatch body _ catchBody none => Expr.depth body + Expr.depth catchBody + 1
+  | .«return» _ => 0
+  | .yield _ _ => 0
+  | .await _ => 0
+  | .labeled _ body => Expr.depth body + 1
+  | .«break» _ => 0
+  | .«continue» _ => 0
+
 /-- ANF program. -/
 structure Program where
   functions : Array FuncDef
