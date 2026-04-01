@@ -2292,6 +2292,33 @@ private theorem Flat_step?_objectLit_none (s : Flat.State)
   · next hf =>
     simp [hfnvp] at hf
 
+/-- When all objectLit props are values, Flat.step? allocates on heap. -/
+private theorem Flat_step?_objectLit_allValues (s : Flat.State)
+    (props : List (Flat.PropName × Flat.Expr))
+    (vs : List Flat.Value)
+    (hvs : Flat.valuesFromExprList? (props.map Prod.snd) = some vs) :
+    let heapProps := props.filterMap fun (k, e) =>
+      match Flat.exprValue? e with | some v => some (k, Flat.flatToCoreValue v) | none => none
+    let addr := s.heap.nextAddr
+    let heap' : Core.Heap := { objects := s.heap.objects.push heapProps, nextAddr := addr + 1 }
+    Flat.step? { s with expr := .objectLit props } =
+      some (.silent, { expr := .lit (.object addr), env := s.env, heap := heap',
+                       trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+  simp only [Flat.step?, hvs]
+
+private theorem Flat_step?_arrayLit_allValues (s : Flat.State)
+    (elems : List Flat.Expr)
+    (vs : List Flat.Value)
+    (hvs : Flat.valuesFromExprList? elems = some vs) :
+    let heapProps : List (Core.PropName × Core.Value) := elems.zipIdx.filterMap fun (e, i) =>
+      match Flat.exprValue? e with | some v => some (toString i, Flat.flatToCoreValue v) | none => none
+    let addr := s.heap.nextAddr
+    let heap' : Core.Heap := { objects := s.heap.objects.push heapProps, nextAddr := addr + 1 }
+    Flat.step? { s with expr := .arrayLit elems } =
+      some (.silent, { expr := .lit (.object addr), env := s.env, heap := heap',
+                       trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
+  simp only [Flat.step?, hvs]
+
 private theorem Flat_step?_arrayLit_step (s : Flat.State)
     (elems : List Flat.Expr)
     (done : List Flat.Expr) (target : Flat.Expr) (rest : List Flat.Expr)
@@ -5753,10 +5780,8 @@ private theorem closureConvert_step_simulation
       have hsf_eta : sf = { sf with expr := .objectLit (Flat.convertPropList props scope envVar envMap st).fst } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
-      -- Unfold Flat.step? for objectLit all-values
-      unfold Flat.step? at hstep
-      simp only [hvs] at hstep
-      simp only [Flat.allocObjectWithProps, Flat.pushTrace] at hstep
+      -- Rewrite Flat.step? for objectLit all-values
+      rw [Flat_step?_objectLit_allValues _ _ _ hvs] at hstep
       simp only [Prod.mk.injEq, Option.some.injEq] at hstep
       obtain ⟨hev, hsf'⟩ := hstep; subst hev
       -- Core side: use step?_objectLit_val
@@ -5797,27 +5822,30 @@ private theorem closureConvert_step_simulation
           exact ValueAddrWF_mono this (by simp [Array.size_push]; omega)
         · -- New object (the pushed props)
           simp only [Option.some.injEq] at hprops'; subst hprops'
-          have hkv_mem := List.mem_filterMap.mp hkv
-          obtain ⟨⟨k, e⟩, hmem, hfm⟩ := hkv_mem
+          have hwf_props : ExprAddrPropListWF props sc.heap.objects.size := by
+            simp [ExprAddrWF] at hexprwf; exact hexprwf
+          -- Extract kv from filterMap: there's some (k, e) ∈ props with exprValue? e = some v and kv = (k, v)
+          obtain ⟨⟨k, e⟩, hmem, hfm⟩ := List.mem_filterMap.mp hkv
           cases he : Core.exprValue? e with
           | none => simp [he] at hfm
           | some v =>
             simp [he] at hfm; subst hfm
+            -- e = .lit v since exprValue? e = some v
             have hlit : e = .lit v := by cases e <;> simp [Core.exprValue?] at he; subst he; rfl
             subst hlit
-            have hwf_props : ExprAddrPropListWF props sc.heap.objects.size := by
-              simp [ExprAddrWF] at hexprwf; exact hexprwf
-            have : ValueAddrWF v sc.heap.objects.size := by
-              clear hfmatch hvs hffnv -- prevent unused variable issues
-              induction props generalizing with
-              | nil => exact absurd hmem (List.not_mem_nil _)
-              | cons p ps ih =>
-                obtain ⟨pn, pe⟩ := p
-                simp [ExprAddrPropListWF] at hwf_props
-                rcases List.mem_cons.mp hmem with rfl | hmem'
-                · simp only [ExprAddrWF, ValueAddrWF] at hwf_props; exact hwf_props.1
-                · exact ih hmem' hwf_props.2
-            exact ValueAddrWF_mono this (by simp [Array.size_push]; omega)
+            -- Walk the prop list to extract ValueAddrWF
+            suffices ∀ (ps : List (String × Core.Expr)),
+              ExprAddrPropListWF ps sc.heap.objects.size →
+              (k, Core.Expr.lit v) ∈ ps → ValueAddrWF v sc.heap.objects.size from
+              ValueAddrWF_mono (this props hwf_props hmem) (by simp [Array.size_push]; omega)
+            intro ps hps hmem'
+            induction ps with
+            | nil => exact absurd hmem' (List.not_mem_nil _)
+            | cons p ps' ih =>
+              simp [ExprAddrPropListWF] at hps
+              rcases List.mem_cons.mp hmem' with rfl | h
+              · simp only [ExprAddrWF, ValueAddrWF] at hps; exact hps.1
+              · exact ih hps.2 h
       · -- hheapna
         simp [sc', cheap', Array.size_push, hheapna]; omega
       · -- noCallFrameReturn

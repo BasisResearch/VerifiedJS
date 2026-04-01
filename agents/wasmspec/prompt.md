@@ -1,4 +1,4 @@
-# wasmspec — Close CC objectLit/arrayLit/tryCatch sorries
+# wasmspec — Close CC objectLit/arrayLit all-values heap sorries
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,22 +11,22 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC ~17 sorry usages (down from 21). setIndex sorries CLOSED. Many blocked.
+## STATE: CC 19 sorry lines (down from 21). You closed 2 setIndex sorries last run. Great work.
 
-## CURRENT CC SORRY LOCATIONS (verified grep -n, 2026-04-01 00:05)
+## CURRENT CC SORRY LOCATIONS (verified grep -n, 2026-04-01 01:05)
 ```
 L1507, L1508: forIn/forOf stubs (SKIP)
 L3280: HeapInj refactor (SKIP)
 L3608, L3631 x2: CCStateAgree (SKIP)
-L4149: call function (BLOCKED - needs FuncsCorr)
+L4149: call function (BLOCKED)
 L4347: newObj (SKIP)
-L4937: getIndex string (SKIP - semantic mismatch)
+L4937: getIndex string (SKIP)
 L5750: objectLit all-values heap (YOUR TARGET 1)
 L5846: objectLit CCState sub-step (jsspec TARGET)
 L5853: arrayLit all-values heap (YOUR TARGET 2)
-L5949, L5950: tryCatch + functionDef (jsspec/SKIP)
-L6122, L6125: tryCatch body (jsspec TARGET)
-L6157: while_ CCState (SKIP)
+L5949, L5950: tryCatch/functionDef (jsspec/SKIP)
+L6129, L6132: tryCatch body (jsspec TARGET)
+L6164: while_ CCState (SKIP)
 ```
 
 ## YOUR TARGETS
@@ -34,16 +34,23 @@ L6157: while_ CCState (SKIP)
 ### Target 1: objectLit all-values heap (L5750)
 When all props are values: Core allocates object on heap, Flat does same.
 1. `lean_goal` at L5750
-2. Pattern: all props are values → Core.step? produces heap allocation
-3. Need to show Flat also allocates matching object
-4. Key: `allValues` on prop list → can extract values, match heap addresses
+2. Pattern: all props are values → Core.step? produces heap allocation → Flat does matching allocation
+3. **WARNING**: PROOF_BLOCKERS.md says this MAY be blocked by HeapInj prefix (HeapCorr).
+   Check if goal needs HeapInj_alloc_both. If so, check whether Flat heap can be bigger
+   from env allocations. If blocked, document and move to Target 2.
+4. Key helpers to look for: `allValues_convertExprList_valuesFromExprList`, heap allocation lemmas
+5. Your previous work on setIndex both-values may share infrastructure — check similar helpers
 
 ### Target 2: arrayLit all-values heap (L5853)
 Same pattern as objectLit but for arrays.
 1. `lean_goal` at L5853
 2. All elements are values → heap allocation
+3. Same HeapInj caution as Target 1
 
-**Note**: These are marked "heap allocation (same class as other value sub-cases)" — they may share infrastructure with setIndex both-values which you already proved. Check if similar helpers apply.
+### If both targets are blocked by HeapInj:
+Look at L5846 (objectLit CCState sub-step) — but check with jsspec first (they own L5800+).
+If jsspec is not working on it, you can take it. Otherwise, investigate if ANY sorry in
+L3000-5000 range is provable.
 
 ### COLLISION AVOIDANCE
 jsspec works on L5800-6200. You work on L5000-5800. Do NOT edit overlapping regions.
