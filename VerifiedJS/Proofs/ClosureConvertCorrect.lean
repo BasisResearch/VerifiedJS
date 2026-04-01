@@ -5793,23 +5793,8 @@ private theorem closureConvert_step_simulation
       have hsf_eta : sf = { sf with expr := .objectLit (Flat.convertPropList props scope envVar envMap st).fst } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
-      -- Extract all facts about the Flat step in one shot
-      have hfacts : ev = .silent ∧
-          sf'.expr = .lit (.object sf.heap.nextAddr) ∧
-          sf'.env = sf.env ∧
-          sf'.trace = sf.trace ++ [.silent] ∧
-          sf'.funcs = sf.funcs ∧
-          sf'.callStack = sf.callStack ∧
-          sf'.heap.objects.size = sf.heap.objects.size + 1 ∧
-          sf'.heap.nextAddr = sf.heap.nextAddr + 1 ∧
-          (∀ a, a < sf.heap.objects.size → sf'.heap.objects[a]? = sf.heap.objects[a]?) ∧
-          sf'.heap.objects[sf.heap.objects.size]? =
-            some ((Flat.convertPropList props scope envVar envMap st).fst.filterMap fun (k, e) =>
-              match Flat.exprValue? e with | some v => some (k, Flat.flatToCoreValue v) | none => none) := by
-        simp [Flat.step?, hvs] at hstep
-      obtain ⟨hev_eq, hsf'_expr, hsf'_env, hsf'_trace, hsf'_funcs, hsf'_cs,
-              hsf'_hsize, hsf'_hna, hsf'_old, hsf'_new⟩ := hfacts
-      subst hev_eq
+      -- Use simp to substitute ev and sf' (simp fully resolves the step result)
+      simp [Flat.step?, hvs] at hstep
       have hna_eq : sc.heap.nextAddr = sf.heap.nextAddr := hinj.2.1
       have hsize_eq : sc.heap.objects.size = sf.heap.objects.size := hinj.1
       let caddr := sc.heap.nextAddr
@@ -6205,7 +6190,7 @@ private theorem closureConvert_step_simulation
       -- Rewrite to simplify those
       rw [hce_lit_fst, hce_lit_snd] at hconv
       cases finally_ with
-      | none => simp [Flat.convertOptExpr] at hconv; sorry
+      | none => simp [Flat.convertOptExpr] at hconv; exact hconv
       | some fin => sorry -- tryCatch body-value with finally: CCStateAgree blocked
     | none =>
       -- Body is not a value; step the body via IH

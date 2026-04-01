@@ -5060,7 +5060,8 @@ private theorem normalizeExpr_labeled_step_sim :
                 · rw [hexpr_s]; simp only [ANF.normalizeExpr, StateT.run]; exact hbf
                 · intro arg n''; exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
               · rw [htrace_s, observableTrace_append]; simp [observableTrace]; decide
-              · rw [hexpr_s, henv_s]; intro x hfx; cases hfx
+              · rw [hexpr_s, henv_s]; intro x hfx; cases hfx with
+                | return_some_arg _ _ hinner => exact hwf x (VarFreeIn.return_some_arg _ _ (VarFreeIn.labeled_body _ _ _ hinner))
           | var name =>
             exfalso
             simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
@@ -5185,7 +5186,8 @@ private theorem normalizeExpr_labeled_step_sim :
                 · rw [hexpr_s]; simp only [ANF.normalizeExpr, StateT.run]; exact hbf
                 · intro arg n''; exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
               · rw [htrace_s, observableTrace_append]; simp [observableTrace]; decide
-              · rw [hexpr_s, henv_s]; intro x hfx; cases hfx
+              · rw [hexpr_s, henv_s]; intro x hfx; cases hfx with
+                | return_some_arg _ _ hinner => exact hwf x (VarFreeIn.return_some_arg _ _ (VarFreeIn.labeled_body _ _ _ hinner))
           | var name =>
             exfalso
             simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
