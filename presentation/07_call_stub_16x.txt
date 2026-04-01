@@ -1,0 +1,19 @@
+// The call stub: 16 escalations, 3 days, 20 lines of code
+
+// Flat/Semantics.lean — THE STUB:
+| .call callee args =>
+  if allValues (callee :: args) then
+    (.lit .undefined, st)   // ← WRONG. Should invoke function body.
+  else ...
+
+// Supervisor escalation log:
+"TASK 0: Fix call stub in Flat/Semantics.lean"     // run 1
+"TASK 0: Fix call stub (2nd escalation)"            // run 2
+"TASK 0: Fix call stub (3rd assignment)"            // run 3
+"8th escalation of call stub"                       // run 8
+...
+"16th escalation. Still not fixed."                 // run 16
+
+// wasmspec kept timing out on other work instead
+// of doing this 20-line fix that blocked the
+// proof agent's CC correctness theorem.

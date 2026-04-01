@@ -1,0 +1,8 @@
+SHELL=/bin/bash
+PATH=/opt/elan/bin:/usr/local/bin:/usr/bin:/bin
+ELAN_HOME=/opt/elan
+
+5 * * * * supervisor /opt/verifiedjs/agents/runner.sh supervisor
+0 * * * * jsspec /opt/verifiedjs/agents/runner.sh jsspec
+15 * * * * wasmspec /opt/verifiedjs/agents/runner.sh wasmspec
+30 * * * * proof /opt/verifiedjs/agents/runner.sh proof

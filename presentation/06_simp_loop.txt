@@ -1,0 +1,18 @@
+// The simp loop: agents create and recreate the same bug
+
+warning: Possibly looping simp theorem: `step?.eq_1`
+error: Tactic `simp` failed with a nested error
+error: Tactic `simp` failed with a nested error
+error: Tactic `simp` failed with a nested error
+...
+error: maximum number of errors (100) reached
+
+// jsspec kept writing `simp [step?]` in new theorems.
+// 83 instances. Build broken for 6+ hours.
+//
+// Even after being told explicitly:
+//   "DO NOT pass step? to simp"
+//   "Use unfold step? then simp [-step?]"
+//
+// The agent re-introduced it in the next run.
+// Agents cannot internalize negative constraints.

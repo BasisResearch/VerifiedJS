@@ -1,0 +1,22 @@
+// proof agent tries to edit a file owned by jsspec
+
+$ cat VerifiedJS/Core/Semantics.lean | head -1
+> VerifiedJS — Core IL Semantics
+
+$ stat -c '%U' VerifiedJS/Core/Semantics.lean
+> jsspec
+
+// Attempts to write:
+$ echo "..." >> VerifiedJS/Core/Semantics.lean
+> Permission denied
+
+// proof agent's reaction:
+"ClosureConvertCorrect blocked by Flat.Semantics.lean
+ (wasmspec-owned, injection tactic failure).
+ ANFConvertCorrect blocked by root-owned file
+ with broken BNe.bne references.
+ Remaining 4 sorries blocked on jsspec ownership."
+
+// The agent correctly identifies the boundary —
+// but is now stuck waiting for another agent to act.
+// Cross-agent coordination becomes the bottleneck.

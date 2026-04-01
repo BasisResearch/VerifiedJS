@@ -1,0 +1,22 @@
+// Spec citations: before and after
+
+// BEFORE — jsspec cites from memory:
+/-- ECMA-262 §13.15.2 Runtime Semantics -/
+def step_assign ...
+// § number is WRONG. Agent hallucinated the section.
+
+// AFTER — verbatim from spec.md:
+-- SPEC: L18234-L18240
+-- | 1. Let _lref_ be ? Evaluation of _LeftHandSideExpression_.
+-- | 2. Let _lval_ be ? GetValue(_lref_).
+-- | 3. Let _rref_ be ? Evaluation of _AssignmentExpression_.
+-- | 4. Let _rval_ be ? GetValue(_rref_).
+-- | 5. Perform ? PutValue(_lref_, _rval_).
+-- | 6. Return _rval_.
+def step_assign ...
+
+// Verification script checks EVERY citation:
+$ bash scripts/verify_spec_refs.sh
+> Spec coverage: 20149/44380 lines (45.4%), 1696 refs, 0 mismatches
+
+// 0 → 1696 verified refs. 0 mismatches.

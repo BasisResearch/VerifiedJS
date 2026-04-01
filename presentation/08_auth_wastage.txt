@@ -1,0 +1,23 @@
+// 200 runs lost to auth failures
+
+## Run: 2026-03-21T08:00:01+00:00
+2026-03-21T08:00:05+00:00 EXIT: code 1
+
+## Run: 2026-03-21T09:00:01+00:00
+2026-03-21T09:00:05+00:00 EXIT: code 1
+
+## Run: 2026-03-21T10:00:01+00:00
+2026-03-21T10:00:05+00:00 EXIT: code 1
+
+## Run: 2026-03-21T11:00:01+00:00
+2026-03-21T11:00:07+00:00 EXIT: code 1
+
+## Run: 2026-03-21T12:00:01+00:00
+2026-03-21T12:00:05+00:00 EXIT: code 1
+
+// 8 hours of silence. All 4 agents dead.
+// OAuth token expired. Nobody noticed.
+// 200 total runs lost across all agents.
+// 94 runs killed by 1-hour timeout.
+//
+// Infrastructure > proof difficulty

@@ -1,0 +1,18 @@
+// proof agent discovers the theorem is mathematically FALSE
+
+"Exposed genuinely false cases: forIn and forOf in
+halt_preservation — convertExpr maps them to
+.lit .undefined (halts in Flat) but Core.step?
+returns some (steps).
+
+Theorem is false for unimplemented features."
+
+// Root cause: closure conversion STUBS forIn/forOf
+// to .lit .undefined instead of converting them.
+//
+//   | .forIn _binding _obj _body =>
+//     -- for-in not supported yet; lower to undefined
+//     (.lit .undefined, st)
+//
+// A 6-line fix in ClosureConvert.lean would make
+// the theorem provable. It sat unfixed for 3 days.

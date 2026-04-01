@@ -1,0 +1,39 @@
+// closureConvert_step_simulation: case evolution
+
+// Day 1: One catch-all sorry
+  | _ => sorry
+
+// Day 2: Decomposed into 25 constructors
+  | .lit v            => exact ...     // PROVED
+  | .var name         => sorry         // needs env
+  | .this             => sorry         // needs env
+  | .seq a b          => exact ...     // PROVED
+  | .let_ n i b       => sorry         // needs convertExpr
+  | .assign n v       => exact ...     // PROVED
+  | .if_ c t e        => exact ...     // PROVED
+  | .while_ c b       => exact ...     // PROVED
+  | .tryCatch b p c f => sorry         // needs 4 sub-cases
+  | .call f args      => sorry         // BLOCKED on wasmspec
+  | .newObj c args     => sorry         // needs HeapCorr
+  | .getProp o p      => sorry         // needs HeapCorr
+  | .objectLit ps     => sorry         // needs HeapCorr
+  | .forIn _ o b      => sorry         // FALSE (stub)
+  | .forOf _ i b      => sorry         // FALSE (stub)
+  ...
+
+// Day 3: tryCatch decomposed into 8 sub-cases
+  | .tryCatch body cp cb fin =>
+    // body steps (silent)    => PROVED
+    // body steps (log)       => PROVED
+    // body completes (no fin) => PROVED
+    // body completes (fin)    => PROVED
+    // body errors (catch)     => PROVED
+    // isCallFrame normal      => needs WF invariant
+    // isCallFrame error       => needs WF invariant
+
+// Day 4: HeapCorr defined, WF invariants added
+  | .getProp o p      => PROVED (HeapCorr_get)
+  | .getIndex o i     => PROVED (HeapCorr_get)
+  | isCallFrame cases => PROVED (noCallFrameReturn)
+  | .forIn / .forOf   => still FALSE (stub in CC)
+  | .call / .newObj   => still BLOCKED (wasmspec)

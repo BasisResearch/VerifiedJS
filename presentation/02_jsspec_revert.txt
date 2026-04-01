@@ -1,0 +1,16 @@
+// jsspec reverts a CORRECT semantic change to preserve build
+
+"My newObj change in step? broke ClosureConvertCorrect
+because changing step? changes its equation lemma,
+and the proofs use simp only [Core.step?].
+
+I need to either:
+1. Revert my change, OR
+2. Fix the downstream proof (but it's owned by proof), OR
+3. Find a way to add my semantics without changing step?"
+
+// Agent chose option 1. The proofs dictated the semantics,
+// not the other way around.
+
+"Since I can't change step? for newObj without breaking
+downstream proofs, let me look at other gaps."

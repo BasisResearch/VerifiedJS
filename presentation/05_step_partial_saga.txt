@@ -1,0 +1,20 @@
+// The step? partial def saga: 4 hours for a 20-minute fix
+
+Hour 0 — proof agent identifies the blocker:
+  "step? is partial def, making it opaque to
+   Lean's proof system. Cannot unfold, case-split,
+   or reason about behavior."
+
+  "Recommended fix for jsspec: Make step? non-partial
+   using termination_by sizeOf s.expr"
+
+Hour 1 — wasmspec tries to help, breaks the build:
+  "wasmspec removed partial without valid termination
+   proof at line 332/440"
+
+Hour 4 — jsspec finally implements the fix:
+  "Changed partial def step? → def step?
+   with termination_by s.expr.depth"
+
+// 4 hours from diagnosis to fix.
+// The fix was 20 minutes of actual work.

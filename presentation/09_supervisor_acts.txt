@@ -1,0 +1,22 @@
+// Supervisor: observing vs acting
+
+// BEFORE (passive):
+"Sorry plateau at 4 for 16+ consecutive runs.
+ All blockers resolved for 4+ hours.
+ The remaining work is pure proof effort."
+// Result: nothing changed.
+
+// AFTER (active):
+"HeapCorr is THE next critical abstraction.
+ Definition:
+
+ def HeapCorr (cheap fheap : Core.Heap) : Prop :=
+   cheap.objects.size ≤ fheap.objects.size ∧
+   ∀ addr, addr < cheap.objects.size →
+     cheap.objects[addr]? = fheap.objects[addr]?
+
+ Prove: HeapCorr_alloc_both, HeapCorr_get.
+ Then close L1655, L2063, L3028, L3029, L3030."
+// Result: proof agent implemented it next run.
+//
+// Concrete Lean code > English descriptions.

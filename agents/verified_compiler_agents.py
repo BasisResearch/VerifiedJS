@@ -1,3 +1,4 @@
+#!/usr/bin/env -S /Users/kirancodes/Documents/code/VerifiedJS/.venv/bin/python
 """
 VerifiedJS Multi-Agent choreography for Verified Compiler Development.
 
@@ -45,6 +46,16 @@ import webbrowser
 from pathlib import Path
 from typing import Literal, TypedDict
 
+# Re-exec under the project venv if tenacity/effectful are not available.
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_VENV_PYTHON = _PROJECT_ROOT / ".venv" / "bin" / "python"
+try:
+    import tenacity  # noqa: F401 — just a probe
+except ModuleNotFoundError:
+    if _VENV_PYTHON.exists() and Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
+        os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON)] + sys.argv)
+    raise
+
 from tenacity import stop_after_attempt, wait_exponential
 
 from effectful.handlers.llm import Template, Tool
@@ -69,6 +80,7 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 log = logging.getLogger("verifiedjs-agents")
+
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -111,11 +123,18 @@ class PlanResult(TypedDict):
     rationale: str
 
 
+class FileEntry(TypedDict):
+    """A file path and its contents."""
+
+    path: str
+    content: str
+
+
 class ContextBundle(TypedDict):
     """Assembled context for a worker agent."""
 
     task_id: str
-    lean_source: dict[str, str]
+    lean_source: list[FileEntry]
     ecma_spec_notes: str
     existing_sorrys: list[str]
     proof_blockers: str
@@ -171,12 +190,19 @@ class ProofResult(TypedDict):
     notes: str
 
 
+class FileUpdate(TypedDict):
+    """An update to a coordination file."""
+
+    file_name: str
+    new_content: str
+
+
 class ReviewResult(TypedDict):
     """Supervisor review of completed work."""
 
     verdict: Literal["ACCEPT", "REVISE", "REJECT"]
     feedback: str
-    updates: dict[str, str]
+    updates: list[FileUpdate]
 
 
 class ContinueDecision(TypedDict):
@@ -605,25 +631,27 @@ class PlannerSupervisor(_SharedTools, PersistentAgent):
     ) -> PlanResult:
         """Plan the next batch of parallel tasks. This is cycle {cycle_number}.
 
-        IMPORTANT: You must make tool calls before returning a result.
-        Do NOT immediately return a PlanResult. Instead:
+        You have all the information you need below. Analyze the project state
+        and return a PlanResult with 2-5 concrete TaskSpecs. Do NOT return an
+        empty task list — there is always work to do.
 
-        1. FIRST call list_lean_files to see what files exist
-        2. THEN call lake_build to check current build state
-        3. THEN call count_sorrys to see sorry count
-        4. THEN call read_file on any files you need to inspect
-        5. ONLY THEN return a PlanResult with concrete TaskSpecs
+        Each TaskSpec must have:
+        - task_id: a unique short identifier (e.g. "fix-float-emit", "prove-anf-1")
+        - task_type: one of "spec", "implement", "test", "prove", "review"
+        - module: the Lean module path (e.g. "Wasm", "Core", "ANF")
+        - target_file: a real file path from the file listing below
+        - description: what the worker should do
+        - ecma_spec_section: relevant ECMA-262 section or "N/A"
+        - context_files: list of related files the worker should read
+        - acceptance_criteria: concrete success criteria
 
-        Each TaskSpec must reference a real target_file that exists on disk.
+        Prioritize: blocking issues > adversarial findings > completeness > proofs > runtime
 
-        adversarial_findings contains bugs and spec violations found by the
-        challenger, fuzzer, and soundness auditor. These are HIGH PRIORITY.
+        Adversarial findings from previous cycle (HIGH PRIORITY if non-empty):
+        {adversarial_findings}
 
         Current project state:
-        {current_state}
-
-        Adversarial findings from previous cycle:
-        {adversarial_findings}"""
+        {current_state}"""
         raise NotHandled
 
     @Template.define
@@ -632,13 +660,10 @@ class PlannerSupervisor(_SharedTools, PersistentAgent):
     ) -> ReviewResult:
         """Review a worker's completed task.
 
-        IMPORTANT: You must make tool calls before returning a result.
-        Do NOT immediately return a ReviewResult. Instead:
-
-        1. FIRST call lake_build to check if the build is healthy
-        2. THEN call read_file on the files that were supposedly written
-        3. THEN call lean_check_file to verify the specific file compiles
-        4. ONLY THEN return ReviewResult with verdict and feedback
+        Analyze the task result and return a ReviewResult with:
+        - verdict: "ACCEPT" if the work looks correct, "REVISE" if it needs changes, "REJECT" if fundamentally wrong
+        - feedback: specific actionable feedback
+        - updates: any coordination file updates (e.g. TASKS.md, PROGRESS.md)
 
         Task: {task_id}
         Spec: {task_spec}
@@ -647,13 +672,15 @@ class PlannerSupervisor(_SharedTools, PersistentAgent):
 
     @Template.define
     def decide_continue(self, cycle_report: str) -> ContinueDecision:
-        """Decide whether to continue with another cycle.
+        """Decide whether to continue with another development cycle.
 
-        IMPORTANT: You must make tool calls before returning a result.
+        Analyze the cycle report and return a ContinueDecision:
+        - should_continue: true if there is meaningful work remaining
+        - reason: why to continue or stop
+        - priority_shift: any change in priorities for next cycle
 
-        1. FIRST call lake_build to check build health
-        2. THEN call count_sorrys to measure progress
-        3. ONLY THEN return ContinueDecision
+        Continue if: tasks were accepted, sorry count decreased, or critical work remains.
+        Stop if: no progress was made, all tasks rejected, or goals achieved.
 
         Cycle report:
         {cycle_report}"""
@@ -685,16 +712,16 @@ class ContextSupervisor(_SharedTools, PersistentAgent):
 
     @Template.define
     def assemble_context(self, task_spec: str) -> ContextBundle:
-        """Read relevant files and assemble a ContextBundle.
+        """Read relevant files and assemble a ContextBundle for a worker agent.
 
-        IMPORTANT: You must make tool calls before returning a result.
-        Do NOT immediately return a ContextBundle. Instead:
-
-        1. FIRST call list_lean_files to see what exists
-        2. THEN call read_file on each relevant Lean file
-        3. THEN call grep_lean to find imports and dependencies
-        4. THEN call lean_check_file to check build status
-        5. ONLY THEN return a ContextBundle with real file contents
+        Use your tools (read_file, list_lean_files, grep_lean, lean_check_file)
+        to gather the context the worker will need. Then return a ContextBundle with:
+        - task_id: from the task spec
+        - lean_source: dict mapping file paths to their contents
+        - ecma_spec_notes: relevant ECMA-262 notes
+        - existing_sorrys: list of sorry locations in the target files
+        - proof_blockers: relevant blockers
+        - guidance: advice for the worker
 
         A ContextBundle with empty lean_source is considered a FAILURE.
 
@@ -732,15 +759,12 @@ class SpecWriterAgent(_SharedTools, PersistentAgent):
     def write_spec(self, context: str) -> SpecResult:
         """Write or update a Lean specification file.
 
-        IMPORTANT: You must make tool calls before returning a result.
-        Do NOT immediately return a SpecResult. Instead:
+        Use your tools to do the work:
+        1. read_file to see current file contents
+        2. write_file to write the complete updated Lean file
+        3. lake_build to verify it compiles — fix and retry if needed
 
-        1. FIRST call read_file on the target file to see its current contents
-        2. THEN call write_file to write the complete updated Lean file
-        3. THEN call lake_build to verify it compiles
-        4. Fix and retry if needed
-        5. ONLY THEN return SpecResult with file_writes listing what you wrote
-
+        Return a SpecResult with file_writes listing what you wrote.
         A SpecResult with empty file_writes is considered a FAILURE.
 
         Context:
@@ -772,15 +796,13 @@ class TestWriterAgent(_SharedTools, PersistentAgent):
     def write_tests_and_validate(self, context: str) -> TestResult:
         """Write tests and validate a Lean spec/implementation.
 
-        IMPORTANT: You must make tool calls before returning a result.
-        Do NOT immediately return a TestResult. Instead:
+        Use your tools to do the work:
+        1. read_file to read the implementation files
+        2. run_node to get expected output for each test case
+        3. write_file to write Lean test files to disk
+        4. lean_check_file to verify — fix and retry if needed
 
-        1. FIRST call read_file on the implementation files
-        2. THEN call run_node to get expected output for each test case
-        3. THEN call write_file to write Lean test files to disk
-        4. THEN call lean_check_file to verify — fix and retry if needed
-        5. ONLY THEN return TestResult with file_writes and test_cases filled in
-
+        Return a TestResult with file_writes and test_cases filled in.
         A TestResult with empty file_writes is considered a FAILURE.
 
         Context:
@@ -823,15 +845,12 @@ class ProverAgent(_SharedTools, PersistentAgent):
     def prove_theorem(self, context: str) -> ProofResult:
         """Prove a theorem or resolve sorrys.
 
-        IMPORTANT: You must make tool calls before returning a result.
-        Do NOT immediately return a ProofResult. Instead:
+        Use your tools to do the work:
+        1. read_file on PROOF_BLOCKERS.md and the target proof file
+        2. write_file to write the complete updated proof file
+        3. lake_build to verify — fix and retry if needed
 
-        1. FIRST call read_file on PROOF_BLOCKERS.md
-        2. THEN call read_file on the target proof file
-        3. THEN call write_file to write the complete updated proof file
-        4. THEN call lake_build to verify — fix and retry if needed
-        5. ONLY THEN return ProofResult with file_writes listing what you wrote
-
+        Return a ProofResult with file_writes listing what you wrote.
         A ProofResult with empty file_writes is considered a FAILURE.
 
         Context:
@@ -862,16 +881,13 @@ class MemoryKeeperAgent(_SharedTools, PersistentAgent):
     def persist_findings(self, cycle_summary: str) -> MemoryReport:
         """Process cycle results and update coordination files.
 
-        IMPORTANT: You must make tool calls before returning a result.
-        Do NOT immediately return a MemoryReport. Instead:
+        Use your tools to do the work:
+        1. lake_build to check health, count_sorrys to compute delta
+        2. run_e2e_tests for regressions
+        3. read_file + write_file to update TASKS.md, PROGRESS.md, PROOF_BLOCKERS.md
+        4. append_to_file to append to .agent_state/findings.md
 
-        1. FIRST call lake_build to check health
-        2. THEN call count_sorrys to compute delta
-        3. THEN call run_e2e_tests for regressions
-        4. THEN call read_file on TASKS.md, PROGRESS.md, PROOF_BLOCKERS.md
-        5. THEN call write_file to update each file
-        6. THEN call append_to_file to append to .agent_state/findings.md
-        7. ONLY THEN return MemoryReport with all fields filled
+        Return a MemoryReport with all fields filled.
 
         Cycle summary:
         {cycle_summary}"""
@@ -1045,19 +1061,16 @@ for (let i = 0; i < vals.length; i++)
     def challenge_specs(self, target_modules: str) -> SpecChallengeResult:
         """Try to find ECMA-262 violations in the specified modules.
 
-        IMPORTANT: You must make tool calls before returning a result.
-        Do NOT immediately return a SpecChallengeResult. Instead:
+        Use your tools to find real violations:
+        - extract_spec_claims to see what we claim to implement
+        - fetch_ecma_spec to read the actual spec text
+        - generate_coercion_matrix and check_typeof_table for baselines
+        - batch_differential_test with adversarial JS test cases
+        - compare_node_vs_verifiedjs for individual deep-dives
+        - run_test262_section for official conformance
 
-        1. FIRST call extract_spec_claims on target Lean files to see what we claim
-        2. THEN call fetch_ecma_spec to read the actual spec text
-        3. THEN call generate_coercion_matrix and check_typeof_table for baselines
-        4. THEN call batch_differential_test with adversarial JS test cases
-        5. THEN call compare_node_vs_verifiedjs for individual deep-dives
-        6. THEN call run_test262_section for official conformance
-        7. ONLY THEN return SpecChallengeResult with real evidence
-
-        A result with empty violations without having called any testing tools
-        is considered a FAILURE. You must actually run tests.
+        Return a SpecChallengeResult with real, executable evidence.
+        A result with empty violations is considered a FAILURE.
 
         Target modules to attack:
         {target_modules}"""
@@ -1342,18 +1355,16 @@ else:
     def fuzz_pipeline(self, focus_areas: str) -> FuzzResult:
         """Generate adversarial JS inputs and try to break the pipeline.
 
-        IMPORTANT: You must make tool calls before returning a result.
-        Do NOT immediately return a FuzzResult. Instead:
+        Use your tools to find bugs:
+        - grammar_fuzz_js to generate tricky JS programs
+        - hypothesis_fuzz for property-based random testing
+        - pipeline_consistency_check on generated programs
+        - stress_nesting to find stack overflow limits
+        - minimize_reproducer to shrink any bugs found
 
-        1. FIRST call grammar_fuzz_js to generate tricky JS programs
-        2. THEN call hypothesis_fuzz for property-based random testing
-        3. THEN call pipeline_consistency_check on generated programs
-        4. THEN call stress_nesting to find stack overflow limits
-        5. IF bugs found, call minimize_reproducer to shrink them
-        6. ONLY THEN return FuzzResult with concrete, executable FuzzCases
-
-        A result without having called any fuzzing tools is a FAILURE.
+        Return a FuzzResult with concrete, executable FuzzCases.
         Each FuzzCase must have a reproducer_command that anyone can run.
+        A result without having used any fuzzing tools is a FAILURE.
 
         Focus areas:
         {focus_areas}"""
@@ -1581,19 +1592,15 @@ else:
     def audit_soundness(self, scope: str) -> SoundnessAuditResult:
         """Perform a thorough soundness audit.
 
-        IMPORTANT: You must make tool calls before returning a result.
-        Do NOT immediately return a SoundnessAuditResult. Instead:
+        Use your tools to audit:
+        - sorry_dependency_graph to find all sorrys
+        - axiom_scan to find custom axioms
+        - proof_chain_analysis to check EndToEnd completeness
+        - check_native_decide_safety for native_decide uses
+        - lean_print_axioms on key theorems
+        - check_theorem_vacuity if anything looks suspicious
 
-        1. FIRST call sorry_dependency_graph to find all sorrys
-        2. THEN call axiom_scan to find custom axioms
-        3. THEN call proof_chain_analysis to check EndToEnd completeness
-        4. THEN call check_native_decide_safety
-        5. THEN call lean_print_axioms on key theorems
-        6. IF suspicious, call check_theorem_vacuity
-        7. ONLY THEN return SoundnessAuditResult with all fields filled
-
-        A result without having called sorry_dependency_graph and proof_chain_analysis
-        is a FAILURE.
+        Return a SoundnessAuditResult with all fields filled.
 
         Scope:
         {scope}"""
@@ -1658,13 +1665,15 @@ def verified_compiler_development_loop(
         blockers_content = planner.read_file("PROOF_BLOCKERS.md")
         sorry_count = planner.count_sorrys()
         build_status = planner.lake_build()
+        file_listing = planner.list_lean_files()
 
         current_state = (
             f"## TASKS.md\n{tasks_content}\n\n"
             f"## PROGRESS.md\n{progress_content}\n\n"
             f"## PROOF_BLOCKERS.md\n{blockers_content}\n\n"
             f"## Sorry Count\n{sorry_count}\n\n"
-            f"## Build Status\n{build_status[:1500]}\n"
+            f"## Build Status\n{build_status[:1500]}\n\n"
+            f"## Lean Files\n{file_listing}\n"
         )
 
         if all_cycle_reports:

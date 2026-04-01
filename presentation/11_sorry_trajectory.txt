@@ -1,0 +1,16 @@
+// Sorry count trajectory (CC step_simulation)
+//
+// Hour  0: | _ => sorry           (1 catch-all)
+// Hour  8: 25 constructor sorries  (decomposed)
+// Hour 12: 15 sorries              (10 proved)
+// Hour 24: 48 sorries              (tryCatch decomposed)
+// Hour 30:  8 CC sorries           (tryCatch proved)
+// Hour 48: 12 sorries              (HeapCorr added 2, closed 4)
+// Hour 72: 12 sorries              (stalled on HeapCorr + call stub)
+//
+// The count going UP was PROGRESS:
+//   1 opaque sorry → 25 targeted sub-lemmas
+//   → each one a clear proof obligation
+//
+// Sorry count is a terrible metric.
+// "How many sub-goals have known strategies?" is better.
