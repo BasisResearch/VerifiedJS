@@ -5854,8 +5854,12 @@ private theorem closureConvert_step_simulation
         simp only [sc', ExprAddrWF, ValueAddrWF, cheap', Array.size_push]
         rw [hheapna]; omega
       · -- CCState threading
+        have hna_eq : sc.heap.nextAddr = sf.heap.nextAddr := hinj.2.1
         refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by rw [hst]; exact ⟨rfl, rfl⟩⟩
-        subst hsf'; simp [sc', Flat.convertExpr]
+        subst hsf'; simp only [sc', Flat.convertExpr, Flat.convertValue, caddr]
+        constructor
+        · rw [hna_eq]
+        · rfl
     | some val =>
       obtain ⟨done_c, propName_c, target_c, rest_c⟩ := val
       have htarget_not_lit := Core.firstNonValueProp_not_lit hcfnv
