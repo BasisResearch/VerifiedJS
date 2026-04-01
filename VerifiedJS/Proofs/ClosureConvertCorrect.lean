@@ -5816,11 +5816,11 @@ private theorem closureConvert_step_simulation
         have := Core.step?_objectLit_val props sc.env sc.heap sc.trace sc.funcs sc.callStack hcfnv
         simp only [Core.pushTrace, sc', cheap', cheapProps, caddr] at this ⊢; exact this
       -- HeapInj for the new heaps
-      have hinj' : HeapInj injMap cheap' { objects := sf.heap.objects.push
-          ((Flat.convertPropList props scope envVar envMap st).fst.filterMap fun (k, e) =>
-            match Flat.exprValue? e with | some v => some (k, Flat.flatToCoreValue v) | none => none),
-          nextAddr := sf.heap.nextAddr + 1 } := by
-        simp only [cheap', cheapProps, caddr]
+      let fheapProps := (Flat.convertPropList props scope envVar envMap st).fst.filterMap fun (k, e) =>
+        match Flat.exprValue? e with | some v => some (k, Flat.flatToCoreValue v) | none => none
+      let fheap' : Core.Heap := ⟨sf.heap.objects.push fheapProps, sf.heap.nextAddr + 1⟩
+      have hinj' : HeapInj injMap cheap' fheap' := by
+        simp only [cheap', cheapProps, caddr, fheap', fheapProps]
         rw [← hfmatch]
         exact HeapInj_alloc_both hinj _
       -- HeapValuesWF
