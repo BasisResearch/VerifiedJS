@@ -4766,3 +4766,77 @@ Replaced full `sorry` with structured proof using `HasAwaitInHead`:
 ## Run: 2026-04-01T05:30:01+00:00
 
 ### 2026-04-01T05:30:14+00:00 Starting run — yield_step_sim decomposition
+
+### $(date -Iseconds) Run complete — yield_step_sim decomposed, HasYieldInHead infrastructure built
+
+## Run: 2026-04-01T05:30+00:00
+- **BUILD: PASSES** ✓
+- **ANF Sorries: 22** (was 21 — 1 sorry decomposed into 2, with base cases fully proved)
+- **LowerCorrect: 0 sorries** ✓
+
+### What was done: HasYieldInHead infrastructure + yield_step_sim decomposition
+
+**~500 lines of new proof infrastructure** added to ANFConvertCorrect.lean:
+
+1. **VarFreeIn extended** (1 new constructor):
+   - `yield_some_arg`: tracks free vars through `.yield (some v) d`
+   - Fixed 4 existing proofs that did `cases hfx` on VarFreeIn (needed to handle new constructor in labeled_step_sim for return-of-yield-of-labeled and yield-of-return/yield-of-labeled patterns)
+
+2. **HasYieldInHead mutual inductive** (~50 lines):
+   - Tracks `.yield` in CPS-head position
+   - TWO direct constructors: `yield_none_direct` (for `.yield none d`) and `yield_some_direct` (for `.yield (some v) d`)
+   - All compound expression constructors (seq, let, if, binary, call, etc.) + return_some_arg, throw_arg, await_arg
+
+3. **bindComplex_never_yield_general** helper (~10 lines):
+   - Proves bindComplex can never produce `.yield` output
+
+4. **normalizeExpr_X_not_yield helpers** (~30 lines):
+   - `normalizeExpr_labeled_not_yield`, `normalizeExpr_while_not_yield`, `normalizeExpr_tryCatch_not_yield`
+
+5. **normalizeExprList/Props_yield_or_k** (~40 lines):
+   - List and prop-list analogues for yield characterization
+
+6. **normalizeExpr_yield_or_k** (~300 lines) — SINGLE COMBINED theorem:
+   - Unlike return (which needed separate none/some versions), yield uses a single theorem
+   - `normalizeExpr e k = .yield arg delegate → HasYieldInHead e ∨ k produced yield`
+   - Full depth induction covering all 30+ Flat.Expr constructors
+   - Key insight: both yield_none_direct and yield_some_direct are immediate left cases (no recursion needed for the yield case itself)
+
+7. **normalizeExpr_yield_implies_hasYieldInHead** (~10 lines):
+   - Master inversion: if normalizeExpr with trivial-preserving k produces `.yield arg delegate`, then HasYieldInHead e
+   - Eliminates k case using trivial-preserving assumption via noConfusion
+
+8. **yield_step_sim decomposition** (~120 lines):
+   - `yield_none_direct`: fully proved (1 flat step: `.yield none d → .lit .undefined` with silent event)
+   - `yield_some_direct` with `.lit v`: fully proved (1 flat step per value constructor, all silent)
+   - `yield_some_direct` with `.var name`: fully proved (2 flat steps: resolve var → yield lit → lit, all silent)
+   - `yield_some_direct` with `.this`: fully proved (2 flat steps: resolve this → yield lit → lit, all silent)
+   - `yield_some_direct` with `.break`/`.continue`: proved impossible (noConfusion)
+   - `yield_some_direct` with compound: sorry (needs eval context lifting)
+   - Compound HasYieldInHead cases: sorry (needs depth induction)
+
+### Key difference: yield vs return observable traces
+- Return emits `.error "return:..."` traces; yield emits `.silent` traces
+- This means yield step proofs have `observableTrace [.silent, .silent] = observableTrace [.silent] = []`
+- Simpler observable trace matching than return
+
+### Sorry classification (22 total)
+
+| Lines | Count | Category | Status |
+|-------|-------|----------|--------|
+| 5559/5592/5684/5717 | 4 | normalizeExpr_labeled_step_sim non-labeled inner | Same as before |
+| 5603/5728 | 2 | normalizeExpr_labeled_step_sim compound | Same as before |
+| 5745 | 1 | normalizeExpr_labeled_step_sim compound top | Same as before |
+| 5762/5775 | 2 | hasBreak/ContinueInHead | Same as before |
+| 5928/5931 | 2 | throw compound + non-direct | Same as before |
+| 6081/6084 | 2 | return compound cases | Same as before |
+| 6247 | 1 | await this-none semantic mismatch | Same as before |
+| 6254/6257 | 2 | await compound inner_arg + non-direct | Same as before |
+| **6408** | **1** | **yield_some_direct compound inner** | **NEW (was part of yield_step_sim)** |
+| **6411** | **1** | **yield compound HasYieldInHead** | **NEW (was part of yield_step_sim)** |
+| 6432/6453/6474/6495 | 4 | let/seq/if/tryCatch_step_sim | Same as before |
+
+### Technical note: rename_i ordering
+After `cases hyield with | yield_some_direct =>`, the inaccessibles for `HasYieldInHead (.yield (some v) d)` are introduced in order `v` then `d`. Use `rename_i inner_val src_delegate` (expression first, then Bool). After `obtain ⟨rfl, rfl⟩`, `src_delegate` is substituted by `delegate` (the theorem parameter), so use `delegate` in subsequent step proofs.
+### 2026-04-01T06:22:16+00:00 Run complete — yield_step_sim decomposed, 22 sorries
+2026-04-01T06:22:27+00:00 DONE
