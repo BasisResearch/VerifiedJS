@@ -5587,7 +5587,8 @@ private theorem normalizeExpr_labeled_step_sim :
                     · intro arg n''; exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
                   · rw [htrace_s, observableTrace_append]; simp [observableTrace]; decide
                   · rw [hexpr_s, henv_s]; intro x hfx; cases hfx with
-                    | return_some_arg _ _ h1 => cases h1
+                    | return_some_arg _ _ h1 => cases h1 with
+                      | yield_some_arg _ _ _ h2 => exact hwf x (VarFreeIn.return_some_arg _ _ (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.labeled_body _ _ _ h2)))
               | _ => sorry -- non-labeled inner value: needs eval context lifting
           | while_ _ _ =>
             exfalso; unfold ANF.normalizeExpr at hnorm
@@ -5630,7 +5631,8 @@ private theorem normalizeExpr_labeled_step_sim :
                 · rw [hexpr_s]; simp only [ANF.normalizeExpr, StateT.run]; exact hbf
                 · intro arg n''; exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
               · rw [htrace_s, observableTrace_append]; simp [observableTrace]; decide
-              · rw [hexpr_s, henv_s]; intro x hfx; cases hfx
+              · rw [hexpr_s, henv_s]; intro x hfx; cases hfx with
+                | yield_some_arg _ _ _ h1 => exact hwf x (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.labeled_body _ _ _ h1))
           | var name =>
             exfalso
             simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
@@ -5676,7 +5678,9 @@ private theorem normalizeExpr_labeled_step_sim :
                     · rw [hexpr_s]; simp only [ANF.normalizeExpr, StateT.run]; exact hbf
                     · intro arg n''; exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
                   · rw [htrace_s, observableTrace_append]; simp [observableTrace]; decide
-                  · rw [hexpr_s, henv_s]; intro x hfx; cases hfx
+                  · rw [hexpr_s, henv_s]; intro x hfx; cases hfx with
+                    | yield_some_arg _ _ _ h1 => cases h1 with
+                      | return_some_arg _ _ h2 => exact hwf x (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.return_some_arg _ _ (VarFreeIn.labeled_body _ _ _ h2)))
               | _ => sorry -- non-labeled inner value: needs eval context lifting
           | yield arg delegate' =>
             cases arg with
@@ -5707,7 +5711,9 @@ private theorem normalizeExpr_labeled_step_sim :
                     · rw [hexpr_s]; simp only [ANF.normalizeExpr, StateT.run]; exact hbf
                     · intro arg n''; exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
                   · rw [htrace_s, observableTrace_append]; simp [observableTrace]; decide
-                  · rw [hexpr_s, henv_s]; intro x hfx; cases hfx
+                  · rw [hexpr_s, henv_s]; intro x hfx; cases hfx with
+                    | yield_some_arg _ _ _ h1 => cases h1 with
+                      | yield_some_arg _ _ _ h2 => exact hwf x (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.labeled_body _ _ _ h2)))
               | _ => sorry -- non-labeled inner value: needs eval context lifting
           | while_ _ _ =>
             exfalso; unfold ANF.normalizeExpr at hnorm

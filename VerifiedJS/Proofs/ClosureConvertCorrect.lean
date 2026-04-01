@@ -5836,10 +5836,10 @@ private theorem closureConvert_step_simulation
             suffices ∀ (ps : List (String × Core.Expr)),
               ExprAddrPropListWF ps sc.heap.objects.size →
               (k, Core.Expr.lit v) ∈ ps → ValueAddrWF v sc.heap.objects.size from
-              ValueAddrWF_mono (this props hwf_props hmem) (by simp [Array.size_push]; omega)
+              ValueAddrWF_mono (this props hwf_props hmem) (by simp only [cheap', Array.size_push]; omega)
             intro ps hps hmem'
             induction ps with
-            | nil => exact absurd hmem' (List.not_mem_nil _)
+            | nil => simp at hmem'
             | cons p ps' ih =>
               simp [ExprAddrPropListWF] at hps
               rcases List.mem_cons.mp hmem' with rfl | h
@@ -5847,7 +5847,7 @@ private theorem closureConvert_step_simulation
               · exact ih hps.2 h
         · next hne =>
           have haddr' : addr < sc.heap.objects.size := by omega
-          exact ValueAddrWF_mono (hheapvwf addr haddr' props' hprops' kv hkv) (by simp [Array.size_push]; omega)
+          exact ValueAddrWF_mono (hheapvwf addr haddr' props' hprops' kv hkv) (by simp only [cheap', Array.size_push]; omega)
       refine ⟨injMap, sc', ⟨hcstep⟩, by simp [sc', htrace], hinj', henvCorr,
         EnvAddrWF_mono henvwf (by simp [sc', cheap', Array.size_push]; omega),
         hheapvwf',
@@ -5857,7 +5857,7 @@ private theorem closureConvert_step_simulation
         st, st,
         by simp [sc', Flat.convertExpr, Flat.convertValue, caddr, hna_eq],
         ⟨rfl, rfl⟩,
-        by rw [hst, hst_eq]⟩
+        by rw [hst, hst_eq]; exact ⟨rfl, rfl⟩⟩
     | some val =>
       obtain ⟨done_c, propName_c, target_c, rest_c⟩ := val
       have htarget_not_lit := Core.firstNonValueProp_not_lit hcfnv
