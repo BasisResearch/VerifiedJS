@@ -4,18 +4,17 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ CC PASSES. ANF and Lower compile independently. (2026-04-01T01:05)
+## BUILD STATUS: ✅ CC PASSES. ANF and Lower compile independently. (2026-04-01T02:05)
 
-## Sorry Count: 37 (18 ANF + 19 CC + 0 Lower) — down from 39 last run
-- ANF: 18 sorries. GROUP B (7 depth-recursive) BLOCKED — IH requires trivial continuation, cannot recurse with return/yield/await continuations. GROUP A (7 step_sim, L4253-4392) — proof agent building HasAwaitInHead infrastructure. GROUP C (2 break/continue) unprovable as stated. GROUP D (2 throw compound) deferred.
-- CC: ~17 sorry usages. setIndex CLOSED. jsspec targets: L5846 (objectLit CCState), L5949/L6122/L6125 (tryCatch). wasmspec targets: L5750/L5853 (heap allocation). ~8 blocked (CCStateAgree, FuncsCorr, HeapInj, semantic mismatch). 2 stubs.
+## Sorry Count: 35 (18 ANF + 14 CC lines / ~15 stmts + 0 Lower) — down from 37 last run
+- ANF: 18 sorries. GROUP B (7 depth-recursive) BLOCKED. GROUP A (step_sim L4219-4392) — proof agent building HasAwaitInHead infrastructure. GROUP C (2 break/continue) unprovable. GROUP D (2 throw compound) deferred.
+- CC: 14 sorry lines. objectLit all-values CLOSED by wasmspec. tryCatch some-fin & CCState CLOSED. Remaining: L5998 (objectLit CCState sub-step), L6005 (arrayLit all-values), L6101 (arrayLit CCState sub-step), L6229 (tryCatch body non-value). ~6 blocked (CCStateAgree, FuncsCorr, semantic mismatch). 2 stubs. 1 functionDef.
 - Lower: 0 sorries ✓ DONE.
 
-### NEW BLOCKER: HeapCorr prefix blocks objectLit/arrayLit/newObj all-values
-HeapInj = HeapCorr (simple prefix). `HeapInj_alloc_both` requires equal heap sizes.
-Flat heap can be bigger from env allocations. Both-sides-allocate cases (objectLit L4900,
-arrayLit L5083, possibly newObj L3838) are BLOCKED until HeapInj is upgraded to real injection.
-This affects 2-3 CC sorries previously thought provable.
+### ~~HeapCorr prefix blocks objectLit/arrayLit/newObj all-values~~ — PARTIALLY RESOLVED
+wasmspec proved objectLit all-values using `HeapInj_alloc_both`. The HeapInj blocker was
+overstated — `HeapInj_alloc_both` works when props match. arrayLit all-values (L6005) is
+likely closable with the same pattern.
 
 ---
 

@@ -12,21 +12,24 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: ANF 18 sorries. Lower 0 ✓. CC ~19 — OTHER AGENTS OWN IT.
+## STATE: ANF 18 sorries (UNCHANGED 3+ RUNS). Lower 0 ✓. CC ~14 — OTHER AGENTS OWN IT.
+
+## URGENCY: You have been stuck at 18 sorries for too long.
+Even STRUCTURAL progress (decomposing 1 sorry into sub-cases with some proved) is valuable.
+The HasAwaitInHead infrastructure is the RIGHT approach. If you haven't started it yet, START NOW.
+If you've been investigating instead of writing code, STOP investigating and START writing.
 
 ## WHY GROUP B IS BLOCKED (DO NOT ATTEMPT)
-Your previous analysis (correct): GROUP B sorries (L3857, L3888, L3977, L4008) need the IH
-with non-trivial continuations like `fun t => pure (.return (some t))`. The IH at L3668
-requires `hk : ∀ arg n', ∃ m', (k arg).run n' = .ok (.trivial arg, m')` — forces k to produce
-`.trivial`. Generalizing this is blocked because the OUTPUT k' (L3674-3675) must also be
-trivial-preserving (required by anfConvert_step_star at L4682 for ANF_SimRel). Skip GROUP B.
+GROUP B sorries (L3857, L3888, L3977, L4008) need the IH with non-trivial continuations.
+The IH at L3668 requires trivializing k. Generalizing is blocked by output requirements.
+Skip GROUP B entirely.
 
 ## YOUR TASK: Build HasAwaitInHead + prove normalizeExpr_await_step_sim
 
 This follows the EXACT pattern of HasThrowInHead (L3224) + normalizeExpr_throw_or_k (L3371) +
 normalizeExpr_throw_implies_hasThrowInHead (L3647) + normalizeExpr_throw_step_sim (L4098).
 
-### Step 1: Define HasAwaitInHead (insert BEFORE L4257)
+### Step 1: Define HasAwaitInHead (insert BEFORE the await_step_sim sorry)
 
 Copy HasThrowInHead (L3224-3268), but:
 - Replace `throw_direct` with `await_direct : HasAwaitInHead (.await arg)`
@@ -90,19 +93,6 @@ end
 Copy normalizeExpr_throw_or_k_aux (L3379-3646) and normalizeExpr_throw_or_k (L3371-3376).
 Replace `.throw` → `.await`, `HasThrowInHead` → `HasAwaitInHead`, `throw_direct` → `await_direct`.
 
-Key changes per case in the aux:
-- `.await arg_flat` → `exact Or.inl HasAwaitInHead.await_direct` (was .throw)
-- `.throw arg_flat` → since normalizeExpr (.throw arg) k ignores k and produces .throw,
-  if result is .await, need ih on arg. Same depth argument as throw handled .await in throw version.
-
-Actually: in throw_or_k, the `.await _` case at L3416 says `simp [Flat.Expr.depth] at hd` (depth
-too large for zero). For await_or_k:
-- `.await arg` case: `exact Or.inl HasAwaitInHead.await_direct` (this is the direct case)
-- `.throw arg` case: normalizeExpr (.throw arg) k = normalizeExpr arg (fun t => pure (.throw t)).
-  If result is .await, then `(fun t => pure (.throw t))` produced .await for some arg, which is
-  impossible (it produces .throw). So `ih` on arg gives `HasAwaitInHead arg`, giving
-  `HasAwaitInHead (.throw arg)` via `.throw_arg`.
-
 The structure is IDENTICAL to throw_or_k with throw↔await swapped. Copy mechanically.
 
 **BUILD after this step.**
@@ -127,31 +117,16 @@ theorem ANF.normalizeExpr_await_implies_hasAwaitInHead
 
 ### Step 4: Prove normalizeExpr_await_step_sim base cases
 
-Follow normalizeExpr_throw_step_sim (L4098-4222). Structure:
-1. Use `normalizeExpr_await_implies_hasAwaitInHead` to get `HasAwaitInHead sf.expr`
-2. `cases sf; simp at *`
-3. `cases hhas : HasAwaitInHead` (the head structure)
-4. For `await_direct` (sf.expr = .await flat_arg):
-   - normalizeExpr (.await flat_arg) k = normalizeExpr flat_arg (fun t => pure (.await t))
-   - Case split flat_arg: lit, var, this (base cases), break/continue (contradiction)
-   - Each base case: construct Flat steps for await resolution
-   - Compound flat_arg: sorry (same as throw L4219)
-5. For all other HasAwaitInHead constructors: sorry (compound evaluation context)
+Follow normalizeExpr_throw_step_sim (L4098-4222). Even if compound cases stay sorry,
+this decomposes the monolithic sorry into smaller tractable pieces.
 
-**The goal is to replace 1 sorry (L4277) with ~2 sorries (compound cases) + proven base cases.**
-Even if net sorry count stays same, this is STRUCTURAL PROGRESS needed for the end-to-end proof.
-
-## WORKFLOW
-1. `grep -n "sorry" VerifiedJS/Proofs/ANFConvertCorrect.lean` to confirm line numbers
-2. Add HasAwaitInHead inductive BEFORE normalizeExpr_await_step_sim
-3. Build
-4. Add normalizeExpr_await_or_k_aux + normalizeExpr_await_or_k
-5. Build
-6. Add normalizeExpr_await_implies_hasAwaitInHead
-7. Build
-8. Start normalizeExpr_await_step_sim proof
-9. Build
-10. Log to agents/proof/log.md after each step
+## CURRENT ANF SORRY LOCATIONS (file is 6173 lines):
+```
+GROUP B (SKIP): L3857, L3888, L3899, L3977, L4008, L4019, L4036
+throw compound: L4053, L4066
+await compound flat_arg: L4219
+await/seq/if/let/tryCatch: L4222, L4253, L4277, L4308, L4329, L4350, L4371, L4392
+```
 
 ## DO NOT TOUCH:
 - ClosureConvertCorrect.lean — jsspec and wasmspec are editing it

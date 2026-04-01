@@ -2292,32 +2292,6 @@ private theorem Flat_step?_objectLit_none (s : Flat.State)
   · next hf =>
     simp [hfnvp] at hf
 
-/-- When all objectLit props are values, Flat.step? allocates on heap. -/
-private theorem Flat_step?_objectLit_allValues (s : Flat.State)
-    (props : List (Flat.PropName × Flat.Expr))
-    (vs : List Flat.Value)
-    (hvs : Flat.valuesFromExprList? (props.map Prod.snd) = some vs) :
-    let heapProps := props.filterMap fun (k, e) =>
-      match Flat.exprValue? e with | some v => some (k, Flat.flatToCoreValue v) | none => none
-    let addr := s.heap.nextAddr
-    let heap' : Core.Heap := { objects := s.heap.objects.push heapProps, nextAddr := addr + 1 }
-    Flat.step? { s with expr := .objectLit props } =
-      some (.silent, { expr := .lit (.object addr), env := s.env, heap := heap',
-                       trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
-  simp only [Flat.step?, hvs]
-
-private theorem Flat_step?_arrayLit_allValues (s : Flat.State)
-    (elems : List Flat.Expr)
-    (vs : List Flat.Value)
-    (hvs : Flat.valuesFromExprList? elems = some vs) :
-    let heapProps : List (Core.PropName × Core.Value) := elems.zipIdx.filterMap fun (e, i) =>
-      match Flat.exprValue? e with | some v => some (toString i, Flat.flatToCoreValue v) | none => none
-    let addr := s.heap.nextAddr
-    let heap' : Core.Heap := { objects := s.heap.objects.push heapProps, nextAddr := addr + 1 }
-    Flat.step? { s with expr := .arrayLit elems } =
-      some (.silent, { expr := .lit (.object addr), env := s.env, heap := heap',
-                       trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
-  simp only [Flat.step?, hvs]
 
 private theorem Flat_step?_arrayLit_step (s : Flat.State)
     (elems : List Flat.Expr)
@@ -5819,8 +5793,13 @@ private theorem closureConvert_step_simulation
       have hsf_eta : sf = { sf with expr := .objectLit (Flat.convertPropList props scope envVar envMap st).fst } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
-      -- Rewrite Flat.step? for objectLit all-values
-      rw [Flat_step?_objectLit_allValues _ _ _ hvs] at hstep
+      -- Unfold Flat.step? for objectLit all-values
+      unfold Flat.step? at hstep
+      simp only [hvs] at hstep
+      -- hstep now has allocObjectWithProps and pushTrace (private), need to extract info
+      -- The result is some (.silent, pushTrace { ... expr := .lit (.object addr), heap := ... } .silent)
+      -- Use `simp` with pushTrace expansion to normalize
+      simp only [Flat.step?_pushTrace_expand] at hstep
       simp only [Prod.mk.injEq, Option.some.injEq] at hstep
       obtain ⟨hev, hsf'⟩ := hstep; subst hev
       -- Core side: use step?_objectLit_val

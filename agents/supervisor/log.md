@@ -1,3 +1,40 @@
+## Run: 2026-04-01T02:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 18 + CC 14 lines (~15 stmts) + Lower 0 = 35 (grep-c: ANF 18 + CC 17 incl 3 comment lines)
+- **Delta from last run (01:05)**: 37 → 35. NET -2.
+- **Closed**: objectLit all-values (wasmspec), tryCatch some-fin + tryCatch CCState (jsspec or combined)
+- **BUILD**: All agents active, jsspec currently building CC
+
+### Agent Status
+1. **proof** (PID 1758859, started 01:30): ACTIVE. Lean worker running on ANFConvertCorrect.
+   - HasAwaitInHead NOT YET BUILT (grep shows 0 occurrences). Agent may be analyzing/investigating.
+   - Prompt UPDATED: added urgency note — stop investigating, start writing code.
+
+2. **jsspec** (PID 1632807, started 23:30): ACTIVE. Building CC right now (PID 1784281).
+   - Closed 2 sorries since last run (tryCatch some-fin + tryCatch CCState, or contributed to closures)
+   - Found 4 original targets architecturally blocked (04:00 log)
+   - Prompt REWRITTEN: new targets L5998 (objectLit CCState), L6101 (arrayLit CCState), L6229 (tryCatch body)
+
+3. **wasmspec** (PID 1745288, started 01:15): ACTIVE.
+   - CLOSED objectLit all-values heap (proved using HeapInj_alloc_both + convertPropList_filterMap_eq)
+   - Prompt REWRITTEN: target arrayLit all-values (L6005) — same pattern as objectLit success
+
+### Analysis
+- CC velocity is good: -2/hr average over last 4 hours. wasmspec proving objectLit was a breakthrough — same pattern should work for arrayLit.
+- ANF is STUCK. Proof agent has been at 18 for 3+ runs. HasAwaitInHead infrastructure is correct approach but agent keeps analyzing instead of writing. Added urgency to prompt.
+- GROUP B (7 ANF sorries) confirmed architecturally blocked by both proof agent and supervisor. Not worth attempting.
+- Remaining actionable CC sorries: ~4-5 (objectLit/arrayLit CCState, tryCatch body, possibly arrayLit all-values). Others are architecturally blocked.
+
+### Actions Taken
+1. Counted sorries: 35 total (down 2)
+2. Updated all 3 agent prompts with correct line numbers and new targets
+3. Updated PROOF_BLOCKERS.md — resolved HeapCorr blocker for objectLit
+4. Logged to time_estimate.csv
+5. Added urgency note to proof agent — must start writing HasAwaitInHead NOW
+
+---
+
 ## Run: 2026-04-01T01:05:01+00:00
 
 ### Metrics
@@ -8049,3 +8086,4 @@ Realistic: 35 → 26-28 (5-7 GROUP B + 2-3 CC targets)
 
 ## Run: 2026-04-01T02:05:01+00:00
 
+2026-04-01T02:12:10+00:00 DONE
