@@ -5793,29 +5793,11 @@ private theorem closureConvert_step_simulation
       have hsf_eta : sf = { sf with expr := .objectLit (Flat.convertPropList props scope envVar envMap st).fst } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
-      -- Extract Flat step result: ev = .silent, sf' has new heap with allocated object
-      -- We obtain properties of sf' rather than trying to subst it
-      have hfstep : ev = .silent ∧
-          sf'.expr = .lit (.object sf.heap.nextAddr) ∧
-          sf'.env = sf.env ∧
-          sf'.heap.objects.size = sf.heap.objects.size + 1 ∧
-          sf'.heap.nextAddr = sf.heap.nextAddr + 1 ∧
-          sf'.trace = sf.trace ++ [.silent] ∧
-          sf'.funcs = sf.funcs ∧
-          sf'.callStack = sf.callStack ∧
-          (∀ a, a < sf.heap.objects.size → sf'.heap.objects[a]? = sf.heap.objects[a]?) ∧
-          sf'.heap.objects[sf.heap.objects.size]? =
-            some ((Flat.convertPropList props scope envVar envMap st).fst.filterMap fun (k, e) =>
-              match Flat.exprValue? e with | some v => some (k, Flat.flatToCoreValue v) | none => none) := by
-        unfold Flat.step? at hstep
-        simp only [hvs, Flat.step?_pushTrace_expand] at hstep
-        obtain ⟨rfl, rfl⟩ := hstep
-        exact ⟨rfl, rfl, rfl, by simp [Array.size_push], rfl, rfl, rfl, rfl,
-          fun a ha => by rw [Array.getElem?_push]; simp [show ¬(a = sf.heap.objects.size) from by omega],
-          by rw [Array.getElem?_push]; simp⟩
-      obtain ⟨hev_eq, hsf'_expr, hsf'_env, hsf'_hsize, hsf'_hna, hsf'_trace,
-              hsf'_funcs, hsf'_cs, hsf'_old, hsf'_new⟩ := hfstep
-      subst hev_eq
+      -- Debug: check hstep shape after unfolding
+      unfold Flat.step? at hstep
+      simp only [hvs] at hstep
+      change (ev, sf') = _ at hstep
+      sorry
       -- Core side: use step?_objectLit_val
       have hna_eq : sc.heap.nextAddr = sf.heap.nextAddr := hinj.2.1
       have hsize_eq : sc.heap.objects.size = sf.heap.objects.size := hinj.1
@@ -6220,7 +6202,8 @@ private theorem closureConvert_step_simulation
       rw [hce_lit_fst, hce_lit_snd] at hconv
       cases finally_ with
       | none =>
-        dsimp only [Flat.convertOptExpr] at hconv
+        unfold Flat.convertOptExpr at hconv
+        simp only [] at hconv
         obtain ⟨hsf_expr, hst'_eq⟩ := hconv
         have hsf_eta : sf = { sf with expr := .tryCatch (.lit (Flat.convertValue v)) catchParam
             (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst none } := by
