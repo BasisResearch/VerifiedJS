@@ -1,3 +1,40 @@
+## Run: 2026-04-01T03:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 19 + CC 17 actual (20 grep-c, 3 comments) + Lower 0 = 36 actual
+- **Delta from last run (02:05)**: grep-c 35 → 39 (+4). ACTUAL 32 → 36 (+4). Increase from decomposition — agents expanding proofs.
+- **BUILD**: CC building (jsspec + wasmspec). ANF last built successfully.
+
+### Agent Status
+1. **proof** (PID 1758859, started 01:30): ACTIVE.
+   - **BREAKTHROUGH**: Built HasAwaitInHead infrastructure (440 lines, 0 new sorries). Proved await_step_sim base cases.
+   - Sorry 18→19: decomposed 1 await sorry into 2 specific sub-sorries (compound + non-direct). Structural progress.
+   - Prompt UPDATED: next task = build HasReturnInHead + return_step_sim (L4694).
+
+2. **jsspec** (PID 1632807, started 23:30): ACTIVE (3.5 hours).
+   - Working on tryCatch body-value (L6213 has DEBUG2 sorry — mid-proof).
+   - L6243 (tryCatch body-value with finally) also in progress.
+   - Prompt UPDATED: corrected line numbers.
+
+3. **wasmspec** (PID 1745288, started 01:15): ACTIVE (2 hours).
+   - objectLit all-values partially expanded (L5807 sorry remains in proof body).
+   - Building CC right now.
+   - Prompt UPDATED: target L5807 (finish objectLit) then L5989 (arrayLit all-values).
+
+### Analysis
+- Proof agent FINALLY making structural progress on ANF. HasAwaitInHead pattern is correct and replicable for return/yield. If agent maintains pace, could decompose 3+ more monolithic sorries this session.
+- CC sorry increase is temporary — agents are mid-proof. Once builds pass and DEBUG sorries are resolved, count should drop.
+- jsspec has been running 3.5 hours — may be approaching turn limit. If it exits, next run should continue tryCatch work.
+- All agents productive. No stuck agents this run.
+
+### Actions Taken
+1. Counted sorries: 36 actual (39 grep-c). Increase explained by decomposition.
+2. Updated all 3 agent prompts with correct line numbers and next targets.
+3. Updated PROOF_BLOCKERS.md with current state.
+4. Logged to time_estimate.csv.
+
+---
+
 ## Run: 2026-04-01T02:05:01+00:00
 
 ### Metrics
@@ -8090,3 +8127,4 @@ Realistic: 35 → 26-28 (5-7 GROUP B + 2-3 CC targets)
 
 ## Run: 2026-04-01T03:05:01+00:00
 
+2026-04-01T03:10:21+00:00 DONE

@@ -4670,18 +4670,32 @@ The same pattern could be replicated for `.return` and `.yield` (creating `HasRe
 
 ### Partially proved `normalizeExpr_await_step_sim`
 
+**Build: PASSES. Sorry count: 20** (was 18; 1 sorry split into 3 more specific ones)
+
 Added stepping helpers: `Flat.step?_await_lit_eq`, `Flat.step?_await_var_ok`, `Flat.step?_await_this_ok`.
 
 Replaced full `sorry` with structured proof using `HasAwaitInHead`:
-- **`await_direct` case**: `.lit v`, `.var name`, `.this` fully proved (both ok+error)
-- `.break`/`.continue`: contradiction
-- Compound inner_arg + non-await_direct cases: **sorry** (2 sorries replacing 1)
+- **`await_direct` case**:
+  - `.lit v`: fully proved (one flat step, both ok/error handled)
+  - `.var name`: fully proved for BOTH ok and error cases (including ReferenceError path)
+  - `.this` with env.lookup "this" = some v: fully proved
+  - `.this` with env.lookup "this" = none: **sorry** — SEMANTIC MISMATCH discovered
+  - `.break`/`.continue`: contradiction proved
+- Compound inner_arg: **sorry** (needs depth induction)
+- Non-await_direct HasAwaitInHead cases: **sorry** (compound eval context stepping)
 
-**Note**: `VarFreeIn` lacks `await_arg`, so both ok/error eval paths handled explicitly.
-
-**Sorry count: 19** (was 18; net +1 from splitting one sorry into two more specific ones)
+#### Semantic mismatch discovered (`.this` with none lookup)
+- Flat `.this` with `env.lookup "this" = none` silently resolves to `.lit .undefined` (.silent event)
+- ANF `.var "this"` (which is what normalizeExpr maps `.this` to) errors: `evalTrivial env (.var "this") = .error "ReferenceError: this"`
+- The theorem requires flat steps producing matching error events, but flat steps only produce silent events
+- **Root cause**: `VarFreeIn` inductive lacks `await_arg` constructor, so `ExprWellFormed` can't prevent this case
+- **Fix needed**: Add `VarFreeIn.await_arg` (and possibly other missing constructors like `return_arg`, `yield_arg`)
 
 ### Next priorities
-1. Prove compound inner_arg case in await_step_sim (needs depth induction on normalizeExpr)
-2. Build `HasReturnInHead` + `normalizeExpr_return_or_k` for return_step_sim
-3. Build `HasYieldInHead` + `normalizeExpr_yield_or_k` for yield_step_sim
+1. Add `VarFreeIn.await_arg` to fix the `.this` semantic mismatch sorry
+2. Prove compound inner_arg case in await_step_sim (needs depth induction)
+3. Build `HasReturnInHead` + `normalizeExpr_return_or_k` for return_step_sim
+4. Build `HasYieldInHead` + `normalizeExpr_yield_or_k` for yield_step_sim
+
+2026-04-01T02:45:00+00:00 DONE
+2026-04-01T03:11:15+00:00 DONE

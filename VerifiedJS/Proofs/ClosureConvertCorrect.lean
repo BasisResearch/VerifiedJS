@@ -5793,18 +5793,8 @@ private theorem closureConvert_step_simulation
       have hsf_eta : sf = { sf with expr := .objectLit (Flat.convertPropList props scope envVar envMap st).fst } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
-      -- Obtain ev and sf' from the Flat step
-      -- hstep : some (ev, sf') = some (.silent, ...)
-      -- After unfolding, the RHS has private defs (allocObjectWithProps, pushTrace)
-      -- We inject into some to get the equality, then use simp to simplify
-      have hstep' : Flat.step? { sf with expr := .objectLit (Flat.convertPropList props scope envVar envMap st).fst } = some (ev, sf') := hstep
-      -- The Flat step result for all-values objectLit: ev = .silent
-      -- sf'.expr = .lit (.object sf.heap.nextAddr)
-      -- sf'.heap has one more object
-      -- We proceed by noting that step? returned some, so we can extract:
+      -- simp with Flat.step? fully unfolds and normalizes the step, substituting ev and sf'
       simp [Flat.step?, hvs, Flat.step?_pushTrace_expand] at hstep
-      obtain ⟨rfl, rfl⟩ := hstep
-      sorry
       -- Core side: use step?_objectLit_val
       have hna_eq : sc.heap.nextAddr = sf.heap.nextAddr := hinj.2.1
       have hsize_eq : sc.heap.objects.size = sf.heap.objects.size := hinj.1
@@ -6208,39 +6198,8 @@ private theorem closureConvert_step_simulation
       -- Rewrite to simplify those
       rw [hce_lit_fst, hce_lit_snd] at hconv
       cases finally_ with
-      | none =>
-        simp at hconv
-        sorry /- DEBUG3 -/
-        obtain ⟨hsf_expr, hst'_eq⟩ := hconv
-        have hsf_eta : sf = { sf with expr := .tryCatch (.lit (Flat.convertValue v)) catchParam
-            (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst none } := by
-          cases sf; simp_all
-        rw [hsf_eta] at hstep
-        have hstep_rw := Flat_step?_tryCatch_body_value sf (Flat.convertValue v) catchParam
-            (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst hncf
-        rw [hstep_rw] at hstep; clear hstep_rw
-        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-        obtain ⟨hev, hsf'⟩ := hstep; subst hev; subst hsf'
-        let sc' : Core.State :=
-          ⟨.lit v, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-        · show Core.step? sc = some (.silent, sc')
-          have hsc' : sc = { sc with expr := .tryCatch (.lit v) catchParam catchBody none } := by
-            obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-          rw [hsc']
-          exact Core.step_tryCatch_normal_noFinally _ _ _ _ _ _ _ _ hncf
-        · simp [sc', htrace]
-        · exact hinj
-        · exact henvCorr
-        · exact henvwf
-        · exact hheapvwf
-        · simp [sc', hheapna]
-        · simp [sc', noCallFrameReturn]
-        · simp [sc', ExprAddrWF, ValueAddrWF]
-          simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-        · exact ⟨st, st, by simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, by rw [hst'_eq]; exact ⟨rfl, rfl⟩⟩
-      | some fin =>
-        sorry -- tryCatch body-value with finally: similar structure
+      | none => simp [Flat.convertOptExpr] at hconv
+      | some fin => simp [Flat.convertOptExpr] at hconv; sorry
     | none =>
       -- Body is not a value; step the body via IH
       sorry
