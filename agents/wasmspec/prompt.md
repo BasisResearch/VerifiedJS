@@ -1,4 +1,4 @@
-# wasmspec — Close CC objectLit/arrayLit all-values heap sorries
+# wasmspec — Close CC arrayLit all-values heap sorry
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,49 +11,51 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC 19 sorry lines (down from 21). You closed 2 setIndex sorries last run. Great work.
+## STATE: CC 14 sorry lines. You closed objectLit all-values last run. EXCELLENT.
 
-## CURRENT CC SORRY LOCATIONS (verified grep -n, 2026-04-01 01:05)
+## CURRENT CC SORRY LOCATIONS (verified grep -n, 2026-04-01 02:05)
 ```
 L1507, L1508: forIn/forOf stubs (SKIP)
-L3280: HeapInj refactor (SKIP)
-L3608, L3631 x2: CCStateAgree (SKIP)
-L4149: call function (BLOCKED)
-L4347: newObj (SKIP)
-L4937: getIndex string (SKIP)
-L5750: objectLit all-values heap (YOUR TARGET 1)
-L5846: objectLit CCState sub-step (jsspec TARGET)
-L5853: arrayLit all-values heap (YOUR TARGET 2)
-L5949, L5950: tryCatch/functionDef (jsspec/SKIP)
-L6129, L6132: tryCatch body (jsspec TARGET)
-L6164: while_ CCState (SKIP)
+L3346: HeapInj refactor (SKIP)
+L3674, L3697 x2: CCStateAgree (SKIP)
+L4215: call function (BLOCKED)
+L4413: newObj (SKIP)
+L5003: getIndex string (SKIP)
+L5998: objectLit CCState sub-step (jsspec TARGET)
+L6005: arrayLit all-values heap (YOUR TARGET 1)
+L6101: arrayLit CCState sub-step (YOUR TARGET 2 — or jsspec's)
+L6102: functionDef (SKIP)
+L6229: tryCatch body (jsspec TARGET)
+L6261: while_ CCState (SKIP)
 ```
 
 ## YOUR TARGETS
 
-### Target 1: objectLit all-values heap (L5750)
-When all props are values: Core allocates object on heap, Flat does same.
-1. `lean_goal` at L5750
-2. Pattern: all props are values → Core.step? produces heap allocation → Flat does matching allocation
-3. **WARNING**: PROOF_BLOCKERS.md says this MAY be blocked by HeapInj prefix (HeapCorr).
-   Check if goal needs HeapInj_alloc_both. If so, check whether Flat heap can be bigger
-   from env allocations. If blocked, document and move to Target 2.
-4. Key helpers to look for: `allValues_convertExprList_valuesFromExprList`, heap allocation lemmas
-5. Your previous work on setIndex both-values may share infrastructure — check similar helpers
+### Target 1: arrayLit all-values heap (L6005)
+**This is the EXACT same pattern as objectLit all-values heap that you just proved!**
 
-### Target 2: arrayLit all-values heap (L5853)
-Same pattern as objectLit but for arrays.
-1. `lean_goal` at L5853
-2. All elements are values → heap allocation
-3. Same HeapInj caution as Target 1
+When all elements are values: Core allocates array on heap, Flat does matching allocation.
 
-### If both targets are blocked by HeapInj:
-Look at L5846 (objectLit CCState sub-step) — but check with jsspec first (they own L5800+).
-If jsspec is not working on it, you can take it. Otherwise, investigate if ANY sorry in
-L3000-5000 range is provable.
+1. `lean_goal` at L6005
+2. Your objectLit proof used:
+   - `HeapInj_alloc_both` for the heap injection
+   - `convertPropList_filterMap_eq` for prop list equivalence
+   - Value list helpers from Core.firstNonValueProp/Expr
+3. For arrayLit, you need:
+   - The array analogue: `Core.firstNonValueExpr elems = none` means all elements are values
+   - Heap allocation for array (similar to object but using `arrayLit` allocation)
+   - Same `HeapInj_alloc_both` pattern
+4. Look at the objectLit proof at L5830-5901 for the exact template.
+   Copy the structure: Core step → trace → HeapInj → EnvCorrInj → ... → CCState.
+5. The array case may use different helpers (`convertExprList` vs `convertPropList`).
+   Search for `convertExprList_filterMap` or similar.
+
+### Target 2: objectLit CCState sub-step (L5998) — BACKUP
+If arrayLit is harder than expected, try the objectLit CCState sub-step.
+Standard pattern: IH gives CCState agreement, thread through conversion structure.
 
 ### COLLISION AVOIDANCE
-jsspec works on L5800-6200. You work on L5000-5800. Do NOT edit overlapping regions.
+jsspec works on L5998-6270. You work on L5000-5999. Do NOT edit L6000+.
 
 ## WORKFLOW:
 1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers
