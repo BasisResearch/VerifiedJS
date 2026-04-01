@@ -6223,9 +6223,7 @@ private theorem closureConvert_step_simulation
       -- After subst body = .lit v, it contains convertExpr (.lit v) terms
       -- Rewrite to simplify those
       rw [hce_lit_fst, hce_lit_snd] at hconv
-      -- Now hconv has simplified body parts. Case split on finally_
-      -- and use convertOptExpr simplification to finish.
-      sorry -- tryCatch body-value: needs convertOptExpr unfolding + CCState
+      exact hconv -- DEBUG: show hconv type
     | none =>
       -- Body is not a value; step the body via IH
       sorry
