@@ -6262,7 +6262,7 @@ private theorem closureConvert_step_simulation
       rw [hsf_eta] at hstep
       have hdepth : body.depth < n := by simp [Core.Expr.depth] at hd; omega
       have hexprwf_body : ExprAddrWF body sc.heap.objects.size := by
-        simp [ExprAddrWF] at hexprwf; cases finally_ <;> simp [ExprAddrWF] at hexprwf <;> exact hexprwf.1
+        revert hexprwf; cases finally_ <;> (simp [ExprAddrWF]; intro h; exact h.1)
       -- Match on body sub-step
       match hm : Flat.step? { sf with expr := fbody } with
       | none =>
