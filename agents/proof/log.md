@@ -4840,3 +4840,6 @@ Replaced full `sorry` with structured proof using `HasAwaitInHead`:
 After `cases hyield with | yield_some_direct =>`, the inaccessibles for `HasYieldInHead (.yield (some v) d)` are introduced in order `v` then `d`. Use `rename_i inner_val src_delegate` (expression first, then Bool). After `obtain ⟨rfl, rfl⟩`, `src_delegate` is substituted by `delegate` (the theorem parameter), so use `delegate` in subsequent step proofs.
 ### 2026-04-01T06:22:16+00:00 Run complete — yield_step_sim decomposed, 22 sorries
 2026-04-01T06:22:27+00:00 DONE
+
+## Run: 2026-04-01T06:30:01+00:00
+
