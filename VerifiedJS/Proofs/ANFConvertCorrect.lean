@@ -4100,6 +4100,799 @@ theorem ANF.normalizeExpr_await_implies_hasAwaitInHead
 
 end AwaitInHead
 
+/-! ## HasReturnInHead: tracks .return in CPS-head position -/
+
+section ReturnInHead
+
+set_option autoImplicit true in
+mutual
+/-- Predicate tracking whether an expression has .return in CPS-head position.
+    Structurally parallel to HasThrowInHead/HasAwaitInHead.
+    Key difference: .return none and .return (some v) are BOTH unconditionally direct
+    (the return continuation always produces .return). -/
+inductive HasReturnInHead : Flat.Expr → Prop where
+  | return_none_direct : HasReturnInHead (.return none)
+  | return_some_direct : HasReturnInHead (.return (some v))
+  | seq_left : HasReturnInHead a → HasReturnInHead (.seq a b)
+  | seq_right : HasReturnInHead b → HasReturnInHead (.seq a b)
+  | let_init : HasReturnInHead init → HasReturnInHead (.let name init body)
+  | getProp_obj : HasReturnInHead obj → HasReturnInHead (.getProp obj prop)
+  | setProp_obj : HasReturnInHead obj → HasReturnInHead (.setProp obj prop val)
+  | setProp_val : HasReturnInHead val → HasReturnInHead (.setProp obj prop val)
+  | binary_lhs : HasReturnInHead lhs → HasReturnInHead (.binary op lhs rhs)
+  | binary_rhs : HasReturnInHead rhs → HasReturnInHead (.binary op lhs rhs)
+  | unary_arg : HasReturnInHead arg → HasReturnInHead (.unary op arg)
+  | typeof_arg : HasReturnInHead arg → HasReturnInHead (.typeof arg)
+  | deleteProp_obj : HasReturnInHead obj → HasReturnInHead (.deleteProp obj prop)
+  | assign_val : HasReturnInHead val → HasReturnInHead (.assign name val)
+  | call_func : HasReturnInHead f → HasReturnInHead (.call f env args)
+  | call_env : HasReturnInHead env → HasReturnInHead (.call f env args)
+  | call_args : HasReturnInHeadList args → HasReturnInHead (.call f env args)
+  | newObj_func : HasReturnInHead f → HasReturnInHead (.newObj f env args)
+  | newObj_env : HasReturnInHead env → HasReturnInHead (.newObj f env args)
+  | newObj_args : HasReturnInHeadList args → HasReturnInHead (.newObj f env args)
+  | if_cond : HasReturnInHead c → HasReturnInHead (.if c t e)
+  | throw_arg : HasReturnInHead arg → HasReturnInHead (.throw arg)
+  | yield_some_arg : HasReturnInHead v → HasReturnInHead (.yield (some v) d)
+  | await_arg : HasReturnInHead arg → HasReturnInHead (.await arg)
+  | getIndex_obj : HasReturnInHead obj → HasReturnInHead (.getIndex obj idx)
+  | getIndex_idx : HasReturnInHead idx → HasReturnInHead (.getIndex obj idx)
+  | setIndex_obj : HasReturnInHead obj → HasReturnInHead (.setIndex obj idx val)
+  | setIndex_idx : HasReturnInHead idx → HasReturnInHead (.setIndex obj idx val)
+  | setIndex_val : HasReturnInHead val → HasReturnInHead (.setIndex obj idx val)
+  | getEnv_env : HasReturnInHead env → HasReturnInHead (.getEnv env idx)
+  | makeClosure_env : HasReturnInHead env → HasReturnInHead (.makeClosure funcIdx env)
+  | makeEnv_values : HasReturnInHeadList values → HasReturnInHead (.makeEnv values)
+  | objectLit_props : HasReturnInHeadProps props → HasReturnInHead (.objectLit props)
+  | arrayLit_elems : HasReturnInHeadList elems → HasReturnInHead (.arrayLit elems)
+
+inductive HasReturnInHeadList : List Flat.Expr → Prop where
+  | head : HasReturnInHead e → HasReturnInHeadList (e :: rest)
+  | tail : HasReturnInHeadList rest → HasReturnInHeadList (e :: rest)
+
+inductive HasReturnInHeadProps : List (Flat.PropName × Flat.Expr) → Prop where
+  | head : HasReturnInHead e → HasReturnInHeadProps ((name, e) :: rest)
+  | tail : HasReturnInHeadProps rest → HasReturnInHeadProps (p :: rest)
+end
+
+/-- HasReturnInHead expressions are never values. -/
+private theorem HasReturnInHead_not_value (e : Flat.Expr)
+    (h : HasReturnInHead e) : Flat.exprValue? e = none := by
+  cases h <;> simp [Flat.exprValue?]
+
+/-- bindComplex never produces .return — it always produces .let. -/
+theorem ANF.bindComplex_never_return_none_general (rhs : ANF.ComplexExpr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (n m : Nat)
+    (h : (ANF.bindComplex rhs k).run n = .ok (.return none, m)) : False := by
+  unfold ANF.bindComplex at h
+  unfold ANF.freshName at h
+  simp only [bind, Bind.bind, StateT.bind, StateT.run, get, getThe, MonadStateOf.get,
+    StateT.get, Except.bind, set, MonadStateOf.set, StateT.set, pure, Pure.pure,
+    StateT.pure, Except.pure] at h
+  split at h <;> simp_all
+
+theorem ANF.bindComplex_never_return_some_general (rhs : ANF.ComplexExpr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (arg : ANF.Trivial) (n m : Nat)
+    (h : (ANF.bindComplex rhs k).run n = .ok (.return (some arg), m)) : False := by
+  unfold ANF.bindComplex at h
+  unfold ANF.freshName at h
+  simp only [bind, Bind.bind, StateT.bind, StateT.run, get, getThe, MonadStateOf.get,
+    StateT.get, Except.bind, set, MonadStateOf.set, StateT.set, pure, Pure.pure,
+    StateT.pure, Except.pure] at h
+  split at h <;> simp_all
+
+/-- normalizeExpr (.labeled l body) k never produces .return — result is always .labeled -/
+theorem ANF.normalizeExpr_labeled_not_return_none (l : Flat.LabelName) (body : Flat.Expr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (h : (ANF.normalizeExpr (.labeled l body) k).run n = .ok (ANF.Expr.return none, m)) : False := by
+  simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run,
+    Except.bind, pure, Pure.pure, StateT.pure, Except.pure] at h
+  split at h <;> simp_all
+
+theorem ANF.normalizeExpr_labeled_not_return_some (l : Flat.LabelName) (body : Flat.Expr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat)
+    (h : (ANF.normalizeExpr (.labeled l body) k).run n = .ok (.return (some arg), m)) : False := by
+  simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run,
+    Except.bind, pure, Pure.pure, StateT.pure, Except.pure] at h
+  split at h <;> simp_all
+
+/-- normalizeExpr (.while_ cond body) k never produces .return — result is always .seq -/
+theorem ANF.normalizeExpr_while_not_return_none (cond_ body : Flat.Expr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (h : (ANF.normalizeExpr (.while_ cond_ body) k).run n = .ok (ANF.Expr.return none, m)) : False := by
+  simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run,
+    Except.bind, pure, Pure.pure, StateT.pure, Except.pure] at h
+  split at h <;> (try split at h) <;> (try split at h) <;> simp_all
+
+theorem ANF.normalizeExpr_while_not_return_some (cond_ body : Flat.Expr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat)
+    (h : (ANF.normalizeExpr (.while_ cond_ body) k).run n = .ok (.return (some arg), m)) : False := by
+  simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run,
+    Except.bind, pure, Pure.pure, StateT.pure, Except.pure] at h
+  split at h <;> (try split at h) <;> (try split at h) <;> simp_all
+
+/-- normalizeExpr (.tryCatch body cp cb fin) k never produces .return — always .tryCatch -/
+theorem ANF.normalizeExpr_tryCatch_not_return_none (body : Flat.Expr) (cp : Flat.VarName)
+    (cb : Flat.Expr) (fin : Option Flat.Expr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (h : (ANF.normalizeExpr (.tryCatch body cp cb fin) k).run n = .ok (ANF.Expr.return none, m)) : False := by
+  simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run,
+    Except.bind, pure, Pure.pure, StateT.pure, Except.pure, Functor.map, StateT.map] at h
+  cases fin with
+  | none =>
+    simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure,
+      StateT.pure, Except.pure] at h
+    split at h <;> simp_all
+  | some f =>
+    simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure,
+      StateT.pure, Except.pure] at h
+    split at h <;> (try split at h) <;> simp_all
+
+theorem ANF.normalizeExpr_tryCatch_not_return_some (body : Flat.Expr) (cp : Flat.VarName)
+    (cb : Flat.Expr) (fin : Option Flat.Expr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat)
+    (h : (ANF.normalizeExpr (.tryCatch body cp cb fin) k).run n = .ok (.return (some arg), m)) : False := by
+  simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run,
+    Except.bind, pure, Pure.pure, StateT.pure, Except.pure, Functor.map, StateT.map] at h
+  cases fin with
+  | none =>
+    simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure,
+      StateT.pure, Except.pure] at h
+    split at h <;> simp_all
+  | some f =>
+    simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure,
+      StateT.pure, Except.pure] at h
+    split at h <;> (try split at h) <;> simp_all
+
+/-! ## normalizeExprList/Props return_or_k helpers -/
+
+private theorem normalizeExprList_return_none_or_k
+    (es : List Flat.Expr)
+    (ih : ∀ e, e ∈ es → ∀ (k' : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat),
+      (ANF.normalizeExpr e k').run n = .ok (ANF.Expr.return none, m) →
+      HasReturnInHead e ∨ ∃ (t : ANF.Trivial) (n' m' : Nat), (k' t).run n' = .ok (ANF.Expr.return none, m'))
+    (k : List ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (h : (ANF.normalizeExprList es k).run n = .ok (ANF.Expr.return none, m)) :
+    HasReturnInHeadList es ∨ ∃ (ts : List ANF.Trivial) (n' m' : Nat), (k ts).run n' = .ok (ANF.Expr.return none, m') := by
+  induction es generalizing k n m with
+  | nil => right; exact ⟨[], n, m, h⟩
+  | cons e rest ihl =>
+    simp only [ANF.normalizeExprList] at h
+    rcases ih e (List.mem_cons_self e rest) _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+    · exact Or.inl (HasReturnInHeadList.head hleft)
+    · rcases ihl (fun e' he' => ih e' (List.mem_cons_of_mem e he')) _ _ _ hkt with hleft | hright
+      · exact Or.inl (HasReturnInHeadList.tail hleft)
+      · exact Or.inr hright
+
+private theorem normalizeExprList_return_some_or_k
+    (es : List Flat.Expr)
+    (ih : ∀ e, e ∈ es → ∀ (k' : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat),
+      (ANF.normalizeExpr e k').run n = .ok (.return (some arg), m) →
+      HasReturnInHead e ∨ ∃ (t : ANF.Trivial) (n' m' : Nat), (k' t).run n' = .ok (.return (some arg), m'))
+    (k : List ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat)
+    (h : (ANF.normalizeExprList es k).run n = .ok (.return (some arg), m)) :
+    HasReturnInHeadList es ∨ ∃ (ts : List ANF.Trivial) (n' m' : Nat), (k ts).run n' = .ok (.return (some arg), m') := by
+  induction es generalizing k n m with
+  | nil => right; exact ⟨[], n, m, h⟩
+  | cons e rest ihl =>
+    simp only [ANF.normalizeExprList] at h
+    rcases ih e (List.mem_cons_self e rest) _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+    · exact Or.inl (HasReturnInHeadList.head hleft)
+    · rcases ihl (fun e' he' => ih e' (List.mem_cons_of_mem e he')) _ _ _ _ hkt with hleft | hright
+      · exact Or.inl (HasReturnInHeadList.tail hleft)
+      · exact Or.inr hright
+
+private theorem normalizeProps_return_none_or_k
+    (props : List (Flat.PropName × Flat.Expr))
+    (ih : ∀ (name : Flat.PropName) (e : Flat.Expr), (name, e) ∈ props →
+      ∀ (k' : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat),
+      (ANF.normalizeExpr e k').run n = .ok (ANF.Expr.return none, m) →
+      HasReturnInHead e ∨ ∃ (t : ANF.Trivial) (n' m' : Nat), (k' t).run n' = .ok (ANF.Expr.return none, m'))
+    (k : List (ANF.PropName × ANF.Trivial) → ANF.ConvM ANF.Expr) (n m : Nat)
+    (h : (ANF.normalizeProps props k).run n = .ok (ANF.Expr.return none, m)) :
+    HasReturnInHeadProps props ∨ ∃ (ts : List (ANF.PropName × ANF.Trivial)) (n' m' : Nat), (k ts).run n' = .ok (ANF.Expr.return none, m') := by
+  induction props generalizing k n m with
+  | nil => right; exact ⟨[], n, m, h⟩
+  | cons p rest ihl =>
+    obtain ⟨pname, pe⟩ := p
+    simp only [ANF.normalizeProps] at h
+    rcases ih pname pe (List.mem_cons_self _ _) _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+    · exact Or.inl (HasReturnInHeadProps.head hleft)
+    · rcases ihl (fun name e he => ih name e (List.mem_cons_of_mem _ he)) _ _ _ hkt with hleft | hright
+      · exact Or.inl (HasReturnInHeadProps.tail hleft)
+      · exact Or.inr hright
+
+private theorem normalizeProps_return_some_or_k
+    (props : List (Flat.PropName × Flat.Expr))
+    (ih : ∀ (name : Flat.PropName) (e : Flat.Expr), (name, e) ∈ props →
+      ∀ (k' : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat),
+      (ANF.normalizeExpr e k').run n = .ok (.return (some arg), m) →
+      HasReturnInHead e ∨ ∃ (t : ANF.Trivial) (n' m' : Nat), (k' t).run n' = .ok (.return (some arg), m'))
+    (k : List (ANF.PropName × ANF.Trivial) → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat)
+    (h : (ANF.normalizeProps props k).run n = .ok (.return (some arg), m)) :
+    HasReturnInHeadProps props ∨ ∃ (ts : List (ANF.PropName × ANF.Trivial)) (n' m' : Nat), (k ts).run n' = .ok (.return (some arg), m') := by
+  induction props generalizing k n m with
+  | nil => right; exact ⟨[], n, m, h⟩
+  | cons p rest ihl =>
+    obtain ⟨pname, pe⟩ := p
+    simp only [ANF.normalizeProps] at h
+    rcases ih pname pe (List.mem_cons_self _ _) _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+    · exact Or.inl (HasReturnInHeadProps.head hleft)
+    · rcases ihl (fun name e he => ih name e (List.mem_cons_of_mem _ he)) _ _ _ _ hkt with hleft | hright
+      · exact Or.inl (HasReturnInHeadProps.tail hleft)
+      · exact Or.inr hright
+
+/-! ## Main theorem: normalizeExpr_return_or_k (none case) -/
+
+/-- If normalizeExpr e k produces .return none, then either e has return in
+    CPS-head position or k produced .return none. -/
+theorem ANF.normalizeExpr_return_none_or_k
+    (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (n m : Nat)
+    (h : (ANF.normalizeExpr e k).run n = .ok (ANF.Expr.return none, m)) :
+    HasReturnInHead e ∨ ∃ (t : ANF.Trivial) (n' m' : Nat), (k t).run n' = .ok (ANF.Expr.return none, m') :=
+  normalizeExpr_return_none_or_k_aux e.depth e (Nat.le_refl _) k n m h
+where
+  normalizeExpr_return_none_or_k_aux (d : Nat) (e : Flat.Expr) (hd : e.depth ≤ d)
+      (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+      (h : (ANF.normalizeExpr e k).run n = .ok (ANF.Expr.return none, m)) :
+      HasReturnInHead e ∨ ∃ (t : ANF.Trivial) (n' m' : Nat), (k t).run n' = .ok (ANF.Expr.return none, m') := by
+    induction d generalizing e k n m with
+    | zero =>
+      cases e with
+      | var name => right; simp only [ANF.normalizeExpr] at h; exact ⟨.var name, n, m, h⟩
+      | this => right; simp only [ANF.normalizeExpr] at h; exact ⟨.var "this", n, m, h⟩
+      | lit v =>
+        right; simp only [ANF.normalizeExpr] at h
+        cases htv : ANF.trivialOfFlatValue v with
+        | error msg =>
+          rw [htv] at h
+          change StateT.lift (Except.error msg) n = _ at h
+          simp [StateT.lift, Functor.map, Except.map] at h
+        | ok triv => rw [htv] at h; exact ⟨triv, n, m, h⟩
+      | «break» l =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+        exact absurd h (by simp)
+      | «continue» l =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+        exact absurd h (by simp)
+      | throw _ => simp [Flat.Expr.depth] at hd
+      | «return» arg_r =>
+        cases arg_r with
+        | none => exact Or.inl HasReturnInHead.return_none_direct
+        | some _ => simp [Flat.Expr.depth] at hd
+      | yield arg_y _ =>
+        cases arg_y with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+          exact absurd h (by simp)
+        | some _ => simp [Flat.Expr.depth] at hd
+      | await _ => simp [Flat.Expr.depth] at hd
+      | tryCatch _ _ _ fin => cases fin <;> (simp [Flat.Expr.depth] at hd; try omega)
+      | _ => simp [Flat.Expr.depth] at hd; try omega
+    | succ d' ih =>
+      cases e with
+      | «return» arg_r =>
+        cases arg_r with
+        | none => exact Or.inl HasReturnInHead.return_none_direct
+        | some _ => exact Or.inl HasReturnInHead.return_some_direct
+      | var name => right; simp only [ANF.normalizeExpr] at h; exact ⟨.var name, n, m, h⟩
+      | this => right; simp only [ANF.normalizeExpr] at h; exact ⟨.var "this", n, m, h⟩
+      | lit v =>
+        right; simp only [ANF.normalizeExpr] at h
+        cases htv : ANF.trivialOfFlatValue v with
+        | error msg =>
+          rw [htv] at h
+          change StateT.lift (Except.error msg) n = _ at h
+          simp [StateT.lift, Functor.map, Except.map] at h
+        | ok triv => rw [htv] at h; exact ⟨triv, n, m, h⟩
+      | «break» l =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+        exact absurd h (by simp)
+      | «continue» l =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+        exact absurd h (by simp)
+      | throw arg_flat =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : arg_flat.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih arg_flat ha _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.throw_arg hleft)
+        · simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hkt
+      | yield arg_y dlg =>
+        cases arg_y with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+          exact absurd h (by simp)
+        | some v =>
+          simp only [ANF.normalizeExpr] at h
+          have hv : v.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+          rcases ih v hv _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+          · exact Or.inl (HasReturnInHead.yield_some_arg hleft)
+          · simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hkt
+      | await arg_a =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : arg_a.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih arg_a ha _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.await_arg hleft)
+        · simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hkt
+      | seq a b =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : a.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hb : b.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih a ha _ _ _ h with hleft | ⟨_, n', m', hkb⟩
+        · exact Or.inl (HasReturnInHead.seq_left hleft)
+        · rcases ih b hb _ _ _ hkb with hleft | hright
+          · exact Or.inl (HasReturnInHead.seq_right hleft)
+          · exact Or.inr hright
+      | «let» name init body =>
+        simp only [ANF.normalizeExpr] at h
+        have hi : init.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih init hi _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.let_init hleft)
+        · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure,
+            Except.pure, Except.bind] at hkt
+          split at hkt <;> simp_all
+      | labeled l body =>
+        exact absurd h (ANF.normalizeExpr_labeled_not_return_none l body k n m)
+      | while_ c b =>
+        exact absurd h (ANF.normalizeExpr_while_not_return_none c b k n m)
+      | tryCatch body cp cb fin =>
+        exact absurd h (ANF.normalizeExpr_tryCatch_not_return_none body cp cb fin k n m)
+      | «if» c t e =>
+        simp only [ANF.normalizeExpr] at h
+        have hc : c.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih c hc _ _ _ h with hleft | ⟨tv, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.if_cond hleft)
+        · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure,
+            Except.pure, Except.bind] at hkt
+          split at hkt <;> (try simp_all)
+          split at hkt <;> simp_all
+      | assign name val =>
+        simp only [ANF.normalizeExpr] at h
+        have hv : val.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih val hv _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.assign_val hleft)
+        · exact absurd hkt (ANF.bindComplex_never_return_none_general _ _ _ _)
+      | getProp obj prop =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.getProp_obj hleft)
+        · exact absurd hkt (ANF.bindComplex_never_return_none_general _ _ _ _)
+      | deleteProp obj prop =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.deleteProp_obj hleft)
+        · exact absurd hkt (ANF.bindComplex_never_return_none_general _ _ _ _)
+      | typeof arg_t =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : arg_t.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih arg_t ha _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.typeof_arg hleft)
+        · exact absurd hkt (ANF.bindComplex_never_return_none_general _ _ _ _)
+      | unary op arg_u =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : arg_u.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih arg_u ha _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.unary_arg hleft)
+        · exact absurd hkt (ANF.bindComplex_never_return_none_general _ _ _ _)
+      | getEnv envPtr idx =>
+        simp only [ANF.normalizeExpr] at h
+        have he : envPtr.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih envPtr he _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.getEnv_env hleft)
+        · exact absurd hkt (ANF.bindComplex_never_return_none_general _ _ _ _)
+      | makeClosure funcIdx env =>
+        simp only [ANF.normalizeExpr] at h
+        have he : env.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih env he _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.makeClosure_env hleft)
+        · exact absurd hkt (ANF.bindComplex_never_return_none_general _ _ _ _)
+      | setProp obj prop val =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hv : val.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasReturnInHead.setProp_obj hleft)
+        · rcases ih val hv _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasReturnInHead.setProp_val hleft)
+          · exact absurd hk₂ (ANF.bindComplex_never_return_none_general _ _ _ _)
+      | binary op lhs rhs =>
+        simp only [ANF.normalizeExpr] at h
+        have hl : lhs.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hr : rhs.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih lhs hl _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasReturnInHead.binary_lhs hleft)
+        · rcases ih rhs hr _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasReturnInHead.binary_rhs hleft)
+          · exact absurd hk₂ (ANF.bindComplex_never_return_none_general _ _ _ _)
+      | getIndex obj idx =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hi : idx.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasReturnInHead.getIndex_obj hleft)
+        · rcases ih idx hi _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasReturnInHead.getIndex_idx hleft)
+          · exact absurd hk₂ (ANF.bindComplex_never_return_none_general _ _ _ _)
+      | setIndex obj idx val =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hi : idx.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hv : val.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasReturnInHead.setIndex_obj hleft)
+        · rcases ih idx hi _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasReturnInHead.setIndex_idx hleft)
+          · rcases ih val hv _ _ _ hk₂ with hleft | ⟨t₃, n₃, m₃, hk₃⟩
+            · exact Or.inl (HasReturnInHead.setIndex_val hleft)
+            · exact absurd hk₃ (ANF.bindComplex_never_return_none_general _ _ _ _)
+      | call f env args =>
+        simp only [ANF.normalizeExpr] at h
+        have hf : f.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have henv : env.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hargs : Flat.Expr.listDepth args ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih f hf _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasReturnInHead.call_func hleft)
+        · rcases ih env henv _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasReturnInHead.call_env hleft)
+          · have args_ih : ∀ e, e ∈ args → ∀ k' n m,
+                (ANF.normalizeExpr e k').run n = .ok (ANF.Expr.return none, m) →
+                HasReturnInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (ANF.Expr.return none, m') :=
+              fun e he => ih e (by have := Flat.Expr.mem_listDepth_lt he; omega)
+            rcases normalizeExprList_return_none_or_k args args_ih _ _ _ hk₂ with hleft | ⟨ts, n₃, m₃, hk₃⟩
+            · exact Or.inl (HasReturnInHead.call_args hleft)
+            · exact absurd hk₃ (ANF.bindComplex_never_return_none_general _ _ _ _)
+      | newObj f env args =>
+        simp only [ANF.normalizeExpr] at h
+        have hf : f.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have henv : env.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hargs : Flat.Expr.listDepth args ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih f hf _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasReturnInHead.newObj_func hleft)
+        · rcases ih env henv _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasReturnInHead.newObj_env hleft)
+          · have args_ih : ∀ e, e ∈ args → ∀ k' n m,
+                (ANF.normalizeExpr e k').run n = .ok (ANF.Expr.return none, m) →
+                HasReturnInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (ANF.Expr.return none, m') :=
+              fun e he => ih e (by have := Flat.Expr.mem_listDepth_lt he; omega)
+            rcases normalizeExprList_return_none_or_k args args_ih _ _ _ hk₂ with hleft | ⟨ts, n₃, m₃, hk₃⟩
+            · exact Or.inl (HasReturnInHead.newObj_args hleft)
+            · exact absurd hk₃ (ANF.bindComplex_never_return_none_general _ _ _ _)
+      | makeEnv values =>
+        simp only [ANF.normalizeExpr] at h
+        have hvals : Flat.Expr.listDepth values ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have vals_ih : ∀ e, e ∈ values → ∀ k' n m,
+            (ANF.normalizeExpr e k').run n = .ok (ANF.Expr.return none, m) →
+            HasReturnInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (ANF.Expr.return none, m') :=
+          fun e he => ih e (by have := Flat.Expr.mem_listDepth_lt he; omega)
+        rcases normalizeExprList_return_none_or_k values vals_ih _ _ _ h with hleft | ⟨ts, n', m', hk⟩
+        · exact Or.inl (HasReturnInHead.makeEnv_values hleft)
+        · exact absurd hk (ANF.bindComplex_never_return_none_general _ _ _ _)
+      | objectLit props =>
+        simp only [ANF.normalizeExpr] at h
+        have hprops : Flat.Expr.propListDepth props ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have props_ih : ∀ (name : Flat.PropName) (e : Flat.Expr), (name, e) ∈ props →
+            ∀ k' n m,
+            (ANF.normalizeExpr e k').run n = .ok (ANF.Expr.return none, m) →
+            HasReturnInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (ANF.Expr.return none, m') :=
+          fun name e he => ih e (by have := Flat.Expr.mem_propListDepth_lt he; omega)
+        rcases normalizeProps_return_none_or_k props props_ih _ _ _ h with hleft | ⟨ts, n', m', hk⟩
+        · exact Or.inl (HasReturnInHead.objectLit_props hleft)
+        · exact absurd hk (ANF.bindComplex_never_return_none_general _ _ _ _)
+      | arrayLit elems =>
+        simp only [ANF.normalizeExpr] at h
+        have helems : Flat.Expr.listDepth elems ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have elems_ih : ∀ e, e ∈ elems → ∀ k' n m,
+            (ANF.normalizeExpr e k').run n = .ok (ANF.Expr.return none, m) →
+            HasReturnInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (ANF.Expr.return none, m') :=
+          fun e he => ih e (by have := Flat.Expr.mem_listDepth_lt he; omega)
+        rcases normalizeExprList_return_none_or_k elems elems_ih _ _ _ h with hleft | ⟨ts, n', m', hk⟩
+        · exact Or.inl (HasReturnInHead.arrayLit_elems hleft)
+        · exact absurd hk (ANF.bindComplex_never_return_none_general _ _ _ _)
+
+/-! ## Main theorem: normalizeExpr_return_or_k (some case) -/
+
+/-- If normalizeExpr e k produces .return (some arg), then either e has return in
+    CPS-head position or k produced .return (some arg). -/
+theorem ANF.normalizeExpr_return_some_or_k
+    (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (arg : ANF.Trivial) (n m : Nat)
+    (h : (ANF.normalizeExpr e k).run n = .ok (.return (some arg), m)) :
+    HasReturnInHead e ∨ ∃ (t : ANF.Trivial) (n' m' : Nat), (k t).run n' = .ok (.return (some arg), m') :=
+  normalizeExpr_return_some_or_k_aux e.depth e (Nat.le_refl _) k arg n m h
+where
+  normalizeExpr_return_some_or_k_aux (d : Nat) (e : Flat.Expr) (hd : e.depth ≤ d)
+      (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat)
+      (h : (ANF.normalizeExpr e k).run n = .ok (.return (some arg), m)) :
+      HasReturnInHead e ∨ ∃ (t : ANF.Trivial) (n' m' : Nat), (k t).run n' = .ok (.return (some arg), m') := by
+    induction d generalizing e k arg n m with
+    | zero =>
+      cases e with
+      | var name => right; simp only [ANF.normalizeExpr] at h; exact ⟨.var name, n, m, h⟩
+      | this => right; simp only [ANF.normalizeExpr] at h; exact ⟨.var "this", n, m, h⟩
+      | lit v =>
+        right; simp only [ANF.normalizeExpr] at h
+        cases htv : ANF.trivialOfFlatValue v with
+        | error msg =>
+          rw [htv] at h
+          change StateT.lift (Except.error msg) n = _ at h
+          simp [StateT.lift, Functor.map, Except.map] at h
+        | ok triv => rw [htv] at h; exact ⟨triv, n, m, h⟩
+      | «break» l =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+        exact absurd h (by simp)
+      | «continue» l =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+        exact absurd h (by simp)
+      | throw _ => simp [Flat.Expr.depth] at hd
+      | «return» arg_r =>
+        cases arg_r with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+          exact absurd h (by simp)
+        | some _ => simp [Flat.Expr.depth] at hd
+      | yield arg_y _ =>
+        cases arg_y with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+          exact absurd h (by simp)
+        | some _ => simp [Flat.Expr.depth] at hd
+      | await _ => simp [Flat.Expr.depth] at hd
+      | tryCatch _ _ _ fin => cases fin <;> (simp [Flat.Expr.depth] at hd; try omega)
+      | _ => simp [Flat.Expr.depth] at hd; try omega
+    | succ d' ih =>
+      cases e with
+      | «return» arg_r =>
+        cases arg_r with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+          exact absurd h (by simp)
+        | some _ => exact Or.inl HasReturnInHead.return_some_direct
+      | var name => right; simp only [ANF.normalizeExpr] at h; exact ⟨.var name, n, m, h⟩
+      | this => right; simp only [ANF.normalizeExpr] at h; exact ⟨.var "this", n, m, h⟩
+      | lit v =>
+        right; simp only [ANF.normalizeExpr] at h
+        cases htv : ANF.trivialOfFlatValue v with
+        | error msg =>
+          rw [htv] at h
+          change StateT.lift (Except.error msg) n = _ at h
+          simp [StateT.lift, Functor.map, Except.map] at h
+        | ok triv => rw [htv] at h; exact ⟨triv, n, m, h⟩
+      | «break» l =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+        exact absurd h (by simp)
+      | «continue» l =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+        exact absurd h (by simp)
+      | throw arg_flat =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : arg_flat.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih arg_flat ha _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.throw_arg hleft)
+        · simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hkt
+      | yield arg_y dlg =>
+        cases arg_y with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+          exact absurd h (by simp)
+        | some v =>
+          simp only [ANF.normalizeExpr] at h
+          have hv : v.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+          rcases ih v hv _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+          · exact Or.inl (HasReturnInHead.yield_some_arg hleft)
+          · simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hkt
+      | await arg_a =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : arg_a.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih arg_a ha _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.await_arg hleft)
+        · simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hkt
+      | seq a b =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : a.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hb : b.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih a ha _ _ _ _ h with hleft | ⟨_, n', m', hkb⟩
+        · exact Or.inl (HasReturnInHead.seq_left hleft)
+        · rcases ih b hb _ _ _ _ hkb with hleft | hright
+          · exact Or.inl (HasReturnInHead.seq_right hleft)
+          · exact Or.inr hright
+      | «let» name init body =>
+        simp only [ANF.normalizeExpr] at h
+        have hi : init.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih init hi _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.let_init hleft)
+        · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure,
+            Except.pure, Except.bind] at hkt
+          split at hkt <;> simp_all
+      | labeled l body =>
+        exact absurd h (ANF.normalizeExpr_labeled_not_return_some l body k arg n m)
+      | while_ c b =>
+        exact absurd h (ANF.normalizeExpr_while_not_return_some c b k arg n m)
+      | tryCatch body cp cb fin =>
+        exact absurd h (ANF.normalizeExpr_tryCatch_not_return_some body cp cb fin k arg n m)
+      | «if» c t e =>
+        simp only [ANF.normalizeExpr] at h
+        have hc : c.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih c hc _ _ _ _ h with hleft | ⟨tv, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.if_cond hleft)
+        · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure,
+            Except.pure, Except.bind] at hkt
+          split at hkt <;> (try simp_all)
+          split at hkt <;> simp_all
+      | assign name val =>
+        simp only [ANF.normalizeExpr] at h
+        have hv : val.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih val hv _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.assign_val hleft)
+        · exact absurd hkt (ANF.bindComplex_never_return_some_general _ _ _ _ _)
+      | getProp obj prop =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.getProp_obj hleft)
+        · exact absurd hkt (ANF.bindComplex_never_return_some_general _ _ _ _ _)
+      | deleteProp obj prop =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.deleteProp_obj hleft)
+        · exact absurd hkt (ANF.bindComplex_never_return_some_general _ _ _ _ _)
+      | typeof arg_t =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : arg_t.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih arg_t ha _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.typeof_arg hleft)
+        · exact absurd hkt (ANF.bindComplex_never_return_some_general _ _ _ _ _)
+      | unary op arg_u =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : arg_u.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih arg_u ha _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.unary_arg hleft)
+        · exact absurd hkt (ANF.bindComplex_never_return_some_general _ _ _ _ _)
+      | getEnv envPtr idx =>
+        simp only [ANF.normalizeExpr] at h
+        have he : envPtr.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih envPtr he _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.getEnv_env hleft)
+        · exact absurd hkt (ANF.bindComplex_never_return_some_general _ _ _ _ _)
+      | makeClosure funcIdx env =>
+        simp only [ANF.normalizeExpr] at h
+        have he : env.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih env he _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasReturnInHead.makeClosure_env hleft)
+        · exact absurd hkt (ANF.bindComplex_never_return_some_general _ _ _ _ _)
+      | setProp obj prop val =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hv : val.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasReturnInHead.setProp_obj hleft)
+        · rcases ih val hv _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasReturnInHead.setProp_val hleft)
+          · exact absurd hk₂ (ANF.bindComplex_never_return_some_general _ _ _ _ _)
+      | binary op lhs rhs =>
+        simp only [ANF.normalizeExpr] at h
+        have hl : lhs.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hr : rhs.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih lhs hl _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasReturnInHead.binary_lhs hleft)
+        · rcases ih rhs hr _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasReturnInHead.binary_rhs hleft)
+          · exact absurd hk₂ (ANF.bindComplex_never_return_some_general _ _ _ _ _)
+      | getIndex obj idx =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hi : idx.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasReturnInHead.getIndex_obj hleft)
+        · rcases ih idx hi _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasReturnInHead.getIndex_idx hleft)
+          · exact absurd hk₂ (ANF.bindComplex_never_return_some_general _ _ _ _ _)
+      | setIndex obj idx val =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hi : idx.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hv : val.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasReturnInHead.setIndex_obj hleft)
+        · rcases ih idx hi _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasReturnInHead.setIndex_idx hleft)
+          · rcases ih val hv _ _ _ _ hk₂ with hleft | ⟨t₃, n₃, m₃, hk₃⟩
+            · exact Or.inl (HasReturnInHead.setIndex_val hleft)
+            · exact absurd hk₃ (ANF.bindComplex_never_return_some_general _ _ _ _ _)
+      | call f env args =>
+        simp only [ANF.normalizeExpr] at h
+        have hf : f.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have henv : env.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hargs : Flat.Expr.listDepth args ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih f hf _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasReturnInHead.call_func hleft)
+        · rcases ih env henv _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasReturnInHead.call_env hleft)
+          · have args_ih : ∀ e, e ∈ args → ∀ k' (arg' : ANF.Trivial) n m,
+                (ANF.normalizeExpr e k').run n = .ok (.return (some arg'), m) →
+                HasReturnInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.return (some arg'), m') :=
+              fun e he => ih e (by have := Flat.Expr.mem_listDepth_lt he; omega)
+            rcases normalizeExprList_return_some_or_k args args_ih _ _ _ _ hk₂ with hleft | ⟨ts, n₃, m₃, hk₃⟩
+            · exact Or.inl (HasReturnInHead.call_args hleft)
+            · exact absurd hk₃ (ANF.bindComplex_never_return_some_general _ _ _ _ _)
+      | newObj f env args =>
+        simp only [ANF.normalizeExpr] at h
+        have hf : f.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have henv : env.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hargs : Flat.Expr.listDepth args ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih f hf _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasReturnInHead.newObj_func hleft)
+        · rcases ih env henv _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasReturnInHead.newObj_env hleft)
+          · have args_ih : ∀ e, e ∈ args → ∀ k' (arg' : ANF.Trivial) n m,
+                (ANF.normalizeExpr e k').run n = .ok (.return (some arg'), m) →
+                HasReturnInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.return (some arg'), m') :=
+              fun e he => ih e (by have := Flat.Expr.mem_listDepth_lt he; omega)
+            rcases normalizeExprList_return_some_or_k args args_ih _ _ _ _ hk₂ with hleft | ⟨ts, n₃, m₃, hk₃⟩
+            · exact Or.inl (HasReturnInHead.newObj_args hleft)
+            · exact absurd hk₃ (ANF.bindComplex_never_return_some_general _ _ _ _ _)
+      | makeEnv values =>
+        simp only [ANF.normalizeExpr] at h
+        have hvals : Flat.Expr.listDepth values ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have vals_ih : ∀ e, e ∈ values → ∀ k' (arg' : ANF.Trivial) n m,
+            (ANF.normalizeExpr e k').run n = .ok (.return (some arg'), m) →
+            HasReturnInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.return (some arg'), m') :=
+          fun e he => ih e (by have := Flat.Expr.mem_listDepth_lt he; omega)
+        rcases normalizeExprList_return_some_or_k values vals_ih _ _ _ _ h with hleft | ⟨ts, n', m', hk⟩
+        · exact Or.inl (HasReturnInHead.makeEnv_values hleft)
+        · exact absurd hk (ANF.bindComplex_never_return_some_general _ _ _ _ _)
+      | objectLit props =>
+        simp only [ANF.normalizeExpr] at h
+        have hprops : Flat.Expr.propListDepth props ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have props_ih : ∀ (name : Flat.PropName) (e : Flat.Expr), (name, e) ∈ props →
+            ∀ k' (arg' : ANF.Trivial) n m,
+            (ANF.normalizeExpr e k').run n = .ok (.return (some arg'), m) →
+            HasReturnInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.return (some arg'), m') :=
+          fun name e he => ih e (by have := Flat.Expr.mem_propListDepth_lt he; omega)
+        rcases normalizeProps_return_some_or_k props props_ih _ _ _ _ h with hleft | ⟨ts, n', m', hk⟩
+        · exact Or.inl (HasReturnInHead.objectLit_props hleft)
+        · exact absurd hk (ANF.bindComplex_never_return_some_general _ _ _ _ _)
+      | arrayLit elems =>
+        simp only [ANF.normalizeExpr] at h
+        have helems : Flat.Expr.listDepth elems ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have elems_ih : ∀ e, e ∈ elems → ∀ k' (arg' : ANF.Trivial) n m,
+            (ANF.normalizeExpr e k').run n = .ok (.return (some arg'), m) →
+            HasReturnInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.return (some arg'), m') :=
+          fun e he => ih e (by have := Flat.Expr.mem_listDepth_lt he; omega)
+        rcases normalizeExprList_return_some_or_k elems elems_ih _ _ _ _ h with hleft | ⟨ts, n', m', hk⟩
+        · exact Or.inl (HasReturnInHead.arrayLit_elems hleft)
+        · exact absurd hk (ANF.bindComplex_never_return_some_general _ _ _ _ _)
+
+/-- MASTER INVERSION (return):
+    If normalizeExpr e k = .ok (.return arg, m) with trivial-preserving k,
+    then e has .return in evaluation-head position. -/
+theorem ANF.normalizeExpr_return_implies_hasReturnInHead
+    (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (hk : ∀ (t : ANF.Trivial) (n : Nat), ∃ m, (k t).run n = .ok (.trivial t, m))
+    (arg : Option ANF.Trivial) (n m : Nat)
+    (h : (ANF.normalizeExpr e k).run n = .ok (.return arg, m)) :
+    HasReturnInHead e := by
+  cases arg with
+  | none =>
+    rcases ANF.normalizeExpr_return_none_or_k e k n m h with hleft | ⟨t, n', m', hk_ret⟩
+    · exact hleft
+    · obtain ⟨m'', hm''⟩ := hk t n'
+      rw [hm''] at hk_ret
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hk_ret)).1
+  | some arg_t =>
+    rcases ANF.normalizeExpr_return_some_or_k e k arg_t n m h with hleft | ⟨t, n', m', hk_ret⟩
+    · exact hleft
+    · obtain ⟨m'', hm''⟩ := hk t n'
+      rw [hm''] at hk_ret
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hk_ret)).1
+
+end ReturnInHead
+
 /-- When normalizeExpr sf.expr k produces .labeled label body, there exist Flat steps
     from sf to sf' such that normalizeExpr sf'.expr k' produces body (with k' trivial-preserving).
     The .labeled may be embedded inside .seq chains or compound expression prefixes;
