@@ -3823,21 +3823,16 @@ private theorem normalizeExpr_labeled_step_sim :
             cases arg with
             | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
             | some _ =>
-              -- normalizeExpr (return (some X)) k ignores k, uses (fun t => pure (.return (some t)))
-              -- So normalizeExpr (return (some (return (some val)))) k_triv = normalizeExpr (return (some val)) (fun t => pure (.return (some t))) = hnorm
-              exact ⟨[], sf, Flat.Steps.refl sf, ⟨fun t => pure (.trivial t), n, m,
-                by simp only [hsf, ANF.normalizeExpr]; exact hnorm,
-                fun arg n' => ⟨n', by simp [pure, StateT.run]⟩⟩,
-                rfl, rfl, rfl, rfl, hwf⟩
+              refine ⟨[], sf, Flat.Steps.refl sf, ⟨fun t => pure (.trivial t), n, m, ?_, fun arg n' => ⟨n', by simp [pure, StateT.run]⟩⟩, rfl, rfl, rfl, rfl, ?_⟩
+              · rw [hsf]; unfold ANF.normalizeExpr; exact hnorm
+              · rw [hsf]; exact hwf
           | yield arg delegate =>
             cases arg with
             | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
             | some _ =>
-              -- Same idea: normalizeExpr (yield (some X) d) k ignores k
-              exact ⟨[], sf, Flat.Steps.refl sf, ⟨fun t => pure (.trivial t), n, m,
-                by simp only [hsf, ANF.normalizeExpr]; exact hnorm,
-                fun arg n' => ⟨n', by simp [pure, StateT.run]⟩⟩,
-                rfl, rfl, rfl, rfl, hwf⟩
+              refine ⟨[], sf, Flat.Steps.refl sf, ⟨fun t => pure (.trivial t), n, m, ?_, fun arg n' => ⟨n', by simp [pure, StateT.run]⟩⟩, rfl, rfl, rfl, rfl, ?_⟩
+              · rw [hsf]; unfold ANF.normalizeExpr; exact hnorm
+              · rw [hsf]; exact hwf
           | while_ _ _ =>
             exfalso; unfold ANF.normalizeExpr at hnorm
             simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
@@ -3849,10 +3844,9 @@ private theorem normalizeExpr_labeled_step_sim :
             | none => simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
             | some _ => simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
           | _ =>
-            exact ⟨[], sf, Flat.Steps.refl sf, ⟨fun t => pure (.trivial t), n, m,
-              by simp only [hsf, ANF.normalizeExpr]; exact hnorm,
-              fun arg n' => ⟨n', by simp [pure, StateT.run]⟩⟩,
-              rfl, rfl, rfl, rfl, hwf⟩
+            refine ⟨[], sf, Flat.Steps.refl sf, ⟨fun t => pure (.trivial t), n, m, ?_, fun arg n' => ⟨n', by simp [pure, StateT.run]⟩⟩, rfl, rfl, rfl, rfl, ?_⟩
+            · rw [hsf]; unfold ANF.normalizeExpr; exact hnorm
+            · rw [hsf]; exact hwf
       | yield arg delegate =>
         cases arg with
         | none =>
@@ -3904,18 +3898,16 @@ private theorem normalizeExpr_labeled_step_sim :
             cases arg with
             | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
             | some _ =>
-              exact ⟨[], sf, Flat.Steps.refl sf, ⟨fun t => pure (.trivial t), n, m,
-                by simp only [hsf, ANF.normalizeExpr]; exact hnorm,
-                fun arg n' => ⟨n', by simp [pure, StateT.run]⟩⟩,
-                rfl, rfl, rfl, rfl, hwf⟩
+              refine ⟨[], sf, Flat.Steps.refl sf, ⟨fun t => pure (.trivial t), n, m, ?_, fun arg n' => ⟨n', by simp [pure, StateT.run]⟩⟩, rfl, rfl, rfl, rfl, ?_⟩
+              · rw [hsf]; unfold ANF.normalizeExpr; exact hnorm
+              · rw [hsf]; exact hwf
           | yield arg delegate' =>
             cases arg with
             | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
             | some _ =>
-              exact ⟨[], sf, Flat.Steps.refl sf, ⟨fun t => pure (.trivial t), n, m,
-                by simp only [hsf, ANF.normalizeExpr]; exact hnorm,
-                fun arg n' => ⟨n', by simp [pure, StateT.run]⟩⟩,
-                rfl, rfl, rfl, rfl, hwf⟩
+              refine ⟨[], sf, Flat.Steps.refl sf, ⟨fun t => pure (.trivial t), n, m, ?_, fun arg n' => ⟨n', by simp [pure, StateT.run]⟩⟩, rfl, rfl, rfl, rfl, ?_⟩
+              · rw [hsf]; unfold ANF.normalizeExpr; exact hnorm
+              · rw [hsf]; exact hwf
           | while_ _ _ =>
             exfalso; unfold ANF.normalizeExpr at hnorm
             simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
@@ -3927,10 +3919,9 @@ private theorem normalizeExpr_labeled_step_sim :
             | none => simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
             | some _ => simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
           | _ =>
-            exact ⟨[], sf, Flat.Steps.refl sf, ⟨fun t => pure (.trivial t), n, m,
-              by simp only [hsf, ANF.normalizeExpr]; exact hnorm,
-              fun arg n' => ⟨n', by simp [pure, StateT.run]⟩⟩,
-              rfl, rfl, rfl, rfl, hwf⟩
+            refine ⟨[], sf, Flat.Steps.refl sf, ⟨fun t => pure (.trivial t), n, m, ?_, fun arg n' => ⟨n', by simp [pure, StateT.run]⟩⟩, rfl, rfl, rfl, rfl, ?_⟩
+            · rw [hsf]; unfold ANF.normalizeExpr; exact hnorm
+            · rw [hsf]; exact hwf
       | while_ cond body_w =>
         -- while produces .seq (.while_ ...) rest, never .labeled
         exfalso; unfold ANF.normalizeExpr at hnorm
