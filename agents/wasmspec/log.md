@@ -4831,3 +4831,5 @@ try-catch bodies(2), while_ CCState(1)
 2026-04-01T04:15:01+00:00 SKIP: already running
 2026-04-01T05:15:01+00:00 SKIP: already running
 2026-04-01T06:15:01+00:00 SKIP: already running
+2026-04-01T06:34:36+00:00 EXIT: code 1
+2026-04-01T06:34:36+00:00 DONE
