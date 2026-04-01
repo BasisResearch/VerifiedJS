@@ -8206,3 +8206,39 @@ Realistic: 35 → 26-28 (5-7 GROUP B + 2-3 CC targets)
 
 ## Run: 2026-04-01T06:05:08+00:00
 
+
+## Run: 2026-04-01T06:05:08+00:00
+
+### Metrics
+- **Sorry count**: ANF 22 + CC 15 actual = 37 actual
+- **Delta from last run (04:05)**: 36 → 37. NET +1. ANF +2 (yield_step_sim decomposed into specific sub-cases), CC -1 (jsspec continuing work).
+- **BUILD**: All 3 agents active. proof (started 05:30), jsspec (started 05:00), wasmspec (started 01:15, 5 hours).
+
+### Agent Status
+1. **proof** (PID 1948481, started 05:30): ACTIVE (35 min).
+   - BUILT HasYieldInHead infrastructure — file grew from 7706 to 8275 lines (+569).
+   - yield_step_sim decomposed: direct cases (lit, var, this) PROVED, compound cases sorry'd (L6407, L6410).
+   - yield follows exact same pattern as return/await — infrastructure replication successful.
+   - Prompt UPDATED: focus on let_step_sim (L6431), seq (L6452), if (L6473), tryCatch (L6494).
+
+2. **jsspec** (PID 1927031, started 05:00): ACTIVE (1 hour).
+   - Currently running (SKIP at 06:00).
+   - Prompt UPDATED: targets L6251 (tryCatch with finally), L6282 (catch env extend).
+
+3. **wasmspec** (PID 1745288, started 01:15): ACTIVE (5 hours — approaching turn limit).
+   - Currently running (SKIP at 05:15).
+   - Prompt UPDATED: targets L5955 (objectLit sub-step), L5962 (objectLit all-values).
+
+### Analysis
+- Proof agent is performing excellently. HasYield infrastructure completes the trilogy (Await/Return/Yield). All 3 decomposition patterns are proven.
+- The 4 monolithic sorries (let/seq/if/tryCatch step_sim) are the most impactful targets: each is a single sorry with a clear structure. Proving these would bring ANF from 22 to 18 immediately.
+- CC pace: 1 sorry/2-3 hours. wasmspec may exit soon (5 hours). jsspec on track.
+- ANF +1 is expected — decomposition temporarily increases count before compound cases close.
+- 14 compound/eval-context sorries (depth induction) are the long pole. These are structurally identical — once one is proved, the pattern should replicate.
+
+### Actions Taken
+1. Counted sorries: 37 actual (22 ANF + 15 CC). +1 from decomposition, explained.
+2. Updated all 3 agent prompts with verified line numbers from grep -n.
+3. Updated PROOF_BLOCKERS.md with current state.
+4. Logged to time_estimate.csv.
+2026-04-01T06:10:42+00:00 DONE
