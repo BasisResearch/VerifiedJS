@@ -6,3 +6,4 @@
 /uv.lock
 /kickoff.sh
 test_logs/
+.leansplitter_cache/

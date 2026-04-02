@@ -124,11 +124,24 @@ unsafe def main (args : List String) : IO Unit := do
   let ictx := Parser.mkInputContext source path
   let (header, parserState, _) ← Parser.parseHeader ictx
 
-  -- Initialize search path and import the file's actual modules
+  -- Initialize search path and import the file's modules, dropping any that fail
   initSearchPath (← findSysroot)
   let imports := Elab.headerToImports header
   IO.eprintln s!"Importing {imports.size} modules..."
-  let env ← importModules imports {} 0
+  let env ← try
+    importModules imports {} 0
+  catch _ =>
+    -- Try each import individually, skip failures
+    let mut goodImports : Array Import := #[{ module := `Init }]
+    for imp in imports do
+      if imp.module == `Init then continue
+      try
+        let _ ← importModules (goodImports.push imp) {} 0
+        goodImports := goodImports.push imp
+        IO.eprintln s!"  ✓ {imp.module}"
+      catch _ =>
+        IO.eprintln s!"  ✗ {imp.module} (skipped)"
+    importModules goodImports {} 0
   IO.eprintln "Environment loaded, running frontend..."
 
   -- Run the full Lean frontend: parse + elaborate each command with proper state
