@@ -1,0 +1,10 @@
+*/5 * * * * /opt/verifiedjs/scripts/auto_snapshot.sh
+*/15 * * * * /opt/verifiedjs/scripts/track_stats.sh
+0 * * * * /opt/verifiedjs/scripts/rotate_logs.sh
+*/15 * * * * python3 /opt/verifiedjs/scripts/dep_graph.py
+*/15 * * * * python3 /opt/verifiedjs/scripts/thm_graph.py
+30 * * * * /opt/verifiedjs/scripts/test262_cron.sh
+*/30 * * * * sudo -u supervisor /opt/verifiedjs/scripts/build_status_cron.sh
+* * * * * /opt/verifiedjs/scripts/track_liveness.sh
+*/30 * * * * /opt/verifiedjs/scripts/auth_watchdog.sh
+*/15 * * * * cd /opt/verifiedjs && python3 scripts/spec_coverage.py

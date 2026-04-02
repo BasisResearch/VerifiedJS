@@ -114,7 +114,115 @@ def lean_html(code, title=None):
 def show_lean(code, title=None):
     display(lean_html(code, title))
 
-from lean_parser import parse_lean_file, parse_step_function, diff_cases
+# ── LeanSplitter binary wrapper (replaces lean_parser.py regex-based parsing) ──
+import subprocess, tempfile, hashlib, json, os, pickle
+
+_LEANSPLITTER_BIN = '.lake/build/bin/leansplitter'
+_LEANSPLITTER_CACHE_DIR = '.leansplitter_cache'
+os.makedirs(_LEANSPLITTER_CACHE_DIR, exist_ok=True)
+
+def _cache_path(content_hash):
+    return os.path.join(_LEANSPLITTER_CACHE_DIR, f'{content_hash}.json')
+
+def _extract_cases_from_text(lines):
+    """Extract match cases from declaration text lines.
+    Looks for `| .name` or `| «name»` patterns."""
+    cases = {}
+    current_label = None
+    current_lines = []
+    for line in lines:
+        stripped = line.lstrip()
+        if stripped.startswith('| .') or stripped.startswith('| \u00ab'):
+            if current_label is not None and current_lines:
+                cases[current_label] = '\n'.join(current_lines)
+            after_pipe = stripped[2:].lstrip()
+            if after_pipe.startswith('.'):
+                rest = after_pipe[1:]
+                name_chars = []
+                for ch in rest:
+                    if ch in ' (\n,|':
+                        break
+                    name_chars.append(ch)
+                current_label = ''.join(name_chars)
+            elif after_pipe.startswith('\u00ab'):
+                current_label = after_pipe[1:].split('\u00bb')[0]
+            else:
+                current_label = after_pipe.split()[0] if after_pipe.split() else '?'
+            current_lines = [line]
+        elif current_label is not None:
+            current_lines.append(line)
+    if current_label is not None and current_lines:
+        cases[current_label] = '\n'.join(current_lines)
+    return cases
+
+def parse_lean_file(content):
+    """Parse a Lean file using the compiled leansplitter binary.
+    Returns: {'declarations': [{'kind', 'name', 'line', 'end_line', 'body', 'sorry', 'cases', ...}]}
+    Falls back to lean_parser.py if binary fails."""
+    h = hashlib.sha256(content.encode()).hexdigest()[:16]
+    cp = _cache_path(h)
+    if os.path.exists(cp):
+        with open(cp) as f:
+            return json.load(f)
+
+    # Write content to temp file, run binary
+    with tempfile.NamedTemporaryFile(suffix='.lean', mode='w', delete=False) as tf:
+        tf.write(content)
+        tf.flush()
+        try:
+            result = subprocess.run(
+                ['lake', 'env', _LEANSPLITTER_BIN, tf.name],
+                capture_output=True, text=True, timeout=120, cwd=os.getcwd()
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                decls_raw = json.loads(result.stdout)
+                decls = []
+                for d in decls_raw:
+                    body = d.get('text', '')
+                    # Extract match cases from text (syntax tree cases may be empty)
+                    cases_from_stx = {c['name']: c.get('text', '') for c in d.get('cases', [])}
+                    cases = cases_from_stx if cases_from_stx else _extract_cases_from_text(body.splitlines())
+                    decls.append({
+                        'kind': d.get('kind', '?'),
+                        'name': d.get('name', '?'),
+                        'line': d.get('start_line', 0),
+                        'end_line': d.get('end_line', 0),
+                        'body': body,
+                        'sorry': d.get('has_sorry', False),
+                        'cases': cases,
+                        'num_lines': d.get('end_line', 0) - d.get('start_line', 0),
+                        'is_private': d.get('is_private', False),
+                        'num_cases': d.get('num_cases', len(cases)),
+                    })
+                out = {'declarations': decls}
+                with open(cp, 'w') as f:
+                    json.dump(out, f)
+                return out
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
+            pass
+        finally:
+            os.unlink(tf.name)
+
+    # Fallback: Python parser
+    from lean_parser import parse_lean_file as _py_parse
+    return _py_parse(content)
+
+
+def parse_step_function(content, func_name='step?'):
+    """Extract cases from a specific step function."""
+    result = parse_lean_file(content)
+    for decl in result['declarations']:
+        if decl['name'] == func_name:
+            return decl['cases'], decl['body']
+    return {}, ''
+
+
+def diff_cases(old, new):
+    """Diff two case dicts. Returns (added, removed, changed)."""
+    added = {k: v for k, v in new.items() if k not in old}
+    removed = {k: v for k, v in old.items() if k not in new}
+    changed = {k: (old[k], new[k]) for k in old if k in new and old[k] != new[k]}
+    return added, removed, changed
 
 repo = git.Repo('.')
 print(f'Repo: {repo.working_dir}')
@@ -217,15 +325,15 @@ plt.show()
 
 # %%
 def parse_lean_declarations(content):
-    """Extract declarations using lean_parser (no regex)."""
+    """Extract declarations using leansplitter binary."""
     result = parse_lean_file(content)
     return [{
         'kind': d['kind'],
         'name': d['name'],
-        'private': d['body'][:50].startswith('private') if d['body'] else False,
+        'private': d.get('is_private', d['body'][:50].startswith('private') if d.get('body') else False),
         'line': d['line'],
         'sorry': d['sorry'],
-        'signature': d['body'],
+        'signature': d.get('body', ''),
         'cases': d.get('cases', {}),
         'num_lines': d.get('num_lines', 0),
     } for d in result['declarations']]
@@ -547,7 +655,7 @@ inductives_to_track = [
 ]
 
 def track_inductive_evolution(filepath, ind_name, sample_every=10):
-    """Track an inductive's constructor count and body over commits."""
+    """Track an inductive's constructor count and body over commits using leansplitter."""
     history = []
     commits_touching = list(repo.iter_commits('main', paths=filepath))
     commits_touching.reverse()
@@ -559,22 +667,18 @@ def track_inductive_evolution(filepath, ind_name, sample_every=10):
         try:
             blob = c.tree / filepath
             content = blob.data_stream.read().decode('utf-8', errors='replace')
-            lines = content.splitlines()
+            result = parse_lean_file(content)
 
             body = None
-            for j, line in enumerate(lines):
-                if re.match(rf'^(inductive|def)\s+{re.escape(ind_name)}\b', line):
-                    body_lines = [line]
-                    for k in range(j+1, min(j+60, len(lines))):
-                        if re.match(r'^(private\s+)?(theorem|lemma|def|inductive|structure|instance|class|end|namespace|section)\b', lines[k]):
-                            break
-                        body_lines.append(lines[k])
-                    body = '\n'.join(body_lines)
+            for d in result['declarations']:
+                if d['name'] == ind_name:
+                    body = d.get('body', '')
                     break
 
             if body:
                 changed = body != prev_body
-                constructors = sum(1 for l in body.splitlines() if re.match(r'\s+\|', l))
+                # Count constructor pipes in the body text
+                constructors = sum(1 for l in body.splitlines() if l.lstrip().startswith('|'))
                 prev_body = body
                 history.append({
                     'ts': datetime.fromtimestamp(c.authored_date),
