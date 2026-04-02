@@ -1,13 +1,13 @@
 /-
-  LeanSplitter: Parse Lean files using Lean's parser, output structured JSON.
+  LeanSplitter: Parse Lean files using Lean's parser + elaborator, output structured JSON.
+  Uses the full Lean frontend (Elab.IO.processCommands) so the parser gets correct
+  namespace/env state between commands — no truncated declarations.
   Compiled: `lake build leansplitter`
   Run: `lake env .lake/build/bin/leansplitter <file.lean>`
-  (needs LEAN_PATH set so importModules can find .olean files)
 -/
 import Batteries.Data.String
 import Lean
-import Lean.Elab.Import
-import Lean.Util.Path
+import Lean.Elab.Frontend
 
 open Lean
 
@@ -23,7 +23,6 @@ def textSlice (source : String) (startByte endByte : Nat) : String :=
   let bytes := source.toUTF8
   let s := min startByte bytes.size
   let e := min endByte bytes.size
-  -- Try UTF8, fallback to char-level
   let slice := bytes.extract s e
   if h : slice.IsValidUTF8 then ⟨slice, h⟩
   else String.ofList ((source.toList.drop s).take (e - s))
@@ -76,8 +75,7 @@ where
     | _ => none
 
 /-- Build a JSON object for a declaration.
-    Uses `startByte`/`endByte` from the PARSER STATE (not syntax positions)
-    for accurate text ranges that include the full proof body. -/
+    startByte/endByte come from the gap between consecutive commands. -/
 def mkDeclJson (source : String) (stx : Syntax) (startByte endByte : Nat) : Option Json := do
   let kind ← match stx with
     | .node _ k _ => classifyKind k
@@ -94,6 +92,29 @@ def mkDeclJson (source : String) (stx : Syntax) (startByte endByte : Nat) : Opti
     ("num_cases", cases.size), ("cases", Json.arr cases),
     ("text", text)]
 
+/-- Extract declarations from a command syntax tree. Walks into namespace/section blocks. -/
+partial def extractDecls (source : String) (cmd : Syntax) (startByte endByte : Nat) : Array Json := Id.run do
+  let mut decls : Array Json := #[]
+  -- Try top-level classification
+  match mkDeclJson source cmd startByte endByte with
+  | some j => decls := decls.push j
+  | none =>
+    match cmd with
+    | .node _ _ args =>
+      for arg in args do
+        match mkDeclJson source arg startByte endByte with
+        | some j => decls := decls.push j
+        | none =>
+          match arg with
+          | .node _ _ inner =>
+            for x in inner do
+              match mkDeclJson source x startByte endByte with
+              | some j => decls := decls.push j
+              | none => pure ()
+          | _ => pure ()
+    | _ => pure ()
+  return decls
+
 unsafe def main (args : List String) : IO Unit := do
   let path ← match args.head? with
     | some p => pure p
@@ -101,44 +122,41 @@ unsafe def main (args : List String) : IO Unit := do
 
   let source ← IO.FS.readFile path
   let ictx := Parser.mkInputContext source path
-  let (header, ps, _) ← Parser.parseHeader ictx
+  let (header, parserState, _) ← Parser.parseHeader ictx
 
   -- Initialize search path and import the file's actual modules
   initSearchPath (← findSysroot)
   let imports := Elab.headerToImports header
   IO.eprintln s!"Importing {imports.size} modules..."
   let env ← importModules imports {} 0
-  IO.eprintln "Environment loaded."
-  let pmctx : Parser.ParserModuleContext := { env, options := {} }
+  IO.eprintln "Environment loaded, running frontend..."
 
-  -- Parse all commands, tracking byte positions from parser state
-  let mut pstate := ps
+  -- Run the full Lean frontend: parse + elaborate each command with proper state
+  let commandState := Elab.Command.mkState env {} {}
+  let state ← Elab.IO.processCommands ictx parserState commandState
+  let commands := state.commands
+
+  IO.eprintln s!"Processed {commands.size} commands."
+
+  let debug := args.contains "--debug"
+  let sourceBytes := source.utf8ByteSize
+
+  -- Derive byte ranges from consecutive command start positions
   let mut decls : Array Json := #[]
-  while ictx.atEnd pstate.pos == false do
-    let startByte := pstate.pos.byteIdx
-    let (cmd, ps', _) := Parser.parseCommand ictx pmctx pstate .empty
-    if ps'.pos == pstate.pos then break
-    let endByte := ps'.pos.byteIdx
-    -- Try to classify as a declaration
-    match mkDeclJson source cmd startByte endByte with
-    | some j => decls := decls.push j
-    | none =>
-      -- Walk into namespace/section blocks to find nested declarations
-      match cmd with
-      | .node _ _ args =>
-        for arg in args do
-          match mkDeclJson source arg startByte endByte with
-          | some j => decls := decls.push j
-          | none =>
-            -- One more level deep
-            match arg with
-            | .node _ _ inner =>
-              for x in inner do
-                match mkDeclJson source x startByte endByte with
-                | some j => decls := decls.push j
-                | none => pure ()
-            | _ => pure ()
-      | _ => pure ()
-    pstate := ps'
+  for i in [:commands.size] do
+    let cmd := commands[i]!
+    let startByte := cmd.getPos? (canonicalOnly := false) |>.map (·.byteIdx) |>.getD 0
+    let endByte :=
+      if i + 1 < commands.size then
+        commands[i+1]!.getPos? (canonicalOnly := false) |>.map (·.byteIdx) |>.getD sourceBytes
+      else sourceBytes
+
+    if debug then
+      let kindStr := match cmd with | .node _ k _ => k.toString | _ => "?"
+      let sl := lineOfPos source ⟨startByte⟩
+      let el := lineOfPos source ⟨endByte⟩
+      IO.eprintln s!"CMD[{i}] L{sl}-L{el} kind={kindStr}"
+
+    decls := decls ++ extractDecls source cmd startByte endByte
 
   IO.println (Json.arr decls).pretty
