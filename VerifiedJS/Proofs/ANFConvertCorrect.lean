@@ -2091,67 +2091,25 @@ private theorem normalizeExpr_if_cond_source :
         exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
         exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
       | labeled label body =>
-        exfalso; simp only [ANF.normalizeExpr] at hnorm
-        have hrun : (match (ANF.normalizeExpr body k).run n with
-          | .ok (bodyExpr, n') => Except.ok (ANF.Expr.labeled label bodyExpr, n')
-          | .error e => Except.error e) =
-          Except.ok (.if (.var name) then_ else_, m) := hnorm
-        split at hrun
-        · cases hrun
-        · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hrun)).1
+        exfalso; unfold ANF.normalizeExpr at hnorm
+        simp only [bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
+        split at hnorm
+        · rename_i bodyExpr n' heq; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+        · exact absurd hnorm (by simp)
       | while_ cond body =>
-        exfalso; simp only [ANF.normalizeExpr] at hnorm
-        have hrun : (match (ANF.normalizeExpr cond
-            (fun condTriv => pure (ANF.Expr.trivial condTriv))).run n with
-          | .ok (condExpr, n₁) => match (ANF.normalizeExpr body
-              (fun _ => pure (ANF.Expr.trivial .litUndefined))).run n₁ with
-            | .ok (bodyExpr, n₂) => match (k .litUndefined).run n₂ with
-              | .ok (rest, n₃) => Except.ok (ANF.Expr.seq (.while_ condExpr bodyExpr) rest, n₃)
-              | .error e => Except.error e
-            | .error e => Except.error e
-          | .error e => Except.error e) =
-          Except.ok (.if (.var name) then_ else_, m) := hnorm
-        split at hrun
-        · cases hrun
-        · split at hrun
-          · cases hrun
-          · split at hrun
-            · cases hrun
-            · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hrun)).1
+        exfalso; unfold ANF.normalizeExpr at hnorm
+        simp only [bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
+        repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
       | tryCatch body₁ catchParam catchBody finally_ =>
-        exfalso; simp only [ANF.normalizeExpr] at hnorm
+        exfalso; unfold ANF.normalizeExpr at hnorm
+        simp only [bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure, StateT.pure, Except.pure, Functor.map, StateT.map, StateT.run] at hnorm
         cases finally_ with
         | none =>
-          have hrun : (match (ANF.normalizeExpr body₁ k).run n with
-            | .ok (bodyExpr, n₁) => match (ANF.normalizeExpr catchBody k).run n₁ with
-              | .ok (catchExpr, n₂) =>
-                Except.ok (ANF.Expr.tryCatch bodyExpr catchParam catchExpr none, n₂)
-              | .error e => Except.error e
-            | .error e => Except.error e) =
-            Except.ok (.if (.var name) then_ else_, m) := hnorm
-          split at hrun
-          · cases hrun
-          · split at hrun
-            · cases hrun
-            · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hrun)).1
+          simp only [bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
+          repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
         | some fin =>
-          have hrun : (match (ANF.normalizeExpr body₁ k).run n with
-            | .ok (bodyExpr, n₁) => match (ANF.normalizeExpr catchBody k).run n₁ with
-              | .ok (catchExpr, n₂) => match (ANF.normalizeExpr fin
-                  (fun _ => pure (ANF.Expr.trivial .litUndefined))).run n₂ with
-                | .ok (finExpr, n₃) =>
-                  Except.ok (ANF.Expr.tryCatch bodyExpr catchParam catchExpr (some finExpr), n₃)
-                | .error e => Except.error e
-              | .error e => Except.error e
-            | .error e => Except.error e) =
-            Except.ok (.if (.var name) then_ else_, m) := hnorm
-          split at hrun
-          · cases hrun
-          · split at hrun
-            · cases hrun
-            · split at hrun
-              · cases hrun
-              · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hrun)).1
+          simp only [bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure, StateT.pure, Except.pure, Functor.map, StateT.map, StateT.run] at hnorm
+          repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
       | «return» arg =>
         cases arg with
         | none =>
