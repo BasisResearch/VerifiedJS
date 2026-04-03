@@ -6868,7 +6868,22 @@ private theorem normalizeExpr_if_step_sim
   · -- evalTrivial env cond = .error msg
     rename_i msg herr
     obtain ⟨rfl, rfl⟩ := hstep_eq
-    sorry -- Error case: show flat can simulate the error
+    -- Error case: evalTrivial sf.env cond = .error msg
+    -- For well-formed expressions, evalTrivial on a trivial from normalization cannot error
+    -- because all variable names come from the original expression (bound by hewf)
+    -- and all literal trivials evaluate successfully.
+    exfalso
+    cases cond with
+    | var name_cond =>
+      simp only [ANF.evalTrivial] at herr
+      split at herr
+      · simp at herr
+      · rename_i hnone
+        -- name_cond is not bound: need to show it's free in sf.expr to contradict hewf
+        sorry -- Needs normalizeExpr_if_cond_var_free: if normalizeExpr e k = .if (.var name) ...
+              -- with trivial-preserving k, then VarFreeIn name e
+    | litNull | litUndefined | litBool _ | litNum _ | litStr _ | litObject _ | litClosure _ _ =>
+      simp only [ANF.evalTrivial, ANF.trivialValue?] at herr; exact nomatch herr
 
 /-- If normalizeExpr sf.expr k produces .tryCatch body catchParam catchBody finally_
     (with trivial-preserving k), then one ANF step can be simulated by Flat steps. -/
