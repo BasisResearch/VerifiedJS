@@ -2095,6 +2095,20 @@ private theorem consoleLog_msg_convertValue (argVals : List Core.Value) :
       | nil => rfl
       | cons h t ih => simp [List.map, valueToString_convertValue, ih]
 
+/-- Core consoleLog step stated with Flat message form (for simulation). -/
+private theorem Core_step?_call_consoleLog_flat_msg (args : List Core.Expr) (argVals : List Core.Value)
+    (env : Core.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Core.FuncClosure) (cs : List (List (Core.VarName × Core.Value)))
+    (hargs : Core.allValues args = some argVals) :
+    let msg := match argVals.map Flat.convertValue with
+      | [v] => Flat.valueToString v
+      | vs => String.intercalate " " (vs.map Flat.valueToString)
+    Core.step? ⟨.call (.lit (.function Core.consoleLogIdx)) args, env, heap, trace, funcs, cs⟩ =
+      some (.log msg, ⟨.lit .undefined, env, heap, trace ++ [.log msg], funcs, cs⟩) := by
+  have hmsg := consoleLog_msg_convertValue argVals
+  have h := Core_step?_call_consoleLog_general args argVals env heap trace funcs cs hargs
+  simp only [hmsg] at h; exact h
+
 private theorem Core_step?_call_func_step (s : Core.State) (args : List Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
