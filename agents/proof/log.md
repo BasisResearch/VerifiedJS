@@ -5179,3 +5179,35 @@ After `cases hyield with | yield_some_direct =>`, the inaccessibles for `HasYiel
 After one ANF step on `.seq (.while_ c d) b` (when `exprValue? c = some v`), the result is `.seq (.seq d (.while_ c d)) b`. The first component `.seq d (.while_ c d)` is NOT `.while_ ...`, so `normalizeExpr` with trivial-preserving `k` CANNOT produce this form. Therefore `ANF_SimRel` cannot be established for the post-step state. The SimRel needs to be generalized to handle transient while-loop unrolling states.
 
 **Sorry count:** still 22 (replaced monolithic seq sorry with structured proof + targeted sorry for the remaining case)
+
+### 2026-04-03T16:15:00+00:00 Run complete — infrastructure added, SimRel issue identified
+
+**New proved infrastructure (no sorries):**
+1. `bindComplex_not_seq` (line ~458): bindComplex never produces `.seq`
+2. `normalizeExpr_seq_while_first_family` (lines ~767-1068, ~300 lines): If normalizeExpr with trivial-preserving k produces `.seq a b`, then `a = .while_ c d`. Proved by strong induction on depth with normalizeExprList/normalizeProps companions.
+3. `normalizeExpr_seq_while_first` (line ~1070): Convenience wrapper for the family lemma
+4. Case 1 of `seq_step_sim` proved: `exprValue? a = some val` is impossible since `a = .while_ c d` and `exprValue? (.while_ c d) = none`
+
+**Structural decomposition added (with targeted sorries):**
+- `if_step_sim`: split into true-branch (sorry), false-branch (sorry), error (sorry)
+- `let_step_sim`: unfold ANF.step? showing deterministic step structure (sorry)
+- `tryCatch_step_sim`: deferred (sorry with comment)
+
+**Critical finding — ANF_SimRel broken for while loops:**
+- When `normalizeExpr sf.expr k = .seq (.while_ c d) b` and ANF steps the while (cond is a value), the result is `.seq (.seq d (.while_ c d)) b` or `.seq (.trivial .litUndefined) b`
+- The first component (`.seq d (...)` or `.trivial ...`) is NOT `.while_`, so `normalizeExpr` with trivial-preserving k CANNOT produce this form
+- Therefore `ANF_SimRel` cannot be established for the post-step state
+- **Fix needed**: Generalize `ANF_SimRel` to handle while-loop transient states (e.g., add a disjunct for "sa.expr is reachable from normalizeExpr output via silent steps")
+- This affects only `seq_step_sim`; the other 3 theorems (if/let/tryCatch) should be provable with the current SimRel once characterization lemmas are added
+
+**Sorry count:** 24 (was 22; net +2 from splitting if into 3 sub-cases, offset by proving seq Case 1)
+
+**Remaining work prioritized:**
+1. Build `normalizeExpr_if_head_family` characterization (analogous to seq_while_first_family but for .if output)
+2. Use it to prove `if_step_sim` sub-cases
+3. Build `normalizeExpr_let_head_family` for .let output
+4. Prove `let_step_sim` 
+5. Fix `ANF_SimRel` for while loops (requires updating many proven theorems)
+6. Complete `seq_step_sim` with fixed SimRel
+7. Complete `tryCatch_step_sim` with characterization
+2026-04-03T15:53:11+00:00 DONE

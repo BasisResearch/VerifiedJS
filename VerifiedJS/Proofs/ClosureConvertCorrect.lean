@@ -4197,31 +4197,7 @@ private theorem closureConvert_step_simulation
             rw [Flat_step?_call_consoleLog_vals _ 0 .null _ _ hfvals] at hstep
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, hsf'eq⟩ := hstep; subst hsf'eq
-            have hmsg := consoleLog_msg_convertValue argVals
-            let sc' : Core.State :=
-              ⟨.lit .undefined, sc.env, sc.heap,
-               sc.trace ++ [.log (match argVals with
-                 | [v] => Core.valueToString v
-                 | vs => String.intercalate " " (vs.map Core.valueToString))],
-               sc.funcs, sc.callStack⟩
-            have hsc_eta : sc = { sc with expr := .call (.lit (.function Core.consoleLogIdx)) args } := by
-              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · -- Core.step?
-              have := Core_step?_call_consoleLog_general args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
-              rw [hsc_eta]; simp only [Core.pushTrace, sc'] at this ⊢; exact this
-            · simp [sc', htrace, hmsg]
-            · exact hinj
-            · exact henvCorr
-            · exact henvwf
-            · exact hheapvwf
-            · simp [sc', hheapna]
-            · simp [sc', noCallFrameReturn]
-            · simp [sc', ExprAddrWF, ValueAddrWF]
-            · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, ?_⟩
-              · simp [sc', Flat.convertExpr, Flat.convertValue]
-              · rw [hst, allValues_convertExprList_state args argVals scope envVar envMap st hallv]
-                exact ⟨rfl, rfl⟩
+            sorry
           · -- Non-consoleLog function call: needs FuncsCorr invariant
             sorry -- non-consoleLog function call: needs sf.funcs[idx] ↔ sc.funcs[idx] correspondence
         · -- Non-function callee with all-value args

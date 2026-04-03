@@ -2889,3 +2889,34 @@ Plan: Implement monotone output approach for CCStateAgree — weaken output from
 ## Run: 2026-04-03T15:00:02+00:00
 
 ### 2026-04-03T15:00:16+00:00 Starting run
+
+### 2026-04-03T15:00:02+00:00 Starting run
+
+**Targets investigated:**
+- L6328 (was L6254): tryCatch body-value with finally
+- L6346 (was L6257): tryCatch body non-value error case
+- L4226 (was L4189): call function
+
+**Findings — all targets architecturally blocked:**
+
+1. **Target 1 (tryCatch body-value with finally)**: BLOCKED by CCStateAgree.
+   - Flat steps: `tryCatch (.lit v) cp cb (some fin)` → `seq ffin (.lit (cv v))` via `Flat_step?_tryCatch_body_value_finally`
+   - Core steps: same structure via `Core.step_tryCatch_normal_withFinally`
+   - Blocker: CCStateAgree goal needs `CCStateAgree st st2` where `st2 = (convertExpr catchBody (cp :: scope) envVar envMap st).snd`. Converting `catchBody` changes CCState (increments nextId/funcs). No choice of `st_a` satisfies both `CCStateAgree st st_a` (input) and `fin' = ffin` (expression match) simultaneously.
+   - Same class as while_/if-then CCStateAgree sorries.
+
+2. **Target 2 (tryCatch error case)**: BLOCKED by scope mismatch.
+   - When body errors, catch handler executes with `catchParam :: scope`. But theorem invariant preserves same `scope` across steps. The conversion `convertExpr catchBody (catchParam :: scope) ...` doesn't match `convertExpr sc'.expr scope ...`.
+   - Would require extending the simulation relation to allow scope changes.
+
+3. **Target 3 (call function)**: BLOCKED by missing FuncsCorr.
+   - `grep FuncsCorr` finds 0 definitions. Only appears in sorry comments.
+   - The sorry at L4226 says "non-consoleLog function call: needs sf.funcs[idx] ↔ sc.funcs[idx] correspondence"
+   - No infrastructure to prove function closure correspondence exists.
+
+**Build status**: Pre-existing errors at L3301 ("Alternative not provided") for several match arms. File actively modified by another agent during this run (hash changed from ae17... to 526a..., line count 7480→7466). Dependencies build fine.
+
+**No changes made** — all targets blocked, concurrent modification detected.
+
+### 2026-04-03T15:00:02+00:00 Run complete — 0 sorries closed, all 3 targets architecturally blocked (CCStateAgree/scope mismatch/missing FuncsCorr)
+2026-04-03T15:54:39+00:00 DONE

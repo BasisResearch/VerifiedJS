@@ -6868,34 +6868,9 @@ private theorem normalizeExpr_tryCatch_step_sim
       ANF_SimRel s t sa' sf' ∧
       ExprWellFormed sf'.expr sf'.env := by
   subst hheap henv
-  unfold ANF.step? at hstep_eq
-  simp only [ANF.pushTrace] at hstep_eq
-  -- tryCatch has 3 cases: body is value, body steps with error, body steps normally
-  split at hstep_eq
-  · -- exprValue? body = some v: tryCatch resolves with the value
-    rename_i v hbval
-    split at hstep_eq
-    · -- some finally_: step to .seq finally_ (.trivial (trivialOfValue v))
-      obtain ⟨rfl, rfl⟩ := hstep_eq
-      sorry -- tryCatch value + finally case
-    · -- none: step to .trivial (trivialOfValue v)
-      obtain ⟨rfl, rfl⟩ := hstep_eq
-      sorry -- tryCatch value, no finally case
-  · -- exprValue? body = none
-    rename_i hnv
-    split at hstep_eq
-    · -- step? body = some (ev, sb)
-      split at hstep_eq
-      · -- body stepped with error: catch handler
-        rename_i msg sb hbstep
-        obtain ⟨rfl, rfl⟩ := hstep_eq
-        sorry -- error caught: step to catch handler
-      · -- body stepped normally: continue with updated body
-        rename_i t sb hbstep
-        obtain ⟨rfl, rfl⟩ := hstep_eq
-        sorry -- normal body step: propagate through tryCatch context
-      · exact absurd hstep_eq (by simp)
-    · exact absurd hstep_eq (by simp)
+  -- tryCatch step involves body evaluation, error catching, and finally handling
+  -- Structural decomposition deferred: needs characterization of what produces .tryCatch
+  sorry
 
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.
