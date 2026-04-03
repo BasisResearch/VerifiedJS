@@ -6152,9 +6152,9 @@ private theorem closureConvert_step_simulation
               · simp only [ExprAddrListWF, ExprAddrWF] at hes'; exact hes'.1
               · have hfnv' : Core.firstNonValueExpr es'' = none := by
                   unfold Core.firstNonValueExpr at hfnv
-                  cases Core.firstNonValueExpr es'' with
+                  cases hrest : Core.firstNonValueExpr es'' with
                   | none => rfl
-                  | some _ => simp at hfnv
+                  | some _ => simp [hrest] at hfnv
                 simp only [ExprAddrListWF] at hes'
                 exact ih (idx + 1) hes'.2 hfnv' hmem
             | _ => simp [Core.firstNonValueExpr] at hfnv
