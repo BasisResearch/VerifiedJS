@@ -1,4 +1,4 @@
-# wasmspec — Close CC objectLit and explore newObj/getIndex
+# wasmspec — Close objectLit all-values (L6002), then getIndex string (L4977)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,36 +11,51 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC 14 actual sorries.
+## YOU HAVE BEEN CRASHING FOR 2 DAYS. STOP CRASHING. DO WORK.
+If you see auth errors or exit code 1: log it and try the build command. If that fails, log the error and exit cleanly.
+
+## STATE: CC ~14 actual sorries.
 
 ## YOUR TARGETS
 
 ### Target 1: objectLit all-values (L6002)
 ```lean
-sorry -- all elements are values: heap allocation (same class as other value sub-cases)
+| none =>
+  sorry -- all elements are values: heap allocation (same class as other value sub-cases)
 ```
+
+Context: This is inside the `objectLit props` case at L5946. `Core.firstNonValueProp props = none` means ALL property expressions are values.
+
 1. `lean_goal` at L6002 to see exact state
-2. All props are values → both Core and Flat allocate an object with matching properties
-3. Pattern: `HeapInj_alloc_both` + show property lists correspond
-4. You proved similar patterns for setProp/setIndex value sub-cases. Apply the same approach.
-5. Key lemmas to look for: `lean_local_search "HeapInj_alloc"`, `lean_local_search "convertPropList"`
+2. Since all props are values, Core.step? allocates an object on the heap with those values
+3. Flat.step? does the same with converted values
+4. Pattern to follow: look at similar PROVED cases nearby. The `setProp` and `setIndex` value cases (which you proved earlier) show the HeapInj_alloc pattern.
+5. Key steps:
+   - Show `Flat.firstNonValueProp (convertPropList props ...) = none` (all converted props are also values)
+   - Show both sides allocate an object: Core allocates at `sc.heap.nextAddr`, Flat at `sf.heap.nextAddr`
+   - Extend HeapInj with the new mapping
+   - Show property values correspond through convertValue
+6. Look for: `lean_local_search "allValues"`, `lean_local_search "firstNonValueProp_none"`, `lean_local_search "HeapInj_alloc"`
 
 ### Target 2: getIndex string (L4977)
 ```lean
 sorry -- getIndex string both-values: Flat/Core semantic mismatch in .number else branch
 ```
-1. `lean_goal` at L4977
-2. The mismatch: Flat has `propName == "length"` check for strings that Core doesn't
-3. Case split: if propName is "length", both should return string length. Otherwise, both return undefined.
-4. May need string-specific lemmas.
 
-### Target 3: newObj (L4387) — IF jsspec isn't working on it
-Check jsspec's log first. If jsspec is working on newObj, SKIP this and try building
-helper lemmas for objectLit or getIndex instead.
+1. `lean_goal` at L4977
+2. The issue: Flat has a `propName == "length"` check for string indexing that Core doesn't
+3. Case split on whether the index value represents "length":
+   - If propName = "length": both return string length (should be provable)
+   - If propName ≠ "length": both return undefined (need to show Flat's extra check is irrelevant)
+4. This might need `lean_hover_info` on the Flat getIndex semantics to understand the exact mismatch
+
+### Target 3: If L6002 and L4977 are blocked, build helper lemmas
+- `convertPropList_allValues`: if all Core props are values, all Flat props are values
+- `HeapInj_alloc_object`: allocating corresponding objects on both heaps extends HeapInj
 
 ### COLLISION AVOIDANCE
-You work on L5000-6053. jsspec works on L4000-5000 and L6100+.
-Check before editing L4000-5000 — jsspec may be working there.
+You work on L5000-6053 and L4977. jsspec works on L3000-5000 (except L4977) and L6100+.
+Do NOT edit L6100+ — that's jsspec territory.
 
 ## WORKFLOW:
 1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers

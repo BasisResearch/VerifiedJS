@@ -1,4 +1,4 @@
-# jsspec — NEW DIRECTION: functionDef, newObj, and FuncsCorr infrastructure
+# jsspec — Close functionDef (L6136), then captured variable (L3320)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,53 +11,58 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC 14 actual sorries.
+## STATE: CC ~14 actual sorries.
 
-## IMPORTANT: Your previous targets are ALL BLOCKED
-- tryCatch body-value with finally (L6291): BLOCKED by CCStateAgree
-- tryCatch error case (L6309): BLOCKED by scope mismatch
-- call function (L4189): BLOCKED by missing FuncsCorr
+## ALL PREVIOUS TARGETS WERE BLOCKED — NEW TARGETS BELOW
 
-These are architectural issues. Do NOT attempt them again.
-
-## YOUR NEW TARGETS (in priority order)
-
-### Target 1: functionDef (L6136)
+### Target 1: functionDef (L6136) — FRESH, UNEXPLORED
 ```lean
 | functionDef fname params body isAsync isGen => sorry
 ```
-1. `lean_goal` at L6136 to see the exact goal
-2. `lean_hover_info` on `Flat.convertExpr` for the `.functionDef` case to understand conversion
-3. Core.step? on functionDef creates a closure and stores it. Flat.step? should do analogous.
-4. This may be tractable if the closure conversion for functionDef is straightforward.
 
-### Target 2: newObj (L4387)
+1. `lean_goal` at L6136 to see the exact proof state
+2. `lean_hover_info` on `Flat.convertExpr` to find the `.functionDef` case
+3. Key pattern: Core.step? on `functionDef` creates a closure value and stores it in funcs/env. Flat.convertExpr should produce a `makeClosure` or similar that does the analogous thing.
+4. This is a LEAF case — no sub-expression stepping needed, just allocation.
+5. Build the Core.step? on one side, Flat.step? on the other, show they correspond.
+
+### Target 2: captured variable (L3320) — MEDIUM DIFFICULTY
+```lean
+| some idx =>
+  -- Captured variable: convertExpr gives .getEnv (.var envVar) idx
+  sorry
+```
+
+This is the case where `Flat.lookupEnv envMap name = some idx`. The converted expression is `.getEnv (.var envVar) idx`.
+1. `lean_goal` at L3320
+2. Flat.step? on `.getEnv (.var envVar) idx`:
+   - First evaluates `.var envVar` → gets the environment object
+   - Then gets index `idx` from that object
+   - Should produce the same value as `Core.step?` on `.var name` which looks up `sc.env.lookup name`
+3. You need `EnvCorrInj` to bridge: the injMap-based env correspondence should ensure that looking up through the closure env gives the same value as direct variable lookup.
+4. Check the non-captured case below (L3321-3360) for the proof pattern — adapt it for the captured case.
+
+### Target 3: newObj (L4387) — EXPLORE
 ```lean
 | newObj f args => sorry
 ```
 1. `lean_goal` at L4387
-2. Check what Core.step? does for newObj and what Flat.step? does
-3. May need constructor lookup infrastructure
-
-### Target 3: Build FuncsCorr infrastructure
-If Targets 1-2 are blocked, start building infrastructure:
-1. `lean_local_search "FuncsCorr"` to see if anything exists
-2. Define `FuncsCorr` as a correspondence between Core and Flat function stores
-3. This unblocks call function (L4189) which is one of the harder sorries
+2. Core.step? and Flat.step? for newObj likely involve constructor invocation
+3. May be blocked if it needs FuncsCorr. If so, skip.
 
 ### COLLISION AVOIDANCE
-wasmspec works on L5000-6053. You work on L4000-5000 and L6100+.
+wasmspec works on L5000-6053. You work on L3000-5000 and L6100+.
 Do NOT edit L5000-6053 — that's wasmspec territory.
 
-## CURRENT CC SORRY LOCATIONS (verified 2026-04-03 16:00)
+## CURRENT CC SORRY LOCATIONS (verified 2026-04-03 16:05)
 ```
-L1507: forIn stub (SKIP)
-L1508: forOf stub (SKIP)
-L3320: captured variable HeapInj (SKIP)
+L1507: forIn stub (SKIP - unprovable)
+L1508: forOf stub (SKIP - unprovable)
+L3320: captured variable HeapInj (YOUR TARGET 2)
 L3648: CCStateAgree if-then (BLOCKED)
 L3671 x2: CCStateAgree if-else (BLOCKED)
 L4189: call non-consoleLog (BLOCKED - needs FuncsCorr)
-L4387: newObj (YOUR TARGET 2)
+L4387: newObj (YOUR TARGET 3)
 L4977: getIndex string mismatch (SKIP)
 L6002: objectLit all-values (wasmspec — DO NOT TOUCH)
 L6136: functionDef (YOUR TARGET 1)

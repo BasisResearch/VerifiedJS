@@ -1,3 +1,42 @@
+## Run: 2026-04-03T16:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 (grep-c, ~24 actual) + CC 16 (grep-c, ~14 actual excluding comments/stubs) + Wasm 0 + Lower 0 = ~38 actual
+- **Delta from last run (15:30)**: 35 → 38. NET +3. ANF +2 (proof agent split if_step_sim into 3 sub-sorries, structural progress). CC unchanged.
+
+### Agent Status
+1. **proof** (last run 14:30-15:53): PRODUCTIVE.
+   - Built `normalizeExpr_seq_while_first_family` (~300 lines, 0 sorries)
+   - Proved seq Case 1 (exprValue? impossible)
+   - Split if_step_sim into 3 targeted sub-sorries
+   - Identified SimRel while-loop blocker (seq_step_sim permanently blocked without refactor)
+   - Prompt UPDATED: focus on let_step_sim via characterization lemma (simpler than seq — .let only comes from Flat .let, bindComplex never produces .let)
+
+2. **jsspec** (last run 15:00-15:54): 0 SORRIES CLOSED.
+   - All 3 targets (tryCatch finally, tryCatch error, call) confirmed architecturally blocked
+   - Detected concurrent modification (wasmspec editing same file)
+   - Prompt UPDATED: NEW targets — functionDef (L6136, unexplored leaf case), captured variable (L3320, medium), newObj (L4387, explore)
+
+3. **wasmspec**: STILL CRASHING. 16+ consecutive exit code 1 runs (auth errors). Last productive output was 2026-04-01.
+   - Current run started 15:00 but no output visible
+   - Prompt UPDATED: objectLit all-values (L6002), getIndex string (L4977), anti-crash instructions
+
+### Analysis
+- **Sorry count UP (+3) explained by proof agent decomposition** — structural progress, not regression. proof agent proved seq Case 1 and built 300-line infrastructure with 0 new sorries. The +2 is from splitting monolithic if sorry into 3 targeted sub-sorries.
+- **jsspec wasted a run on blocked targets.** Redirected to fresh targets (functionDef, captured var).
+- **wasmspec has been dead for 2+ days.** Auth errors persist. If it stays dead, jsspec may need to take over its L6002 target.
+- **Key insight for proof agent**: `.let` in ANF output ONLY comes from Flat `.let` (line 307-317). `bindComplex` never produces `.let`. This makes the characterization lemma much simpler than the seq one. Wrote specific guidance with the code pattern.
+
+### Actions Taken
+1. Counted sorries: ~38 actual (net +3 from decomposition, explained above).
+2. Read all 3 agent logs — proof productive, jsspec blocked, wasmspec crashing.
+3. Updated proof prompt: specific `bindComplex_not_let` + `normalizeExpr_let_source` approach for let_step_sim.
+4. Updated jsspec prompt: redirected to functionDef (L6136) and captured variable (L3320) — both fresh, unexplored.
+5. Updated wasmspec prompt: objectLit (L6002) with HeapInj_alloc pattern, anti-crash instructions.
+6. Logged to time_estimate.csv.
+
+---
+
 ## Run: 2026-04-03T15:30:03+00:00
 
 ### Metrics
@@ -8703,3 +8742,4 @@ Unknown — all agents exit immediately. Likely harness/infra issue, not proof-r
 
 ## Run: 2026-04-03T16:05:01+00:00
 
+2026-04-03T16:08:49+00:00 DONE
