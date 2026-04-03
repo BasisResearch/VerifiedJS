@@ -1,4 +1,4 @@
-# proof — Close let/if/tryCatch_step_sim, then compound cases
+# proof — Close let_step_sim and if_step_sim, then compound cases
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -12,55 +12,44 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: ANF 22 sorries. Lower 0 ✓. CC — OTHER AGENTS OWN IT.
+## STATE: ANF 24 sorries (was 22, +2 from if decomposition). Lower 0 ✓. CC — OTHER AGENTS OWN IT.
 
-## IMPORTANT: SKIP seq_step_sim (L6761) FOR NOW
+## SKIP seq_step_sim — CONFIRMED BLOCKED on SimRel while-loop issue.
 
-You correctly identified the while-loop SimRel blocker. The seq case produces
-`.seq (.seq d (.while_ c d)) b` after while unrolling, which breaks ANF_SimRel
-because normalizeExpr with trivial-preserving k can't produce that form.
+## YOUR IMMEDIATE TASK: let_step_sim (L6763) — MOST TRACTABLE
 
-**DO NOT spend time on seq_step_sim this run.** Instead, work on the 3 easier theorems.
-The seq/while fix requires generalizing ANF_SimRel — that's a separate task.
+### Step 1: Build `normalizeExpr_let_head_family` characterization lemma
 
-## YOUR IMMEDIATE TASK: let, if, tryCatch step_sim (3 sorries)
+Follow the EXACT pattern of `normalizeExpr_seq_while_first_family` (lines ~767-1068).
 
-### 1. let_step_sim (L6757) — START HERE, MOST TRACTABLE
-
-Goal: ANF steps `.let name rhs body` → show Flat takes matching steps.
-
-normalizeExpr only produces `.let` from Flat `.let`:
+The lemma you need:
 ```lean
-| .let name init body =>
-    normalizeExpr init (fun initTriv =>
-      let name' := ... fresh name ...
-      normalizeExpr body[name'/name] k >>= fun bodyExpr =>
-      pure (.let name' (.trivial initTriv) bodyExpr))
+private theorem normalizeExpr_let_head_family
+    (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (hk : ∀ t' n', ∃ m', (k t').run n' = .ok (.trivial t', m'))
+    (n m : Nat) (name : String) (rhs body : ANF.Expr)
+    (hnorm : (ANF.normalizeExpr e k).run n = .ok (.let name rhs body, m)) :
+    ∃ (fname : String) (finit fbody : Flat.Expr),
+      e = .let fname finit fbody ∨ <other cases that produce .let>
 ```
 
-Wait — check if this is accurate. Use `lean_hover_info` on normalizeExpr at the `.let` case.
+To figure out WHICH Flat expressions can produce `.let`:
+1. `lean_hover_info` on normalizeExpr at the `.let` case (~line 200-300 range in ANF definition)
+2. Check: does bindComplex ever produce `.let`? Use `lean_hover_info` on bindComplex
+3. The key insight: normalizeExpr's `.let` case is `| .let name init body => normalizeExpr init (fun initTriv => ...)` which produces `.let`
 
-ANF.step? on `.let name rhs body`:
+### Step 2: Use the characterization to close let_step_sim (L6763)
+
+Once you know sf.expr must be `.let fname finit fbody`:
+1. Flat.step? on `.let` evaluates `finit`, extends env
+2. ANF.step? on `.let` evaluates `rhs` via evalComplex, extends env
+3. Show the results correspond: evalComplex on ANF side matches Flat eval on flat side
+4. Establish ANF_SimRel for the resulting body states
+
+### Step 3: Build `normalizeExpr_if_head_family` and close if_step_sim (L6842, L6845, L6849)
+
+Same pattern. normalizeExpr produces `.if` from Flat `.if`:
 ```
-| .let name rhs body =>
-    match evalComplex env rhs with
-    | .ok v => some (.silent, pushTrace {s with expr := body, env := env.insert name v} .silent)
-    | .error msg => some (.error msg, pushTrace {s with expr := .trivial .litUndefined} (.error msg))
-```
-
-Approach:
-1. `lean_goal` at L6757 to see exact state
-2. `subst hheap henv` to equate heaps/envs
-3. `unfold ANF.step? at hstep_eq` to expand the let case
-4. Split on `evalComplex env rhs`:
-   - `.ok v`: ev = .silent, sa' has extended env. On Flat side, sf.expr is `.let name init body_flat`. Flat also evaluates init.
-   - `.error msg`: Error case, simpler.
-5. For Flat side: need `normalizeExpr_let_implies_hasLetInHead` or case-analyze which Flat expressions produce `.let` after normalization.
-
-### 2. if_step_sim (L6827)
-
-normalizeExpr produces `.if cond then_ else_` from Flat `.if`:
-```lean
 | .if cond then_ else_ =>
     normalizeExpr cond (fun condTriv => do
       let thenExpr ← normalizeExpr then_ k
@@ -68,24 +57,19 @@ normalizeExpr produces `.if cond then_ else_` from Flat `.if`:
       pure (.if condTriv thenExpr elseExpr))
 ```
 
-ANF.step? on `.if cond then_ else_`:
-- `evalTrivial env cond` → `.ok v`: branch on `toBoolean v`, result is then_ or else_
-- `.error msg`: error
+For if_step_sim:
+- L6842 (then branch): Show flat `.if` steps to then_ when toBoolean = true
+- L6845 (else branch): Show flat `.if` steps to else_ when toBoolean = false
+- L6849 (error): Show evalTrivial error propagates
 
-The Flat side `.if cond then_ else_` steps similarly. Key: `cond` in ANF is a Trivial, so evalTrivial always gives a value (for lit) or var lookup.
+### Step 4 (if time): tryCatch_step_sim (L6873) — same characterization pattern
 
-Approach:
-1. Build `normalizeExpr_if_implies_hasIfInHead` (similar to await/return/throw pattern)
-2. Case-split on the Flat expression that produced `.if`
-3. Show Flat `.if` steps by evaluating the condition and branching
+## PRIORITY 2: Compound cases (~14 sorries, L5884-L6736)
 
-### 3. tryCatch_step_sim (L6848)
-
-Similar pattern. normalizeExpr produces `.tryCatch` from Flat `.tryCatch`. ANF and Flat both step tryCatch by sub-stepping the body.
-
-## PRIORITY 2: Compound cases (after closing the above 3)
-
-These are the `| _ => sorry` patterns in the HasAwaitInHead/HasReturnInHead/HasYieldInHead proofs. Each needs induction on the compound sub-expression. There are ~14 of these.
+These `| _ => sorry` cases in HasAwaitInHead/HasReturnInHead/HasYieldInHead/HasThrowInHead proofs need case analysis on the compound expression form (seq, let, assign, if, call, etc.). Each compound case needs:
+1. Show the compound form has the head expression at an eval context position
+2. Show inner stepping preserves the head property
+3. Use induction on depth
 
 ## DO NOT TOUCH:
 - ClosureConvertCorrect.lean — jsspec and wasmspec are editing it

@@ -1,4 +1,4 @@
-# wasmspec — Close CC objectLit sorries
+# wasmspec — Close CC objectLit and explore newObj/getIndex
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,42 +11,36 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC 16 grep-c sorries (~13 actual sorry statements).
-
-## CURRENT CC SORRY LOCATIONS (verified 2026-04-03 15:30 grep -n)
-```
-L1507, L1508: forIn/forOf stubs (SKIP)
-L3320: HeapInj refactor (SKIP)
-L3648, L3671 x2: CCStateAgree (SKIP)
-L4240: call non-consoleLog function (BLOCKED)
-L4438: newObj (SKIP)
-L5028: getIndex string (SKIP)
-L6053: objectLit all-values (YOUR TARGET 1)
-L6187: functionDef (SKIP)
-L6342, L6360: tryCatch (jsspec TARGET — DO NOT TOUCH)
-L6467: while_ CCState (SKIP)
-```
+## STATE: CC 14 actual sorries.
 
 ## YOUR TARGETS
 
-### Target 1: objectLit all-values (L6053)
-All elements are values → heap allocation.
-- `lean_goal` at L6053 to see what CCState agreement needs proving
-- Apply `HeapInj_alloc_both` + `convertPropList_filterMap_eq`
-- You proved this pattern before for other value sub-cases (setProp, setIndex)
-- Key: all props are values, so both Core and Flat allocate an object with matching props
+### Target 1: objectLit all-values (L6002)
+```lean
+sorry -- all elements are values: heap allocation (same class as other value sub-cases)
+```
+1. `lean_goal` at L6002 to see exact state
+2. All props are values → both Core and Flat allocate an object with matching properties
+3. Pattern: `HeapInj_alloc_both` + show property lists correspond
+4. You proved similar patterns for setProp/setIndex value sub-cases. Apply the same approach.
+5. Key lemmas to look for: `lean_local_search "HeapInj_alloc"`, `lean_local_search "convertPropList"`
 
-### Target 2: If objectLit done, try getIndex string (L5028)
-This is a semantic mismatch: Flat has a `propName == "length"` check that Core doesn't.
-- `lean_goal` at L5028 to understand the mismatch
-- May need a case split on whether the string is "length" or not
+### Target 2: getIndex string (L4977)
+```lean
+sorry -- getIndex string both-values: Flat/Core semantic mismatch in .number else branch
+```
+1. `lean_goal` at L4977
+2. The mismatch: Flat has `propName == "length"` check for strings that Core doesn't
+3. Case split: if propName is "length", both should return string length. Otherwise, both return undefined.
+4. May need string-specific lemmas.
 
-### Target 3: If both done, try call function (L4240)
-Needs FuncsCorr invariant. Check: `lean_local_search "FuncsCorr"`.
+### Target 3: newObj (L4387) — IF jsspec isn't working on it
+Check jsspec's log first. If jsspec is working on newObj, SKIP this and try building
+helper lemmas for objectLit or getIndex instead.
 
 ### COLLISION AVOIDANCE
-You work on L5000-6053. jsspec works on L6100+.
-Do NOT edit L6100+ — that's jsspec territory.
+You work on L5000-6053. jsspec works on L4000-5000 and L6100+.
+Check before editing L4000-5000 — jsspec may be working there.
 
 ## WORKFLOW:
 1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers

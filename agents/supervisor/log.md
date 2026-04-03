@@ -8655,3 +8655,51 @@ Unknown — all agents exit immediately. Likely harness/infra issue, not proof-r
 ## Run: 2026-04-03T15:30:03+00:00
 
 2026-04-03T15:39:44+00:00 DONE
+
+## Run: 2026-04-03T16:00:02+00:00
+
+
+## Run: 2026-04-03T16:00:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 (grep-c 24, all actual) + CC 14 actual (grep-c 16, 2 comment-only) + Wasm 0 (grep-c 2, both comments) = **38 actual**
+- **Delta from last run (15:30)**: 35 → 38. NET +3. ANF +2 (proof agent decomposed if_step_sim into 3 sub-cases), CC +1 (uncertain — possibly line shift artifact).
+- **BUILD**: jsspec just started 16:00 run. Others completed or crashed recently.
+
+### Sorry count increase explanation
+- ANF 22→24: proof agent decomposed monolithic `if_step_sim` sorry into 3 targeted sub-cases (then/else/error). This is POSITIVE structural decomposition — same as when ANF went 1→19. Infrastructure work (300-line seq characterization lemma) is the real progress.
+- CC 13→14: Likely measurement noise from line-level grep differences as file was edited.
+
+### Agent Status
+1. **proof** (exited 15:53): Completed productive run.
+   - BUILT: `normalizeExpr_seq_while_first_family` (~300 lines, 0 new sorries). Proved seq Case 1 (exprValue? impossible).
+   - Decomposed if_step_sim into 3 sub-cases with correct structure.
+   - IDENTIFIED: while-loop SimRel blocker (confirmed — seq_step_sim remains blocked).
+   - Prompt UPDATED: Focus on let_step_sim (L6763) via characterization lemma, then if sub-cases.
+
+2. **jsspec** (started 16:00): ACTIVE.
+   - Last run: ALL 3 TARGETS BLOCKED (CCStateAgree, scope mismatch, FuncsCorr missing). 0 changes.
+   - Prompt UPDATED: **REDIRECTED** to functionDef (L6136), newObj (L4387), and FuncsCorr infrastructure. Previous targets confirmed blocked.
+
+3. **wasmspec** (unclear status — many EXIT code 1 runs, last started 15:00):
+   - No recent productive output. Continuous auth crashes from 01:15 through 14:15.
+   - 15:00 run started but no completion logged.
+   - Prompt UPDATED: Keep objectLit L6002 as primary, added getIndex L4977 as secondary.
+
+### Analysis
+- **Net sorry increase is from decomposition, not regression.** The 300-line characterization lemma is real infrastructure that enables closing let/if/tryCatch.
+- **CC is architecturally stuck on 5+ sorries** (CCStateAgree pattern: if-then/else, tryCatch-finally, while_). These need a generalization of the simulation relation to allow CCState growth from sub-expression conversion. No agent is working on this.
+- **jsspec was completely wasted last run** due to all targets being blocked. Redirected to functionDef/newObj which are unexplored — may or may not be tractable.
+- **wasmspec reliability** is concerning — still crashing frequently.
+- **Tractable sorry reduction path**: proof agent can close let_step_sim + 3 if sub-cases = -4 sorries next run if characterization lemmas succeed.
+
+### Actions Taken
+1. Counted sorries: 38 actual (net +3, explained by decomposition).
+2. Updated proof agent prompt: focus on let characterization lemma → let_step_sim → if characterization → if sub-cases.
+3. Updated jsspec prompt: REDIRECTED away from 3 blocked targets to functionDef (L6136) and newObj (L4387).
+4. Updated wasmspec prompt: kept objectLit L6002, added getIndex L4977 as backup.
+5. Logged to time_estimate.csv.
+2026-04-03T16:04:35+00:00 DONE
+
+## Run: 2026-04-03T16:05:01+00:00
+

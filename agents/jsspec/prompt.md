@@ -1,4 +1,4 @@
-# jsspec — Close CC tryCatch and error-case sorries
+# jsspec — NEW DIRECTION: functionDef, newObj, and FuncsCorr infrastructure
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,46 +11,60 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC 16 grep-c sorries (~13 actual sorry statements).
+## STATE: CC 14 actual sorries.
 
-## CURRENT CC SORRY LOCATIONS (verified 2026-04-03 15:30 grep -n)
+## IMPORTANT: Your previous targets are ALL BLOCKED
+- tryCatch body-value with finally (L6291): BLOCKED by CCStateAgree
+- tryCatch error case (L6309): BLOCKED by scope mismatch
+- call function (L4189): BLOCKED by missing FuncsCorr
+
+These are architectural issues. Do NOT attempt them again.
+
+## YOUR NEW TARGETS (in priority order)
+
+### Target 1: functionDef (L6136)
+```lean
+| functionDef fname params body isAsync isGen => sorry
 ```
-L1507: forIn stub (SKIP - theorem vacuously false)
-L1508: forOf stub (SKIP - theorem vacuously false)
-L3320: HeapInj refactor (SKIP)
-L3648: CCStateAgree if-then (SKIP - architecturally blocked)
-L3671 x2: CCStateAgree if-else (SKIP - architecturally blocked)
-L4240: call non-consoleLog function (BLOCKED - needs FuncsCorr)
-L4438: newObj (SKIP)
-L5028: getIndex string mismatch (SKIP)
-L6053: objectLit all-values (wasmspec TARGET — DO NOT TOUCH)
-L6187: functionDef (SKIP)
-L6342: tryCatch body-value with finally (YOUR TARGET 1)
-L6360: tryCatch error case scope mismatch (YOUR TARGET 2)
-L6467: while_ CCState (SKIP - architecturally blocked)
+1. `lean_goal` at L6136 to see the exact goal
+2. `lean_hover_info` on `Flat.convertExpr` for the `.functionDef` case to understand conversion
+3. Core.step? on functionDef creates a closure and stores it. Flat.step? should do analogous.
+4. This may be tractable if the closure conversion for functionDef is straightforward.
+
+### Target 2: newObj (L4387)
+```lean
+| newObj f args => sorry
 ```
+1. `lean_goal` at L4387
+2. Check what Core.step? does for newObj and what Flat.step? does
+3. May need constructor lookup infrastructure
 
-## YOUR TARGETS (in priority order)
-
-### Target 1: tryCatch body-value with finally (L6342)
-The `finally_ = none` case is DONE. Now handle `| some fin =>`.
-Body is a value, so tryCatch resolves → then execute the finally block.
-- `lean_goal` at L6342 to see what's needed
-- CCStateAgree may block you (same pattern as while_). If so, document clearly and move on.
-
-### Target 2: tryCatch error case (L6360)
-Body is NOT a value — error case with scope mismatch (catchBody converted with catchParam :: scope).
-- `lean_goal` at L6360
-- The scope mismatch means the converted catchBody uses `catchParam :: scope` but the main
-  expression uses `scope`. May need a scope-extension lemma.
-
-### Target 3: call non-consoleLog function (L4240)
-If previous targets are blocked, attempt this. Needs FuncsCorr invariant.
-Check what infrastructure exists: `lean_local_search "FuncsCorr"`.
+### Target 3: Build FuncsCorr infrastructure
+If Targets 1-2 are blocked, start building infrastructure:
+1. `lean_local_search "FuncsCorr"` to see if anything exists
+2. Define `FuncsCorr` as a correspondence between Core and Flat function stores
+3. This unblocks call function (L4189) which is one of the harder sorries
 
 ### COLLISION AVOIDANCE
-wasmspec works on L5000-6053. You work on L6100+.
+wasmspec works on L5000-6053. You work on L4000-5000 and L6100+.
 Do NOT edit L5000-6053 — that's wasmspec territory.
+
+## CURRENT CC SORRY LOCATIONS (verified 2026-04-03 16:00)
+```
+L1507: forIn stub (SKIP)
+L1508: forOf stub (SKIP)
+L3320: captured variable HeapInj (SKIP)
+L3648: CCStateAgree if-then (BLOCKED)
+L3671 x2: CCStateAgree if-else (BLOCKED)
+L4189: call non-consoleLog (BLOCKED - needs FuncsCorr)
+L4387: newObj (YOUR TARGET 2)
+L4977: getIndex string mismatch (SKIP)
+L6002: objectLit all-values (wasmspec — DO NOT TOUCH)
+L6136: functionDef (YOUR TARGET 1)
+L6291: tryCatch finally (BLOCKED)
+L6309: tryCatch error scope (BLOCKED)
+L6416: while_ CCState (BLOCKED)
+```
 
 ## WORKFLOW:
 1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers
