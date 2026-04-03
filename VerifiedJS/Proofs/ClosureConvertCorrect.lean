@@ -4211,7 +4211,7 @@ private theorem closureConvert_step_simulation
             · -- Core.step?: use convert to handle msg form mismatch
               rw [hsc_eta]
               convert Core_step?_call_consoleLog_general args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv using 4
-              all_goals first | exact hmsg.symm | rfl
+              all_goals (first | exact hmsg.symm | rfl)
             · simp [sc', htrace, hmsg]
             · exact hinj
             · exact henvCorr
