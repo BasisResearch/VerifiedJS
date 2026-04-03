@@ -9298,3 +9298,61 @@ Redirected wasmspec to investigate. Two possible approaches:
 
 ## Run: 2026-04-03T22:30:09+00:00
 
+### Metrics
+- **Sorry count**: ANF 23 + CC ~15 = **38 actual**
+- **Delta from last run (22:05)**: NET 0. No sorry reduction this cycle.
+- **LowerCorrect**: 0 sorries (DONE since original)
+- **normalizeExpr_if_cond_source**: FULLY PROVED (L2025-2468, zero sorries). Completed during 21:30 run.
+
+### Agent Status
+1. **proof** (started 22:30): Just started fresh run. Previous 21:30 run completed normalizeExpr_if_cond_source but crashed (exit code 1).
+   - **Prompt REWRITTEN**: Redirected from normalizeExpr_if_cond_source (DONE) to hasBreakInHead_flat_error_steps (L6650) and hasContinueInHead_flat_error_steps (L6663) as primary targets. These are most tractable — structural induction on HasBreakInHead/HasContinueInHead.
+
+2. **jsspec** (started 21:00): Running 1.5 hours, no logged progress. Should be implementing CCStateAgree fix. Concerning silence.
+   - **Prompt UPDATED**: Added wasmspec's complete line-level analysis (13 pass-through cases, 14 uses-output cases with `convertExpr_state_determined` replacement strategy).
+
+3. **wasmspec** (completed 22:17): CCStateAgree analysis DONE — 13 pass-through + 14 uses-output mapped.
+   - **Prompt REWRITTEN**: New investigations: FuncsCorr (blocks L4271 non-consoleLog call) and HasBreakInHead/HasContinueInHead flat stepping analysis (supports proof agent).
+
+### Actions Taken
+1. Counted sorries: ANF 23 + CC ~15 = 38.
+2. Verified normalizeExpr_if_cond_source is FULLY PROVED (no sorry in L2001-2468).
+3. **REWROTE proof prompt**: New targets = hasBreakInHead (L6650), hasContinueInHead (L6663).
+4. **UPDATED jsspec prompt**: Incorporated wasmspec's full CCStateAgree use mapping.
+5. **REWROTE wasmspec prompt**: FuncsCorr investigation + break/continue analysis.
+6. Logged to time_estimate.csv.
+
+### Sorry Breakdown
+
+**ANF (23 sorries, all L6400-7452):**
+- L6447, L6480, L6572, L6605: non-labeled inner value (eval context lifting)
+- L6491, L6616, L6633: compound/bindComplex (depth induction)
+- L6650: hasBreakInHead_flat_error_steps (proof agent TARGET 1)
+- L6663: hasContinueInHead_flat_error_steps (proof agent TARGET 2)
+- L6816, L6819: compound flat_arg
+- L6969, L6972: compound inner_val/HasReturnInHead
+- L7135, L7142, L7145: compound inner_arg
+- L7296, L7299: compound inner_val/HasYieldInHead
+- L7326: .let characterization (SKIP — bindComplex produces .let)
+- L7374, L7405, L7408: if simulation
+- L7452: final sorry
+
+**CC (~15 sorries, 6 blocked by CCStateAgree):**
+- L1507/1508: forIn/forOf (UNPROVABLE stubs)
+- L3387: captured var (multi-step gap)
+- L3715: if-then CCStateAgree (BLOCKED → jsspec fixing)
+- L3738: if-else CCStateAgree ×2 (BLOCKED → jsspec fixing)
+- L4269: consoleLog (type mismatch)
+- L4271: non-consoleLog call (BLOCKED FuncsCorr → wasmspec investigating)
+- L4477/4485: newObj (jsspec secondary target)
+- L5123: getIndex string (UNPROVABLE)
+- L6361: functionDef (BLOCKED CCStateAgree + multi-step)
+- L6516: tryCatch finally (BLOCKED → jsspec fixing)
+- L6587: tryCatch error (BLOCKED → jsspec fixing)
+- L6694: while_ (BLOCKED → jsspec fixing)
+
+### Strategy Assessment
+CCStateAgree fix remains highest impact (6 sorries). jsspec has been running 1.5h with no log — if it doesn't produce results by next run, will investigate and potentially restart with simpler approach. Proof agent redirected to hasBreakInHead/hasContinueInHead (L6650/L6663) which should be straightforward structural induction. wasmspec doing supporting research.
+
+2026-04-03T22:32:00+00:00 DONE
+2026-04-03T22:37:43+00:00 DONE

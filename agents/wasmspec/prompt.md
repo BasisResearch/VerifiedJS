@@ -1,51 +1,50 @@
-# wasmspec — Assist CCStateAgree implementation
+# wasmspec — Investigate FuncsCorr + HasBreakInHead/HasContinueInHead patterns
 
-## EXCELLENT WORK on the CCStateAgree analysis! That was the breakthrough we needed.
+## EXCELLENT WORK on the CCStateAgree analysis! jsspec is implementing your fix.
 
 ## ABSOLUTE RULES
-- **DO NOT** edit ClosureConvertCorrect.lean — jsspec is implementing your fix
+- **DO NOT** edit ClosureConvertCorrect.lean — jsspec is implementing CCStateAgree fix
 - **DO NOT** edit ANFConvertCorrect.lean — proof agent owns it
 - **DO NOT** run `lake build` anything
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
 - MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## YOUR JOB: Support the CCStateAgree fix
+## YOUR JOB: Two investigations
 
-jsspec is implementing the invariant change you proposed (dropping output CCStateAgree). Your job is to investigate the downstream impact:
+### Investigation 1: FuncsCorr (blocks L4271 — non-consoleLog call)
+
+The CC sorry at L4271 is blocked by missing `FuncsCorr` — a correspondence between `sf.funcs[idx]` and `sc.funcs[idx]`. This would unblock the general function call case.
+
+Tasks:
+1. Search for `FuncsCorr` in ClosureConvertCorrect.lean — does it exist? Is it defined but unused?
+2. Search for `sf.funcs` and `sc.funcs` usage patterns
+3. Look at how `Flat.convertExpr` handles `.call` — specifically how func indices relate
+4. Determine: is FuncsCorr a simple index-mapping invariant? Can it be added to the simulation relation?
+5. Write findings to `agents/wasmspec/funcscorr_analysis.md`
+
+### Investigation 2: HasBreakInHead / HasContinueInHead flat stepping
+
+The proof agent needs to prove `hasBreakInHead_flat_error_steps` (ANF L6650) and `hasContinueInHead_flat_error_steps` (L6663). These say: if an expression has a break/continue at its evaluation head, it flat-steps to `.lit .undefined` with an error trace.
+
+Tasks:
+1. Find the definitions of `HasBreakInHead` and `HasContinueInHead` — what are their constructors?
+2. For each constructor, trace what `Flat.step?` does:
+   - `.break label` → what does Flat.step? return?
+   - `.seq (break label) rest` → Flat.step? steps `.seq`, how?
+   - `.return (some (break label))` → etc.
+3. Determine if induction on `HasBreakInHead` straightforwardly produces flat error steps
+4. Write findings to `agents/wasmspec/break_continue_analysis.md`
 
 ### Step 1: Log start
 ```bash
-echo "### $(date -Iseconds) Starting CCStateAgree support" >> agents/wasmspec/log.md
+echo "### $(date -Iseconds) Starting FuncsCorr + break/continue analysis" >> agents/wasmspec/log.md
 ```
 
-### Step 2: Find all uses of st_a' in the theorem body
-Search for all places in ClosureConvertCorrect.lean that:
-1. Construct `⟨st_a, st_a', ...⟩` (packing the existential)
-2. Destructure `⟨..., st_a, st_a', hconv', hagree_in, hagree_out⟩` (unpacking)
-3. Use `CCStateAgree st' st_a'` or `hagree_out`
+### Step 2: Do both investigations (FuncsCorr first, then break/continue)
 
-Write the results to `agents/wasmspec/ccstateagree_uses.md` with exact line numbers.
-
-### Step 3: Identify which cases use output agreement
-For each case in the big theorem body, classify:
-- **Needs output agreement**: The case's proof uses `hagree_out` from the IH result
-- **Doesn't need output agreement**: The case only uses `st_a` and `hagree_in`
-
-This tells jsspec exactly which cases are easy (just delete st_a') and which need rework.
-
-### Step 4: Draft the standalone sub-stepping lemma
-For cases that DO need output agreement, draft:
-```lean
-theorem convertExpr_subStep_output_agree
-  (hAgree : CCStateAgree st st_a)
-  (hstep : -- sub-expression steps, preserving structure)
-  : CCStateAgree (convertExpr e scope envVar envMap st).snd
-                  (convertExpr e' scope envVar envMap st_a).snd
-```
-
-### Step 5: Log and EXIT
+### Step 3: Log and EXIT
 ```bash
-echo "### $(date -Iseconds) Run complete — CCStateAgree uses mapped" >> agents/wasmspec/log.md
+echo "### $(date -Iseconds) Run complete — [summary]" >> agents/wasmspec/log.md
 ```
 
 ## CRITICAL: LOG YOUR WORK
