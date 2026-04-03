@@ -4196,24 +4196,24 @@ private theorem closureConvert_step_simulation
               cases sf; simp_all [Flat.convertValue]
             rw [hsf_eta] at hstep
             rw [Flat_step?_call_consoleLog_vals _ 0 .null _ _ hfvals] at hstep
-            -- Reduce let binding, then rewrite flat msg → core msg
-            dsimp only [] at hstep
-            rw [hmsg] at hstep
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, hsf'eq⟩ := hstep; subst hsf'eq
-            -- Now ev = .log core_msg
+            -- ev is now .log flat_msg; Core produces .log core_msg (equal by hmsg)
             have hsc_eta : sc = { sc with expr := .call (.lit (.function Core.consoleLogIdx)) args } := by
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-            let core_msg := match argVals with
-              | [v] => Core.valueToString v
-              | vs => String.intercalate " " (vs.map Core.valueToString)
-            let sc' : Core.State :=
-              ⟨.lit .undefined, sc.env, sc.heap,
-               sc.trace ++ [.log core_msg], sc.funcs, sc.callStack⟩
+            have hcore := Core_step?_call_consoleLog_general args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
+            rw [hsc_eta] at hcore
+            -- Reduce let in hcore and rewrite core_msg → flat_msg
+            dsimp only [] at hcore
+            rw [← hmsg] at hcore
+            -- hcore now has flat_msg matching the goal's ev
+            let sc' := ⟨Core.Expr.lit .undefined, sc.env, sc.heap,
+                sc.trace ++ [.log (match argVals.map Flat.convertValue with
+                  | [v] => Flat.valueToString v
+                  | vs => String.intercalate " " (vs.map Flat.valueToString))],
+                sc.funcs, sc.callStack⟩
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · -- Core.step?
-              rw [hsc_eta]
-              exact Core_step?_call_consoleLog_general args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
+            · exact hsc_eta ▸ hcore
             · simp [sc', htrace]
             · exact hinj
             · exact henvCorr
@@ -4223,7 +4223,7 @@ private theorem closureConvert_step_simulation
             · simp [sc', noCallFrameReturn]
             · simp [sc', ExprAddrWF, ValueAddrWF]
             · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, ?_⟩
-              · simp [sc', Flat.convertExpr, Flat.convertValue, core_msg]
+              · simp [sc', Flat.convertExpr, Flat.convertValue]
               · rw [hst, allValues_convertExprList_state args argVals scope envVar envMap st hallv]
                 exact ⟨rfl, rfl⟩
           · -- Non-consoleLog function call: needs FuncsCorr invariant

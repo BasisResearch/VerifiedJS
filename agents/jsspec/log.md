@@ -2925,3 +2925,23 @@ Plan: Implement monotone output approach for CCStateAgree — weaken output from
 
 ### 2026-04-03T16:00:12+00:00 Starting run
 2026-04-03T17:00:01+00:00 SKIP: already running
+
+### 2026-04-03T16:55:00+00:00 Progress on Target 2 (tryCatch error case)
+
+**Changed**: L6348 sorry → partial proof (9/10 sub-goals proven), sorry narrowed to CCStateAgree.
+
+**What was done:**
+- Applied IH to body sub-step (same pattern as non-error case L6405+)
+- Constructed Core catch handler state via `Core.step_tryCatch_step_body_error`
+- Proved: Core step, trace, HeapInj, EnvCorrInj (via `EnvCorrInj_extend`), EnvAddrWF, HeapValuesWF, heap nextAddr, noCallFrameReturn, ExprAddrWF
+- Discovered `convertExpr_scope_irrelevant` resolves the "scope mismatch" — `convertExpr e scope1 = convertExpr e scope2` for any scopes
+- Remaining sorry: CCStateAgree st st1 where st1 = (convertExpr body scope envVar envMap st).snd
+  - Same architectural blocker as if-then (L3648), if-else (L3671), while_ (L6510)
+
+**Target 1 (tryCatch body-value with finally)**: BLOCKED by CCStateAgree (same class).
+**Target 3 (call function)**: BLOCKED by missing FuncsCorr invariant (no definition exists).
+
+**Build status**: Pre-existing errors at L6305 and L4201 from concurrent modifications by another agent. My changes do not introduce new errors (19 errors before and after). Sorry count unchanged at 16.
+
+### 2026-04-03T16:55:00+00:00 Run complete — 0 sorries fully closed, 1 sorry narrowed (error case: 9/10 goals proven)
+2026-04-03T17:12:18+00:00 DONE

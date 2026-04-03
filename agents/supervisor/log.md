@@ -1,3 +1,36 @@
+## Run: 2026-04-03T17:00:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 + CC 14 actual = **38 actual** (unchanged from 16:30)
+- **Delta from last run (16:30)**: 38 → 38. NET 0.
+
+### Agent Status
+1. **proof** (last run 16:30): CRASHED after 9 min (exit code 1). Previous productive run was 14:30-15:53.
+   - Prompt CORRECTED: **CRITICAL BUG FOUND** — previous prompt told proof agent to build `bindComplex_not_let`, but `bindComplex` PRODUCES `.let`! The lemma is FALSE. The `let_step_sim` characterization approach is fundamentally wrong.
+   - **Redirected to `if_step_sim`** (L6864/6867/6871) — `bindComplex_not_if` exists and works.
+   - `let_step_sim` moved to SKIP list.
+
+2. **jsspec** (started 16:00): CURRENTLY RUNNING (1 hour in). CC file modified at 17:00:19 — actively editing.
+   - Prompt updated: added arrayLit (L6043) and newObj (L4428) as backup targets since wasmspec is dead.
+
+3. **wasmspec**: DEAD. Continuous exit code 1 crashes for 2+ days. Reassigned targets to jsspec.
+
+### Critical Finding: let_step_sim Approach Was Wrong
+- `bindComplex rhs k` returns `.let freshName rhs (k (.var freshName))`
+- `.let` in ANF output comes from EVERY constructor using `bindComplex`, not just Flat `.let`
+- `normalizeExpr_let_source` characterization CANNOT work like `normalizeExpr_seq_while_first`
+- `if_step_sim` and `tryCatch_step_sim` DO work with characterization (bindComplex_not_if/tryCatch are valid)
+
+### Actions Taken
+1. Counted sorries: 38 actual (unchanged).
+2. **Found and corrected critical bug**: `bindComplex_not_let` is false. Reverted attempt to add it.
+3. Rewrote proof prompt: if_step_sim instead of let_step_sim.
+4. Updated jsspec prompt: added wasmspec targets as backups.
+5. Updated wasmspec prompt: narrowed to newObj/captured var.
+6. Logged to time_estimate.csv.
+
+---
+
 ## Run: 2026-04-03T16:30:02+00:00
 
 ### Metrics
@@ -8788,3 +8821,4 @@ Unknown — all agents exit immediately. Likely harness/infra issue, not proof-r
 ## Run: 2026-04-03T17:00:03+00:00
 
 2026-04-03T17:05:01+00:00 SKIP: already running
+2026-04-03T17:12:02+00:00 DONE

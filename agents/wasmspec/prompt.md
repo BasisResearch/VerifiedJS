@@ -1,4 +1,4 @@
-# wasmspec — Close arrayLit all-values (L6040), then objectLit sub-step output (L6033)
+# wasmspec — Close newObj (L4428) or captured variable (L3320)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,45 +11,46 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## YOU HAVE BEEN CRASHING OR IDLE FOR 2+ DAYS. PRODUCE OUTPUT THIS RUN.
-If you see auth errors or exit code 1: log it and try the build command. If that fails, log the error and exit cleanly.
+## YOU HAVE BEEN CRASHING FOR 2+ DAYS. PRODUCE OUTPUT THIS RUN OR BE REPLACED.
+
+If you crash immediately: log the error message to agents/wasmspec/log.md before exiting.
 
 ## STATE: CC 14 actual sorries.
 
-## YOUR TARGET: arrayLit all-values (LINE 6040)
+## NOTE: jsspec is now also working on CC. Avoid editing the same lines.
+jsspec owns: functionDef (L6177), arrayLit (L6043).
+You own: newObj (L4428), captured variable (L3320).
+
+## TARGET 1: newObj (LINE 4428)
 
 ```lean
-| none =>
-  sorry -- all elements are values: heap allocation (same class as other value sub-cases)
+| newObj f args => sorry
 ```
 
-Context: This is inside `arrayLit elems` at L6034. `Core.firstNonValueExpr elems = none` means ALL element expressions are values.
+This is a leaf case — `new f(args)`. Check:
+1. `lean_goal` at line 4428
+2. How Core.step? handles newObj
+3. How Flat.convertExpr converts newObj
+4. Show both sides correspond
 
-### How to prove it:
-1. `lean_goal` at line 6040, column 6 of ClosureConvertCorrect.lean
-2. Since all elems are values, `Core.step?` on `arrayLit elems` allocates an array on the heap
-3. `Flat.step?` on the converted form does the same with converted values
-4. Pattern to follow: look at the PROVED `objectLit` sub-step case nearby (lines 5946-6033) — it shows the pattern for heap allocation with converted values
-5. Key steps:
-   - Show `Flat.firstNonValueExpr (convertExprList elems ...) = none` (converted values are also values)
-   - Look for existing helper: `convertExprList_firstNonValueExpr_none` or similar
-   - Show both sides allocate: Core at `sc.heap.nextAddr`, Flat at `sf.heap.nextAddr`
-   - Use HeapInj to bridge the new heap entries
-6. Search: `lean_local_search "firstNonValueExpr_none"`, `lean_local_search "convertExprList"`, `lean_local_search "allValues"`
+## TARGET 2: captured variable (LINE 3320)
 
-### If L6040 is blocked, try getIndex string (L5014):
 ```lean
-sorry -- getIndex string both-values: Flat/Core semantic mismatch in .number else branch
+| some idx =>
+  -- Captured variable: convertExpr gives .getEnv (.var envVar) idx
+  sorry
 ```
-Case split on whether index represents "length".
 
-### COLLISION AVOIDANCE
-You work on L5000-6053. jsspec works on L3000-5000 and L6100+.
-Do NOT edit L6100+.
+When a variable is captured (found in envMap), convertExpr produces `.getEnv (.var envVar) idx`.
+Core side: variable lookup in env. Flat side: getEnv from environment array.
+
+## COLLISION AVOIDANCE
+jsspec works on L6043 and L6177. You work on L3320 and L4428.
+Do NOT edit L6000+.
 
 ## WORKFLOW:
 1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers
-2. `lean_goal` at target line
+2. `lean_goal` at target sorry
 3. `lean_multi_attempt` with candidate tactics
 4. Edit the file with the working tactic
 5. Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`

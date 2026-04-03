@@ -1,4 +1,4 @@
-# proof — Close let_step_sim (L6763) then if_step_sim (L6842/6845/6849)
+# proof — Close if_step_sim (L6864/6867/6871), then tryCatch_step_sim (L6895)
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -12,95 +12,80 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: ANF 24 sorries (was 22, +2 from if decomposition). Lower 0 ✓. CC — OTHER AGENTS OWN IT.
+## STATE: ANF 24 sorries. Lower 0 ✓. CC — OTHER AGENTS OWN IT.
 
-## SKIP seq_step_sim — CONFIRMED BLOCKED on SimRel while-loop issue.
+## ⚠️ CRITICAL CORRECTION: bindComplex PRODUCES .let ⚠️
+`bindComplex rhs k` returns `.let freshName rhs (k (.var freshName))`.
+Therefore `bindComplex_not_let` is FALSE — DO NOT attempt it.
+The `let_step_sim` characterization approach is WRONG. SKIP `let_step_sim` entirely.
 
-## YOUR IMMEDIATE TASK: let_step_sim (L6763)
+## YOUR IMMEDIATE TASK: if_step_sim (L6864, L6867, L6871)
 
-### Step 1: Build `bindComplex_not_let` (copy `bindComplex_not_seq` at line 458)
+`bindComplex_not_if` ALREADY EXISTS (line 469). The characterization approach works for `.if`:
 
-`bindComplex_not_seq` is at line 458. It works because `bindComplex` produces `.seq fresh (k trivial)` — which is `.seq`, never `.let`. The EXACT SAME proof works for `.let`:
+### Step 1: Build `normalizeExpr_if_source` characterization
+
+This follows the SAME pattern as `normalizeExpr_seq_while_first_family` (lines ~767-1068).
+The theorem: if normalizeExpr with trivial-preserving k produces `.if cond then_ else_`, then the Flat source was `.if`.
 
 ```lean
-private theorem bindComplex_not_let (rhs : ANF.ComplexExpr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
-    (n m : Nat) (name : String) (init body : ANF.Expr) :
-    (ANF.bindComplex rhs k).run n ≠ .ok (.let name init body, m) := by
-  show ANF.bindComplex rhs k n ≠ .ok (.let name init body, m)
-  simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
-             get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
-             StateT.set, pure, Pure.pure, StateT.pure, Except.pure, getThe, MonadStateOf.get]
-  cases hk : k (.var (toString "_anf" ++ toString (Nat.repr n))) (n + 1) with
-  | error => simp [hk]
-  | ok v => intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
-```
-
-Place this right after `bindComplex_not_seq` (after line 467).
-
-### Step 2: Build `normalizeExpr_let_source` characterization
-
-This follows the SAME pattern as `normalizeExpr_seq_while_first_family` (lines ~767-1068) but is MUCH simpler because we only need to show `.let` output implies `.let` input — not track what the first component is.
-
-For each Flat.Expr constructor in normalizeExpr:
-- Most use `bindComplex` → contradiction via `bindComplex_not_let`
-- `.let fname finit fbody` → produces `.let` directly → ∃ witness found
-- `.while_`, `.labeled`, `.tryCatch` → produce forms that aren't `.let` → contradiction
-
-The theorem:
-```lean
-private theorem normalizeExpr_let_source
+private theorem normalizeExpr_if_source
     (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
     (hk : ∀ t' n', ∃ m', (k t').run n' = .ok (.trivial t', m'))
-    (n m : Nat) (name : String) (rhs body : ANF.Expr)
-    (hnorm : (ANF.normalizeExpr e k).run n = .ok (.let name rhs body, m)) :
-    ∃ (fname : String) (finit fbody : Flat.Expr),
-      e = .let fname finit fbody := by
+    (n m : Nat) (cond : ANF.Trivial) (then_ else_ : ANF.Expr)
+    (hnorm : (ANF.normalizeExpr e k).run n = .ok (.if cond then_ else_, m)) :
+    ∃ (fc : Flat.Expr) (ft fe : Flat.Expr),
+      e = .if fc ft fe := by
   cases e with
-  | «let» fname finit fbody => exact ⟨fname, finit, fbody, rfl⟩
-  | lit v => -- k produces .trivial, .trivial ≠ .let
+  | «if» fc ft fe => exact ⟨fc, ft, fe, rfl⟩
+  | lit v =>
     simp [ANF.normalizeExpr] at hnorm
-    -- hk gives (k (.litTrivial v)).run n = .ok (.trivial _, _), but hnorm says = .ok (.let _, _)
     have ⟨m', hkm⟩ := hk (.litTrivial v) n
     rw [hkm] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-  | var name' => -- same: k produces .trivial
+  | var name' =>
     simp [ANF.normalizeExpr] at hnorm
     have ⟨m', hkm⟩ := hk (.var name') n
     rw [hkm] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-  -- ... for each remaining constructor: unfold normalizeExpr, show it calls bindComplex
-  --     (contradiction) or produces non-.let form (contradiction)
-  | _ => sorry -- Fill in per-constructor, each using bindComplex_not_let
+  -- For constructors using bindComplex: use bindComplex_not_if
+  -- For .seq, .while_, .let, .tryCatch, .labeled: unfold normalizeExpr, show they don't produce .if
+  | _ => sorry -- Fill per-constructor using bindComplex_not_if or direct contradiction
 ```
 
-You will need ~30 cases. Most are 2-3 lines using `bindComplex_not_let`. Use the `normalizeExpr_seq_while_first_family` as your template — it handles all the same cases.
+For each remaining constructor:
+- If it calls `bindComplex`: unfold normalizeExpr, show the result goes through bindComplex, use `bindComplex_not_if` for contradiction
+- `.seq a b`: normalizeExpr produces `.seq` (not `.if`) — use a similar argument
+- `.while_ c d`: normalizeExpr produces `.while_` or `.seq` — not `.if`
+- `.let fname finit fbody`: normalizeExpr calls normalizeExpr on finit with a continuation that normalizeExpr's fbody — this continuation can produce any form, but the outer call goes through bindComplex or direct recursion. Check the actual normalizeExpr code.
+- `.tryCatch`, `.labeled`: produce their own form, not `.if`
 
-### Step 3: Close let_step_sim at L6763
+Use `normalizeExpr_seq_while_first_family` as your template for handling each constructor.
 
-Once you have `normalizeExpr_let_source`, use it at L6763:
+### Step 2: Use normalizeExpr_if_source to close the 3 sub-sorries
+
+At L6864 (true branch):
 ```lean
-  have ⟨fname, finit, fbody, he_let⟩ := normalizeExpr_let_source sf.expr k hk n m name rhs body hnorm
-  subst he_let
-  -- Now sf.expr = .let fname finit fbody
-  -- Flat.step? on .let: if finit is value, extend env; if not, step finit
-  -- ANF.step? on .let: evalComplex rhs → extend env with result → continue with body
-  -- rhs comes from normalizeExpr: rhs = .trivial initTriv (from the .let case of normalizeExpr)
-  -- So evalComplex (.trivial initTriv) evaluates the trivial expression
-  -- Match this with Flat evaluation of finit
+have ⟨fc, ft, fe, he_if⟩ := normalizeExpr_if_source sf.expr k hk n m cond then_ else_ hnorm
+subst he_if
+-- Now sf.expr = .if fc ft fe
+-- Flat.step? on .if: evaluate fc, if truthy step to ft, if falsy step to fe
+-- Show: Flat steps to ft, ANF_SimRel for then_ ↔ ft
+sorry -- close with specific Flat step + SimRel construction
 ```
 
-### Step 4: if_step_sim (L6842, L6845, L6849) — SAME PATTERN
+Same pattern for L6867 (false branch) and L6871 (error).
 
-Build `normalizeExpr_if_source` (analogous to let_source):
-- `.if` output can ONLY come from Flat `.if` constructor
-- Then case-split on cond being true/false/error
+### Step 3: tryCatch_step_sim (L6895) — SAME PATTERN
+Build `normalizeExpr_tryCatch_source` using `bindComplex_not_tryCatch` (line 480).
 
-### Step 5 (stretch): tryCatch_step_sim (L6873)
-
-Same characterization pattern for `.tryCatch`.
+## SKIP THESE:
+- `let_step_sim` (L6785) — bindComplex PRODUCES .let, characterization approach WRONG
+- `seq_step_sim` — blocked on SimRel while-loop generalization
+- ClosureConvertCorrect.lean — other agents own it
+- LowerCorrect.lean — DONE (0 sorries)
 
 ## DO NOT TOUCH:
 - ClosureConvertCorrect.lean — jsspec and wasmspec are editing it
-- LowerCorrect.lean — DONE (0 sorries)
-- seq_step_sim — blocked on SimRel generalization
+- LowerCorrect.lean — DONE
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`
