@@ -6788,6 +6788,11 @@ private theorem normalizeExpr_seq_step_sim
     split at hstep_eq
     · rename_i t_inner sa_inner hstep_inner
       obtain ⟨rfl, rfl⟩ := hstep_eq
+      -- a = .while_ c d by characterization
+      obtain ⟨c, d, rfl⟩ := normalizeExpr_seq_while_first sf.expr k hk n m _ b hnorm
+      -- Now we know the seq has form .seq (.while_ c d) b
+      -- ANF stepped .while_ c d to get (ev, sa_inner)
+      -- Need to show flat simulation
       sorry
     · exact absurd hstep_eq (by simp)
 
