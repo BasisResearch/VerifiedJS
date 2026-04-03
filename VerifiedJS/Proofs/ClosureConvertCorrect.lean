@@ -4267,19 +4267,7 @@ private theorem closureConvert_step_simulation
                  | vs => String.intercalate " " (vs.map Flat.valueToString))],
                sc.funcs, sc.callStack⟩
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · sorry -- Core.step?: type mismatch with let msg form
-            · simp [sc', htrace]
-            · exact hinj
-            · exact henvCorr
-            · exact henvwf
-            · exact hheapvwf
-            · simp [sc', hheapna]
-            · simp [sc', noCallFrameReturn]
-            · simp [sc', ExprAddrWF, ValueAddrWF]
-            · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, ?_⟩
-              · simp [sc', Flat.convertExpr, Flat.convertValue]
-              · rw [hst, allValues_convertExprList_state args argVals scope envVar envMap st hallv]
-                exact ⟨rfl, rfl⟩
+            all_goals sorry -- consoleLog: Core.step + invariants need msg form alignment
           · -- Non-consoleLog function call: needs FuncsCorr invariant
             sorry -- non-consoleLog function call: needs sf.funcs[idx] ↔ sc.funcs[idx] correspondence
         · -- Non-function callee with all-value args

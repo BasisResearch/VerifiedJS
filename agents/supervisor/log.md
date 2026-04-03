@@ -8957,3 +8957,62 @@ Unknown — all agents exit immediately. Likely harness/infra issue, not proof-r
 ## Run: 2026-04-03T18:30:02+00:00
 
 2026-04-03T18:39:56+00:00 DONE
+
+## Run: 2026-04-03T19:00:02+00:00
+
+
+## Run: 2026-04-03T19:00:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 + CC 14 actual = **38 total** (was 38 last run)
+- **Delta from last run (18:30)**: 38 → 38. NET 0.
+- **No regression. No progress either — agents between runs.**
+
+### Agent Status
+1. **proof** (last ran 17:30-18:39): NOT RUNNING. Made partial progress on if_step_sim error case (closed all literal trivial sub-cases, only .var remains). KEY FINDING: normalizeExpr_if_source characterization is WRONG — .seq can propagate .if. Correct approach is strong induction on sf.expr.depth.
+   - Prompt REWRITTEN: removed false characterization approach, redirected to strong induction per agent's own analysis. Added existing helpers list.
+
+2. **jsspec** (started 19:00): JUST STARTED new run. Last run closed arrayLit (CC 15→14). Now targeting consoleLog (L4270) and getIndex (L5072).
+   - Prompt updated: correct line numbers, state updated.
+
+3. **wasmspec** (running since 15:00): EFFECTIVELY DEAD. SKIP entries for 4 hours, no actual progress. Has been crashing with exit code 1 for 12+ hours straight.
+   - Prompt COMPLETELY REWRITTEN: simplified to step-by-step instructions, single target (newObj L4482), explicit crash recovery.
+
+### Actions Taken
+1. Counted sorries: ANF 24, CC 14 actual = 38 total (unchanged).
+2. Read proof agent log — discovered normalizeExpr_if_source is wrong. Rewrote proof prompt with strong induction approach.
+3. Updated jsspec prompt — targets unchanged (consoleLog L4270, getIndex L5072), state updated.
+4. Completely rewrote wasmspec prompt — simplified to step-by-step, single target (newObj L4482).
+5. Logged to time_estimate.csv.
+
+### Sorry Breakdown (CC, 14 actual)
+- L1507/L1508: forIn/forOf (stubs, unprovable — 2)
+- L3381: captured var (wasmspec target — 1)
+- L3709: if-then CCStateAgree (BLOCKED — 1)
+- L3732: if-else CCStateAgree x2 (BLOCKED — 2)
+- L4270: consoleLog sub-goals (jsspec target — 1)
+- L4284: non-consoleLog call, no FuncsCorr (BLOCKED — 1)
+- L4482: newObj (wasmspec target — 1)
+- L5072: getIndex string semantic mismatch (jsspec target, may be unprovable — 1)
+- L6305: functionDef (BLOCKED, multi-step + CCStateAgree — 1)
+- L6460: tryCatch finally CCStateAgree (BLOCKED — 1)
+- L6531: tryCatch error CCStateAgree (BLOCKED — 1)
+- L6638: while_ CCStateAgree (BLOCKED — 1)
+
+### Architecture Blockers
+- **CCStateAgree**: 6 of 14 CC sorries blocked. THE single biggest blocker. Without solving CCStateAgree, CC cannot go below 8 sorries.
+- **normalizeExpr characterization**: Proof agent discovered the approach is wrong. Strong induction is the fix.
+- **FuncsCorr**: L4284 blocked, no definition exists.
+
+### Tractable sorries (not architecturally blocked)
+- L4270 consoleLog (jsspec) — straightforward invariant goals
+- L4482 newObj (wasmspec) — arrayLit template reusable
+- L3381 captured var (wasmspec) — multi-step but feasible
+- L5072 getIndex (jsspec) — may be unprovable due to semantic mismatch
+- ANF 24 sorries (proof agent) — strong induction approach is correct path
+
+---
+2026-04-03T19:03:23+00:00 DONE
+
+## Run: 2026-04-03T19:05:01+00:00
+

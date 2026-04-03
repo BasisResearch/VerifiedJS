@@ -12,7 +12,7 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: ANF 24 sorry occurrences (grep -c). DOWN FROM 30 LAST RUN. GREAT PROGRESS — keep going.
+## STATE: ANF 24 sorry occurrences. UNCHANGED since last run.
 
 ## ⚠️ CRASH PREVENTION ⚠️
 - **Start small**: build only the specific lemma you're editing
@@ -24,54 +24,51 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 Therefore `bindComplex_not_let` is FALSE — DO NOT attempt it.
 SKIP `let_step_sim` (L6785) entirely.
 
-## YOUR IMMEDIATE TASK: Close if_step_sim sub-sorries
+## ⚠️⚠️⚠️ CRITICAL CORRECTION: normalizeExpr_if_source IS WRONG ⚠️⚠️⚠️
+Your LAST RUN discovered that the characterization approach (`normalizeExpr_if_source`: "e must be .if") is INCORRECT:
+- `.seq a b` CAN produce `.if` when `b` contains `.if`
+- `.let name (.if ...) body` CAN produce `.if` (bubbles up through CPS)
+- Most constructors with a 'head' sub-expression can propagate `.if`
 
-The remaining if_step_sim sorries are:
-- **L6864**: toBoolean v = true → step to then_ branch
-- **L6867**: toBoolean v = false → step to else_ branch
-- **L6883**: normalizeExpr_if_cond_var_free (error case — var not bound)
+DO NOT build `normalizeExpr_if_source`. It is FALSE for general `e`.
 
-### For L6864 and L6867 (true/false branches):
-You need `normalizeExpr_if_source` — if `normalizeExpr e k` produces `.if cond then_ else_` with trivial-preserving `k`, then `e = .if fc ft fe`.
+## YOUR IMMEDIATE TASK: Close if_step_sim via strong induction
 
-`bindComplex_not_if` ALREADY EXISTS (line ~469). Follow the SAME pattern as `normalizeExpr_seq_while_first_family` (lines ~767-1068).
+### Correct approach (from your own analysis):
+**Strong induction on `sf.expr.depth`** with case analysis:
 
+1. **`.if fc ft fe` (fc is trivial chain)**: Direct — use `steps_if_var_branch`/`steps_if_lit_branch`
+2. **`.seq a b`**: Peel off seq prefix with `trivialChain_consume_ctx`, recurse on `b` (depth decreases)
+3. **`.var`, `.lit`, `.this`**: Contradiction — `k` produces `.trivial`, not `.if`
+4. **`.break`, `.continue`, `.return none`, `.yield none`, `.labeled`, `.while_`, `.tryCatch`**: Contradiction — these don't produce `.if`
+5. **Other (`.let`, `.assign`, etc.)**: Use `bindComplex` structure — the `.if` is inside the continuation, recurse
+
+### Existing helpers you already found:
+- `steps_if_var_branch`, `steps_if_lit_branch`, `steps_if_this_branch`
+- `trivialChain_consume_ctx`
+- `bindComplex_not_if` (line ~469)
+
+### For L6864/L6867 (true/false branches):
+Instead of characterizing what `e` must be, prove that Flat can simulate the if-step
+by inducting on how normalizeExpr produced `.if`:
 ```lean
-private theorem normalizeExpr_if_source
-    (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
-    (hk : ∀ t' n', ∃ m', (k t').run n' = .ok (.trivial t', m'))
-    (n m : Nat) (cond : ANF.Trivial) (then_ else_ : ANF.Expr)
-    (hnorm : (ANF.normalizeExpr e k).run n = .ok (.if cond then_ else_, m)) :
-    ∃ (fc : Flat.Expr) (ft fe : Flat.Expr),
-      e = .if fc ft fe := by
-  cases e with
-  | «if» fc ft fe => exact ⟨fc, ft, fe, rfl⟩
-  | lit v =>
-    simp [ANF.normalizeExpr] at hnorm
-    have ⟨m', hkm⟩ := hk (.litTrivial v) n
-    rw [hkm] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-  | var name' =>
-    simp [ANF.normalizeExpr] at hnorm
-    have ⟨m', hkm⟩ := hk (.var name') n
-    rw [hkm] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-  -- For constructors using bindComplex: unfold normalizeExpr, use bindComplex_not_if
-  -- For .seq, .while_: use normalizeExpr_seq_while_first to get contradiction
-  -- For .let, .tryCatch, .labeled: unfold normalizeExpr, show they don't produce .if
-  | _ => sorry -- Fill per-constructor
+-- Strong induction: sf.expr.depth
+-- Base case: sf.expr = .if fc ft fe → direct flat steps
+-- Inductive case: sf.expr = .seq a b, .let x init body, etc.
+--   normalizeExpr wraps with prefix steps, the .if comes from inner expr
+--   Flat steps = prefix steps + .if step
 ```
 
-Once you have `normalizeExpr_if_source`, use it in L6864/6867:
-```lean
-have ⟨fc, ft, fe, he_if⟩ := normalizeExpr_if_source sf.expr k hk n m cond then_ else_ hnorm
-subst he_if
--- Now sf.expr = .if fc ft fe, match flat semantics for .if
-```
+### For L6883 (.var not bound error case):
+Your last run closed all literal trivial cases. Only `.var name_cond` remains.
+Need: if normalizeExpr produces `.if (.var name) ...`, then `name` is either:
+- Free in `sf.expr` (so `hewf` gives it's bound → contradiction with `hnone`)
+- Or a freshName (which IS bound in the wrapping .let → also contradiction)
 
-### For L6883 (var not bound):
-Build `normalizeExpr_if_cond_var_free`: if normalizeExpr e k = .if (.var name) then_ else_ with trivial-preserving k, then either name is free in e, or name was introduced by normalizeExpr (in which case it's bound in sa_env). The key insight is that ANF normalization only introduces FRESH names (via `freshName`), and these are immediately bound in the .let that wraps them. So a `.var name` at the top-level condition of `.if` must come from the original expression.
+Key insight: `normalizeExpr_var_implies_free` already exists (used at L6946). Check if a similar lemma works for the .if condition variable.
 
 ### After if_step_sim: tryCatch_step_sim (L6910)
-Same pattern: build `normalizeExpr_tryCatch_source` using `bindComplex_not_tryCatch` (line ~480).
+Same strong-induction approach. Use `bindComplex_not_tryCatch` (line ~480).
 
 ## SKIP THESE:
 - `let_step_sim` (L6785) — bindComplex PRODUCES .let, characterization WRONG
