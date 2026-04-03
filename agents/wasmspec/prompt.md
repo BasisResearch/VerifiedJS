@@ -1,6 +1,6 @@
-# wasmspec — Investigate FuncsCorr + HasBreakInHead/HasContinueInHead patterns
+# wasmspec — Investigate compound ANF sorries + error propagation semantics
 
-## EXCELLENT WORK on the CCStateAgree analysis! jsspec is implementing your fix.
+## EXCELLENT WORK on CCStateAgree analysis — jsspec is implementing the fix NOW.
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec is implementing CCStateAgree fix
@@ -9,38 +9,51 @@
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
 - MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## YOUR JOB: Two investigations
+## YOUR JOB: Three investigations for the proof agent
 
-### Investigation 1: FuncsCorr (blocks L4271 — non-consoleLog call)
+### Investigation 1: Error propagation through eval contexts (CRITICAL)
 
-The CC sorry at L4271 is blocked by missing `FuncsCorr` — a correspondence between `sf.funcs[idx]` and `sc.funcs[idx]`. This would unblock the general function call case.
+The proof agent needs to prove `hasBreakInHead_flat_error_steps` (L6608) and `hasContinueInHead_flat_error_steps` (L6621). These claim: if `HasBreakInHead e label`, then `e` flat-steps to `.lit .undefined` with break error trace.
 
-Tasks:
-1. Search for `FuncsCorr` in ClosureConvertCorrect.lean — does it exist? Is it defined but unused?
-2. Search for `sf.funcs` and `sc.funcs` usage patterns
-3. Look at how `Flat.convertExpr` handles `.call` — specifically how func indices relate
-4. Determine: is FuncsCorr a simple index-mapping invariant? Can it be added to the simulation relation?
-5. Write findings to `agents/wasmspec/funcscorr_analysis.md`
-
-### Investigation 2: HasBreakInHead / HasContinueInHead flat stepping
-
-The proof agent needs to prove `hasBreakInHead_flat_error_steps` (ANF L6650) and `hasContinueInHead_flat_error_steps` (L6663). These say: if an expression has a break/continue at its evaluation head, it flat-steps to `.lit .undefined` with an error trace.
+THE PROBLEM: When `.break label` is nested inside `.seq (.break label) b`, Flat.step? produces `.seq (.lit .undefined) b`, NOT `.lit .undefined`. Then it steps to `b`, which is arbitrary.
 
 Tasks:
-1. Find the definitions of `HasBreakInHead` and `HasContinueInHead` — what are their constructors?
-2. For each constructor, trace what `Flat.step?` does:
-   - `.break label` → what does Flat.step? return?
-   - `.seq (break label) rest` → Flat.step? steps `.seq`, how?
-   - `.return (some (break label))` → etc.
-3. Determine if induction on `HasBreakInHead` straightforwardly produces flat error steps
-4. Write findings to `agents/wasmspec/break_continue_analysis.md`
+1. Read `Flat.step?` definition in `VerifiedJS/Flat/Semantics.lean` (L336)
+2. Trace what happens for EACH HasBreakInHead constructor (defined at ANFConvertCorrect.lean L2704):
+   - `break_direct`: `.break label` → `.lit .undefined` ✓ (one step)
+   - `seq_left`: `.seq (.break label) b` → `.seq (.lit .undefined) b` → `b` — does NOT produce `.lit .undefined`!
+   - `seq_right`: `.seq a (.break label)` — needs `a` to evaluate first, may not terminate
+   - `let_init`: `.let n (.break label) body` → `.let n (.lit .undefined) body` → what?
+3. Determine: is `hasBreakInHead_flat_error_steps` PROVABLE as stated? Or does the statement need modification?
+4. If unprovable, propose a corrected statement that IS provable and still useful at the call sites (L7755-8011)
+5. Check call sites at L7755-8011: what do they actually NEED from this theorem?
+6. Write findings to `agents/wasmspec/break_error_analysis.md`
+
+### Investigation 2: "non-labeled inner value" sorry analysis
+
+ANF has 4 sorries at L6401, L6434, L6530, L6563 labeled "non-labeled inner value: needs eval context lifting". These are `| _ => sorry` catch-all cases after `.labeled` is handled.
+
+Tasks:
+1. Use `lean_hover_info` or read the context around each sorry to understand what constructors remain in the `| _ =>` catch-all
+2. Determine for each: is it closable by contradiction/exfalso (i.e., can those constructors actually reach this point given the normalizeExpr constraints)?
+3. Write findings to `agents/wasmspec/non_labeled_analysis.md`
+
+### Investigation 3: Compound stepping lemma patterns
+
+8 of 22 ANF sorries are "compound" cases at L6774, L6777, L6927, L6930, L7100, L7103, L7254, L7257. These need eval context stepping when the inner expression is compound (seq, let, assign, if, call, etc.).
+
+Tasks:
+1. Read the context around L6774-6777 to understand the proof obligation
+2. What existing eval context lemmas are available? (grep for `step?_.*_ctx` and `step?_.*_error`)
+3. Is there a pattern where depth induction combined with existing lemmas can close these?
+4. Write findings to `agents/wasmspec/compound_analysis.md`
 
 ### Step 1: Log start
 ```bash
-echo "### $(date -Iseconds) Starting FuncsCorr + break/continue analysis" >> agents/wasmspec/log.md
+echo "### $(date -Iseconds) Starting break error + non-labeled + compound analysis" >> agents/wasmspec/log.md
 ```
 
-### Step 2: Do both investigations (FuncsCorr first, then break/continue)
+### Step 2: Do all three investigations (Investigation 1 is highest priority)
 
 ### Step 3: Log and EXIT
 ```bash

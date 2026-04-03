@@ -2156,19 +2156,14 @@ private theorem normalizeExpr_if_cond_source :
             pure (.if condTriv thenExpr elseExpr))
           (by simp [Flat.Expr.depth] at hd; omega) n m name then_ else_
           (by intro condTriv n' m' t' e' habs
-              have hrun : (match (ANF.normalizeExpr then₁ k).run n' with
-                | .ok (thenExpr, n'') => match (ANF.normalizeExpr else₁ k).run n'' with
-                  | .ok (elseExpr, n''') =>
-                    Except.ok (ANF.Expr.if condTriv thenExpr elseExpr, n''')
-                  | .error e => Except.error e
-                | .error e => Except.error e) =
-                Except.ok (.if (.var name) t' e', m') := habs
-              split at hrun
-              · cases hrun
-              · split at hrun
-                · cases hrun
-                · exact ANF.Expr.noConfusion
-                    (Prod.mk.inj (Except.ok.inj hrun)).1 fun h _ _ => h)
+              revert habs
+              simp only [bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure, StateT.pure, Except.pure, StateT.run]
+              intro habs
+              revert habs; cases (ANF.normalizeExpr then₁ k).run n' with
+              | error e => simp
+              | ok val => cases (ANF.normalizeExpr else₁ k).run val.2 with
+                | error e => simp
+                | ok val₂ => simp [Except.ok.injEq, Prod.mk.injEq]; intro h; exact ANF.Expr.noConfusion h fun _ _ _ => nomatch _)
           hnorm)
       | seq a b =>
         simp only [ANF.normalizeExpr] at hnorm
@@ -2189,10 +2184,11 @@ private theorem normalizeExpr_if_cond_source :
           (by simp [Flat.Expr.depth] at hd; omega) n m name then_ else_
           (by intro arg n' m' t' e' habs
               revert habs
-              simp only [bind, Bind.bind, StateT.bind, Except.bind]
-              intro habs; split at habs
-              · cases habs
-              · simp [pure, Pure.pure, StateT.pure, Except.pure] at habs)
+              simp only [bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure, StateT.pure, Except.pure, StateT.run]
+              intro habs
+              revert habs; cases (ANF.normalizeExpr body k).run n' with
+              | error e => simp
+              | ok val => simp [Except.ok.injEq, Prod.mk.injEq])
           hnorm)
       | assign name₂ value =>
         simp only [ANF.normalizeExpr] at hnorm
@@ -2316,14 +2312,16 @@ private theorem normalizeExpr_if_cond_source :
       | makeEnv values =>
         simp only [ANF.normalizeExpr] at hnorm
         obtain ⟨v, hv_mem, hv_free⟩ := ihes values (fun vts => ANF.bindComplex (.makeEnv vts) k)
+          (by simp [Flat.Expr.depth, Flat.Expr.listDepth] at hd; omega) n m name then_ else_
           (by intro args n' m' t' e'; exact bindComplex_not_if _ k n' m' (.var name) t' e')
-          (by simp [Flat.Expr.depth, Flat.Expr.listDepth] at hd; omega) n m name then_ else_ hnorm
+          hnorm
         exact .makeEnv_elem _ _ _ hv_mem hv_free
       | arrayLit elems =>
         simp only [ANF.normalizeExpr] at hnorm
         obtain ⟨v, hv_mem, hv_free⟩ := ihes elems (fun ets => ANF.bindComplex (.arrayLit ets) k)
+          (by simp [Flat.Expr.depth, Flat.Expr.listDepth] at hd; omega) n m name then_ else_
           (by intro args n' m' t' e'; exact bindComplex_not_if _ k n' m' (.var name) t' e')
-          (by simp [Flat.Expr.depth, Flat.Expr.listDepth] at hd; omega) n m name then_ else_ hnorm
+          hnorm
         exact .arrayLit_elem _ _ _ hv_mem hv_free
       | objectLit props =>
         simp only [ANF.normalizeExpr] at hnorm
@@ -2398,8 +2396,9 @@ private theorem normalizeExpr_if_cond_source :
           (ANF.normalizeExprList rest (fun ts => k (arg :: ts))).run n₁ =
             .ok (.if (.var name) t₁ e₁, m₁)) with ⟨arg, n₁, m₁, t₁, e₁, hinner⟩ | hno
         · obtain ⟨elem, hmem, hfree⟩ := ihes rest (fun ts => k (arg :: ts))
+            (by simp [Flat.Expr.listDepth] at hd; omega) n₁ m₁ name t₁ e₁
             (by intro args n' m' t' e'; exact hk (arg :: args) n' m' t' e')
-            (by simp [Flat.Expr.listDepth] at hd; omega) n₁ m₁ name t₁ e₁ hinner
+            hinner
           exact ⟨elem, List.mem_cons_of_mem _ hmem, hfree⟩
         · exact ⟨e, List.mem_cons_self _ _, ihe e
             (fun t => ANF.normalizeExprList rest (fun ts => k (t :: ts)))
@@ -2416,8 +2415,9 @@ private theorem normalizeExpr_if_cond_source :
           (ANF.normalizeProps rest (fun pts => k ((pn, arg) :: pts))).run n₁ =
             .ok (.if (.var name) t₁ e₁, m₁)) with ⟨arg, n₁, m₁, t₁, e₁, hinner⟩ | hno
         · obtain ⟨elem, hmem, hfree⟩ := ihps rest (fun pts => k ((pn, arg) :: pts))
+            (by simp [Flat.Expr.propListDepth] at hd; omega) n₁ m₁ name t₁ e₁
             (by intro args n' m' t' e'; exact hk ((pn, arg) :: args) n' m' t' e')
-            (by simp [Flat.Expr.propListDepth] at hd; omega) n₁ m₁ name t₁ e₁ hinner
+            hinner
           exact ⟨elem, List.mem_cons_of_mem _ hmem, hfree⟩
         · exact ⟨(pn, pe), List.mem_cons_self _ _, ihe pe
             (fun vt => ANF.normalizeProps rest (fun pts => k ((pn, vt) :: pts)))

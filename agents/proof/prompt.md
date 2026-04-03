@@ -1,4 +1,4 @@
-# proof — Close hasBreakInHead/hasContinueInHead, then compound sorries
+# proof — Close hasBreakInHead/hasContinueInHead, then non-labeled inner value sorries
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -22,42 +22,52 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 Therefore `bindComplex_not_let` is FALSE — DO NOT attempt it.
 SKIP `let_step_sim` entirely.
 
-## STATE: normalizeExpr_if_cond_source is DONE ✓ (L2025-2468 fully proved).
-## ANF has 23 sorries remaining, ALL in L6400-7452 (step simulation cases).
+## STATE: ANF has 22 sorries, ALL in L6400-7410 (step simulation cases).
+normalizeExpr_if_cond_source is DONE ✓ (L2025-2468).
 
 ## YOUR IMMEDIATE TASKS (in order):
 
-### TASK 1: hasBreakInHead_flat_error_steps (L6650) — MOST TRACTABLE
-This theorem says: if `HasBreakInHead e label`, then `e` flat-steps to `.lit .undefined` with an error trace.
+### TASK 1: hasBreakInHead_flat_error_steps (L6608) — HIGH PRIORITY
+This theorem says: if `HasBreakInHead e label`, then `e` flat-steps to `.lit .undefined` with break error trace.
 
-Approach — induction on `h : HasBreakInHead e label`:
-- Each constructor of HasBreakInHead tells you which sub-expression has the break
-- For `HasBreakInHead.break_`: base case, `e = .break label`. Flat.step? on break produces error directly. Use `Flat.Steps.tail` + `Flat.Steps.refl`.
-- For `HasBreakInHead.seq_left b rest hb`: `e = .seq b rest` where `HasBreakInHead b label`. By IH on b, get `sf'` with `.lit .undefined`. Then `.seq (.lit .undefined) rest` steps to `.lit .undefined`.
-- For constructors like `return_some_arg`, `throw_arg`, etc.: inner expression has break. By IH, inner steps to `.lit .undefined`. Then outer expression with `.lit .undefined` inside resolves.
+⚠️ KEY DIFFICULTY: Error propagation through eval contexts does NOT immediately produce `.lit .undefined` for compound expressions. When `.break label` is inside `.seq (.break label) b`, the Flat.step? on `.seq` produces `.seq (.lit .undefined) b` with the error event, NOT `.lit .undefined` directly. Then `.seq (.lit .undefined) b` steps silently to `b`.
 
-Key: structural induction on `HasBreakInHead`, NOT on `e`. Each case: IH → flat steps for sub-expression → show outer steps via Flat.step?.
+APPROACH — You need multi-step reasoning:
+- Base case `break_direct`: `Flat.step?_break_eq` (L3539) gives single step to `.lit .undefined`. Done.
+- For eval context cases (seq_left, let_init, etc.):
+  1. Use `step?_seq_error` (L1616), `step?_let_init_error` (L1628), etc. to propagate the error through the context
+  2. After error step, you have e.g. `.seq (.lit .undefined) b` — still need to step to `.lit .undefined`
+  3. This means you may need additional stepping after error propagation
+  4. CHECK: does the theorem even hold for `seq_right`? If `HasBreakInHead b label` for `.seq a b`, you'd need to first evaluate `a` to a value, THEN step `b`. But `a` might not terminate!
 
-Use `lean_goal` at L6650 first. Then use `lean_multi_attempt` to test:
+FIRST: Use `lean_goal` at L6608 to see exact proof state. Then try `lean_multi_attempt` with:
 ```
-["induction h with | break_ => ... | seq_left b rest hb ih => ...", "cases h"]
+["induction h", "cases h"]
 ```
+to see what constructor cases appear. Verify the base case works before tackling compound cases.
 
-### TASK 2: hasContinueInHead_flat_error_steps (L6663) — SAME PATTERN
-Identical structure to hasBreakInHead but for `HasContinueInHead`. Copy the proof.
+Existing eval context error lemmas:
+- `step?_seq_error` (L1616): `.seq a b` error propagation
+- `step?_let_init_error` (L1628): `.let` error propagation
+- `step?_unary_error` (L1640): `.unary` error propagation
+- `step?_seq_ctx` (L1452): `.seq a b` non-error context stepping
 
-### TASK 3: "non-labeled inner value" sorries (L6447, L6480, L6572, L6605)
-These are catch-all `| _ => sorry` cases after labeled is handled. Check what constructors remain.
-Use `lean_goal` at each sorry to see exact goal. Try `lean_multi_attempt` with:
-```
-["contradiction", "simp [*] at *", "omega", "exact absurd ‹_› ‹_›"]
-```
+IF this theorem is harder than expected, SKIP to Task 2.
 
-### TASK 4: compound/bindComplex sorries (L6491, L6616, L6633)
-These say "needs induction on depth". Need depth induction to show simulation.
+### TASK 2: "non-labeled inner value" sorries (L6401, L6434, L6530, L6563)
+These are `| _ => sorry` catch-all cases after `.labeled` is handled.
+The remaining constructors after labeled are: `.var`, `.lit`, `.this`, `.seq`, `.let`, `.assign`, `.if`, `.call`, `.binary`, `.unary`, `.typeof`, `.getProp`, `.setProp`, `.getIndex`, `.setIndex`, `.deleteProp`, `.return`, `.yield`, `.while_`, `.tryCatch`, `.break`, `.continue`, `.throw`, `.await`, etc.
+
+Use `lean_goal` at each sorry to see what constructors remain. Many might be closable by:
+- `contradiction` (if the outer normalizeExpr output can't come from these)
+- `exfalso` + simp reasoning
+- Direct cases on the remaining constructors
+
+### TASK 3: hasContinueInHead_flat_error_steps (L6621) — SAME PATTERN as Task 1
 
 ### SKIP THESE:
-- L7326 (.let characterization) — bindComplex PRODUCES .let, approach wrong
+- L7284 (.let characterization) — bindComplex PRODUCES .let, approach wrong
+- L6774-7257 (compound flat_arg/inner_val) — need depth induction, deprioritize
 - ClosureConvertCorrect.lean — other agents own it
 
 ## CRITICAL: LOG YOUR WORK
