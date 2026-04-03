@@ -1,4 +1,4 @@
-# proof — Close normalizeExpr_if_cond_source, then compound/bindComplex sorries
+# proof — Close hasBreakInHead/hasContinueInHead, then compound sorries
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -20,44 +20,44 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 ## ⚠️ CRITICAL: bindComplex PRODUCES .let ⚠️
 `bindComplex rhs k` returns `.let freshName rhs (k (.var freshName))`.
 Therefore `bindComplex_not_let` is FALSE — DO NOT attempt it.
-SKIP `let_step_sim` (L6835) entirely.
+SKIP `let_step_sim` entirely.
 
-## STATE: ANF 23 sorries. L6883 closed structurally. normalizeExpr_if_cond_source added at ~L2025 (sorry).
+## STATE: normalizeExpr_if_cond_source is DONE ✓ (L2025-2468 fully proved).
+## ANF has 23 sorries remaining, ALL in L6400-7452 (step simulation cases).
 
 ## YOUR IMMEDIATE TASKS (in order):
 
-### TASK 1: Prove normalizeExpr_if_cond_source (~L2025) — HIGHEST PRIORITY
-This is blocking the L6883 fix from being complete. Strong mutual induction on depth.
+### TASK 1: hasBreakInHead_flat_error_steps (L6650) — MOST TRACTABLE
+This theorem says: if `HasBreakInHead e label`, then `e` flat-steps to `.lit .undefined` with an error trace.
 
-The theorem has three conjuncts (Expr, ExprList, PropList). Approach:
-1. `intro d; induction d with | zero => ... | succ d ih => ...`
-2. For zero: all expressions have depth > 0 contradiction (or handle base cases)
-3. For succ d: `refine ⟨fun e k hd ... => ?_, fun es k hd ... => ?_, fun ps k hd ... => ?_⟩`
-4. Case split on `e`:
-   - `.var n`: k gets (.var n). If k produces .if, hk_cond says `.var n = .var name` → VarFreeIn.var
-   - `.lit v`, `.this`: k gets literal. hk_cond says `.lit v = .var name` → contradiction (noConfusion)
-   - `.if fc ft fe`: normalizeExpr processes condition. If fc trivial → produces .if with VarFreeIn from condition. If compound → bindComplex, need IH
-   - `.seq a b`: processes a first. IH on sub-expressions
-   - `.let name init body`: similar to seq
-   - `.break`, `.continue`, `.return`, `.yield`, `.labeled`: k produces .trivial not .if → contradiction via hk_cond
-   - `.assign`, `.call`, `.newObj`, `.getIndex`, `.setIndex`, `.binary`, `.unary`: compound → bindComplex → .let wrapper → IH
-   - `.while_`, `.tryCatch`, `.functionDef`: produce specific structures, not .if → contradiction or IH
+Approach — induction on `h : HasBreakInHead e label`:
+- Each constructor of HasBreakInHead tells you which sub-expression has the break
+- For `HasBreakInHead.break_`: base case, `e = .break label`. Flat.step? on break produces error directly. Use `Flat.Steps.tail` + `Flat.Steps.refl`.
+- For `HasBreakInHead.seq_left b rest hb`: `e = .seq b rest` where `HasBreakInHead b label`. By IH on b, get `sf'` with `.lit .undefined`. Then `.seq (.lit .undefined) rest` steps to `.lit .undefined`.
+- For constructors like `return_some_arg`, `throw_arg`, etc.: inner expression has break. By IH, inner steps to `.lit .undefined`. Then outer expression with `.lit .undefined` inside resolves.
 
-Key: for each constructor, either delegates to k (hk_cond gives answer), recurses (IH), or produces non-.if (contradiction with hnorm).
+Key: structural induction on `HasBreakInHead`, NOT on `e`. Each case: IH → flat steps for sub-expression → show outer steps via Flat.step?.
 
-Use `lean_multi_attempt` on individual cases to find what closes them.
+Use `lean_goal` at L6650 first. Then use `lean_multi_attempt` to test:
+```
+["induction h with | break_ => ... | seq_left b rest hb ih => ...", "cases h"]
+```
 
-### TASK 2: "non-labeled inner value" sorries (~L6405, L6438, L6530, L6563)
-Try `lean_multi_attempt` with:
+### TASK 2: hasContinueInHead_flat_error_steps (L6663) — SAME PATTERN
+Identical structure to hasBreakInHead but for `HasContinueInHead`. Copy the proof.
+
+### TASK 3: "non-labeled inner value" sorries (L6447, L6480, L6572, L6605)
+These are catch-all `| _ => sorry` cases after labeled is handled. Check what constructors remain.
+Use `lean_goal` at each sorry to see exact goal. Try `lean_multi_attempt` with:
 ```
 ["contradiction", "simp [*] at *", "omega", "exact absurd ‹_› ‹_›"]
 ```
 
-### TASK 3: compound/bindComplex sorries (~L6449, L6574, L6591)
-These say "needs induction on depth". Try strong induction similar to normalizeExpr_if_cond_source.
+### TASK 4: compound/bindComplex sorries (L6491, L6616, L6633)
+These say "needs induction on depth". Need depth induction to show simulation.
 
 ### SKIP THESE:
-- `let_step_sim` (around L6880) — bindComplex PRODUCES .let, characterization WRONG
+- L7326 (.let characterization) — bindComplex PRODUCES .let, approach wrong
 - ClosureConvertCorrect.lean — other agents own it
 
 ## CRITICAL: LOG YOUR WORK

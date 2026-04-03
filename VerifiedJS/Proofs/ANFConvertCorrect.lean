@@ -2198,14 +2198,19 @@ private theorem normalizeExpr_if_cond_source :
             pure (.if condTriv thenExpr elseExpr))
           (by simp [Flat.Expr.depth] at hd; omega) n m name then_ else_
           (by intro condTriv n' m' t' e' habs
-              revert habs
-              simp only [bind, Bind.bind, StateT.bind, Except.bind]
-              intro habs; split at habs
-              · cases habs
-              · split at habs
-                · cases habs
+              have hrun : (match (ANF.normalizeExpr then₁ k).run n' with
+                | .ok (thenExpr, n'') => match (ANF.normalizeExpr else₁ k).run n'' with
+                  | .ok (elseExpr, n''') =>
+                    Except.ok (ANF.Expr.if condTriv thenExpr elseExpr, n''')
+                  | .error e => Except.error e
+                | .error e => Except.error e) =
+                Except.ok (.if (.var name) t' e', m') := habs
+              split at hrun
+              · cases hrun
+              · split at hrun
+                · cases hrun
                 · exact ANF.Expr.noConfusion
-                    (Prod.mk.inj (Except.ok.inj habs)).1 fun h _ _ => h)
+                    (Prod.mk.inj (Except.ok.inj hrun)).1 fun h _ _ => h)
           hnorm)
       | seq a b =>
         simp only [ANF.normalizeExpr] at hnorm
