@@ -6778,10 +6778,10 @@ private theorem normalizeExpr_seq_step_sim
   unfold ANF.step? at hstep_eq
   simp only [ANF.pushTrace] at hstep_eq
   split at hstep_eq
-  · -- exprValue? a = some val: seq steps to b silently
+  · -- exprValue? a = some val: impossible since a = .while_ c d
     rename_i val hval
-    obtain ⟨rfl, rfl⟩ := hstep_eq
-    sorry
+    obtain ⟨c, d, rfl⟩ := normalizeExpr_seq_while_first sf.expr k hk n m _ b hnorm
+    simp [ANF.exprValue?] at hval
   · -- exprValue? a = none: a steps
     rename_i hnv
     split at hstep_eq
