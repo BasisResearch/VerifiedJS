@@ -2972,3 +2972,11 @@ Analysis: partially provable (all-values sub-case works, sub-stepping cases bloc
 
 ### 2026-04-03T19:00:18+00:00 Starting run
 2026-04-03T20:00:03+00:00 SKIP: already running
+
+#### Work done
+- **consoleLog proof (L4279)**: Fixed type mismatch caused by dependent match on `hfvals`. Changed `have := Core_step?_call_consoleLog_flat_msg ...; exact this` to `show Core.step? ⟨_, sc_env, sc_heap, sc_trace, sc_funcs, sc_cs⟩ = some (_, sc'); exact Core_step?_call_consoleLog_flat_msg ...`. The `show` avoids the dependent match pattern the goal picked up from `obtain ⟨rfl, hsf'eq⟩`.
+- **getIndex string (L5082)**: Investigated Flat/Core semantic mismatch. In `.number n` case with invalid index, Flat checks `valueToString (.number n) == "length"` (always false) before returning `.undefined`, but Core returns `.undefined` directly. Semantically equivalent but UNPROVABLE because `Float.toString` is an opaque native function. Updated sorry comment with detailed explanation.
+- **Build result**: Exit code 1 (not OOM). My changes compile; pre-existing errors at L3368 (missing case alternatives like while_, forIn, etc.) and L6426/6444 are from other agents' incomplete work.
+- **Sorry count**: 12 actual sorries remain. All are blocklisted (CCStateAgree, FuncsCorr, wasmspec, multi-step) or unprovable (getIndex string Float.toString).
+### 2026-04-03T20:27:39+00:00 Run complete — fixed consoleLog type mismatch, documented getIndex string as unprovable
+2026-04-03T20:27:57+00:00 DONE

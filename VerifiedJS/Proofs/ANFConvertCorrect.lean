@@ -1994,29 +1994,33 @@ private theorem trivialChain_consume_ctx
         by rw [observableTrace_append, hobs_a, hobs_b]; rfl⟩
     | _ => simp [isTrivialChain] at htc
 
-/-- If normalizeExpr e k produces .if (.var name) at the top level, then either
-    VarFreeIn name e (the variable came from the expression) or k produced the .if
-    (the variable came from the continuation). Proved by strong induction on depth. -/
+/-- If normalizeExpr e k produces .if (.var name) at the top level, and k only produces
+    .if (.var name) when the argument is .var name, then VarFreeIn name e.
+    Uses Classical.em to handle seq/compound cases where the continuation ignores its argument.
+    Proved by strong mutual induction on depth. -/
 private theorem normalizeExpr_if_cond_source :
     ∀ (d : Nat),
       (∀ (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr),
         e.depth ≤ d →
         ∀ n m (name : ANF.VarName) (then_ else_ : ANF.Expr),
+        (∀ (arg : ANF.Trivial) (n' m' : Nat) (t' e' : ANF.Expr),
+           (k arg).run n' = .ok (.if (.var name) t' e', m') → arg = .var name) →
         (ANF.normalizeExpr e k).run n = .ok (.if (.var name) then_ else_, m) →
-        VarFreeIn name e ∨ (∃ (arg : ANF.Trivial) (n' m' : Nat) (t' e' : ANF.Expr),
-          (k arg).run n' = .ok (.if (.var name) t' e', m'))) ∧
+        VarFreeIn name e) ∧
       (∀ (es : List Flat.Expr) (k : List ANF.Trivial → ANF.ConvM ANF.Expr),
         Flat.Expr.listDepth es ≤ d →
         ∀ n m (name : ANF.VarName) (then_ else_ : ANF.Expr),
+        (∀ (args : List ANF.Trivial) (n' m' : Nat) (t' e' : ANF.Expr),
+           (k args).run n' ≠ .ok (.if (.var name) t' e', m')) →
         (ANF.normalizeExprList es k).run n = .ok (.if (.var name) then_ else_, m) →
-        (∃ e ∈ es, VarFreeIn name e) ∨ (∃ (args : List ANF.Trivial) (n' m' : Nat) (t' e' : ANF.Expr),
-          (k args).run n' = .ok (.if (.var name) t' e', m'))) ∧
+        ∃ e ∈ es, VarFreeIn name e) ∧
       (∀ (ps : List (Flat.PropName × Flat.Expr)) (k : List (ANF.PropName × ANF.Trivial) → ANF.ConvM ANF.Expr),
         Flat.Expr.propListDepth ps ≤ d →
         ∀ n m (name : ANF.VarName) (then_ else_ : ANF.Expr),
+        (∀ (args : List (ANF.PropName × ANF.Trivial)) (n' m' : Nat) (t' e' : ANF.Expr),
+           (k args).run n' ≠ .ok (.if (.var name) t' e', m')) →
         (ANF.normalizeProps ps k).run n = .ok (.if (.var name) then_ else_, m) →
-        (∃ p ∈ ps, VarFreeIn name p.2) ∨ (∃ (args : List (ANF.PropName × ANF.Trivial)) (n' m' : Nat) (t' e' : ANF.Expr),
-          (k args).run n' = .ok (.if (.var name) t' e', m')))
+        ∃ p ∈ ps, VarFreeIn name p.2)
     := by
   sorry
 
@@ -2030,13 +2034,13 @@ private theorem normalizeExpr_if_cond_var_free
     (hk : ∀ (arg : ANF.Trivial) (n' : Nat), ∃ m', (k arg).run n' = .ok (.trivial arg, m'))
     (hnorm : (ANF.normalizeExpr e k).run n = .ok (.if (.var name) then_ else_, m)) :
     VarFreeIn name e := by
-  have h := (normalizeExpr_if_cond_source d).1 e k hd n m name then_ else_ hnorm
-  rcases h with hvf | ⟨arg, n', m', t', e', hk_if⟩
-  · exact hvf
-  · exfalso
+  have hk_cond : ∀ (arg : ANF.Trivial) (n' m' : Nat) (t' e' : ANF.Expr),
+      (k arg).run n' = .ok (.if (.var name) t' e', m') → arg = .var name := by
+    intro arg n' m' t' e' habs
     obtain ⟨m'', hk''⟩ := hk arg n'
-    rw [hk''] at hk_if
-    exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hk_if)).1
+    rw [hk''] at habs
+    exact absurd habs (by intro h; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1)
+  exact (normalizeExpr_if_cond_source d).1 e k hd n m name then_ else_ hk_cond hnorm
 
 /-- When normalizeExpr e k produces .trivial (.var name) with k trivial-preserving,
     the variable name (or "this") is free in e. This is used to derive a contradiction
