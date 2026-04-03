@@ -9360,3 +9360,67 @@ CCStateAgree fix remains highest impact (6 sorries). jsspec has been running 1.5
 ## Run: 2026-04-03T23:00:03+00:00
 
 2026-04-03T23:05:01+00:00 SKIP: already running
+
+## Run: 2026-04-03T23:00:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 22 + CC 15 = **37 actual** (was 38 last run)
+- **Delta from last run (22:05)**: -1. ANF went 23→22 (proof agent closed one sorry, net -1). CC stable at 15.
+- **LowerCorrect**: 0 sorries
+- **Wasm/Semantics**: 0 actual sorries (2 grep hits are comments)
+
+### Agent Status
+1. **proof** (started 22:30, RUNNING): Working on normalizeExpr_if_cond_source. Log shows it crashed at 22:30 exit code 1, then restarted. Previous runs: closed L6883 (var_free error case), partial progress on if_step_sim.
+   - **Prompt UPDATED**: Redirected to hasBreakInHead (L6608) and non-labeled inner value sorries (L6401/L6434/L6530/L6563). Added WARNING about error propagation through eval contexts — `.seq (.break label) b` does NOT produce `.lit .undefined` directly. This is a potential blocker.
+
+2. **jsspec** (started 23:00, RUNNING): Beginning CCStateAgree invariant fix. This is the highest-impact task — if successful, unblocks 6 of 15 CC sorries.
+   - Prompt unchanged — already well-configured with wasmspec's detailed analysis of 13 pass-through + 14 uses-output cases.
+
+3. **wasmspec** (completed 22:17): Completed CCStateAgree uses analysis.
+   - **Prompt REWRITTEN**: Three new investigations:
+     1. Error propagation through eval contexts (CRITICAL) — verify hasBreakInHead_flat_error_steps is provable as stated
+     2. Non-labeled inner value sorry analysis
+     3. Compound stepping lemma patterns
+
+### Actions Taken
+1. Counted sorries: ANF 22 + CC 15 = 37 (down 1).
+2. Updated proof prompt: fixed line numbers, added eval context error propagation warning.
+3. Kept jsspec prompt: CCStateAgree fix is already the right target and it just started.
+4. Rewrote wasmspec prompt: three investigations to support proof agent on remaining ANF sorries.
+5. Logged to time_estimate.csv.
+
+### Sorry Breakdown
+
+**ANF (22 sorries):**
+- L6401, L6434: non-labeled inner value (return cases)
+- L6445: compound/bindComplex
+- L6530, L6563: non-labeled inner value (yield cases)
+- L6574: compound/bindComplex
+- L6591: compound/bindComplex/throw/await
+- L6608: hasBreakInHead_flat_error_steps ← proof agent target
+- L6621: hasContinueInHead_flat_error_steps
+- L6774, L6777: compound flat_arg (return with arg)
+- L6927, L6930: compound inner_val (return head)
+- L7100, L7103: compound inner_arg
+- L7254, L7257: compound (yield head)
+- L7284: .let characterization (SKIP — bindComplex produces .let)
+- L7332, L7363, L7366: if simulation
+- L7410: final sorry
+
+**CC (15 actual sorries):**
+- L1507/1508: forIn/forOf stubs (UNPROVABLE)
+- L3387: captured var (multi-step gap)
+- L3715: if-then CCStateAgree (BLOCKED → jsspec fixing)
+- L3738: if-else CCStateAgree x2 (BLOCKED → jsspec fixing)
+- L4269: consoleLog (blocked on dependent match normalization)
+- L4271: non-consoleLog call (BLOCKED no FuncsCorr)
+- L4477/4485: newObj (secondary target)
+- L5123: getIndex string (UNPROVABLE — Float.toString opaque)
+- L6361: functionDef (BLOCKED CCStateAgree + multi-step)
+- L6516: tryCatch finally CCStateAgree (BLOCKED → jsspec fixing)
+- L6587: tryCatch error CCStateAgree (BLOCKED → jsspec fixing)
+- L6694: while_ CCStateAgree (BLOCKED → jsspec fixing)
+
+### Key Risk
+hasBreakInHead_flat_error_steps may be UNPROVABLE as currently stated. Error events propagate through eval contexts (seq, let, if, etc.) but the resulting expression is NOT `.lit .undefined` — it's the compound expression with `.lit .undefined` substituted in the sub-position. The theorem claims `sf'.expr = .lit .undefined` which may not hold for non-base cases. Wasmspec is investigating.
+2026-04-03T23:05:40+00:00 DONE
