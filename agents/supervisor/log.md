@@ -1,3 +1,47 @@
+## Run: 2026-04-03T18:30:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 (grep -c) + CC 16 (grep-c, 12 actual) = **40 grep-c lines** (was 47 last run)
+- **Actual sorry instances**: ANF ~24 + CC 12 + forIn/forOf stubs 2 = **38 total**
+- **Delta from last run (18:05)**: 47 → 40. **NET -7**. ANF -6 (proof agent progress). CC -1 (jsspec closed arrayLit).
+- **This is the best single-run improvement today.**
+
+### Agent Status
+1. **proof** (started 17:30): RUNNING (1 hour in). PRODUCTIVE — closed 6 ANF sorries since last run. Working on if_step_sim characterization (normalizeExpr_if_source). ANF file last modified 18:28.
+   - Prompt updated: acknowledged -6 progress, current line numbers (L6864/6867/6883 for if_step_sim, L6910 for tryCatch).
+
+2. **jsspec** (started 18:00): RUNNING. **CLOSED arrayLit all-values** (L6085) — CC file modified at 18:37. The objectLit-template approach worked perfectly.
+   - Prompt updated: new targets = consoleLog sub-goals (L4270) and getIndex string (L5060).
+
+3. **wasmspec** (started 15:00): RUNNING 3.5 hours but ZERO output since start. Same pattern as before — effectively dead. Log shows SKIP entries at 15:15, 16:15, 17:15, 18:15 but no progress text.
+   - Prompt updated: current line numbers (L4470 newObj, L3381 captured var), pointed to jsspec's arrayLit proof as template.
+
+### Actions Taken
+1. Counted sorries: ANF 24 (-6), CC 16 (-1) = 40 grep-c total.
+2. Confirmed jsspec closed arrayLit at 18:37. CC 12 actual sorries.
+3. Updated proof prompt: acknowledged progress, maintained if_step_sim focus with current line numbers.
+4. Updated jsspec prompt: new targets (consoleLog L4270, getIndex L5060) since arrayLit is done.
+5. Updated wasmspec prompt: current line numbers, pointed to arrayLit proof as template for newObj.
+6. Logged to time_estimate.csv.
+
+### Sorry Breakdown (CC, 12 actual)
+- L3381: captured var (multi-step, wasmspec target)
+- L3709: if-then CCStateAgree (BLOCKED)
+- L3732: if-else CCStateAgree x2 (BLOCKED)
+- L4270: consoleLog sub-goals (jsspec target)
+- L4272: non-consoleLog call, no FuncsCorr (BLOCKED)
+- L4470: newObj (wasmspec target)
+- L5060: getIndex string semantic mismatch (jsspec target, may be unprovable)
+- L6293: functionDef (multi-step, BLOCKED)
+- L6448: tryCatch finally CCStateAgree (BLOCKED)
+- L6519: tryCatch error CCStateAgree (BLOCKED, 9/10 done)
+- L6626: while_ CCStateAgree (BLOCKED)
+
+### Remaining CC blockers
+6 of 12 CC sorries are blocked on CCStateAgree. This is the SINGLE BIGGEST blocker. Until CCStateAgree is solved, CC cannot go below 6 sorries. However, the non-CCStateAgree targets (consoleLog, getIndex, newObj, captured var) are tractable.
+
+---
+
 ## Run: 2026-04-03T18:05:01+00:00
 
 ### Metrics
@@ -8912,3 +8956,4 @@ Unknown — all agents exit immediately. Likely harness/infra issue, not proof-r
 
 ## Run: 2026-04-03T18:30:02+00:00
 
+2026-04-03T18:39:56+00:00 DONE

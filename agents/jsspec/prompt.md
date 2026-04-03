@@ -1,4 +1,4 @@
-# jsspec — CLOSE arrayLit all-values (L6038). DO NOT TOUCH tryCatch OR functionDef.
+# jsspec — arrayLit DONE ✓. Next: consoleLog sub-goals (L4270) or getIndex (L5060)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,75 +11,43 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC 14 actual sorries.
+## STATE: CC 12 actual sorries (down from 13 — you closed arrayLit!).
 
 ## ⚠️⚠️⚠️ ABSOLUTE BLOCKLIST — DO NOT TOUCH ⚠️⚠️⚠️
-- ALL tryCatch sorries — BLOCKED CCStateAgree
-- ALL if-then/else sorries — BLOCKED CCStateAgree
-- L6507 while_ — BLOCKED CCStateAgree
-- L4227 call — BLOCKED no FuncsCorr
-- L5015 getIndex string — semantic mismatch
-- L1507, L1508 forIn/forOf — UNPROVABLE stubs
-- L3334 captured var — multi-step simulation gap
-- L6172 functionDef — NOT a leaf case! Flat produces `.makeClosure funcIdx (.makeEnv capturedExprs)` requiring MULTI-STEP evaluation of captured variables. DO NOT ATTEMPT.
-- L4423 newObj — wasmspec owns this
+- L3709, L3732 if-then/else — BLOCKED CCStateAgree
+- L6448 tryCatch finally — BLOCKED CCStateAgree
+- L6519 tryCatch error — BLOCKED CCStateAgree (9/10 goals done, last = CCStateAgree)
+- L6626 while_ — BLOCKED CCStateAgree
+- L4272 non-consoleLog call — BLOCKED no FuncsCorr
+- L6293 functionDef — NOT a leaf case! Multi-step captured vars. DO NOT ATTEMPT.
+- L4470 newObj — wasmspec owns this
+- L3381 captured var — multi-step simulation gap, wasmspec owns this
 
-## YOUR ONE TARGET: arrayLit all-values (LINE 6038)
+## YOUR TARGETS (in priority order):
 
+### TARGET 1: consoleLog sub-goals (LINE 4270)
 ```lean
-| none =>
-  sorry -- all elements are values: heap allocation (same class as other value sub-cases)
+all_goals sorry -- consoleLog sub-goals: trace/invariants for consoleLog case
 ```
+This is inside the call case where the function IS consoleLog. The `all_goals` means there are multiple sub-goals remaining after the main proof structure. These should be straightforward invariant goals (trace, EnvCorr, HeapInj, etc.) that follow the same patterns you just used for arrayLit.
 
-Context: `Core.firstNonValueExpr elems = none` means ALL elements are values.
+1. `lean_goal` at L4270 to see what goals remain
+2. Try `all_goals (first | rfl | simp_all | assumption | omega)` — if some goals close, narrow down to the hard ones
 
-### THIS IS PROVED FOR objectLit — COPY THE PATTERN
-
-The objectLit all-values case is PROVED at lines 5825-5898. Your proof should be a near-copy.
-
-### Step-by-step template (from objectLit L5825-5898):
-
-1. Get flat's `firstNonValueExpr` is none:
+### TARGET 2: getIndex string (LINE 5060)
 ```lean
-have hffnv := convertExprList_firstNonValueExpr_none elems scope envVar envMap st hcfnv
+sorry -- getIndex string both-values: Flat/Core semantic mismatch in .number else branch
 ```
-NOTE: `convertExprList_firstNonValueExpr_none` may not exist yet. Check with `grep -n`. If it doesn't exist, you need to prove it (analogous to `convertPropList_firstNonValueProp_none` at ~L3109).
-
-2. Get values list:
-```lean
-have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values _ hffnv
-```
-This helper EXISTS at line 75.
-
-3. Set up sf eta and rewrite flat step:
-```lean
-have hsf_eta : sf = { sf with expr := .arrayLit (Flat.convertExprList elems scope envVar envMap st).fst } := by
-  cases sf; simp_all
-rw [hsf_eta] at hstep
-rw [Flat.step?_arrayLit_allValues _ _ _ hvs] at hstep  -- EXISTS in Flat/Semantics.lean
-```
-
-4. Build Core step using `Core.step?_arrayLit_val` (EXISTS in Core/Semantics.lean)
-
-5. HeapInj: use `HeapInj_alloc_both` (same as objectLit).
-   NOTE: You may need `convertExprList_filterMap_eq` (analogous to `convertPropList_filterMap_eq` at L3178). If it doesn't exist, prove it — same induction pattern.
-
-6. State none: `convertExprList_state_none` EXISTS at L3138.
-
-7. Fill remaining goals (trace, EnvCorr, EnvAddrWF, HeapValuesWF, etc.) following objectLit pattern lines 5887-5898.
-
-### CRITICAL: Check what helpers exist first
-```bash
-grep -n "convertExprList_firstNonValueExpr_none\|convertExprList_filterMap\|convertExprList_state_none\|firstNonValueExpr_none_implies_values\|step?_arrayLit_allValues\|step?_arrayLit_val\|HeapInj_alloc_both" VerifiedJS/Proofs/ClosureConvertCorrect.lean
-```
-Build any missing helpers by copying the PropList versions.
+The comment says there's a semantic mismatch — Flat checks `propName == "length"` but Core doesn't. This MAY be a real mismatch (unprovable). Investigate first:
+1. `lean_goal` at L5060
+2. Read the Flat.step? and Core.step? for getIndex to understand the difference
+3. If the mismatch is real, add a comment and MOVE ON
 
 ## WORKFLOW:
 1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers
-2. Check which helpers exist (grep above)
-3. Build any missing helpers first
-4. Write the proof following objectLit template
-5. Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+2. `lean_goal` at target sorry
+3. Build proof
+4. Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

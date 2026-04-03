@@ -1,4 +1,4 @@
-# proof — Close if_step_sim (L7062/7065/7077/7079), then tryCatch_step_sim
+# proof — Close if_step_sim (L6864/6867/6883), then tryCatch_step_sim (L6910)
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -12,10 +12,9 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: ANF 30 sorry occurrences (grep -c). Lower 0 ✓. CC — OTHER AGENTS OWN IT.
+## STATE: ANF 24 sorry occurrences (grep -c). DOWN FROM 30 LAST RUN. GREAT PROGRESS — keep going.
 
-## ⚠️ YOU KEEP CRASHING — READ THIS ⚠️
-Your last 2 runs crashed (exit code 1) after <10 minutes. Likely cause: OOM from building too much at once.
+## ⚠️ CRASH PREVENTION ⚠️
 - **Start small**: build only the specific lemma you're editing
 - If build OOMs: add `set_option maxHeartbeats 200000` above the theorem
 - Do NOT attempt to build the entire file if it's failing
@@ -25,15 +24,17 @@ Your last 2 runs crashed (exit code 1) after <10 minutes. Likely cause: OOM from
 Therefore `bindComplex_not_let` is FALSE — DO NOT attempt it.
 SKIP `let_step_sim` (L6785) entirely.
 
-## YOUR IMMEDIATE TASK: normalizeExpr_if_source characterization lemma
+## YOUR IMMEDIATE TASK: Close if_step_sim sub-sorries
 
-The if_step_sim sorries are at approximately L7062, L7065, L7077, L7079. Run `grep -n sorry VerifiedJS/Proofs/ANFConvertCorrect.lean` to get CURRENT line numbers.
+The remaining if_step_sim sorries are:
+- **L6864**: toBoolean v = true → step to then_ branch
+- **L6867**: toBoolean v = false → step to else_ branch
+- **L6883**: normalizeExpr_if_cond_var_free (error case — var not bound)
 
-`bindComplex_not_if` ALREADY EXISTS (line ~469). The characterization approach works for `.if`.
+### For L6864 and L6867 (true/false branches):
+You need `normalizeExpr_if_source` — if `normalizeExpr e k` produces `.if cond then_ else_` with trivial-preserving `k`, then `e = .if fc ft fe`.
 
-### Step 1: Build `normalizeExpr_if_source` characterization
-
-Follow the SAME pattern as `normalizeExpr_seq_while_first_family` (lines ~767-1068).
+`bindComplex_not_if` ALREADY EXISTS (line ~469). Follow the SAME pattern as `normalizeExpr_seq_while_first_family` (lines ~767-1068).
 
 ```lean
 private theorem normalizeExpr_if_source
@@ -54,29 +55,23 @@ private theorem normalizeExpr_if_source
     have ⟨m', hkm⟩ := hk (.var name') n
     rw [hkm] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
   -- For constructors using bindComplex: unfold normalizeExpr, use bindComplex_not_if
-  -- For .seq, .while_, .let, .tryCatch, .labeled: unfold normalizeExpr, show they don't produce .if
+  -- For .seq, .while_: use normalizeExpr_seq_while_first to get contradiction
+  -- For .let, .tryCatch, .labeled: unfold normalizeExpr, show they don't produce .if
   | _ => sorry -- Fill per-constructor
 ```
 
-For each remaining constructor:
-- **Uses `bindComplex`** (unary, binary, call, getProp, etc.): unfold normalizeExpr, show result goes through bindComplex, use `bindComplex_not_if`
-- **`.seq a b`**: normalizeExpr produces seq/while, not if → use `normalizeExpr_seq_while_first` (already proved)
-- **`.while_ c d`**: normalizeExpr produces while, not if
-- **`.let`, `.tryCatch`, `.labeled`**: produce their own form, not if
-- **`.return`, `.throw`, `.break`, `.continue`, `.await`, `.yield`**: produce their form + continuation
-
-Use `normalizeExpr_seq_while_first_family` as the structural template.
-
-### Step 2: Use normalizeExpr_if_source to close if_step_sim sub-sorries
-
+Once you have `normalizeExpr_if_source`, use it in L6864/6867:
 ```lean
 have ⟨fc, ft, fe, he_if⟩ := normalizeExpr_if_source sf.expr k hk n m cond then_ else_ hnorm
 subst he_if
--- Now sf.expr = .if fc ft fe, match flat semantics
+-- Now sf.expr = .if fc ft fe, match flat semantics for .if
 ```
 
-### Step 3: tryCatch_step_sim — SAME PATTERN
-Build `normalizeExpr_tryCatch_source` using `bindComplex_not_tryCatch` (line ~480).
+### For L6883 (var not bound):
+Build `normalizeExpr_if_cond_var_free`: if normalizeExpr e k = .if (.var name) then_ else_ with trivial-preserving k, then either name is free in e, or name was introduced by normalizeExpr (in which case it's bound in sa_env). The key insight is that ANF normalization only introduces FRESH names (via `freshName`), and these are immediately bound in the .let that wraps them. So a `.var name` at the top-level condition of `.if` must come from the original expression.
+
+### After if_step_sim: tryCatch_step_sim (L6910)
+Same pattern: build `normalizeExpr_tryCatch_source` using `bindComplex_not_tryCatch` (line ~480).
 
 ## SKIP THESE:
 - `let_step_sim` (L6785) — bindComplex PRODUCES .let, characterization WRONG

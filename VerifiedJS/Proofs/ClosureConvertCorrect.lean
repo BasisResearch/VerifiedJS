@@ -3153,6 +3153,53 @@ private theorem convertExprList_state_none
         exact ih st hrest
     | _ => simp [Core.firstNonValueExpr] at h
 
+/-- When all Core elements are values, the converted Flat list also has no non-value. -/
+private theorem convertExprList_firstNonValueExpr_none
+    (es : List Core.Expr)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState)
+    (h : Core.firstNonValueExpr es = none) :
+    Flat.firstNonValueExpr (Flat.convertExprList es scope envVar envMap st).fst = none := by
+  induction es generalizing st with
+  | nil => simp [Flat.convertExprList, Flat.firstNonValueExpr]
+  | cons e es' ih =>
+    cases e with
+    | lit v =>
+      unfold Core.firstNonValueExpr at h
+      cases hrest : Core.firstNonValueExpr es' with
+      | some _ => simp [hrest] at h
+      | none =>
+        have hcl : (Flat.convertExprList (Core.Expr.lit v :: es') scope envVar envMap st).fst =
+            Flat.Expr.lit (Flat.convertValue v) :: (Flat.convertExprList es' scope envVar envMap st).fst := by
+          simp [Flat.convertExprList, Flat.convertExpr]
+        rw [hcl]; unfold Flat.firstNonValueExpr; simp [Flat.exprValue?, ih st hrest]
+    | _ => simp [Core.firstNonValueExpr] at h
+
+/-- When all Core elements are values, the zipIdx.filterMap on converted list equals mkIndexedProps. -/
+private theorem convertExprList_zipIdx_filterMap_eq_mkIndexedProps
+    (es : List Core.Expr) (startIdx : Nat)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState)
+    (h : Core.firstNonValueExpr es = none) :
+    ((Flat.convertExprList es scope envVar envMap st).fst.zipIdx startIdx).filterMap
+      (fun p => match Flat.exprValue? p.1 with | some v => some (toString p.2, Flat.flatToCoreValue v) | none => none) =
+    Core.mkIndexedProps startIdx es := by
+  induction es generalizing st startIdx with
+  | nil => simp [Flat.convertExprList, Core.mkIndexedProps]
+  | cons e es' ih =>
+    cases e with
+    | lit v =>
+      unfold Core.firstNonValueExpr at h
+      cases hrest : Core.firstNonValueExpr es' with
+      | some _ => simp [hrest] at h
+      | none =>
+        have hcl : (Flat.convertExprList (Core.Expr.lit v :: es') scope envVar envMap st).fst =
+            Flat.Expr.lit (Flat.convertValue v) :: (Flat.convertExprList es' scope envVar envMap st).fst := by
+          simp [Flat.convertExprList, Flat.convertExpr]
+        rw [hcl]
+        simp only [List.zipIdx_cons, List.filterMap_cons, Flat.exprValue?,
+          flatToCoreValue_convertValue, Core.mkIndexedProps]
+        exact congrArg _ (ih (startIdx + 1) st hrest)
+    | _ => simp [Core.firstNonValueExpr] at h
+
 private theorem convertPropList_firstNonValueProp_none
     (ps : List (Core.PropName × Core.Expr))
     (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState)
@@ -4213,14 +4260,30 @@ private theorem closureConvert_step_simulation
             simp at hstep
             obtain ⟨rfl, hsf'eq⟩ := hstep; subst hsf'eq
             -- ev is now .log flat_msg; Core also produces this via Core_step?_call_consoleLog_flat_msg
+            let sc' : Core.State :=
+              ⟨.lit .undefined, sc.env, sc.heap,
+               sc.trace ++ [.log (match argVals.map Flat.convertValue with
+                 | [v] => Flat.valueToString v
+                 | vs => String.intercalate " " (vs.map Flat.valueToString))],
+               sc.funcs, sc.callStack⟩
             have hsc_eta : sc = { sc with expr := .call (.lit (.function Core.consoleLogIdx)) args } := by
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-            -- Let Core theorem determine sc' via unification
-            refine ⟨injMap, ?_, ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
             · -- Core.step?
               rw [hsc_eta]
               exact Core_step?_call_consoleLog_flat_msg args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
-            all_goals sorry -- consoleLog sub-goals: trace/invariants for consoleLog case
+            · simp [sc', htrace]
+            · exact hinj
+            · exact henvCorr
+            · exact henvwf
+            · exact hheapvwf
+            · simp [sc', hheapna]
+            · simp [sc', noCallFrameReturn]
+            · simp [sc', ExprAddrWF, ValueAddrWF]
+            · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, ?_⟩
+              · simp [sc', Flat.convertExpr, Flat.convertValue]
+              · rw [hst, allValues_convertExprList_state args argVals scope envVar envMap st hallv]
+                exact ⟨rfl, rfl⟩
           · -- Non-consoleLog function call: needs FuncsCorr invariant
             sorry -- non-consoleLog function call: needs sf.funcs[idx] ↔ sc.funcs[idx] correspondence
         · -- Non-function callee with all-value args
@@ -6035,7 +6098,81 @@ private theorem closureConvert_step_simulation
     obtain ⟨hfexpr, hst⟩ := hconv
     cases hcfnv : Core.firstNonValueExpr elems with
     | none =>
-      sorry -- all elements are values: heap allocation (same class as other value sub-cases)
+      -- All elements are values: both Core and Flat allocate an array on heap.
+      have hffnv := convertExprList_firstNonValueExpr_none elems scope envVar envMap st hcfnv
+      have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values _ hffnv
+      have hsf_eta : sf = { sf with expr := .arrayLit (Flat.convertExprList elems scope envVar envMap st).fst } := by
+        cases sf; simp_all
+      rw [hsf_eta] at hstep
+      rw [Flat.step?_arrayLit_allValues _ _ _ hvs] at hstep
+      simp only [Prod.mk.injEq, Option.some.injEq] at hstep
+      obtain ⟨rfl, rfl⟩ := hstep
+      have hna_eq : sc.heap.nextAddr = sf.heap.nextAddr := hinj.2.1
+      have hfmatch := convertExprList_zipIdx_filterMap_eq_mkIndexedProps elems 0 scope envVar envMap st hcfnv
+      have hst_eq : (Flat.convertExprList elems scope envVar envMap st).snd = st :=
+        convertExprList_state_none elems scope envVar envMap st hcfnv
+      let caddr := sc.heap.nextAddr
+      let cheapProps := Core.mkIndexedProps 0 elems
+      let cheap' : Core.Heap := { objects := sc.heap.objects.push cheapProps, nextAddr := caddr + 1 }
+      let sc' : Core.State := ⟨.lit (.object caddr), sc.env, cheap',
+        sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+      have hcstep : Core.step? sc = some (.silent, sc') := by
+        have hsc' : sc = { sc with expr := .arrayLit elems } := by
+          obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+        rw [hsc']
+        have := Core.step?_arrayLit_val elems sc.env sc.heap sc.trace sc.funcs sc.callStack hcfnv
+        simp only [Core.pushTrace, sc', cheap', cheapProps, caddr] at this ⊢; exact this
+      have hinj' : HeapInj injMap cheap' ⟨sf.heap.objects.push
+          ((Flat.convertExprList elems scope envVar envMap st).fst.zipIdx.filterMap fun (e, i) =>
+            match Flat.exprValue? e with | some v => some (toString i, Flat.flatToCoreValue v) | none => none),
+          sf.heap.nextAddr + 1⟩ := by
+        simp only [cheap', cheapProps, caddr]
+        rw [← hfmatch]; exact HeapInj_alloc_both hinj _
+      have hheapvwf' : HeapValuesWF cheap' := by
+        intro addr haddr props' hprops' kv hkv
+        simp only [cheap', cheapProps, caddr, Array.size_push] at haddr
+        rw [Array.getElem?_push] at hprops'
+        split at hprops'
+        · simp only [Option.some.injEq] at hprops'; subst hprops'
+          have hwf_elems : ExprAddrListWF elems sc.heap.objects.size := by
+            simp [ExprAddrWF] at hexprwf; exact hexprwf
+          suffices ∀ (es' : List Core.Expr) (idx : Nat),
+            ExprAddrListWF es' sc.heap.objects.size →
+            Core.firstNonValueExpr es' = none →
+            ∀ kv' ∈ Core.mkIndexedProps idx es', ValueAddrWF kv'.2 sc.heap.objects.size from
+            ValueAddrWF_mono (this elems 0 hwf_elems hcfnv kv hkv) (by simp only [cheap', Array.size_push]; omega)
+          intro es' idx hes' hfnv kv' hkv'
+          induction es' generalizing idx with
+          | nil => simp [Core.mkIndexedProps] at hkv'
+          | cons e' es'' ih =>
+            cases e' with
+            | lit w =>
+              simp [Core.mkIndexedProps] at hkv'
+              rcases hkv' with rfl | hmem
+              · simp only [ExprAddrListWF, ExprAddrWF] at hes'; exact hes'.1
+              · have hfnv' : Core.firstNonValueExpr es'' = none := by
+                  unfold Core.firstNonValueExpr at hfnv
+                  cases Core.firstNonValueExpr es'' with
+                  | none => rfl
+                  | some _ => simp at hfnv
+                simp only [ExprAddrListWF] at hes'
+                exact ih (idx + 1) hes'.2 hfnv' hmem
+            | _ => simp [Core.firstNonValueExpr] at hfnv
+        · next hne =>
+          have haddr' : addr < sc.heap.objects.size := by omega
+          exact ValueAddrWF_mono (hheapvwf addr haddr' props' hprops' kv hkv) (by simp only [cheap', Array.size_push]; omega)
+      refine ⟨injMap, sc', ⟨hcstep⟩, ?trace_, ?hinj_, ?envcorr_, ?envwf_, ?hvwf_,
+        ?hna_, ?ncfr_, ?ewf_, ?ccst_⟩
+      case trace_ => simp [sc', htrace]
+      case hinj_ => exact hinj'
+      case envcorr_ => exact henvCorr
+      case envwf_ => exact EnvAddrWF_mono henvwf (by simp only [sc', cheap', Array.size_push]; omega)
+      case hvwf_ => exact hheapvwf'
+      case hna_ => simp only [sc', cheap', caddr, Array.size_push, hheapna]
+      case ncfr_ => simp [sc', noCallFrameReturn]
+      case ewf_ => simp only [sc', ExprAddrWF, ValueAddrWF, cheap', caddr, Array.size_push]; rw [hheapna]; omega
+      case ccst_ => exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, caddr, hna_eq],
+        ⟨rfl, rfl⟩, by rw [hst, hst_eq]; exact ⟨rfl, rfl⟩⟩
     | some val =>
       obtain ⟨done_c, target_c, rest_c⟩ := val
       have htarget_not_lit := Core.firstNonValueExpr_not_lit hcfnv

@@ -5222,3 +5222,33 @@ After one ANF step on `.seq (.while_ c d) b` (when `exprValue? c = some v`), the
 
 ### 2026-04-03T17:30:10+00:00 Starting run
 2026-04-03T18:30:01+00:00 SKIP: already running
+### 2026-04-03T18:38:05+00:00 Partial progress on if_step_sim
+- Error case (L6871): partially closed. All literal trivial sub-cases proven by contradiction.
+- Remaining sorry in error case: .var name_cond (needs normalizeExpr_if_cond_var_free)
+- True/false branches (L6864/L6867): still sorry, need structural simulation proof
+- Build: PASSING
+
+### 2026-04-03T18:38:55+00:00 Run complete — partial progress on if_step_sim error case
+
+#### Changes made:
+- L6871 error sorry: replaced with structured proof
+  - All literal trivial cases (.litNull, .litUndefined, .litBool, .litNum, .litStr, .litObject, .litClosure) proven by contradiction (evalTrivial always succeeds for literals)
+  - .var case: sorry remains (needs normalizeExpr_if_cond_var_free lemma)
+
+#### Key findings from analysis:
+1. The characterization approach (normalizeExpr_if_source: e must be .if) as described in prompt is INCORRECT
+   - .seq a b CAN produce .if when b (or its reachable sub-exprs) contains .if
+   - .let name (.if ...) body CAN produce .if (the .if bubbles up through CPS)
+   - Most constructors with a 'head' sub-expression can propagate .if
+2. Correct approach: strong induction on sf.expr.depth with case analysis
+   - .if fc ft fe (fc trivial chain): use steps_if_var_branch/steps_if_lit_branch
+   - .seq a b: peel off seq prefix with trivialChain_consume_ctx, recurse on b
+   - .var, .lit, .this: contradiction (k produces .trivial, not .if)
+   - .break, .continue, .return none, .yield none, .labeled, .while_, .tryCatch: contradiction
+   - Other (complex fc, .let, .assign, etc.): need normalizeExpr_not_if_family or similar
+3. ANF.toBoolean vs Flat.toBoolean: both are private/separate but definitionally equal. Connect via cases on Value.
+4. Existing helpers: steps_if_var_branch, steps_if_lit_branch, steps_if_this_branch, trivialChain_consume_ctx
+
+#### Sorry count: 24 (unchanged net — 1 sorry replaced with partial proof + 1 smaller sorry)
+#### Build: PASSING
+2026-04-03T18:39:16+00:00 DONE

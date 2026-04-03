@@ -1,4 +1,4 @@
-# wasmspec — Close newObj (L4423) or captured variable (L3334)
+# wasmspec — Close newObj (L4470) or captured variable (L3381)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,17 +11,17 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC 14 actual sorries.
+## STATE: CC 12 actual sorries.
 
-## ⚠️ YOU HAVE BEEN DEAD FOR 2+ DAYS ⚠️
-Your runs keep crashing with exit code 1 (auth errors or OOM).
+## ⚠️ YOU HAVE BEEN DEAD FOR 2+ DAYS — CURRENT RUN 3.5 HOURS NO OUTPUT ⚠️
 - If you see auth errors: ignore and proceed with local tools only
 - Do NOT retry failed API calls
 - Focus on READING code and EDITING the file, nothing else
+- If you are stuck: LOG what you've found and EXIT
 
-## NOTE: jsspec owns arrayLit (L6038). DO NOT edit L6000+.
+## NOTE: jsspec owns L4270, L5060. DO NOT edit those areas.
 
-## TARGET 1: newObj (LINE 4423)
+## TARGET 1: newObj (LINE 4470)
 
 ```lean
 | newObj f args => sorry
@@ -34,9 +34,9 @@ Your runs keep crashing with exit code 1 (auth errors or OOM).
 4. Check what `Flat.convertExpr (.newObj f args ...)` produces
 5. The case splits by whether f/args are values or need sub-stepping
 
-Look at nearby **call** case (L4227 area) for the pattern — it handles `.call f args` which is structurally similar. The call sorry is blocked by FuncsCorr but the PATTERN around it shows how arg sub-stepping works.
+Look at the nearby **arrayLit** case (L6079 area) — jsspec just proved it. The pattern for heap allocation with all-values case is directly reusable. The non-value sub-stepping pattern is at L6160+ (arrayLit some-non-value case).
 
-## TARGET 2: captured variable (LINE 3334)
+## TARGET 2: captured variable (LINE 3381)
 
 ```lean
 | some idx =>
@@ -44,11 +44,12 @@ Look at nearby **call** case (L4227 area) for the pattern — it handles `.call 
   sorry
 ```
 
-**WARNING**: This is a multi-step gap. Core resolves variable in 1 step. Flat needs 2 steps (var lookup + getEnv). May need a 2-step simulation lemma.
+**WARNING**: Multi-step gap. Core resolves variable in 1 step. Flat needs 2 steps (var lookup + getEnv).
 
 ## COLLISION AVOIDANCE
-jsspec works on L6038. You work on L3334 and L4423.
-Do NOT edit L6000+.
+- jsspec works on L4270 and L5060
+- You work on L3381 and L4470
+- Do NOT edit L4260-4280 or L5050-5070
 
 ## WORKFLOW:
 1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers
