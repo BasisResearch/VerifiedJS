@@ -5269,3 +5269,85 @@ Key insight: the cases where output agreement fails are NOT sub-stepping — the
 
 ## Run: 2026-04-03T22:15:01+00:00
 
+### 2026-04-03T22:15:11+00:00 Starting CCStateAgree support
+
+### 2026-04-03T22:15:01+00:00 CCStateAgree Uses Analysis
+
+## Theorem Statement (lines 3355-3357)
+The existential conclusion packs:
+```
+∃ (st_a st_a' : Flat.CCState),
+  (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
+  CCStateAgree st st_a ∧ CCStateAgree st' st_a'
+```
+
+## PASS-THROUGH cases (13 total — easy to drop st_a'/hAgreeOut)
+
+These cases repack hAgreeOut directly into the goal with at most a state rewrite.
+Pattern: `⟨st_a, st_a', ..., hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩`
+
+| # | Case | obtain line | repack line |
+|---|------|------------|-------------|
+| 1 | assign | 3650 | 3675-3677 |
+| 2 | unary | 3972 | 3997-3999 |
+| 3 | binary (rhs complete) | 4070 | 4096-4098 |
+| 4 | getProp | 4706 | 4731-4733 |
+| 5 | setProp (state rewrite) | 4908 | 4935 |
+| 6 | getIndex (state rewrite) | 5203 | 5230 |
+| 7 | setIndex (simple) | 5494 | 5521-5525 |
+| 8 | deleteProp | 5816 | 5841-5843 |
+| 9 | typeof | 5907 | 5932-5934 |
+| 10 | throw | 6422 | 6450-6452 |
+| 11 | return | 6843 | 6869-6871 |
+| 12 | yield | 6985 | 7011-7013 |
+| 13 | await | 7074 | 7100-7102 |
+
+Fix: Delete st_a' and hAgreeOut from destructure; remove agreement repacking from goal.
+
+## USES-hAgreeOut cases (14 total — needs rework)
+
+These call `convertExpr_state_determined ... st_a' hAgreeOut.1 hAgreeOut.2` to derive
+agreement for a continuation sub-expression (body, branch, rhs, args, etc.).
+
+| # | Case | obtain line | Usage lines | Continuation |
+|---|------|------------|-------------|--------------|
+| 1 | let (init step) | 3560 | 3586-3593 | body |
+| 2 | if (cond step) | 3778 | 3806-3813 | then/else branches |
+| 3 | seq (a step) | 3880 | 3907-3911 | b |
+| 4 | binary (lhs step) | 4131 | 4158-4162 | rhs |
+| 5 | call (func step) | 4205 | 4234-4238 | args list |
+| 6 | call (closureEnv) | 4350 | 4406-4418 | hagree_mid derivation |
+| 7 | setProp (obj step) | 4970 | 4997-5001 | value |
+| 8 | getIndex (obj step) | 5264 | 5291-5295 | idx |
+| 9 | setIndex (obj, value pending) | 5572 | 5603-5607 | value |
+| 10 | setIndex (3-arg) | 5649 | 5679-5687 | idx then value |
+| 11 | objectLit (prop step) | 6060 | 6110-6127 | remaining props |
+| 12 | arrayLit (elem step) | 6274 | 6324-6341 | remaining elems |
+| 13 | tryCatch (body step) | 6537 | ~6537 | (details TBD) |
+| 14 | tryCatch (catch body) | 6596 | 6644-6655 | catchBody |
+
+## KEY INSIGHT for the rework
+
+All 14 cases follow one pattern:
+1. IH gives `hAgreeOut : CCStateAgree (convertExpr sub_e ... st).snd st_a'`
+2. Case calls `convertExpr_state_determined continuation ... st_a' hAgreeOut.1 hAgreeOut.2`
+
+REPLACEMENT STRATEGY — use `convertExpr_state_determined` on the *input* agreement instead:
+- From `hAgreeIn : CCStateAgree st_input st_a`
+- Call `convertExpr_state_determined sub_e ... st_a hAgreeIn.1 hAgreeIn.2`
+- This gives output agreement directly (the existing lemma at line ~567 already does this!)
+- Then use that derived agreement for the continuation, same as before
+
+The `convertExpr_state_determined` lemma (line 567-570) states:
+```
+CCStateAgree st1 st2 →
+CCStateAgree (convertExpr e scope envVar envMap st1).snd (convertExpr e scope envVar envMap st2).snd
+```
+So from `hAgreeIn`, we get the equivalent of `hAgreeOut` for free. No new lemma needed!
+
+## Summary
+- 13 pass-through cases: trivial fix (delete st_a'/hAgreeOut)
+- 14 uses-hAgreeOut cases: replace `hAgreeOut` with `convertExpr_state_determined sub_e ... st_a hAgreeIn.1 hAgreeIn.2`
+- No new standalone lemma needed — existing `convertExpr_state_determined` suffices
+### 2026-04-03T22:17:35+00:00 Run complete — CCStateAgree uses mapped (13 pass-through, 14 uses-output, replacement via convertExpr_state_determined confirmed)
+2026-04-03T22:17:43+00:00 DONE
