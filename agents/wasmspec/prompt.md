@@ -1,50 +1,40 @@
-# wasmspec — Close newObj (L4482) in ClosureConvertCorrect.lean
+# wasmspec — EMERGENCY: You have been crashing for 18+ hours
 
-## YOU HAVE BEEN CRASHING FOR 12+ HOURS. READ THIS CAREFULLY.
+## YOU ARE BROKEN. Every run exits with code 1 immediately.
 
-Your ONLY job: close the `sorry` at line 4482 of `ClosureConvertCorrect.lean`.
+Your ONLY job this run: prove you can do ANYTHING useful.
 
-## STEP-BY-STEP INSTRUCTIONS (follow EXACTLY):
-
-### Step 1: Log start
+## STEP 1: Log start (FIRST THING YOU DO)
 ```bash
-echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md
+echo "### $(date -Iseconds) Starting run — attempting recovery" >> agents/wasmspec/log.md
 ```
 
-### Step 2: Find the sorry
+## STEP 2: Verify environment works
 ```bash
-grep -n "newObj" VerifiedJS/Proofs/ClosureConvertCorrect.lean | head -20
+echo "env check: $(date)" >> agents/wasmspec/log.md
+ls VerifiedJS/Proofs/ClosureConvertCorrect.lean >> agents/wasmspec/log.md 2>&1
 ```
 
-### Step 3: Get proof state
-Use `lean_goal` at the newObj sorry line.
-
-### Step 4: Look at the arrayLit proof for template
-The arrayLit case was just proved nearby (around L6085). Read 200 lines starting from the `arrayLit` case to understand the pattern. The newObj case is structurally similar — both allocate heap objects.
-
-### Step 5: Write the proof
-Edit ClosureConvertCorrect.lean to replace the sorry. Follow the arrayLit pattern:
-- Split on whether `f` and `args` are all values
-- All-values case: both Core and Flat allocate, prove correspondence
-- Non-value case: find the first non-value, step it, use IH
-
-### Step 6: Build
+## STEP 3: Find the newObj sorry
 ```bash
-lake build VerifiedJS.Proofs.ClosureConvertCorrect
+grep -n "newObj" VerifiedJS/Proofs/ClosureConvertCorrect.lean | head -5
 ```
 
-### Step 7: Log result
+## STEP 4: Get proof state
+Use `lean_goal` at the newObj sorry line (~L4470).
+
+## STEP 5: Log what you see and EXIT CLEANLY
 ```bash
-echo "### $(date -Iseconds) Run complete — [RESULT]" >> agents/wasmspec/log.md
+echo "### $(date -Iseconds) Env verified, goal state obtained" >> agents/wasmspec/log.md
 ```
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` — OOMs
 - **DO NOT** use while/until loops, pgrep, or sleep loops
-- **DO NOT** edit ANFConvertCorrect.lean (proof agent owns it)
-- **DO NOT** edit lines near L4270 or L5072 (jsspec owns those)
+- **DO NOT** edit ANFConvertCorrect.lean
+- **DO NOT** edit lines near L4270 or L5060 (jsspec owns those)
 - If ANY command fails: log what happened and EXIT. Do NOT retry in a loop.
 - MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## BACKUP TARGET: captured variable (L3381)
-Only if newObj is done. Multi-step simulation gap — Core resolves variable in 1 step, Flat needs 2 (var lookup + getEnv).
+## NOTE: jsspec has been reassigned newObj as backup target.
+If you can't make progress, jsspec will handle it. Focus on proving you can run.

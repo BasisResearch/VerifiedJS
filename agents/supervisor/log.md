@@ -1,3 +1,52 @@
+## Run: 2026-04-03T19:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 (grep -c) + CC 16 (grep-c, 12 actual) = **36 actual** (was 38 last run)
+- **Delta from last run (18:30)**: 38 → 36. **NET -2** (reclassified: last run double-counted, actual CC was already 12).
+- Actually: NET 0 from last run. Last run already had 12 actual CC. Total remains 36.
+
+### Agent Status
+1. **proof** (last run 17:30-18:39): Partial progress on if_step_sim error case. All literal trivial sub-cases proven by contradiction. Remaining: L6883 (.var name_cond needs normalizeExpr_if_cond_var_free). L6864/6867 (true/false branches) still sorry.
+   - Prompt updated: SPECIFIC code for normalizeExpr_if_cond_var_free lemma (follow L1950 pattern). Exact closing tactic for L6883 provided. Then strong induction for L6864/6867.
+
+2. **jsspec** (started 19:00): RUNNING. CC modified at 19:02 — actively editing. Working on consoleLog (L4270).
+   - Prompt updated: added newObj (L4470) as TARGET 2 — reassigned from dead wasmspec. Template from arrayLit proof.
+
+3. **wasmspec**: DEAD 18+ hours. Every run exits code 1 immediately. 30+ consecutive crashes.
+   - Prompt updated: minimal recovery steps — just prove environment works. newObj reassigned to jsspec as backup.
+
+### Actions Taken
+1. Counted sorries: ANF 24 + CC 12 actual = 36.
+2. Updated proof prompt: specific normalizeExpr_if_cond_var_free lemma with code template following L1950 pattern.
+3. Updated jsspec prompt: reassigned newObj from dead wasmspec. Priority: consoleLog → newObj → getIndex.
+4. Updated wasmspec prompt: minimal recovery mode — just verify environment.
+5. Logged to time_estimate.csv.
+
+### Sorry Breakdown (CC, 12 actual, unchanged)
+- L1507/1508: forIn/forOf stubs (unprovable)
+- L3381: captured var (multi-step gap)
+- L3709: if-then CCStateAgree (BLOCKED)
+- L3732: if-else CCStateAgree x2 (BLOCKED)
+- L4270: consoleLog sub-goals (jsspec TARGET 1)
+- L4272: non-consoleLog call (BLOCKED no FuncsCorr)
+- L4470: newObj (jsspec TARGET 2, reassigned from wasmspec)
+- L5060: getIndex string (jsspec TARGET 3, may be unprovable)
+- L6293: functionDef (BLOCKED multi-step + CCStateAgree)
+- L6448: tryCatch finally CCStateAgree (BLOCKED)
+- L6519: tryCatch error CCStateAgree (BLOCKED)
+- L6626: while_ CCStateAgree (BLOCKED)
+
+### Tractable targets (non-blocked)
+- **L6883** (ANF): normalizeExpr_if_cond_var_free → proof agent has exact code
+- **L4270** (CC): consoleLog → jsspec running on it NOW
+- **L4470** (CC): newObj → jsspec after consoleLog
+- **L6864/6867** (ANF): if branch simulation → proof agent after L6883
+
+### Biggest blocker: CCStateAgree (6 CC sorries blocked)
+Until CCStateAgree is solved, CC cannot go below 6 sorries. No agent is working on this — needs architectural fix to CC_SimRel.
+
+---
+
 ## Run: 2026-04-03T18:30:02+00:00
 
 ### Metrics
@@ -9016,3 +9065,4 @@ Unknown — all agents exit immediately. Likely harness/infra issue, not proof-r
 
 ## Run: 2026-04-03T19:05:01+00:00
 
+2026-04-03T19:08:56+00:00 DONE
