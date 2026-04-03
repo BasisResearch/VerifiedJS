@@ -5079,7 +5079,12 @@ private theorem closureConvert_step_simulation
                 congr 1; congr 1
                 simp only [hfind]; exact (coreToFlatValue_eq_convertValue kv.2).symm
         · -- String case: string indexing
-          sorry -- getIndex string both-values: Flat/Core semantic mismatch in .number else branch (propName == "length" check in Flat but not Core)
+          sorry /- getIndex string both-values: UNPROVABLE.
+            In .number n case with invalid index, Flat checks `valueToString (.number n) == "length"`
+            (always false) before returning .undefined, but Core returns .undefined directly.
+            Semantically equivalent, but proving `Float.toString n ≠ "length"` is blocked by
+            Float.toString being an opaque native function. Fix: align Flat/Core string-getIndex
+            semantics so .number else branch matches, or add an axiom for Float.toString output. -/
         · -- Non-object, non-string: both return .undefined
           have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr := convertValue_not_object cv hno
           have hns_flat : ∀ str, Flat.convertValue cv ≠ .string str := by
