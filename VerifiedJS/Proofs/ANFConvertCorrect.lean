@@ -6754,7 +6754,13 @@ private theorem normalizeExpr_let_step_sim
       observableTrace [ev] = observableTrace evs ∧
       ANF_SimRel s t sa' sf' ∧
       ExprWellFormed sf'.expr sf'.env := by
-  sorry
+  subst hheap henv
+  -- ANF.step? on .let always succeeds: evaluates rhs via evalComplex, extends env
+  simp only [ANF.step?, ANF.pushTrace] at hstep_eq
+  obtain ⟨rfl, rfl⟩ := hstep_eq
+  -- Now sa'.expr = body, sa'.env = (evalComplex rhs).env.extend name (evalComplex rhs).value
+  -- Need: sf.expr has .let or bindComplex form at eval head, flat steps matching
+  sorry -- Need characterization of what produces .let, flat simulation
 
 /-- If normalizeExpr sf.expr k produces .seq a b (with trivial-preserving k),
     then one ANF step on the seq can be simulated by Flat steps. -/
@@ -6824,7 +6830,23 @@ private theorem normalizeExpr_if_step_sim
       observableTrace [ev] = observableTrace evs ∧
       ANF_SimRel s t sa' sf' ∧
       ExprWellFormed sf'.expr sf'.env := by
-  sorry
+  subst hheap henv
+  unfold ANF.step? at hstep_eq
+  simp only [ANF.pushTrace] at hstep_eq
+  split at hstep_eq
+  · -- evalTrivial env cond = .ok v
+    rename_i v heval
+    split at hstep_eq
+    · -- toBoolean v = true: step to then_
+      obtain ⟨rfl, rfl⟩ := hstep_eq
+      sorry -- Need: sf.expr has .if at eval head, flat steps to then_flat, SimRel for then_
+    · -- toBoolean v = false: step to else_
+      obtain ⟨rfl, rfl⟩ := hstep_eq
+      sorry -- Need: sf.expr has .if at eval head, flat steps to else_flat, SimRel for else_
+  · -- evalTrivial env cond = .error msg
+    rename_i msg herr
+    obtain ⟨rfl, rfl⟩ := hstep_eq
+    sorry -- Error case: show flat can simulate the error
 
 /-- If normalizeExpr sf.expr k produces .tryCatch body catchParam catchBody finally_
     (with trivial-preserving k), then one ANF step can be simulated by Flat steps. -/
@@ -6845,7 +6867,35 @@ private theorem normalizeExpr_tryCatch_step_sim
       observableTrace [ev] = observableTrace evs ∧
       ANF_SimRel s t sa' sf' ∧
       ExprWellFormed sf'.expr sf'.env := by
-  sorry
+  subst hheap henv
+  unfold ANF.step? at hstep_eq
+  simp only [ANF.pushTrace] at hstep_eq
+  -- tryCatch has 3 cases: body is value, body steps with error, body steps normally
+  split at hstep_eq
+  · -- exprValue? body = some v: tryCatch resolves with the value
+    rename_i v hbval
+    split at hstep_eq
+    · -- some finally_: step to .seq finally_ (.trivial (trivialOfValue v))
+      obtain ⟨rfl, rfl⟩ := hstep_eq
+      sorry -- tryCatch value + finally case
+    · -- none: step to .trivial (trivialOfValue v)
+      obtain ⟨rfl, rfl⟩ := hstep_eq
+      sorry -- tryCatch value, no finally case
+  · -- exprValue? body = none
+    rename_i hnv
+    split at hstep_eq
+    · -- step? body = some (ev, sb)
+      split at hstep_eq
+      · -- body stepped with error: catch handler
+        rename_i msg sb hbstep
+        obtain ⟨rfl, rfl⟩ := hstep_eq
+        sorry -- error caught: step to catch handler
+      · -- body stepped normally: continue with updated body
+        rename_i t sb hbstep
+        obtain ⟨rfl, rfl⟩ := hstep_eq
+        sorry -- normal body step: propagate through tryCatch context
+      · exact absurd hstep_eq (by simp)
+    · exact absurd hstep_eq (by simp)
 
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.
