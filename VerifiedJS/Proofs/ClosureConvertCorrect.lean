@@ -4186,20 +4186,7 @@ private theorem closureConvert_step_simulation
           | _ => right; intro idx h; cases h
         rcases hfunc_or_not with ⟨idx, rfl⟩ | hnotfunc
         · -- Function call case: cv = .function idx, all args are values
-          by_cases hidx : idx = Core.consoleLogIdx
-          · -- ConsoleLog call: both sides produce .log msg, result .lit .undefined
-            subst hidx
-            have hfvals := allValues_convertExprList_valuesFromExprList args argVals scope envVar envMap st hallv
-            have hsf_eta : sf = { sf with expr := .call (.lit (.closure Core.consoleLogIdx 0)) (.lit .null)
-                (Flat.convertExprList args scope envVar envMap st).fst } := by
-              cases sf; simp_all [Flat.convertValue]
-            rw [hsf_eta] at hstep
-            rw [Flat_step?_call_consoleLog_vals _ 0 .null _ _ hfvals] at hstep
-            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-            obtain ⟨rfl, hsf'eq⟩ := hstep; subst hsf'eq
-            sorry
-          · -- Non-consoleLog function call: needs FuncsCorr invariant
-            sorry -- non-consoleLog function call: needs sf.funcs[idx] ↔ sc.funcs[idx] correspondence
+          sorry -- consoleLogIdx + non-consoleLogIdx: needs Flat_step?_call_consoleLog_vals fix + FuncsCorr
         · -- Non-function callee with all-value args
           have hnc := convertValue_not_closure_of_not_function cv hnotfunc
           have hfvals := allValues_convertExprList_valuesFromExprList args argVals scope envVar envMap st hallv
