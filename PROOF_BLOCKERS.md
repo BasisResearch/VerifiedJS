@@ -6,9 +6,9 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ## BUILD STATUS: ✅ CC and ANF compile independently. (2026-04-03T15:30)
 
-## Sorry Count: ~35 actual (22 ANF + ~13 CC actual + 0 Lower)
-- ANF: 22 sorries. Remaining: 3 monolithic (let L6757, if L6827, tryCatch L6848), 1 while-loop blocker (seq L6805 — see blocker R below), ~14 compound/eval-context (need depth induction), 2 break/continue, 1 semantic mismatch (await this-none), 1 unclassified.
-- CC: ~13 actual sorry statements. Actionable: objectLit all-values (L6053, wasmspec), tryCatch with-finally (L6342, jsspec), tryCatch error-scope (L6360, jsspec). ~7 blocked (CCStateAgree×3, FuncsCorr, semantic mismatch, 2 stubs, functionDef).
+## Sorry Count: ~44 tokens (30 ANF + 14 CC actual + 0 Lower) — as of 2026-04-03T18:05
+- ANF: 30 sorry tokens (grep -c). Decomposed from 22→30 via proof agent splitting monolithic into per-case. ~10 in if_step_sim block (closable with normalizeExpr_if_source characterization), let_step_sim (SKIP — bindComplex produces .let), seq_step_sim (BLOCKED — SimRel while-loop), ~14 compound/eval-context (need depth induction).
+- CC: 14 actual sorry statements. Actionable: arrayLit all-values (L6038, jsspec — follows objectLit template). ~7 blocked (CCStateAgree×5, FuncsCorr×1, semantic mismatch×1). 2 unprovable stubs (forIn/forOf). functionDef (multi-step, see blocker S). captured var (multi-step, see blocker T). newObj (wasmspec, needs investigation).
 - Lower: 0 sorries ✓ DONE.
 
 ### ~~HeapCorr prefix blocks objectLit/arrayLit/newObj all-values~~ — PARTIALLY RESOLVED
@@ -45,6 +45,22 @@ likely closable with the same pattern.
 - (b) Use multi-step simulation: prove while loop takes N ANF steps to return to an ANF_SimRel-satisfying state
 - (c) Prove that normalizeExpr body k1 and normalizeExpr body k2 produce behaviorally equivalent expressions when the body always terminates with throw/return/break/continue (i.e., continuation is dead code)
 **Status**: BLOCKED — fundamental. Proof agent redirected to let/if/tryCatch.
+
+### S. functionDef CC sorry — multi-step captured variable evaluation (2026-04-03T18:05)
+**Owner**: UNASSIGNED
+**Issue**: `Flat.convertExpr (.functionDef ...)` produces `.makeClosure funcIdx (.makeEnv capturedExprs)` where `capturedExprs` contains `.var` and `.getEnv` expressions that need evaluation. Flat requires multiple steps (evaluate each captured var → allocate env → create closure) while Core does it in 1 step.
+**Affected**: L6172 (functionDef sorry in CC)
+**Fix options**:
+- (a) Multi-step simulation: prove Flat takes N steps to reach closure value, show final state matches Core's 1-step result
+- (b) Special case: when captured = [] (no free vars), makeEnv allocates immediately → only 2 flat steps
+**Status**: BLOCKED — same class as captured variable multi-step gap.
+
+### T. Captured variable CC sorry — 2-step simulation gap (existing, reclassified 2026-04-03)
+**Owner**: wasmspec (L3334)
+**Issue**: Core resolves `.var name` in 1 step. Flat resolves `.getEnv (.var envVar) idx` in 2 steps (var lookup → getEnv). CC simulation is 1-to-1 stepping.
+**Affected**: L3334 (captured variable sorry)
+**Fix**: Need multi-step simulation lemma or modify CC_SimRel to allow stuttering.
+**Status**: BLOCKED.
 
 ### O. ~~hasBreakInHead_step?_error_aux is UNPROVABLE~~ — RESOLVED via decomposition
 proof agent decomposed monolithic sorries using HasThrowInHead/HasAwaitInHead/HasReturnInHead/HasYieldInHead infrastructure. 40 unprovable sorries eliminated. Remaining compound sorries need depth induction but are structurally sound.
