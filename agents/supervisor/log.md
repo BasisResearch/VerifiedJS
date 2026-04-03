@@ -1,3 +1,63 @@
+## Run: 2026-04-03T22:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 23 + CC 15 = **38 actual** (was ~36-39 last run)
+- **Delta from last run (19:30)**: NET 0. No sorry reduction. Proof agent closed L6883 but added normalizeExpr_if_cond_source sorry (net 0). jsspec fixed consoleLog type mismatch but sorry still present.
+- **LowerCorrect**: 0 sorries (was 1 in original prompt — DONE)
+
+### Agent Status
+1. **proof** (started 21:30): Running on normalizeExpr_if_cond_source (L2025). This is the sorry it created last run to structurally close L6883. Good target — strong mutual induction on depth.
+   - Prompt updated: maintained focus on normalizeExpr_if_cond_source, added compound/bindComplex as secondary targets.
+
+2. **jsspec** (started 21:00): Running. Last run fixed consoleLog type mismatch and documented getIndex as unprovable. Reports all easy CC targets exhausted — only blocked/unprovable remain.
+   - **Prompt REWRITTEN**: TOP PRIORITY is now CCStateAgree invariant fix per wasmspec analysis. This unblocks 6 of 15 CC sorries. Specific implementation steps provided.
+
+3. **wasmspec** (completed 21:23): **BREAKTHROUGH** — produced detailed CCStateAgree analysis with concrete fix. Root cause: output CCStateAgree fails when steps discard/duplicate sub-expressions. Fix: drop output CCStateAgree from existential invariant.
+   - **Prompt REWRITTEN**: Support role — map all st_a' uses in CC so jsspec knows exactly what to change. Draft standalone sub-stepping lemma for cases that need output agreement.
+
+### Actions Taken
+1. Counted sorries: ANF 23 + CC 15 = 38.
+2. Updated proof prompt: maintained normalizeExpr_if_cond_source focus.
+3. **REWROTE jsspec prompt**: CCStateAgree fix is now #1 priority. Detailed implementation plan from wasmspec analysis. This is the highest-impact available action (unblocks 6 sorries).
+4. **REWROTE wasmspec prompt**: Support role mapping st_a' uses for jsspec.
+5. Logged to time_estimate.csv.
+
+### Sorry Breakdown
+
+**ANF (23 sorries):**
+- ~L2025: normalizeExpr_if_cond_source (proof agent ACTIVE target)
+- L6405, L6438, L6530, L6563: non-labeled inner value (secondary targets)
+- L6449, L6574, L6591: compound/bindComplex (tertiary targets)
+- L6608, L6621: additional sorries
+- L6774, L6777, L6927, L6930: compound inner_val/arg
+- L7093, L7100, L7103: compound inner_arg
+- L7254, L7257: compound HasYieldInHead
+- L7284: .let characterization
+- L7332, L7363, L7366: if simulation
+- L7410: final sorry
+
+**CC (15 sorries, 6 blocked by CCStateAgree):**
+- L1507/1508: forIn/forOf stubs (UNPROVABLE)
+- L3387: captured var (multi-step gap)
+- L3715: if-then CCStateAgree (BLOCKED → FIX INCOMING)
+- L3738: if-else CCStateAgree x2 (BLOCKED → FIX INCOMING)
+- L4269: consoleLog (type mismatch partially fixed)
+- L4271: non-consoleLog call (BLOCKED no FuncsCorr)
+- L4477/4485: newObj (jsspec secondary target)
+- L5123: getIndex string (UNPROVABLE)
+- L6361: functionDef (BLOCKED CCStateAgree + multi-step)
+- L6516: tryCatch finally CCStateAgree (BLOCKED → FIX INCOMING)
+- L6587: tryCatch error CCStateAgree (BLOCKED → FIX INCOMING)
+- L6694: while_ CCStateAgree (BLOCKED → FIX INCOMING)
+
+### Strategy Assessment
+The CCStateAgree fix is the single most impactful action. If jsspec successfully implements it, we could drop from 38 to ~32 sorries in one run (6 blocked sorries unblocked, though some may need additional work). The proof agent's work on normalizeExpr_if_cond_source is also critical — it's the gateway to closing several ANF sorries downstream.
+
+### Biggest Risk
+The CCStateAgree invariant change is architectural — it touches the main simulation theorem signature. If the change breaks cases that currently work (especially sub-stepping cases that rely on output agreement), it could temporarily increase sorry count. jsspec needs to be careful to preserve working cases.
+
+---
+
 ## Run: 2026-04-03T19:30:02+00:00
 
 ### Metrics
@@ -9234,3 +9294,4 @@ Redirected wasmspec to investigate. Two possible approaches:
 
 ## Run: 2026-04-03T22:05:01+00:00
 
+2026-04-03T22:08:32+00:00 DONE

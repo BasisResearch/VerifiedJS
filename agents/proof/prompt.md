@@ -1,4 +1,4 @@
-# proof — Close normalizeExpr_if_cond_source (L2025), then compound/bindComplex sorries
+# proof — Close normalizeExpr_if_cond_source, then compound/bindComplex sorries
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -22,43 +22,39 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 Therefore `bindComplex_not_let` is FALSE — DO NOT attempt it.
 SKIP `let_step_sim` (L6835) entirely.
 
-## STATE: ANF 24 sorries. L6883 closed structurally (good work!). Net 0 because normalizeExpr_if_cond_source added at L2025.
+## STATE: ANF 23 sorries. L6883 closed structurally. normalizeExpr_if_cond_source added at ~L2025 (sorry).
 
 ## YOUR IMMEDIATE TASKS (in order):
 
-### TASK 1: Prove normalizeExpr_if_cond_source (L2025)
-This is the sorry YOU added last run. It's a strong mutual induction on depth.
+### TASK 1: Prove normalizeExpr_if_cond_source (~L2025) — HIGHEST PRIORITY
+This is blocking the L6883 fix from being complete. Strong mutual induction on depth.
 
-The theorem at L2001-2023 has three conjuncts (Expr, ExprList, PropList). Approach:
+The theorem has three conjuncts (Expr, ExprList, PropList). Approach:
 1. `intro d; induction d with | zero => ... | succ d ih => ...`
 2. For zero: all expressions have depth > 0 contradiction (or handle base cases)
 3. For succ d: `refine ⟨fun e k hd ... => ?_, fun es k hd ... => ?_, fun ps k hd ... => ?_⟩`
 4. Case split on `e`:
-   - `.var n`: normalizeExpr for var calls `k (.var n)`. If k produces .if, then `hk_cond` says `.var n = .var name`, giving `VarFreeIn.var`.
-   - `.lit v`: normalizeExpr calls `k (.lit v)`. hk_cond says `.lit v = .var name` — contradiction (Trivial.noConfusion).
-   - `.this`: similar to lit — contradiction.
-   - `.if fc ft fe`: normalizeExpr processes condition. If fc trivial → if produces .if directly with VarFreeIn from condition. If fc compound → uses bindComplex, need IH.
-   - `.seq a b`: normalizeExpr processes a first. If a steps produce .if → VarFreeIn in a. If a is trivial and b produces .if → VarFreeIn in b. Either way, VarFreeIn in seq.
-   - `.let name init body`: similar to seq — init then body with IH.
-   - `.break`, `.continue`, `.return`, `.yield`, `.labeled`: k produces .trivial not .if → contradiction via hk_cond.
-   - `.assign`, `.call`, `.newObj`, `.getIndex`, `.setIndex`, `.binary`, `.unary`: compound expressions use bindComplex → .let wrapper → IH on sub-expressions.
-   - `.while_`, `.tryCatch`, `.functionDef`: produce specific structures, not .if → contradiction or IH.
+   - `.var n`: k gets (.var n). If k produces .if, hk_cond says `.var n = .var name` → VarFreeIn.var
+   - `.lit v`, `.this`: k gets literal. hk_cond says `.lit v = .var name` → contradiction (noConfusion)
+   - `.if fc ft fe`: normalizeExpr processes condition. If fc trivial → produces .if with VarFreeIn from condition. If compound → bindComplex, need IH
+   - `.seq a b`: processes a first. IH on sub-expressions
+   - `.let name init body`: similar to seq
+   - `.break`, `.continue`, `.return`, `.yield`, `.labeled`: k produces .trivial not .if → contradiction via hk_cond
+   - `.assign`, `.call`, `.newObj`, `.getIndex`, `.setIndex`, `.binary`, `.unary`: compound → bindComplex → .let wrapper → IH
+   - `.while_`, `.tryCatch`, `.functionDef`: produce specific structures, not .if → contradiction or IH
 
-Key insight: for each constructor, either:
-- It delegates to k with a trivial → hk_cond gives the answer
-- It recurses on sub-expressions → IH applies
-- It produces something other than .if → contradiction with hnorm
+Key: for each constructor, either delegates to k (hk_cond gives answer), recurses (IH), or produces non-.if (contradiction with hnorm).
 
 Use `lean_multi_attempt` on individual cases to find what closes them.
 
-### TASK 2: "non-labeled inner value" sorries (L6004, L6037, L6129, L6162)
-These are all similar — try `lean_multi_attempt` with:
+### TASK 2: "non-labeled inner value" sorries (~L6405, L6438, L6530, L6563)
+Try `lean_multi_attempt` with:
 ```
 ["contradiction", "simp [*] at *", "omega", "exact absurd ‹_› ‹_›"]
 ```
 
-### TASK 3: compound/bindComplex sorries (L6048, L6173, L6190)
-These say "needs induction on depth". Try strong induction approach similar to normalizeExpr_if_cond_source.
+### TASK 3: compound/bindComplex sorries (~L6449, L6574, L6591)
+These say "needs induction on depth". Try strong induction similar to normalizeExpr_if_cond_source.
 
 ### SKIP THESE:
 - `let_step_sim` (around L6880) — bindComplex PRODUCES .let, characterization WRONG

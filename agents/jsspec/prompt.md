@@ -1,4 +1,4 @@
-# jsspec — newObj (L4469) is YOUR #1 TARGET
+# jsspec — IMPLEMENT CCStateAgree FIX (unblocks 6 sorries!)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,54 +11,72 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC ~14 actual sorries. You closed arrayLit and fixed consoleLog — EXCELLENT.
+## STATE: CC 15 actual sorries. You closed arrayLit and consoleLog type mismatch — EXCELLENT.
+All easy non-blocked targets are exhausted. 6 of remaining sorries are BLOCKED by CCStateAgree.
 
-## ⚠️⚠️⚠️ ABSOLUTE BLOCKLIST — DO NOT TOUCH ⚠️⚠️⚠️
-- L3715, L3738 if-then/else — BLOCKED CCStateAgree
-- L6452 tryCatch finally — BLOCKED CCStateAgree
-- L6523 tryCatch error — BLOCKED CCStateAgree
-- L6630 while_ — BLOCKED CCStateAgree
-- L4271 non-consoleLog call — BLOCKED no FuncsCorr
-- L6297 functionDef — NOT a leaf case! Multi-step + CCStateAgree. DO NOT ATTEMPT.
-- L3387 captured var — multi-step simulation gap
+## ⚠️⚠️⚠️ THIS IS THE HIGHEST IMPACT TASK ⚠️⚠️⚠️
+
+### TOP PRIORITY: Fix CCStateAgree invariant (L3355-3357)
+
+wasmspec analyzed the CCStateAgree blocker in detail. The root cause:
+
+**The invariant at L3355-3357 requires output CCStateAgree:**
+```lean
+∃ (st_a st_a' : Flat.CCState),
+  (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
+  CCStateAgree st st_a ∧ CCStateAgree st' st_a'  -- ← output agreement FAILS
+```
+
+**Why it fails**: When a step DISCARDS sub-expressions (if-then discards else_, if-else skips then_) or DUPLICATES them (while_ unrolling), the CCState from converting the original expression doesn't match the CCState from converting the stepped expression. `convertExpr` increments `nextId` via `freshVar` for each sub-expression it processes.
+
+**The fix**: Drop output CCStateAgree. Change L3355-3357 to:
+```lean
+∃ (st_a : Flat.CCState),
+  sf'.expr = (Flat.convertExpr sc'.expr scope envVar envMap st_a).fst ∧
+  CCStateAgree st st_a
+```
+
+This is sufficient because:
+- Cases that NEED output agreement (sub-stepping like tryCatch non-error) can prove it via a standalone lemma
+- Cases that FAIL output agreement (if branch, while_ unroll) are resolution/expansion steps where no outer expression needs the bridge
+
+### IMPLEMENTATION STEPS:
+
+1. **Read L3330-3365** to understand the full theorem signature
+2. **Change L3355-3357**: Remove `st_a'` from the existential, drop `CCStateAgree st' st_a'`
+3. **Fix L3359** (the `obtain` that destructures the result): Remove `st_a'` binding
+4. **Fix L3361** (the `exact` that packs the result): Remove `st_a'`
+5. **For each of the 6 blocked sorries** (L3715, L3738×2, L6516, L6587, L6694):
+   - The existential now only needs `st_a` and input `CCStateAgree st st_a`
+   - For if-then (L3715): `st_a = st`, input agreement trivial by `⟨rfl, rfl⟩`
+   - For if-else (L3738): `st_a = st_t` (state after then_), need `CCStateAgree st st_t` — may need monotonicity lemma
+   - For while_ (L6694): `st_a = st`, input agreement trivial
+   - For tryCatch (L6516, L6587): similar analysis
+6. **Fix any sub-stepping cases** that relied on output agreement (tryCatch non-error around L6643):
+   - May need a standalone lemma for output agreement in sub-stepping cases
+   - `convertExpr_state_determined` (L566) bridges via input agreement
+7. **Build and verify**: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+
+### AFTER CCStateAgree FIX: newObj (L4477/4485)
+
+If CCStateAgree fix goes well and you have time:
+```lean
+| newObj f args => sorry -- f not a value / non-value arg
+```
+Similar to arrayLit. Both involve constructor + args. Pattern:
+- All-values: both Core and Flat allocate, HeapInj via `alloc_both`
+- Non-value: find first non-value, step it, use IH
+
+### DO NOT TOUCH:
 - L1507/L1508 forIn/forOf — stubs, unprovable
-- L5059 getIndex string — UNPROVABLE (Float.toString opaque)
-
-## YOUR TARGETS (in priority order):
-
-### TARGET 1: newObj (CURRENT LINE ~4469)
-```lean
-| newObj f args => sorry
-```
-**This is your PRIMARY target. Do NOT skip it.**
-
-Similar to arrayLit (which you already proved). Both involve constructor + args list.
-
-1. `grep -n "newObj.*sorry" VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line
-2. `lean_goal` at the sorry line
-3. Read the arrayLit proof above it for patterns — you wrote it, reuse the same approach
-4. Pattern:
-   - Check if all args are values (`Core.exprValue?`)
-   - All-values: both Core and Flat allocate new object, prove HeapInj via `alloc_both`
-   - Non-value: find first non-value, step it, use IH
-   - CCStateAgree: trivial for all-values since convertExprList of literals doesn't change st
-
-### TARGET 2: consoleLog sorry (CURRENT LINE ~4269)
-```lean
-sorry -- consoleLog call: all infrastructure proven, blocked on dependent match normalization
-```
-wasmspec's prior run set up infrastructure (Core_step?_call_consoleLog_flat_msg). The type mismatch you found was about dependent match on hfvals. Try:
-1. `lean_goal` at the sorry
-2. Use `show` to normalize the goal type, avoiding dependent match patterns
-3. Then `exact Core_step?_call_consoleLog_flat_msg ...`
-
-### IF BOTH DONE: Look at L3332 staging sorry
-Check git history for what was there before the HeapInj refactor.
+- L5123 getIndex string — UNPROVABLE (Float.toString opaque)
+- L4271 non-consoleLog call — BLOCKED no FuncsCorr
+- L3387 captured var — multi-step gap
 
 ## WORKFLOW:
 1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers
-2. `lean_goal` at target sorry
-3. Build proof
+2. Read the invariant at L3355-3357
+3. Implement the fix
 4. Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 
 ## CRITICAL: LOG YOUR WORK
