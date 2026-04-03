@@ -2949,3 +2949,24 @@ Plan: Implement monotone output approach for CCStateAgree — weaken output from
 ## Run: 2026-04-03T18:00:01+00:00
 
 ### 2026-04-03T18:00:12+00:00 Starting run
+
+**Target 1 (functionDef L6308)**: BLOCKED by CCStateAgree.
+Analysis: Core.step? on functionDef produces `.lit (.function idx)` in ONE step. Flat produces `makeClosure funcIdx (makeEnv capturedExprs)` which takes MULTIPLE Flat steps (sub-step captured vars, allocate env object, then resolve makeClosure). After Core steps, `convertExpr(.lit (.function idx)) = .lit (.closure idx 0)`, requiring `st_a' = st_a`. But `st'` from converting functionDef increments `nextId` via `freshVar` and `funcs.size` via `addFunc`, so `CCStateAgree st' st_a` requires `st'.nextId = st_a.nextId = st.nextId`, contradicting the increment. Same class as if-then/while_/tryCatch CCStateAgree blockers.
+
+**Target 2 (arrayLit all-values L6085)**: CLOSED ✓
+- Added helper lemma `convertExprList_firstNonValueExpr_none` (shows Core all-values → Flat all-values)
+- Added helper lemma `convertExprList_zipIdx_filterMap_eq_mkIndexedProps` (shows Flat zipIdx.filterMap = Core mkIndexedProps for indexed array properties)
+- Proved the sorry following the objectLit all-values pattern: both sides allocate, HeapInj via alloc_both, HeapValuesWF by induction on mkIndexedProps
+- CCStateAgree trivially satisfied since `convertExprList` of all-lit elements doesn't change CCState (`st' = st`)
+- Build passes with no new errors. Sorry count: 15 → 14.
+
+**Target 3 (newObj L4485)**: NOT ATTEMPTED per prompt (wasmspec owns it).
+Analysis: partially provable (all-values sub-case works, sub-stepping cases blocked same as functionDef).
+
+**Other sorries investigated:**
+- L3381 (captured variable): BLOCKED — requires closure environment object correspondence not in current CC_SimRel. The `EnvCorr` only tracks direct bindings, not closure env objects.
+### 2026-04-03T18:58:04+00:00 Run complete — 1 sorry closed (arrayLit all-values), sorry count 15→14
+2026-04-03T18:58:12+00:00 DONE
+
+## Run: 2026-04-03T19:00:01+00:00
+

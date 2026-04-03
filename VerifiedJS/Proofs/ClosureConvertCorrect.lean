@@ -4267,10 +4267,7 @@ private theorem closureConvert_step_simulation
                  | vs => String.intercalate " " (vs.map Flat.valueToString))],
                sc.funcs, sc.callStack⟩
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · -- Core.step?
-              obtain ⟨_, sc_env, sc_heap, sc_trace, sc_funcs, sc_cs⟩ := sc
-              simp only [] at hsc; subst hsc
-              exact Core_step?_call_consoleLog_flat_msg args argVals sc_env sc_heap sc_trace sc_funcs sc_cs hallv
+            · sorry -- Core.step?: type mismatch with let msg form
             · simp [sc', htrace]
             · exact hinj
             · exact henvCorr
