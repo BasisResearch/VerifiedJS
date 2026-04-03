@@ -4200,9 +4200,6 @@ private theorem closureConvert_step_simulation
             have hmsg := consoleLog_msg_convertValue argVals
             have hsc_eta : sc = { sc with expr := .call (.lit (.function Core.consoleLogIdx)) args } := by
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-            have hcore := Core_step?_call_consoleLog_general args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
-            rw [hsc_eta] at hcore
-            -- Extract sc' from the Core step theorem
             let core_msg := match argVals with
               | [v] => Core.valueToString v
               | vs => String.intercalate " " (vs.map Core.valueToString)
@@ -4210,8 +4207,13 @@ private theorem closureConvert_step_simulation
               ⟨.lit .undefined, sc.env, sc.heap,
                sc.trace ++ [.log core_msg], sc.funcs, sc.callStack⟩
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · exact hcore
-            · simp only [sc', core_msg]; rw [htrace, hmsg]
+            · -- Core.step?
+              show Core.step? sc = some (.log core_msg, sc')
+              rw [hsc_eta]
+              exact Core_step?_call_consoleLog_general args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
+            · -- trace
+              show sf.trace ++ _ = sc.trace ++ _
+              rw [htrace]; congr 1; simp only [List.cons.injEq, List.nil.injEq, and_true]; congr 1; exact hmsg
             · exact hinj
             · exact henvCorr
             · exact henvwf
