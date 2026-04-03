@@ -5166,3 +5166,16 @@ After `cases hyield with | yield_some_direct =>`, the inaccessibles for `HasYiel
 
 ### 2026-04-03T14:30:49+00:00 Starting run
 2026-04-03T15:30:01+00:00 SKIP: already running
+
+### 2026-04-03T15:30:00+00:00 Progress update
+
+**Accomplished:**
+1. Added `bindComplex_not_seq` helper lemma (line ~458)
+2. Added `normalizeExpr_seq_while_first_family` (~200 lines) — proves that if `normalizeExpr e k` with trivial-preserving `k` produces `.seq a b`, then `a = .while_ c d` for some `c d`. This is the seq characterization lemma.
+3. Added `normalizeExpr_seq_while_first` convenience wrapper
+4. Closed Case 1 of `seq_step_sim`: proved that `exprValue? a = some val` is impossible (since `a = .while_ c d` and `exprValue? (.while_ ...) = none`)
+
+**Critical Finding — SimRel broken for while loops:**
+After one ANF step on `.seq (.while_ c d) b` (when `exprValue? c = some v`), the result is `.seq (.seq d (.while_ c d)) b`. The first component `.seq d (.while_ c d)` is NOT `.while_ ...`, so `normalizeExpr` with trivial-preserving `k` CANNOT produce this form. Therefore `ANF_SimRel` cannot be established for the post-step state. The SimRel needs to be generalized to handle transient while-loop unrolling states.
+
+**Sorry count:** still 22 (replaced monolithic seq sorry with structured proof + targeted sorry for the remaining case)
