@@ -5360,3 +5360,116 @@ So from `hAgreeIn`, we get the equivalent of `hAgreeOut` for free. No new lemma 
 ## Run: 2026-04-03T23:30:02+00:00
 
 ### 2026-04-03T23:30:17+00:00 Starting break error + non-labeled + compound analysis
+
+---
+
+## Investigation 1: Break Error Propagation — `hasBreakInHead_flat_error_steps`
+
+### Verdict: NOT PROVABLE as stated
+
+Only `break_direct` constructor is provable. All compound constructors fail.
+
+### Theorem (L6600-6612)
+Claims: given `HasBreakInHead e label`, expression `e` flat-steps to `.lit .undefined` with preserved env/heap and break error trace.
+
+### Trace per Constructor
+
+**`break_direct`** (`.break label`): PROVABLE. One step to `.lit .undefined` with `.error` event. Env/heap unchanged.
+
+**`seq_left`** (`.seq a b`, `HasBreakInHead a label`): FAILS.
+- `step?` wraps each step of `a` inside `.seq _ b`
+- When `a → .lit .undefined`, then `.seq (.lit .undefined) b` steps to `b`
+- Final expr is `b` (arbitrary), NOT `.lit .undefined`
+
+**`seq_right`** (`.seq a b`, `HasBreakInHead b label`): FAILS.
+- Must evaluate `a` first (may change env), then `b` faces same wrapping issue
+- `sf'.env = sf.env` may fail due to side effects in `a`
+
+**`let_init`** (`.let name init body`, `HasBreakInHead init label`): FAILS.
+- Same wrapping. When `init → .lit .undefined`: `.let` extends env with `name := .undefined`
+- `sf'.expr = body`, `sf'.env = sf.env.extend name .undefined ≠ sf.env`
+
+**All other compound constructors**: FAIL for same reasons.
+
+### Root Cause
+In `Flat.step?`, error events (`.error msg`) are purely trace annotations. They do NOT short-circuit evaluation contexts. Only `.tryCatch` inspects error events. So break fires, error appears in trace, but evaluation continues normally in the enclosing expression.
+
+### Call Site Requirements (L7755-8011)
+All 10 existential fields are used: `hexpr'` feeds `normalizeExpr_lit_undefined_trivial`, `henv'` for state correspondence, `hobs'` for trace equivalence.
+
+### Proposed Fixes
+
+**Option 1 (Recommended): Add error short-circuiting to Flat semantics.** Modify `step?` so eval contexts short-circuit on `.error` events. Makes theorem provable but requires re-proving downstream lemmas.
+
+**Option 2: Restrict `HasBreakInHead` to `break_direct` only.** ANF normalization of `.break label` ignores continuation (`pure (.break label)`), so `.break` always at head in ANF output. May allow removing compound constructors if proof restructured.
+
+**Option 3: Weaken conclusion.** Drop `sf'.expr = .lit .undefined` and `sf'.env = sf.env`. Only assert error in trace. Requires restructuring all call sites.
+
+---
+
+## Investigation 2: Non-labeled Inner Value Sorries
+
+### Verdict: NOT closable by contradiction. Require eval context lifting.
+
+### The 4 Sorries
+
+| Sorry | Line | Eval Context |
+|-------|------|-------------|
+| #1 | 6409 | `.return (some (.return (some [·])))` |
+| #2 | 6442 | `.return (some (.yield (some [·]) delegate))` |
+| #3 | 6534 | `.yield (some (.return (some [·]))) delegate` |
+| #4 | 6567 | `.yield (some (.yield (some [·]) delegate')) delegate` |
+
+Each matches `cases inner_val with | labeled => ... | _ => sorry`. The `| _ =>` cases are NOT contradictions because `normalizeExpr inner_val k` CAN produce `.labeled` even when `inner_val ≠ .labeled` — normalization recurses into sub-expressions (`.seq`, `.let`, `.assign`, etc.) and propagates `.labeled` outward.
+
+### What's Needed
+1. Apply IH to `inner_val` (has sufficient depth `≤ d`)
+2. Get Flat steps from `{expr := inner_val, ...}` to `{expr := inner_val', ...}`
+3. Lift through two-layer eval context using multi-step context lifting lemmas
+4. Reconstruct outer witness
+
+### Required Infrastructure
+- `Steps_return_some_ctx`: multi-step lifting through `.return (some [·])`
+- `Steps_yield_some_ctx`: multi-step lifting through `.yield (some [·]) d`
+- Built from existing single-step lemmas by induction on `Flat.Steps`
+
+---
+
+## Investigation 3: Compound Stepping Lemmas
+
+### The 8 Sorries
+
+| Theorem | Line | Type | Pattern |
+|---------|------|------|---------|
+| throw_step_sim | 6778 | A | `.throw compound_arg` |
+| throw_step_sim | 6781 | B | `.seq (.throw x) b` etc. |
+| return_step_sim | 6931 | A | `.return (some compound_arg)` |
+| return_step_sim | 6934 | B | `.seq (.return x) b` etc. |
+| await_step_sim | 7104 | A | `.await compound_arg` |
+| await_step_sim | 7107 | B | `.seq (.await x) b` etc. |
+| yield_step_sim | 7258 | A | `.yield (some compound_arg) d` |
+| yield_step_sim | 7261 | B | `.seq (.yield x d) b` etc. |
+
+**Type A** = compound argument under direct constructor
+**Type B** = HasXInHead with compound nesting
+
+### Existing Context Lemmas
+Single-step versions exist for all eval contexts: `step?_seq_ctx`, `step?_let_init_ctx`, `step?_throw_ctx`, `step?_return_some_ctx`, `step?_yield_some_ctx`, `step?_await_ctx`, etc. Plus error variants. NO multi-step versions exist.
+
+### Uniform Approach: Yes
+
+**Step 1**: Create multi-step context lifting lemmas (`Steps_throw_ctx`, `Steps_return_some_ctx`, `Steps_await_ctx`, `Steps_yield_some_ctx`, `Steps_seq_ctx`, `Steps_let_init_ctx`). Mechanical, by induction on `Flat.Steps` using existing single-step lemmas.
+
+**Step 2**: Create `normalizeExpr_subexpr_steps_to_value` — if `normalizeExpr e k` succeeds with trivial-preserving `k`, then `e` flat-steps to a value. By well-founded induction on `e.depth`.
+
+**Step 3**: Type A: sub-expression reduction + single-level context lift + final step.
+
+**Step 4**: Type B: HasXInHead induction + multi-level context lift + error step.
+
+### Critical Gap
+Current theorems are non-recursive. Must either restructure as mutual recursive block with well-founded recursion on `e.depth`, or factor out the general sub-expression reduction lemma.
+
+### Key Insight
+All 8 compound sorries + all 4 non-labeled sorries (12 total) share the same infrastructure need: multi-step context lifting lemmas. Building these first unblocks all 12.
+### 2026-04-03T23:38:55+00:00 Run complete — 3 investigations done: (1) hasBreakInHead_flat_error_steps NOT PROVABLE as stated (error events don't short-circuit eval contexts), recommend adding short-circuiting to Flat semantics; (2) 4 non-labeled sorries NOT contradictions, need eval context lifting; (3) 8 compound sorries need multi-step context lifting lemmas (same infra as #2). All 12 sorries share common blocker: missing Steps_*_ctx multi-step lifting lemmas.
+2026-04-03T23:39:06+00:00 DONE
