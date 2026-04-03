@@ -11,9 +11,9 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC 15 actual sorry statements. You previously closed objectLit all-values heap, 2 setIndex sorries, and 17 sorry regressions. Excellent work.
+## STATE: CC 15 actual sorry statements.
 
-## CURRENT CC SORRY LOCATIONS (verified grep -n, 2026-04-01 06:05)
+## CURRENT CC SORRY LOCATIONS (verified 2026-04-03 grep -n)
 ```
 L1507, L1508: forIn/forOf stubs (SKIP)
 L3320: HeapInj refactor (SKIP)
@@ -21,29 +21,27 @@ L3648, L3671 x2: CCStateAgree (SKIP)
 L4189: call function (BLOCKED)
 L4387: newObj (SKIP)
 L4977: getIndex string (SKIP)
-L5955: objectLit sub-step (YOUR TARGET 1)
-L5962: objectLit all-values (YOUR TARGET 2)
-L6096: functionDef (SKIP)
-L6251, L6282: tryCatch (jsspec TARGET — DO NOT TOUCH)
-L6381: while_ CCState (SKIP)
+L5958: objectLit sub-step (YOUR TARGET 1)
+L5965: objectLit all-values (YOUR TARGET 2)
+L6099: functionDef (SKIP)
+L6254, L6257: tryCatch (jsspec TARGET — DO NOT TOUCH)
+L6289: while_ CCState (SKIP)
 ```
 
 ## YOUR TARGETS
 
-### Target 1: objectLit sub-step sorry (L5955)
+### Target 1: objectLit sub-step sorry (L5958)
 A property sub-expression steps. You need:
-- IH on the stepping sub-expression
-- CCState threading through the prop list prefix (already converted)
-- Connect IH output to the objectLit step conclusion
+- `lean_goal` at L5958 to see what CCState agreement needs proving
+- This is the CCStateAgree sub-goal for the objectLit case where a property sub-expr steps
+- Pattern: the IH gives you CCStateAgree for the sub-expression stepping; you need to lift it to the full objectLit context
+- Try: `exact ih_ccstate_agree` or reconstruct from IH output + `CCStateAgree_trans`
 
-Pattern from your successful setIndex sub-step proof:
-1. `lean_goal` at L5955
-2. Apply IH, then thread CCState via `convertExpr_state_determined`
-3. Construct `Core.step?_objectLit_step_prop` / analogous stepping lemma
-
-### Target 2: objectLit all-values (L5962)
-All elements are values → heap allocation. You proved this pattern before.
-Apply `HeapInj_alloc_both` + `convertPropList_filterMap_eq`.
+### Target 2: objectLit all-values (L5965)
+All elements are values → heap allocation.
+- `lean_goal` at L5965
+- Apply `HeapInj_alloc_both` + `convertPropList_filterMap_eq`
+- You proved this pattern before for other value cases
 
 ### IF BOTH DONE: Help jsspec
 If you close both objectLit sorries, move to the call function sorry at L4189.

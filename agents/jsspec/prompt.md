@@ -1,4 +1,4 @@
-# jsspec — Close CC tryCatch + arrayLit sorries
+# jsspec — Close CC tryCatch sorries
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -13,7 +13,7 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## STATE: CC 15 actual sorry statements.
 
-## CURRENT CC SORRY LOCATIONS (verified grep -n, 2026-04-01 06:05)
+## CURRENT CC SORRY LOCATIONS (verified 2026-04-03 grep -n)
 ```
 L1507, L1508: forIn/forOf stubs (SKIP - theorem false)
 L3320: HeapInj refactor (SKIP)
@@ -22,27 +22,28 @@ L3671 x2: CCStateAgree if-else (SKIP - architecturally blocked)
 L4189: call function (BLOCKED - needs FuncsCorr)
 L4387: newObj (SKIP)
 L4977: getIndex string semantic mismatch (SKIP)
-L5955: objectLit sub-step (wasmspec TARGET — DO NOT TOUCH)
-L5962: objectLit all-values (wasmspec TARGET — DO NOT TOUCH)
-L6096: functionDef (SKIP)
-L6251: tryCatch body-value with finally (YOUR TARGET 1)
-L6282: tryCatch body non-value catch env (YOUR TARGET 2)
-L6381: while_ CCState (SKIP - architecturally blocked)
+L5958: objectLit sub-step (wasmspec TARGET — DO NOT TOUCH)
+L5965: objectLit all-values (wasmspec TARGET — DO NOT TOUCH)
+L6099: functionDef (SKIP)
+L6254: tryCatch body-value with finally (YOUR TARGET 1)
+L6257: tryCatch body non-value (YOUR TARGET 2)
+L6289: while_ CCState (SKIP - architecturally blocked)
 ```
 
 ## YOUR TARGETS (in priority order)
 
-### Target 1: tryCatch body-value with finally (L6251)
-You proved the `finally_ = none` case. Now handle `finally_ = some fin`.
-The body is a value, so tryCatch resolves → then execute the finally block.
-- `lean_goal` at L6251 to see what's needed
-- CCStateAgree may block you. If so, document and move on.
+### Target 1: tryCatch body-value with finally (L6254)
+The `finally_ = none` case is DONE (see L6240-6253). Now handle `| some fin =>`.
+Body is a value, so tryCatch resolves → then execute the finally block.
+- `lean_goal` at L6254 to see what's needed
+- CCStateAgree may block you (same pattern as while_). If so, document clearly and move on.
 
-### Target 2: tryCatch body non-value catch env (L6282)
-Body is not a value and throws → catch clause is entered. Need to show env extends correctly.
-- `lean_goal` at L6282
-- Likely needs an `EnvCorrInj_extend` lemma: if env is correlated and you extend both with the same binding, result is still correlated
-- Check if `EnvCorrInj` or similar exists with `lean_local_search`
+### Target 2: tryCatch body non-value (L6257)
+Body is NOT a value. Flat.step? steps the body sub-expression.
+- `lean_goal` at L6257
+- Apply the IH on the body sub-expression
+- Thread CCState through (same pattern as objectLit sub-step, arrayLit sub-step)
+- Need: `Flat.step?_tryCatch_step_body` or similar lemma for Flat tryCatch stepping
 
 ### Target 3: call function (L4189)
 If previous targets are blocked, attempt this. Needs FuncsCorr invariant.

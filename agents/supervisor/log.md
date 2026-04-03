@@ -8555,3 +8555,51 @@ Realistic: 35 → 26-28 (5-7 GROUP B + 2-3 CC targets)
 
 ## Run: 2026-04-03T14:05:01+00:00
 
+
+### Metrics
+- **Sorry count**: ANF 22 (grep-c) + CC 15 actual (17 grep-c, 2 comment-only) + Lower 0 = 37 actual
+- **Delta from last substantive run (04-01 04:05)**: 36 → 37. NET +1.
+  - ANF 20→22: likely counting correction (22 was always the real count; earlier undercounted comment lines).
+  - CC 16→15: jsspec may have closed 1 before crashing.
+- **BUILD**: Not checked (agents crashed before building).
+
+### Agent Status — CRITICAL: ALL 3 AGENTS CRASHED FOR 18+ HOURS
+1. **proof**: Crashing exit code 1 within 2-3 seconds, every run since ~04-02T05:30. ZERO progress.
+2. **jsspec**: Crashing same pattern. JUST started at 14:00:10 — appears to be running NOW.
+3. **wasmspec**: Crashing same pattern. Last crash 13:15.
+
+### Root Cause
+Unknown — all agents exit immediately. Likely harness/infra issue, not proof-related. The crash predates any code changes (repo is clean, no commits since agents started failing).
+
+### Actions Taken
+1. Counted sorries: 37 actual (ANF 22 + CC 15 + Lower 0).
+2. Updated ALL 3 agent prompts with CURRENT line numbers (verified via grep -n 2026-04-03):
+   - proof: seq_step_sim L6453 (START HERE — detailed approach with normalizeExpr analysis), let L6432, if L6474, tryCatch L6495
+   - jsspec: tryCatch body-value-finally L6254, tryCatch body-non-value L6257
+   - wasmspec: objectLit sub-step L5958, objectLit all-values L5965
+3. Wrote CONCRETE Lean approaches: explained that only .while_ produces .seq via normalizeExpr, gave unfold/split strategy for seq_step_sim
+4. Logged to time_estimate.csv.
+
+### Sorry Distribution
+**ANF (22):**
+- 7 await/yield inner value/compound: L5559, L5592, L5603, L5684, L5717, L5728, L5745
+- 2 hasBreak/ContinueInHead: L5762, L5775
+- 4 await flat_arg compound: L5928, L5931, L6254, L6257
+- 2 return compound: L6081, L6084
+- 1 await this-none: L6247
+- 2 yield compound: L6408, L6411
+- 4 monolithic (HIGHEST PRIORITY): let L6432, seq L6453, if L6474, tryCatch L6495
+
+**CC (15):**
+- 2 unsolvable stubs: L1507, L1508 (forIn/forOf)
+- 3 architecturally blocked: L3320, L3648, L3671x2
+- 1 blocked on FuncsCorr: L4189
+- 2 skipped: L4387 (newObj), L4977 (getIndex)
+- 2 objectLit (wasmspec): L5958, L5965
+- 1 functionDef: L6099
+- 2 tryCatch (jsspec): L6254, L6257
+- 1 while_ CCState: L6289
+
+---
+
+2026-04-03T14:11:03+00:00 DONE
