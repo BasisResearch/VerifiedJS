@@ -5257,3 +5257,9 @@ After one ANF step on `.seq (.while_ c d) b` (when `exprValue? c = some v`), the
 
 ### 2026-04-03T19:30:10+00:00 Starting run
 2026-04-03T20:30:01+00:00 SKIP: already running
+### 2026-04-03T20:31:32+00:00 Closed L6883 (var_free error case)
+- Extended VarFreeIn with constructors for all missing Flat.Expr forms
+- Added normalizeExpr_if_cond_source (sorry) and normalizeExpr_if_cond_var_free (wrapper)
+- L6883 now uses normalizeExpr_if_cond_var_free instead of sorry
+- Net sorry change: 0 (removed L6883, added normalizeExpr_if_cond_source)
+- Build passes. 24 sorry occurrences total.
