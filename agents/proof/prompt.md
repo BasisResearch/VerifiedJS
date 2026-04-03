@@ -1,4 +1,4 @@
-# proof — Close if_step_sim (L6864/6867/6871), then tryCatch_step_sim (L6895)
+# proof — Close if_step_sim (L7062/7065/7077/7079), then tryCatch_step_sim
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -12,16 +12,24 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: ANF 24 sorries. Lower 0 ✓. CC — OTHER AGENTS OWN IT.
+## STATE: ANF 30 sorry occurrences (grep -c). Lower 0 ✓. CC — OTHER AGENTS OWN IT.
 
-## ⚠️ CRITICAL CORRECTION: bindComplex PRODUCES .let ⚠️
+## ⚠️ YOU KEEP CRASHING — READ THIS ⚠️
+Your last 2 runs crashed (exit code 1) after <10 minutes. Likely cause: OOM from building too much at once.
+- **Start small**: build only the specific lemma you're editing
+- If build OOMs: add `set_option maxHeartbeats 200000` above the theorem
+- Do NOT attempt to build the entire file if it's failing
+
+## ⚠️ CRITICAL: bindComplex PRODUCES .let ⚠️
 `bindComplex rhs k` returns `.let freshName rhs (k (.var freshName))`.
 Therefore `bindComplex_not_let` is FALSE — DO NOT attempt it.
 SKIP `let_step_sim` (L6785) entirely.
 
-## YOUR IMMEDIATE TASK: if_step_sim (L6864, L6867, L6871)
+## YOUR IMMEDIATE TASK: normalizeExpr_if_source characterization lemma
 
-`bindComplex_not_if` ALREADY EXISTS (line 469). The characterization approach works for `.if`.
+The if_step_sim sorries are at approximately L7062, L7065, L7077, L7079. Run `grep -n sorry VerifiedJS/Proofs/ANFConvertCorrect.lean` to get CURRENT line numbers.
+
+`bindComplex_not_if` ALREADY EXISTS (line ~469). The characterization approach works for `.if`.
 
 ### Step 1: Build `normalizeExpr_if_source` characterization
 
@@ -50,25 +58,25 @@ private theorem normalizeExpr_if_source
   | _ => sorry -- Fill per-constructor
 ```
 
-For each constructor:
-- Uses `bindComplex`: unfold normalizeExpr, show result goes through bindComplex, use `bindComplex_not_if`
-- `.seq a b`: normalizeExpr produces seq or while-related, not if
-- `.while_ c d`: normalizeExpr produces while, not if
-- `.let`, `.tryCatch`, `.labeled`: produce their own form
+For each remaining constructor:
+- **Uses `bindComplex`** (unary, binary, call, getProp, etc.): unfold normalizeExpr, show result goes through bindComplex, use `bindComplex_not_if`
+- **`.seq a b`**: normalizeExpr produces seq/while, not if → use `normalizeExpr_seq_while_first` (already proved)
+- **`.while_ c d`**: normalizeExpr produces while, not if
+- **`.let`, `.tryCatch`, `.labeled`**: produce their own form, not if
+- **`.return`, `.throw`, `.break`, `.continue`, `.await`, `.yield`**: produce their form + continuation
 
-Use `normalizeExpr_seq_while_first_family` as template.
+Use `normalizeExpr_seq_while_first_family` as the structural template.
 
-### Step 2: Use normalizeExpr_if_source to close 3 sub-sorries
+### Step 2: Use normalizeExpr_if_source to close if_step_sim sub-sorries
 
-At L6864 (true branch), L6867 (false branch), L6871 (error):
 ```lean
 have ⟨fc, ft, fe, he_if⟩ := normalizeExpr_if_source sf.expr k hk n m cond then_ else_ hnorm
 subst he_if
 -- Now sf.expr = .if fc ft fe, match flat semantics
 ```
 
-### Step 3: tryCatch_step_sim (L6895) — SAME PATTERN
-Build `normalizeExpr_tryCatch_source` using `bindComplex_not_tryCatch` (line 480).
+### Step 3: tryCatch_step_sim — SAME PATTERN
+Build `normalizeExpr_tryCatch_source` using `bindComplex_not_tryCatch` (line ~480).
 
 ## SKIP THESE:
 - `let_step_sim` (L6785) — bindComplex PRODUCES .let, characterization WRONG

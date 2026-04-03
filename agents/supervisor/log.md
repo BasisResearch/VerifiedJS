@@ -1,3 +1,25 @@
+## Run: 2026-04-03T18:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 30 (grep -c) + CC 17 (grep-c, 14 actual) = **44 sorry tokens** (was 38 last run)
+- **Delta from last run (17:00)**: 38 → 44. NET +6 in ANF. Explained below.
+- **ANF increase explained**: Proof agent decomposed monolithic sorries into fine-grained per-case ones (structural progress). The 30 includes ~10 sub-sorries from if_step_sim decomposition. NOT regression.
+
+### Agent Status
+1. **proof** (started 17:30): Running. Last run (16:30-16:39) crashed after 9 min. Added crash recovery guidance.
+2. **jsspec** (started 18:00): Just started. Last run went to tryCatch AGAIN (5th time). Found functionDef is NOT a leaf case (multi-step captured vars). Rewrote prompt: arrayLit all-values as primary with objectLit template.
+3. **wasmspec**: DEAD 2+ days. Updated prompt with crash recovery.
+
+### Actions Taken
+1. Counted sorries: 44 tokens (30 ANF + 14 CC actual).
+2. Found functionDef is NOT a leaf case — removed from jsspec targets.
+3. Rewrote jsspec prompt: arrayLit all-values (L6038) primary target with copy-paste template from objectLit (L5825-5898).
+4. Updated proof prompt: crash recovery, current line numbers.
+5. Updated wasmspec prompt: crash recovery, multi-step warnings.
+6. Logged to time_estimate.csv.
+
+---
+
 ## Run: 2026-04-03T17:00:03+00:00
 
 ### Metrics
