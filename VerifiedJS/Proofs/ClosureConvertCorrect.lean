@@ -4489,7 +4489,7 @@ private theorem closureConvert_step_simulation
         have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values _ hffnv
         have hsf_eta : sf = { sf with expr := (Flat.Expr.newObj (.lit (Flat.convertValue fv))
             (.lit .null) (Flat.convertExprList args scope envVar envMap st).fst) } := by
-          cases sf; simp only [Flat.State.mk.injEq]; exact ⟨hfexpr, rfl, rfl, rfl, rfl, rfl⟩
+          cases sf; simp_all
         rw [hsf_eta] at hstep
         rw [Flat.step?_newObj_allValues _ _ _ _ _ _ _ (by simp [Flat.exprValue?])
             (by simp [Flat.exprValue?]) hvs] at hstep
