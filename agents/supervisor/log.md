@@ -9177,3 +9177,57 @@ Until CCStateAgree is solved, CC cannot go below ~7 sorries. No agent working on
 
 ## Run: 2026-04-03T21:05:01+00:00
 
+
+### Metrics
+- **Sorry count**: ANF 24 (grep -c) + CC 16 (grep-c, ~14 actual) = **~38 actual**
+- **Delta from last run (20:07)**: ~37 → ~38. **NET +1**. Wasmspec split call sorry into consoleLog + non-consoleLog (L4269+L4271), adding 1 net sorry.
+
+### Agent Status
+1. **proof** (last completed 20:36): Closed L6883 structurally using normalizeExpr_if_cond_var_free. Added normalizeExpr_if_cond_source sorry at L2025 (net 0). 24 ANF sorries unchanged.
+   - Prompt updated: TARGET 1 = normalizeExpr_if_cond_source (L2025) — strong mutual induction by depth. TARGET 2 = non-labeled inner value sorries. TARGET 3 = compound/bindComplex.
+
+2. **jsspec** (started 21:00): RUNNING. Previous run (19:00-20:27) fixed consoleLog type mismatch, documented getIndex as unprovable (Float.toString opaque). CC at 14 actual sorries.
+   - Prompt updated: TARGET 1 = newObj (L4469) — MUST NOT skip it. TARGET 2 = consoleLog (L4269). Updated line numbers, clarified blocklist.
+
+3. **wasmspec** (last completed 20:58): Finally completed after 5-hour hang. SPLIT call sorry (+1 net). Editing CC concurrently with jsspec = BAD.
+   - Prompt COMPLETELY REWRITTEN: Redirected to READ-ONLY CCStateAgree investigation. NO editing CC. NO building. Investigate the architectural blocker (6 CC sorries blocked).
+
+### Actions Taken
+1. Counted sorries: ANF 24 + CC ~14 actual = ~38. Net +1 from wasmspec split.
+2. Updated proof prompt: normalizeExpr_if_cond_source (L2025) is new priority. Detailed case analysis approach provided.
+3. Updated jsspec prompt: newObj (L4469) is #1 target with explicit "do NOT skip" instruction. Line numbers refreshed.
+4. REWROTE wasmspec prompt: redirected from CC editing to CCStateAgree investigation (READ ONLY). Two agents editing same file was causing problems.
+5. Logged to time_estimate.csv.
+
+### Sorry Breakdown (CC, ~14 actual)
+- L1507/1508: forIn/forOf stubs (unprovable — 2)
+- L3387: captured var (multi-step gap — 1)
+- L3715: if-then CCStateAgree (BLOCKED — 1)
+- L3738: if-else CCStateAgree x2 (BLOCKED — 2)
+- L4269: consoleLog call (dependent match normalization — 1)
+- L4271: non-consoleLog call (BLOCKED no FuncsCorr — 1)
+- L4469: newObj (jsspec TARGET 1 — 1)
+- L5059: getIndex string (UNPROVABLE Float.toString — 1)
+- L6297: functionDef (BLOCKED multi-step + CCStateAgree — 1)
+- L6452: tryCatch finally CCStateAgree (BLOCKED — 1)
+- L6523: tryCatch error (BLOCKED — 1)
+- L6630: while_ CCStateAgree (BLOCKED — 1)
+
+### Why sorry went UP (+1)
+Wasmspec ran from 15:00-20:58 (5+ hours) and split the call sorry at L4189 into two: consoleLog (L4269) + non-consoleLog (L4271). While splitting is structurally sound, it's +1 net and wasmspec was editing CC concurrently with jsspec. Fixed by redirecting wasmspec to READ-ONLY investigation.
+
+### Tractable targets (non-blocked)
+- **L2025** (ANF): normalizeExpr_if_cond_source — proof agent, strong induction
+- **L4469** (CC): newObj — jsspec, arrayLit template
+- **L4269** (CC): consoleLog — jsspec, type normalization fix
+- **L6004/6037/6129/6162** (ANF): non-labeled inner value — proof agent secondary
+- **L6048/6173/6190** (ANF): compound/bindComplex — proof agent tertiary
+
+### Biggest blocker: CCStateAgree (6 CC sorries blocked)
+Redirected wasmspec to investigate. Two possible approaches:
+1. Monotonicity: if CCStateAgree st st_a, then CCStateAgree (convert e st).snd (convert e st_a).snd — already proved at L566 (convertExpr_state_determined). But need: after Core steps, the new expression's conversion at st_a' still agrees.
+2. Existential witness: choose st_a = (convert result_expr st).snd, making CCStateAgree trivially reflexive. But this changes the simulation relation.
+
+---
+2026-04-03T21:08:00+00:00 DONE
+2026-04-03T21:08:54+00:00 DONE

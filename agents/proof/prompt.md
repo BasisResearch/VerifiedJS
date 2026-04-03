@@ -1,4 +1,4 @@
-# proof — Close L6978 IMMEDIATELY (1 line), then L6959/6962
+# proof — Close normalizeExpr_if_cond_source (L2025), then compound/bindComplex sorries
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -22,51 +22,46 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 Therefore `bindComplex_not_let` is FALSE — DO NOT attempt it.
 SKIP `let_step_sim` (L6835) entirely.
 
-## STATE: ANF 24 sorries. normalizeExpr_if_cond_var_free ALREADY PROVED at L2026.
+## STATE: ANF 24 sorries. L6883 closed structurally (good work!). Net 0 because normalizeExpr_if_cond_source added at L2025.
 
 ## YOUR IMMEDIATE TASKS (in order):
 
-### TASK 1: Close L6978 — THE LEMMA ALREADY EXISTS (1 line fix!)
-**This is a 1-line fix.** `normalizeExpr_if_cond_var_free` is ALREADY PROVED at line 2026.
+### TASK 1: Prove normalizeExpr_if_cond_source (L2025)
+This is the sorry YOU added last run. It's a strong mutual induction on depth.
 
-At line 6978, replace:
-```lean
-        sorry -- Needs normalizeExpr_if_cond_var_free: if normalizeExpr e k = .if (.var name) ...
-              -- with trivial-preserving k, then VarFreeIn name e
+The theorem at L2001-2023 has three conjuncts (Expr, ExprList, PropList). Approach:
+1. `intro d; induction d with | zero => ... | succ d ih => ...`
+2. For zero: all expressions have depth > 0 contradiction (or handle base cases)
+3. For succ d: `refine ⟨fun e k hd ... => ?_, fun es k hd ... => ?_, fun ps k hd ... => ?_⟩`
+4. Case split on `e`:
+   - `.var n`: normalizeExpr for var calls `k (.var n)`. If k produces .if, then `hk_cond` says `.var n = .var name`, giving `VarFreeIn.var`.
+   - `.lit v`: normalizeExpr calls `k (.lit v)`. hk_cond says `.lit v = .var name` — contradiction (Trivial.noConfusion).
+   - `.this`: similar to lit — contradiction.
+   - `.if fc ft fe`: normalizeExpr processes condition. If fc trivial → if produces .if directly with VarFreeIn from condition. If fc compound → uses bindComplex, need IH.
+   - `.seq a b`: normalizeExpr processes a first. If a steps produce .if → VarFreeIn in a. If a is trivial and b produces .if → VarFreeIn in b. Either way, VarFreeIn in seq.
+   - `.let name init body`: similar to seq — init then body with IH.
+   - `.break`, `.continue`, `.return`, `.yield`, `.labeled`: k produces .trivial not .if → contradiction via hk_cond.
+   - `.assign`, `.call`, `.newObj`, `.getIndex`, `.setIndex`, `.binary`, `.unary`: compound expressions use bindComplex → .let wrapper → IH on sub-expressions.
+   - `.while_`, `.tryCatch`, `.functionDef`: produce specific structures, not .if → contradiction or IH.
+
+Key insight: for each constructor, either:
+- It delegates to k with a trivial → hk_cond gives the answer
+- It recurses on sub-expressions → IH applies
+- It produces something other than .if → contradiction with hnorm
+
+Use `lean_multi_attempt` on individual cases to find what closes them.
+
+### TASK 2: "non-labeled inner value" sorries (L6004, L6037, L6129, L6162)
+These are all similar — try `lean_multi_attempt` with:
 ```
-With:
-```lean
-        exact (hewf name_cond (normalizeExpr_if_cond_var_free sf.expr.depth sf.expr (Nat.le_refl _) k n m name_cond then_ else_ hk hnorm)) hnone
+["contradiction", "simp [*] at *", "omega", "exact absurd ‹_› ‹_›"]
 ```
 
-If `hewf` is not directly in scope (the function signature has it as parameter), check the hypothesis names with `lean_goal` at L6978. The logic is:
-1. `normalizeExpr_if_cond_var_free` gives `VarFreeIn name_cond sf.expr`
-2. `hewf` (ExprWellFormed) gives `sf.env.lookup name_cond ≠ none`
-3. Contradiction with `hnone` (which says `sf.env.lookup name_cond = none`)
-
-**DO THIS FIRST. Build and verify. This is -1 sorry with zero risk.**
-
-### TASK 2: Close L6959 and L6962 (if branch true/false)
-
-These are the true-branch (L6959) and false-branch (L6962) sorries in `normalizeExpr_if_step_sim`.
-
-**Approach**: Strong induction on `sf.expr.depth` with case split:
-1. `sf.expr = .if fc ft fe` (direct if): normalizeExpr produces .if directly from the condition. Use `steps_if_var_branch`/`steps_if_lit_branch` to show Flat takes the same branch. SimRel for the resulting then_/else_ sub-expression.
-2. `sf.expr = .seq a b` where `a = .while_ c d`: normalizeExpr_seq_while_first says this is the only seq form, but .seq produces .seq not .if → contradiction.
-3. Other constructors (.var, .lit, .this, .break, .continue, .return, .yield, .labeled, etc.): k produces .trivial not .if → contradiction via hk.
-
-The key insight: with trivial-preserving k, normalizeExpr can only produce .if from:
-- A direct `.if` expression
-- `.return (some (.if ...))` / `.labeled _ (.if ...)` patterns that propagate .if through normalizeExpr
-
-Use `normalizeExpr_if_cond_source` (should be near L2026) to determine which case applies.
-
-### TASK 3: "non-labeled inner value" sorries (L5956, L5989, L6081, L6114)
-Try `lean_multi_attempt` on each. These may close with contradiction tactics since they're in "impossible" branches.
+### TASK 3: compound/bindComplex sorries (L6048, L6173, L6190)
+These say "needs induction on depth". Try strong induction approach similar to normalizeExpr_if_cond_source.
 
 ### SKIP THESE:
-- `let_step_sim` (L6880) — bindComplex PRODUCES .let, characterization WRONG
-- `seq_step_sim` L6928 — blocked on SimRel while-loop generalization
+- `let_step_sim` (around L6880) — bindComplex PRODUCES .let, characterization WRONG
 - ClosureConvertCorrect.lean — other agents own it
 
 ## CRITICAL: LOG YOUR WORK
