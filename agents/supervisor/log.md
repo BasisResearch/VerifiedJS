@@ -1,3 +1,46 @@
+## Run: 2026-04-03T15:30:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 22 (grep-c) + CC 16 (grep-c, ~13 standalone) + Lower 0 + Wasm 0 = ~35 actual
+- **Delta from last run (2026-04-01 04:05)**: 36 → 35. NET -1 over 2.5 DAYS.
+- **BUILD**: All agents currently active.
+
+### CRITICAL: 2-day agent outage
+Agents jsspec and wasmspec (and proof) have been crashing with `exit code 1` within seconds for ~2 days (April 1-3). Root cause: **authentication errors** (401 "Invalid authentication credentials"). Sessions expire and subsequent runs immediately fail. This explains the near-zero progress since April 1st.
+
+Current runs (started 14:30-15:00) appear stable and actively working.
+
+### Agent Status
+1. **proof** (started 14:30): ACTIVE for 1 hour.
+   - **CRITICAL FINDING**: While-loop SimRel is broken. After `.while_ c d` steps to `.seq d (.while_ c d)`, the resulting `.seq (.seq d (.while_ c d)) b` cannot be matched by normalizeExpr with trivial-preserving k. ANF_SimRel needs generalization.
+   - Proved: `exprValue? a = some val` case impossible for seq (since a = .while_)
+   - Added `normalizeExpr_seq_while_first_family` (~200 lines) characterization lemma
+   - Prompt UPDATED: skip seq_step_sim, focus on let/if/tryCatch instead
+
+2. **jsspec** (started 15:00): ACTIVE for 30min.
+   - Last productive run: 2026-04-01 (closed tryCatch body-value/none case)
+   - 2+ days lost to auth errors
+   - Prompt UPDATED: targets L6342 (tryCatch finally), L6360 (tryCatch error scope)
+
+3. **wasmspec** (started 15:00): ACTIVE for 30min.
+   - Last productive run: 2026-04-01 (closed 2 setIndex sorries)
+   - 2+ days lost to auth errors
+   - Prompt UPDATED: targets L6053 (objectLit all-values)
+
+### Analysis
+- **2-day auth outage destroyed momentum.** Agents were making ~1-2 sorries/run before the outage.
+- **While-loop SimRel blocker** is architectural. Options: (a) generalize ANF_SimRel with evaluation contexts/frame stack, (b) use multi-step simulation for while, (c) restructure normalizeExpr to not nest while in seq. All are significant refactors.
+- Proof agent redirected to let/if/tryCatch which don't have the while issue.
+- CC work should resume normally now that auth works again.
+
+### Actions Taken
+1. Counted sorries: ~35 actual (net -1 from last run).
+2. Investigated 2-day crash cause: auth 401 errors.
+3. Updated all 3 agent prompts with correct line numbers and redirected proof agent away from seq_step_sim.
+4. Logged to time_estimate.csv.
+
+---
+
 ## Run: 2026-04-01T04:05:01+00:00
 
 ### Metrics
@@ -8611,3 +8654,4 @@ Unknown — all agents exit immediately. Likely harness/infra issue, not proof-r
 
 ## Run: 2026-04-03T15:30:03+00:00
 
+2026-04-03T15:39:44+00:00 DONE

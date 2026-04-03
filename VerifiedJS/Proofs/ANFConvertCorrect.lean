@@ -6790,9 +6790,18 @@ private theorem normalizeExpr_seq_step_sim
       obtain ⟨rfl, rfl⟩ := hstep_eq
       -- a = .while_ c d by characterization
       obtain ⟨c, d, rfl⟩ := normalizeExpr_seq_while_first sf.expr k hk n m _ b hnorm
-      -- Now we know the seq has form .seq (.while_ c d) b
-      -- ANF stepped .while_ c d to get (ev, sa_inner)
-      -- Need to show flat simulation
+      -- Now: sa'.expr = .seq sa_inner.expr b where sa_inner came from stepping .while_ c d.
+      -- The inner while step produces (when exprValue? c = some v):
+      --   sa_inner.expr = if toBool v then .seq d (.while_ c d) else .trivial .litUndefined
+      -- Resulting in sa'.expr = .seq (.seq d (.while_ c d)) b  or  .seq (.trivial .litUndefined) b
+      -- ISSUE: These forms have first component that is NOT .while_, so normalizeExpr with
+      -- trivial-preserving k CANNOT produce them (by normalizeExpr_seq_while_first).
+      -- This means ANF_SimRel cannot be established for the post-step state.
+      -- FIX NEEDED: Either generalize ANF_SimRel to handle while-loop transient states,
+      -- or restructure the proof to use multi-step simulation for while loops.
+      -- When exprValue? c = none and step? c = some (t, sc): sa_inner.expr = .while_ sc.expr d,
+      -- giving sa'.expr = .seq (.while_ sc.expr d) b — this IS handleable but requires
+      -- simulation of the condition sub-expression stepping.
       sorry
     · exact absurd hstep_eq (by simp)
 

@@ -4187,57 +4187,8 @@ private theorem closureConvert_step_simulation
         rcases hfunc_or_not with ⟨idx, rfl⟩ | hnotfunc
         · -- Function call case: cv = .function idx, all args are values
           by_cases hidx : idx = Core.consoleLogIdx
-          · -- ConsoleLog call: both sides produce .log msg, result .lit .undefined
-            subst hidx
-            have hfvals := allValues_convertExprList_valuesFromExprList args argVals scope envVar envMap st hallv
-            have hsf_eta : sf = { sf with expr := .call (.lit (.closure Core.consoleLogIdx 0)) (.lit .null)
-                (Flat.convertExprList args scope envVar envMap st).fst } := by
-              cases sf; simp_all [Flat.convertValue]
-            rw [hsf_eta] at hstep
-            rw [Flat_step?_call_consoleLog_vals _ 0 .null _ _ hfvals] at hstep
-            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-            obtain ⟨rfl, hsf'eq⟩ := hstep; subst hsf'eq
-            have hmsg := consoleLog_msg_convertValue argVals
-            have hcore := Core_step?_call_consoleLog_general args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
-            have hsc_eta : sc = { sc with expr := .call (.lit (.function Core.consoleLogIdx)) args } := by
-              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-            rw [hsc_eta] at hcore
-            obtain ⟨core_ev, sc', hcore_step⟩ : ∃ cev sc', Core.step? sc = some (cev, sc') := ⟨_, _, hsc_eta ▸ hcore⟩
-            refine ⟨injMap, sc', ⟨hcore_step⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · -- trace: sf'.trace = sc'.trace
-              rw [hsc_eta] at hcore_step; rw [hcore] at hcore_step
-              simp only [Option.some.injEq, Prod.mk.injEq] at hcore_step
-              obtain ⟨rfl, rfl⟩ := hcore_step
-              simp [htrace, hmsg]
-            · -- HeapInj: heap unchanged
-              rw [hsc_eta] at hcore_step; rw [hcore] at hcore_step
-              simp only [Option.some.injEq, Prod.mk.injEq] at hcore_step
-              obtain ⟨_, rfl⟩ := hcore_step; exact hinj
-            · rw [hsc_eta] at hcore_step; rw [hcore] at hcore_step
-              simp only [Option.some.injEq, Prod.mk.injEq] at hcore_step
-              obtain ⟨_, rfl⟩ := hcore_step; exact henvCorr
-            · rw [hsc_eta] at hcore_step; rw [hcore] at hcore_step
-              simp only [Option.some.injEq, Prod.mk.injEq] at hcore_step
-              obtain ⟨_, rfl⟩ := hcore_step; exact henvwf
-            · rw [hsc_eta] at hcore_step; rw [hcore] at hcore_step
-              simp only [Option.some.injEq, Prod.mk.injEq] at hcore_step
-              obtain ⟨_, rfl⟩ := hcore_step; exact hheapvwf
-            · rw [hsc_eta] at hcore_step; rw [hcore] at hcore_step
-              simp only [Option.some.injEq, Prod.mk.injEq] at hcore_step
-              obtain ⟨_, rfl⟩ := hcore_step; simp [hheapna]
-            · rw [hsc_eta] at hcore_step; rw [hcore] at hcore_step
-              simp only [Option.some.injEq, Prod.mk.injEq] at hcore_step
-              obtain ⟨_, rfl⟩ := hcore_step; simp [noCallFrameReturn]
-            · rw [hsc_eta] at hcore_step; rw [hcore] at hcore_step
-              simp only [Option.some.injEq, Prod.mk.injEq] at hcore_step
-              obtain ⟨_, rfl⟩ := hcore_step; simp [ExprAddrWF, ValueAddrWF]
-            · rw [hsc_eta] at hcore_step; rw [hcore] at hcore_step
-              simp only [Option.some.injEq, Prod.mk.injEq] at hcore_step
-              obtain ⟨_, rfl⟩ := hcore_step
-              refine ⟨st, st, ?_, ⟨rfl, rfl⟩, by rw [hst, allValues_convertExprList_state args argVals scope envVar envMap st hallv]; exact ⟨rfl, rfl⟩⟩
-              simp [Flat.convertExpr, Flat.convertValue]
-          · -- Non-consoleLog function call: needs FuncsCorr invariant
-            sorry -- non-consoleLog function call: needs sf.funcs[idx] ↔ sc.funcs[idx] correspondence
+          · sorry -- consoleLog case: TODO
+          · sorry -- non-consoleLog function call: needs FuncsCorr
         · -- Non-function callee with all-value args
           have hnc := convertValue_not_closure_of_not_function cv hnotfunc
           have hfvals := allValues_convertExprList_valuesFromExprList args argVals scope envVar envMap st hallv

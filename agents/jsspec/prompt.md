@@ -1,4 +1,4 @@
-# jsspec — Close CC tryCatch sorries
+# jsspec — Close CC tryCatch and error-case sorries
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,47 +11,46 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC 15 actual sorry statements.
+## STATE: CC 16 grep-c sorries (~13 actual sorry statements).
 
-## CURRENT CC SORRY LOCATIONS (verified 2026-04-03 grep -n)
+## CURRENT CC SORRY LOCATIONS (verified 2026-04-03 15:30 grep -n)
 ```
-L1507, L1508: forIn/forOf stubs (SKIP - theorem false)
+L1507: forIn stub (SKIP - theorem vacuously false)
+L1508: forOf stub (SKIP - theorem vacuously false)
 L3320: HeapInj refactor (SKIP)
 L3648: CCStateAgree if-then (SKIP - architecturally blocked)
 L3671 x2: CCStateAgree if-else (SKIP - architecturally blocked)
-L4189: call function (BLOCKED - needs FuncsCorr)
-L4387: newObj (SKIP)
-L4977: getIndex string semantic mismatch (SKIP)
-L5958: objectLit sub-step (wasmspec TARGET — DO NOT TOUCH)
-L5965: objectLit all-values (wasmspec TARGET — DO NOT TOUCH)
-L6099: functionDef (SKIP)
-L6254: tryCatch body-value with finally (YOUR TARGET 1)
-L6257: tryCatch body non-value (YOUR TARGET 2)
-L6289: while_ CCState (SKIP - architecturally blocked)
+L4240: call non-consoleLog function (BLOCKED - needs FuncsCorr)
+L4438: newObj (SKIP)
+L5028: getIndex string mismatch (SKIP)
+L6053: objectLit all-values (wasmspec TARGET — DO NOT TOUCH)
+L6187: functionDef (SKIP)
+L6342: tryCatch body-value with finally (YOUR TARGET 1)
+L6360: tryCatch error case scope mismatch (YOUR TARGET 2)
+L6467: while_ CCState (SKIP - architecturally blocked)
 ```
 
 ## YOUR TARGETS (in priority order)
 
-### Target 1: tryCatch body-value with finally (L6254)
-The `finally_ = none` case is DONE (see L6240-6253). Now handle `| some fin =>`.
+### Target 1: tryCatch body-value with finally (L6342)
+The `finally_ = none` case is DONE. Now handle `| some fin =>`.
 Body is a value, so tryCatch resolves → then execute the finally block.
-- `lean_goal` at L6254 to see what's needed
+- `lean_goal` at L6342 to see what's needed
 - CCStateAgree may block you (same pattern as while_). If so, document clearly and move on.
 
-### Target 2: tryCatch body non-value (L6257)
-Body is NOT a value. Flat.step? steps the body sub-expression.
-- `lean_goal` at L6257
-- Apply the IH on the body sub-expression
-- Thread CCState through (same pattern as objectLit sub-step, arrayLit sub-step)
-- Need: `Flat.step?_tryCatch_step_body` or similar lemma for Flat tryCatch stepping
+### Target 2: tryCatch error case (L6360)
+Body is NOT a value — error case with scope mismatch (catchBody converted with catchParam :: scope).
+- `lean_goal` at L6360
+- The scope mismatch means the converted catchBody uses `catchParam :: scope` but the main
+  expression uses `scope`. May need a scope-extension lemma.
 
-### Target 3: call function (L4189)
+### Target 3: call non-consoleLog function (L4240)
 If previous targets are blocked, attempt this. Needs FuncsCorr invariant.
 Check what infrastructure exists: `lean_local_search "FuncsCorr"`.
 
 ### COLLISION AVOIDANCE
-wasmspec works on L5000-5989. You work on L6000-6400.
-Do NOT edit L5955-5975 — that's wasmspec territory.
+wasmspec works on L5000-6053. You work on L6100+.
+Do NOT edit L5000-6053 — that's wasmspec territory.
 
 ## WORKFLOW:
 1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers
