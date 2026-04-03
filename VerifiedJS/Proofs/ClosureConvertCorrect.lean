@@ -4487,9 +4487,10 @@ private theorem closureConvert_step_simulation
         -- All elements are values: both Core and Flat allocate empty objects on heap.
         have hffnv := convertExprList_firstNonValueExpr_none args scope envVar envMap st hcfnv
         have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values _ hffnv
-        have hsf_eta : sf = { sf with expr := .newObj (.lit (Flat.convertValue fv)) (.lit .null)
-            (Flat.convertExprList args scope envVar envMap st).fst } := by
-          cases sf; simp_all
+        let fargs := (Flat.convertExprList args scope envVar envMap st).fst
+        have hsf_eta : sf = { sf with expr := .newObj (.lit (Flat.convertValue fv))
+            (.lit .null) fargs } := by
+          cases sf; simp_all [fargs]
         rw [hsf_eta] at hstep
         rw [Flat.step?_newObj_allValues _ _ _ _ _ _ _ (by simp [Flat.exprValue?])
             (by simp [Flat.exprValue?]) hvs] at hstep
