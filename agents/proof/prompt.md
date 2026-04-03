@@ -1,4 +1,4 @@
-# proof — Prove let/seq/if/tryCatch_step_sim, then compound cases
+# proof — Close let/seq/if/tryCatch_step_sim, then compound cases
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -14,39 +14,63 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## STATE: ANF 22 sorries. Lower 0 ✓. CC — OTHER AGENTS OWN IT.
 
-## YOUR IMMEDIATE TASK: let_step_sim (L6431)
+## YOUR IMMEDIATE TASK: 4 monolithic sorries (let/seq/if/tryCatch)
 
-yield_step_sim is DONE (decomposed — great work on HasYieldInHead!). Now focus on the 4 remaining monolithic sorries.
+### 1. seq_step_sim (L6453) — START HERE, EASIEST
 
-### let_step_sim (L6431)
-`ANF.step?` on `.let name rhs body`:
-- If `rhs` is a trivial that evaluates to a value → step reduces to `body[name := v]`
-- Flat source: `normalizeExpr` for `.let` wraps `normalizeExpr rhs` then `normalizeExpr body`
-- Key: unfold `ANF.step?` to get the case. The `.let` step evaluates the trivial `rhs`, extends env, continues with `body`.
-- For Flat simulation: the source `.let` expression steps to evaluate its RHS sub-expression in the same way.
-- Use `normalizeExpr` inversion (what source expression produced `.let`?) — it's from `bindComplex`.
+Goal state (verified 2026-04-03):
+```
+hnorm : normalizeExpr sf.expr k produces .seq a b
+hstep_eq : ANF.step? { expr := .seq a b, env := sa_env, heap := sa_heap, trace := sa_trace } = some (ev, sa')
+⊢ ∃ sf' evs, Flat.Steps sf evs sf' ∧ observableTrace [ev] = observableTrace evs ∧ ANF_SimRel s t sa' sf' ∧ ExprWellFormed sf'.expr sf'.env
+```
 
-### seq_step_sim (L6452)
-`ANF.step?` on `.seq a b`:
-- If `a` is a value → step reduces to `b`
-- If `a` steps → `.seq a' b` with updated `a'`
-- Similar pattern to let.
+Key insight: Only `.while_` in normalizeExpr produces `.seq` (line 109 of Convert.lean):
+```lean
+| .while_ cond body => do
+    let condExpr ← normalizeExpr cond ...; let bodyExpr ← normalizeExpr body ...
+    let rest ← k .litUndefined
+    pure (.seq (.while_ condExpr bodyExpr) rest)
+```
 
-### if_step_sim (L6473)
-`ANF.step?` on `.if cond then_ else_`:
-- Evaluates `cond` (a Trivial), branches to `then_` or `else_`
-- Flat source: `normalizeExpr` for `.if` produces `.if` with normalized branches
-- Key: `evalTrivial` on cond determines branch, then match Flat branch.
+So `sf.expr` must be `.while_` or something that delegates to while_. ANF.step? on `.seq a b`:
+- If `exprValue? a = some v` → steps to `b` with `.silent`
+- If `a` steps → `.seq a' b`
 
-### tryCatch_step_sim (L6494)
-`ANF.step?` on `.tryCatch body catchParam catchBody finally_`:
-- Body steps → tryCatch body steps
-- Body throws → catches
-- Body is value → resolves
-- Map each to corresponding Flat steps.
+Approach:
+1. `unfold ANF.step? at hstep_eq; simp at hstep_eq`
+2. Split on `exprValue? a`:
+   - `some v`: Then `ev = .silent`, `sa' = pushTrace {... expr := b} .silent`. Need to show Flat takes matching steps.
+   - `none`: Then there exists `(t, sa)` with `ANF.step? {expr := a} = some (t, sa)` and result is `.seq sa.expr b`. Use IH or structural argument.
+3. For the Flat side: `.while_` in Flat steps via `Flat_step?_while`.
 
-## PRIORITY 2: Compound cases (depth induction needed)
-These are the remaining sorries from await/return/yield decomposition:
+### 2. let_step_sim (L6432)
+
+normalizeExpr of `.let name init body` produces `.let name (.trivial initTriv) bodyExpr`.
+ANF.step? on `.let name rhs body` immediately evaluates `rhs` via `evalComplex` — always steps.
+
+Approach:
+1. `lean_goal` at L6432
+2. `unfold ANF.step? at hstep_eq` — `.let` case always succeeds
+3. The step evaluates `evalComplex` on `rhs`, extends env with result, continues with `body`
+4. On Flat side: `sf.expr` is `.let name init body_flat`. Flat also steps its let by evaluating init.
+5. Use `step?_let` theorem from ANF/Semantics.lean:542 to simplify
+
+### 3. if_step_sim (L6474)
+
+normalizeExpr of `.if cond then_ else_` produces `.if condTriv thenExpr elseExpr`.
+ANF.step? on `.if cond then_ else_`:
+- `evalTrivial env cond` returns `.ok v` → branch on `toBoolean v`
+- Or `.error msg`
+
+Approach: unfold `ANF.step?`, split on `evalTrivial` result, match to Flat `.if` stepping.
+
+### 4. tryCatch_step_sim (L6495)
+
+normalizeExpr of `.tryCatch body catchParam catchBody finally_` produces `.tryCatch bodyExpr catchParam catchExpr finallyExpr`.
+ANF.step? on `.tryCatch`: sub-steps body, catches throws, resolves values.
+
+## PRIORITY 2: Compound cases (18 remaining sorries)
 ```
 Await inner value/compound: L5559, L5592, L5603, L5684, L5717, L5728, L5745
 hasBreak/ContinueInHead: L5762, L5775
@@ -54,15 +78,8 @@ Await flat_arg compound: L5928, L5931
 Return compound: L6081, L6084
 Await this-none: L6247
 Await compound inner_arg: L6254, L6257
-Yield compound: L6407, L6410
+Yield compound: L6408, L6411
 ```
-
-## APPROACH FOR let/seq/if/tryCatch:
-1. `lean_goal` at the sorry line to see the exact proof state
-2. Unfold `ANF.step?` at `hstep_eq` to see cases
-3. For each case, construct matching Flat steps
-4. Use `lean_multi_attempt` to test tactic sequences
-5. Even partial progress (decomposing 1 sorry into sub-cases) is valuable
 
 ## DO NOT TOUCH:
 - ClosureConvertCorrect.lean — jsspec and wasmspec are editing it
