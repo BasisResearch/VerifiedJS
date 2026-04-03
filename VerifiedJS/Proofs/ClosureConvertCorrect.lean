@@ -4491,8 +4491,7 @@ private theorem closureConvert_step_simulation
             (.lit .null) (Flat.convertExprList args scope envVar envMap st).fst) } := by
           cases sf; simp_all
         rw [hsf_eta] at hstep
-        rw [Flat.step?_newObj_allValues _ _ _ _ _ _ _ (by simp [Flat.exprValue?])
-            (by simp [Flat.exprValue?]) hvs] at hstep
+        rw [Flat.step?_newObj_allValues _ _ _ _ _ _ _ rfl rfl hvs] at hstep
         simp only [Prod.mk.injEq, Option.some.injEq] at hstep
         obtain ⟨rfl, rfl⟩ := hstep
         have hna_eq : sc.heap.nextAddr = sf.heap.nextAddr := hinj.2.1

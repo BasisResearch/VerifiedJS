@@ -2031,7 +2031,7 @@ private theorem normalizeExpr_if_cond_source :
       | var vname =>
         simp only [ANF.normalizeExpr] at hnorm
         have := ANF.Trivial.var.inj (hk_cond (.var vname) n m then_ else_ hnorm)
-        subst this; exact .var name
+        subst this; exact .var _
       | this =>
         simp only [ANF.normalizeExpr] at hnorm
         have := ANF.Trivial.var.inj (hk_cond (.var "this") n m then_ else_ hnorm)
@@ -2063,12 +2063,12 @@ private theorem normalizeExpr_if_cond_source :
     · -- ExprList conjunct (depth 0)
       intro es k hd n m name then_ else_ hk hnorm
       cases es with
-      | nil => exact absurd hnorm (hk [] n m then_ else_)
+      | nil => simp only [ANF.normalizeExprList] at hnorm; exact absurd hnorm (hk [] n m then_ else_)
       | cons _ _ => exfalso; simp [Flat.Expr.listDepth] at hd
     · -- PropList conjunct (depth 0)
       intro ps k hd n m name then_ else_ hk hnorm
       cases ps with
-      | nil => exact absurd hnorm (hk [] n m then_ else_)
+      | nil => simp only [ANF.normalizeProps] at hnorm; exact absurd hnorm (hk [] n m then_ else_)
       | cons _ _ => exfalso; simp [Flat.Expr.propListDepth] at hd
   | succ d ih =>
     obtain ⟨ihe, ihes, ihps⟩ := ih
@@ -2080,7 +2080,7 @@ private theorem normalizeExpr_if_cond_source :
       | var vname =>
         simp only [ANF.normalizeExpr] at hnorm
         have := ANF.Trivial.var.inj (hk_cond (.var vname) n m then_ else_ hnorm)
-        subst this; exact .var name
+        subst this; exact .var _
       | this =>
         simp only [ANF.normalizeExpr] at hnorm
         have := ANF.Trivial.var.inj (hk_cond (.var "this") n m then_ else_ hnorm)
@@ -2390,7 +2390,7 @@ private theorem normalizeExpr_if_cond_source :
     · -- ExprList conjunct (depth d+1)
       intro es k hd n m name then_ else_ hk hnorm
       cases es with
-      | nil => exact absurd hnorm (hk [] n m then_ else_)
+      | nil => simp only [ANF.normalizeExprList] at hnorm; exact absurd hnorm (hk [] n m then_ else_)
       | cons e rest =>
         simp only [ANF.normalizeExprList] at hnorm
         rcases Classical.em (∃ (arg : ANF.Trivial) (n₁ m₁ : Nat) (t₁ e₁ : ANF.Expr),
@@ -2408,7 +2408,7 @@ private theorem normalizeExpr_if_cond_source :
     · -- PropList conjunct (depth d+1)
       intro ps k hd n m name then_ else_ hk hnorm
       cases ps with
-      | nil => exact absurd hnorm (hk [] n m then_ else_)
+      | nil => simp only [ANF.normalizeProps] at hnorm; exact absurd hnorm (hk [] n m then_ else_)
       | cons p rest =>
         obtain ⟨pn, pe⟩ := p
         simp only [ANF.normalizeProps] at hnorm
