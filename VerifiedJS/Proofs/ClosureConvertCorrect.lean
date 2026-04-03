@@ -4262,37 +4262,11 @@ private theorem closureConvert_step_simulation
                 (Flat.convertExprList args scope envVar envMap st).fst) } := by
               cases sf; simp_all [Flat.convertValue]
             rw [hsf_eta] at hstep
-            -- Use congr_arg to decompose without introducing dependent match
-            rw [hsf_eta] at hstep
-            have hflat := Flat_step?_call_consoleLog_vals sf 0 .null _ _ hfvals
-            have heq := Option.some.inj (hflat.symm.trans hstep)
-            have hev := (congrArg Prod.fst heq).symm
-            have hsf'eq := (congrArg Prod.snd heq).symm
-            subst hev; subst hsf'eq
-            -- Destructure sc to get explicit fields for Core theorem
-            obtain ⟨sc_expr, sc_env, sc_heap, sc_trace, sc_funcs, sc_cs⟩ := sc
-            simp only [] at hsc; subst hsc
-            -- Now sc is ⟨.call (.lit (.function Core.consoleLogIdx)) args, sc_env, ...⟩
-            let sc' : Core.State :=
-              ⟨.lit .undefined, sc_env, sc_heap,
-               sc_trace ++ [.log (match argVals.map Flat.convertValue with
-                 | [v] => Flat.valueToString v
-                 | vs => String.intercalate " " (vs.map Flat.valueToString))],
-               sc_funcs, sc_cs⟩
-            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · exact Core_step?_call_consoleLog_flat_msg args argVals sc_env sc_heap sc_trace sc_funcs sc_cs hallv
-            · simp [sc', htrace]
-            · exact hinj
-            · exact henvCorr
-            · exact henvwf
-            · exact hheapvwf
-            · simp [sc', hheapna]
-            · simp [sc', noCallFrameReturn]
-            · simp [sc', ExprAddrWF, ValueAddrWF]
-            · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, ?_⟩
-              · simp [sc', Flat.convertExpr, Flat.convertValue]
-              · rw [hst, allValues_convertExprList_state args argVals scope envVar envMap st hallv]
-                exact ⟨rfl, rfl⟩
+            -- Both Flat and Core produce (.log msg, .lit .undefined)
+            -- Infrastructure: Core_step?_call_consoleLog_flat_msg, Flat_step?_call_consoleLog_vals,
+            --   consoleLog_msg_convertValue, allValues_convertExprList_valuesFromExprList
+            -- Blocked: simp introduces dependent match on (argVals, hfvals) that prevents exact
+            sorry -- consoleLog call: all infrastructure proven, blocked on dependent match normalization
           · -- Non-consoleLog function call: needs FuncsCorr invariant
             sorry -- non-consoleLog function call: needs sf.funcs[idx] ↔ sc.funcs[idx] correspondence
         · -- Non-function callee with all-value args
