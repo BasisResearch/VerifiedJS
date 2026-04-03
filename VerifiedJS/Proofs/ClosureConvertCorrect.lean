@@ -4266,11 +4266,11 @@ private theorem closureConvert_step_simulation
                  | [v] => Flat.valueToString v
                  | vs => String.intercalate " " (vs.map Flat.valueToString))],
                sc.funcs, sc.callStack⟩
-            have hsc_eta : sc = { sc with expr := .call (.lit (.function Core.consoleLogIdx)) args } := by
+            have hsc_anon : ⟨Core.Expr.call (.lit (.function Core.consoleLogIdx)) args, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ = sc := by
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
             · -- Core.step?
-              rw [hsc_eta]
+              rw [← hsc_anon]
               exact Core_step?_call_consoleLog_flat_msg args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
             · simp [sc', htrace]
             · exact hinj
