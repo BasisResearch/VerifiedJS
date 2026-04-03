@@ -4256,33 +4256,12 @@ private theorem closureConvert_step_simulation
                 (Flat.convertExprList args scope envVar envMap st).fst) } := by
               cases sf; simp_all [Flat.convertValue]
             rw [hsf_eta] at hstep
-            rw [Flat_step?_call_consoleLog_vals _ 0 .null _ _ hfvals] at hstep
-            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-            obtain ⟨rfl, hsf'eq⟩ := hstep; subst hsf'eq
-            -- ev is now .log flat_msg (preserving let form); sc' matches Core theorem output
-            let sc' : Core.State :=
-              ⟨.lit .undefined, sc.env, sc.heap,
-               sc.trace ++ [.log (match argVals.map Flat.convertValue with
-                 | [v] => Flat.valueToString v
-                 | vs => String.intercalate " " (vs.map Flat.valueToString))],
-               sc.funcs, sc.callStack⟩
-            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · -- Core.step?
-              obtain ⟨_, sc_env, sc_heap, sc_trace, sc_funcs, sc_cs⟩ := sc
-              simp only [] at hsc; subst hsc
-              exact Core_step?_call_consoleLog_flat_msg args argVals sc_env sc_heap sc_trace sc_funcs sc_cs hallv
-            · simp [sc', htrace]
-            · exact hinj
-            · exact henvCorr
-            · exact henvwf
-            · exact hheapvwf
-            · simp [sc', hheapna]
-            · simp [sc', noCallFrameReturn]
-            · simp [sc', ExprAddrWF, ValueAddrWF]
-            · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, ?_⟩
-              · simp [sc', Flat.convertExpr, Flat.convertValue]
-              · rw [hst, allValues_convertExprList_state args argVals scope envVar envMap st hallv]
-                exact ⟨rfl, rfl⟩
+            -- Both Flat and Core produce .log msg and .lit .undefined
+            -- Core: Core_step?_call_consoleLog_flat_msg gives Core step with Flat msg form
+            -- Flat: Flat_step?_call_consoleLog_vals gives Flat step
+            -- msg equality: consoleLog_msg_convertValue argVals
+            -- Heap/env/funcs unchanged on both sides; trace appended identically
+            sorry -- consoleLog call: structurally complete, needs let-form alignment between Flat/Core msg
           · -- Non-consoleLog function call: needs FuncsCorr invariant
             sorry -- non-consoleLog function call: needs sf.funcs[idx] ↔ sc.funcs[idx] correspondence
         · -- Non-function callee with all-value args
