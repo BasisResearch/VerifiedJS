@@ -2105,9 +2105,9 @@ private theorem Core_step?_call_consoleLog_flat_msg (args : List Core.Expr) (arg
       | vs => String.intercalate " " (vs.map Flat.valueToString)
     Core.step? ⟨.call (.lit (.function Core.consoleLogIdx)) args, env, heap, trace, funcs, cs⟩ =
       some (.log msg, ⟨.lit .undefined, env, heap, trace ++ [.log msg], funcs, cs⟩) := by
-  have hmsg := consoleLog_msg_convertValue argVals
-  have h := Core_step?_call_consoleLog_general args argVals env heap trace funcs cs hargs
-  simp only [hmsg] at h; exact h
+  unfold Core.step?
+  simp [Core.exprValue?, hargs, Core.consoleLogIdx, Core.pushTrace, consoleLog_msg_convertValue argVals]
+  cases argVals with | nil => rfl | cons hd tl => cases tl with | nil => rfl | cons _ _ => rfl
 
 private theorem Core_step?_call_func_step (s : Core.State) (args : List Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
