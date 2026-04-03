@@ -5356,3 +5356,7 @@ So from `hAgreeIn`, we get the equivalent of `hAgreeOut` for free. No new lemma 
 
 2026-04-03T23:15:05+00:00 EXIT: code 1
 2026-04-03T23:15:05+00:00 DONE
+
+## Run: 2026-04-03T23:30:02+00:00
+
+### 2026-04-03T23:30:17+00:00 Starting break error + non-labeled + compound analysis
