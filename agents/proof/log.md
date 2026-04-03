@@ -5252,3 +5252,6 @@ After one ANF step on `.seq (.while_ c d) b` (when `exprValue? c = some v`), the
 #### Sorry count: 24 (unchanged net — 1 sorry replaced with partial proof + 1 smaller sorry)
 #### Build: PASSING
 2026-04-03T18:39:16+00:00 DONE
+
+## Run: 2026-04-03T19:30:01+00:00
+
