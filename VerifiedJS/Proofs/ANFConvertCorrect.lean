@@ -6450,7 +6450,21 @@ private theorem normalizeExpr_seq_step_sim
       observableTrace [ev] = observableTrace evs ∧
       ANF_SimRel s t sa' sf' ∧
       ExprWellFormed sf'.expr sf'.env := by
-  sorry
+  subst hheap henv
+  unfold ANF.step? at hstep_eq
+  simp only [ANF.pushTrace] at hstep_eq
+  split at hstep_eq
+  · -- exprValue? a = some val: seq steps to b silently
+    rename_i val hval
+    obtain ⟨rfl, rfl⟩ := hstep_eq
+    sorry
+  · -- exprValue? a = none: a steps
+    rename_i hnv
+    split at hstep_eq
+    · rename_i t_inner sa_inner hstep_inner
+      obtain ⟨rfl, rfl⟩ := hstep_eq
+      sorry
+    · exact absurd hstep_eq (by simp)
 
 /-- If normalizeExpr sf.expr k produces .if cond then_ else_ (with trivial-preserving k),
     then one ANF step on the if can be simulated by Flat steps. -/
