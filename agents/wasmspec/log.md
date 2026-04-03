@@ -5183,3 +5183,86 @@ try-catch bodies(2), while_ CCState(1)
 ## Run: 2026-04-03T21:15:01+00:00
 
 ### 2026-04-03T21:15:09+00:00 Starting CCStateAgree investigation
+
+### 2026-04-03T21:15:01+00:00 CCStateAgree Analysis
+
+## Summary
+
+The 6 blocked sorries (L3715, L3738×2, L6517, L6588, L6695) all fail for the same structural reason: the existential invariant requires `CCStateAgree st' st_a'` (output agreement) after a simulation step, but when a step **discards** or **duplicates** sub-expressions, the CCState threading makes this impossible because `convertExpr` increments `nextId`/`funcs.size` for sub-expressions that no longer appear in the stepped result.
+
+## Definitions
+
+- `CCStateAgree st1 st2 := st1.nextId = st2.nextId ∧ st1.funcs.size = st2.funcs.size`
+- `CCState := { funcs : Array FuncDef, nextId : Nat }`
+- `convertExpr_state_determined` (L566): If `CCStateAgree st1 st2`, converting the same expression at either state produces identical output expressions and output states that also agree.
+
+## The Invariant (L3355-3357)
+
+```
+∃ st_a st_a',
+  (sf'.expr, st_a') = convertExpr sc'.expr ... st_a ∧
+  CCStateAgree st st_a ∧    -- input agreement
+  CCStateAgree st' st_a'    -- output agreement  ← BLOCKER
+```
+
+Output agreement links old conversion output to new conversion output, enabling `convertExpr_state_determined` to bridge remaining sub-expressions in later steps.
+
+## Per-Case Breakdown
+
+### if-then (L3715) — discarded else_
+
+State flow: `st →[cond=lit]→ st →[then_]→ st_t →[else_]→ st_e = st'`
+After step to then_: `st_a = st, st_a' = st_t`
+- Input: `CCStateAgree st st` = ⟨rfl, rfl⟩ ✓
+- Output: needs `CCStateAgree st_e st_t` — **FAILS** (else_ increments state)
+
+### if-else (L3738) — discarded then_
+
+After step to else_: `st_a = st_t, st_a' = st_e = st'`
+- Output: `CCStateAgree st' st'` = ⟨rfl, rfl⟩ ✓
+- Input: needs `CCStateAgree st st_t` — **FAILS** (then_ increments state)
+
+### tryCatch body-value with finally (L6517)
+
+When body=lit v, step to `seq (lit v) fin`. Catch conversion's state effect creates unreachable gap between st and the state needed for finally.
+
+### tryCatch error (L6588)
+
+After body error, jump to catch handler. Need `CCStateAgree st st1` where `st1 = (convertExpr body st).snd`. **FAILS** since body conversion changes state.
+
+### while_ (L6695) — duplicated sub-expressions
+
+Core: `while_ cond body → if cond (seq body (while_ cond body)) (lit undefined)`
+Flat converts cond+body once at `st`, but expanded form converts them TWICE. Second copy needs `CCStateAgree st st_a2` where `st_a2` is state after first cond+body. **FAILS**.
+
+## Why tryCatch Non-Error Works (L6643-6659)
+
+Body is sub-stepped (not discarded). IH provides both input and output agreement. Remaining sub-expressions (catch, finally) are preserved, so `convertExpr_state_determined` bridges from `st1` to `st_a'`.
+
+## Root Cause
+
+CCStateAgree (exact equality) is correct for `convertExpr_state_determined` but too strong for the output invariant when steps discard/duplicate. The invariant forces output state of converting the *stepped* expression to match output of converting the *original*, but discarding removes state effects and duplicating replays them.
+
+## Recommended Fix: Drop output CCStateAgree from invariant
+
+Change the existential to:
+```
+∃ st_a, sf'.expr = (convertExpr sc'.expr ... st_a).fst ∧ CCStateAgree st st_a
+```
+
+For the one case needing output agreement (tryCatch non-error body step), prove a standalone lemma:
+
+```
+theorem subStep_preserves_CCStateAgree (e : Core.Expr) ...
+  (hAgree : CCStateAgree st st_a)
+  (hstep : Flat.step? {sf with expr = (convertExpr e st).fst} = some (ev, sf'))
+  : CCStateAgree (convertExpr e st).snd (convertExpr sc_sub'.expr st_a).snd
+```
+
+This lemma is provable for sub-stepping cases (where the expression structure is preserved and output agreement naturally holds) and not needed for resolution/expansion cases (if branch selection, while unrolling) where it would fail.
+
+Key insight: the cases where output agreement fails are NOT sub-stepping — they are resolution/expansion steps where no outer expression needs the bridge. The cases where it IS needed are sub-stepping cases where `convertExpr_state_determined` naturally provides the bridge.
+
+**Impact**: Fixes 6 of 14 CC sorries.
+### 2026-04-03T21:23:34+00:00 Run complete — CCStateAgree analysis written to log.md (ccstateagree_analysis.md creation blocked by directory permissions)
+2026-04-03T21:23:42+00:00 DONE
