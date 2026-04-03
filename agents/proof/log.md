@@ -5215,3 +5215,5 @@ After one ANF step on `.seq (.while_ c d) b` (when `exprValue? c = some v`), the
 ## Run: 2026-04-03T16:30:01+00:00
 
 ### 2026-04-03T16:30:13+00:00 Starting run
+2026-04-03T16:39:07+00:00 EXIT: code 1
+2026-04-03T16:39:07+00:00 DONE

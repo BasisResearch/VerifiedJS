@@ -466,6 +466,28 @@ private theorem bindComplex_not_seq (rhs : ANF.ComplexExpr) (k : ANF.Trivial →
   | error => simp [hk]
   | ok v => intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
 
+private theorem bindComplex_not_if (rhs : ANF.ComplexExpr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (n m : Nat) (c : ANF.Trivial) (t e : ANF.Expr) :
+    (ANF.bindComplex rhs k).run n ≠ .ok (.if c t e, m) := by
+  show ANF.bindComplex rhs k n ≠ .ok (.if c t e, m)
+  simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
+             get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
+             StateT.set, pure, Pure.pure, StateT.pure, Except.pure, getThe, MonadStateOf.get]
+  cases hk : k (.var (toString "_anf" ++ toString (Nat.repr n))) (n + 1) with
+  | error => simp [hk]
+  | ok v => intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
+
+private theorem bindComplex_not_tryCatch (rhs : ANF.ComplexExpr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (n m : Nat) (body : ANF.Expr) (cp : ANF.VarName) (cb : ANF.Expr) (fin : Option ANF.Expr) :
+    (ANF.bindComplex rhs k).run n ≠ .ok (.tryCatch body cp cb fin, m) := by
+  show ANF.bindComplex rhs k n ≠ .ok (.tryCatch body cp cb fin, m)
+  simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
+             get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
+             StateT.set, pure, Pure.pure, StateT.pure, Except.pure, getThe, MonadStateOf.get]
+  cases hk : k (.var (toString "_anf" ++ toString (Nat.repr n))) (n + 1) with
+  | error => simp [hk]
+  | ok v => intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
+
 /-- normalizeExpr never produces .while_ at the top level when k doesn't.
     Combined with normalizeExprList and normalizeProps by strong induction on depth. -/
 private theorem normalizeExpr_not_while_family :
