@@ -6354,49 +6354,7 @@ private theorem closureConvert_step_simulation
               (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body
               (by simp)
               ⟨hm⟩
-          let handler := match finally_ with | some fin => Core.Expr.seq catchBody fin | none => catchBody
-          let sc' : Core.State :=
-            ⟨handler, Core.Env.extend sc_sub'.env catchParam (.string msg), sc_sub'.heap,
-             sc.trace ++ [.error msg], sc_sub'.funcs, sc_sub'.callStack⟩
-          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-          · -- Core step: tryCatch body error → catch handler
-            show Core.step? sc = some (.error msg, sc')
-            have hsc_rw : sc = { sc with expr := .tryCatch body catchParam catchBody finally_ } := by
-              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-            rw [hsc_rw]
-            have h := Core.step_tryCatch_step_body_error body catchParam catchBody finally_
-              sc.env sc.heap sc.trace sc.funcs sc.callStack hbv hncf msg sc_sub' hcstep_sub
-            simp only [Core.pushTrace] at h
-            exact h
-          · simp [sc', htrace]
-          · exact hinj'
-          · exact EnvCorrInj_extend henvCorr' catchParam (.string msg)
-          · exact EnvAddrWF_extend henvwf' catchParam (.string msg) (by simp [ValueAddrWF])
-          · exact hheapvwf'
-          · exact hheapna'
-          · -- noCallFrameReturn
-            simp only [sc', handler]
-            cases finally_ with
-            | none => exact hncfr_catch
-            | some fin =>
-              simp [noCallFrameReturn]
-              exact ⟨hncfr_catch, by unfold noCallFrameReturn at hncfr; simp at hncfr; exact hncfr.2⟩
-          · -- ExprAddrWF
-            simp only [sc', handler]
-            have hmono := Core_step_heap_size_mono hcstep_sub
-            cases finally_ with
-            | none =>
-              exact ExprAddrWF_mono catchBody
-                (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2) hmono
-            | some fin =>
-              simp only [ExprAddrWF]
-              exact ⟨ExprAddrWF_mono catchBody
-                  (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.1) hmono,
-                ExprAddrWF_mono fin
-                  (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.2) hmono⟩
-          · -- CCStateAgree: scope_irrelevant solves scope mismatch, but
-            -- CCStateAgree st st1 blocked (body conversion changes nextId/funcs.size)
-            sorry
+          sorry
         · -- Non-error: body step preserves tryCatch wrapper
           push_neg at herr
           have heq := Flat_step?_tryCatch_body_step sf fbody catchParam fcatch ffin sb t hncf hfnv hm herr
