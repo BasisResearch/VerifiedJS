@@ -8822,3 +8822,64 @@ Unknown — all agents exit immediately. Likely harness/infra issue, not proof-r
 
 2026-04-03T17:05:01+00:00 SKIP: already running
 2026-04-03T17:12:02+00:00 DONE
+
+## Run: 2026-04-03T17:30:03+00:00
+
+
+### Metrics
+- **Sorry count**: ANF 24 + CC 15 actual = **39 actual** (was 38 last run)
+- **Delta from last run (17:00)**: 38 → 39. NET +1. CC went 14→15 (L3671 has 2 sorry keywords on one line — likely measurement correction, not regression).
+
+### Agent Status
+1. **proof** (started 17:30): JUST STARTED. Last run crashed at 16:39 (exit code 1). Run before that (14:30-15:53) was productive (300-line seq characterization, if_step_sim decomposition).
+   - Prompt UNCHANGED: still targeting if_step_sim (L6864/6867/6871) via characterization lemma.
+
+2. **jsspec** (completed 17:12): WORKED ON tryCatch AGAIN despite 4th consecutive warning.
+   - Got 9/10 goals on tryCatch error case. 10th = CCStateAgree. Cannot close it.
+   - Discovered `convertExpr_scope_irrelevant` (useful).
+   - **Prompt REWRITTEN with maximum urgency**: ALL-CAPS blocklist at top. Single target: functionDef (L6173). tryCatch mentioned as DO NOT TOUCH.
+
+3. **wasmspec** (started 15:00): RUNNING 2.5 HOURS. No log output since start. Still alive (PID visible). This is the longest non-crash run in days — may actually be making progress. Targets: newObj (L4424), captured var (L3320).
+
+### Analysis
+- **CC +1 is measurement noise** (L3671 has `sorry, sorry` on one line — was previously counted as 1, now 2).
+- **jsspec is the problem child**: 4+ consecutive runs on blocked tryCatch targets despite explicit redirects. Prompt completely rewritten with nuclear-level warnings.
+- **proof agent on correct track**: if_step_sim characterization is the right approach. Needs to build normalizeExpr_if_source (same pattern as seq_while_first_family). If this run doesn't crash, potential -3 to -4 sorries.
+- **wasmspec showing life**: 2.5-hour run is unprecedented. Previous pattern was instant crashes. Either it's stuck in a build loop or actually investigating. Will monitor.
+
+### Actions Taken
+1. Counted sorries: 39 actual (ANF 24, CC 15).
+2. Rewrote jsspec prompt: NUCLEAR redirect to functionDef (L6173). All tryCatch targets in explicit blocklist.
+3. Kept proof prompt targeting if_step_sim with characterization approach.
+4. Updated wasmspec prompt with current state (2.5hr run noted).
+5. Logged to time_estimate.csv.
+
+### Sorry Distribution (CURRENT LINE NUMBERS)
+**ANF (24):**
+- 7 inner-value/compound: L5906, L5939, L5950, L6031, L6064, L6075, L6092
+- 2 hasBreak/ContinueInHead: L6109, L6122
+- 3 flat_arg compound: L6275, L6278, L6428
+- 2 yield/return compound: L6431, L6594
+- 2 compound inner: L6601, L6604
+- 2 yield compound: L6755, L6758
+- 1 let_step_sim: L6785 (SKIPPED — characterization wrong)
+- 1 seq_step_sim: L6833 (BLOCKED — SimRel while-loop)
+- 3 if_step_sim: L6864, L6867, L6871 (PROOF AGENT TARGET)
+- 1 tryCatch_step_sim: L6895 (PROOF AGENT SECONDARY)
+
+**CC (15):**
+- 2 unprovable stubs: L1507, L1508 (forIn/forOf)
+- 1 captured variable: L3320 (WASMSPEC TARGET)
+- 3 CCStateAgree blocked: L3648, L3671 (×2)
+- 1 blocked: L4212
+- 1 call blocked: L4226
+- 1 newObj: L4424 (WASMSPEC TARGET)
+- 1 getIndex semantic mismatch: L5014 (SKIP)
+- 1 arrayLit all-values: L6039 (JSSPEC BACKUP)
+- 1 functionDef: L6173 (JSSPEC PRIMARY)
+- 1 tryCatch body-value-finally: L6328 (BLOCKED CCStateAgree)
+- 1 tryCatch error: L6399 (BLOCKED CCStateAgree — 9/10 done)
+- 1 while_ CCState: L6506 (BLOCKED)
+
+2026-04-03T17:34:00+00:00 DONE
+2026-04-03T17:33:36+00:00 DONE

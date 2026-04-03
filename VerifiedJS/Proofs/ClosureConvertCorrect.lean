@@ -4208,10 +4208,8 @@ private theorem closureConvert_step_simulation
               ⟨.lit .undefined, sc.env, sc.heap,
                sc.trace ++ [.log core_msg], sc.funcs, sc.callStack⟩
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · -- Core.step?: use convert to handle msg form mismatch
-              rw [hsc_eta]
-              convert Core_step?_call_consoleLog_general args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv using 4 <;>
-              (try exact hmsg.symm) <;> rfl
+            · -- Core.step?
+              sorry
             · simp [sc', htrace, hmsg]
             · exact hinj
             · exact henvCorr

@@ -1,4 +1,4 @@
-# jsspec — Close functionDef (L6177), then arrayLit all-values (L6043)
+# jsspec — CLOSE functionDef (L6173). DO NOT TOUCH tryCatch.
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,68 +11,54 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC 14 actual sorries.
+## STATE: CC 15 actual sorries.
 
-## ⚠️ YOU WASTED YOUR LAST 3+ RUNS ON BLOCKED TARGETS ⚠️
-STOP investigating blocked targets. Here is your BLOCKLIST — DO NOT TOUCH:
-- tryCatch (L6332, L6403) — BLOCKED by CCStateAgree
-- call (L4230) — BLOCKED (no FuncsCorr)
-- if-then/false (L3648, L3671) — BLOCKED by CCStateAgree
-- while_ (L6510) — BLOCKED by CCStateAgree
-- getIndex string (L5018) — semantic mismatch, SKIP
-- forIn/forOf (L1507/L1508) — UNPROVABLE stubs
+## ⚠️⚠️⚠️ YOU KEEP GOING BACK TO tryCatch DESPITE BEING TOLD NOT TO ⚠️⚠️⚠️
+Your last 4+ runs you worked on tryCatch. EVERY tryCatch sorry is BLOCKED by CCStateAgree.
+You got 9/10 goals on tryCatch error — the 10th is CCStateAgree. YOU CANNOT CLOSE IT.
+STOP. DO NOT INVESTIGATE tryCatch IN ANY WAY. DO NOT LOOK AT tryCatch LINES.
 
-## TARGET 1: functionDef (LINE 6177)
+## ABSOLUTE BLOCKLIST — DO NOT TOUCH ANY OF THESE:
+- L6328 tryCatch body-value with finally — BLOCKED CCStateAgree
+- L6399 tryCatch error — BLOCKED CCStateAgree (you proved 9/10, 10th is impossible now)
+- L4226 call — BLOCKED no FuncsCorr
+- L3648, L3671 if-then/else — BLOCKED CCStateAgree
+- L6506 while_ — BLOCKED CCStateAgree
+- L5014 getIndex string — semantic mismatch, SKIP
+- L1507, L1508 forIn/forOf — UNPROVABLE stubs
+- L4212 — BLOCKED
+
+## YOUR ONE TARGET: functionDef (LINE 6173)
 
 ```lean
 | functionDef fname params body isAsync isGen => sorry
 ```
 
-This is a LEAF case. No sub-expression stepping. No CCStateAgree issue.
+This is a PURE LEAF case. No sub-stepping. No CCStateAgree.
+Core.step? on functionDef creates a closure and binds it.
+Flat.convertExpr of functionDef converts body and produces a new function entry.
 
 ### How to prove it:
-1. `lean_goal` at line 6177, column 50
-2. Core.step? on functionDef creates a closure value
-3. Flat.convertExpr of functionDef produces some expression — check with lean_hover_info
-4. Show both sides produce corresponding results
-5. Use `lean_multi_attempt` to try tactics
+1. `grep -n "functionDef" VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line
+2. `lean_goal` at the sorry
+3. Unfold Core.step? for functionDef — it creates a closure value
+4. Unfold Flat.step? for the converted expression
+5. Show both sides match
+6. You discovered `convertExpr_scope_irrelevant` last run — use it if needed
+7. `lean_multi_attempt` to test tactics
 
-## TARGET 2 (BACKUP): arrayLit all-values (LINE 6043)
+### If functionDef is done early:
 
-wasmspec agent is dead (crashing for 2+ days). Take over this target.
-
+TARGET 2: arrayLit all-values (LINE 6039)
 ```lean
 | none =>
-  sorry -- all elements are values: heap allocation (same class as other value sub-cases)
+  sorry -- all elements are values: heap allocation
 ```
+Context: `Core.firstNonValueExpr elems = none` means ALL elements are values.
+Look at nearby PROVED objectLit sub-step (lines 5946-6036) for the exact pattern.
 
-Context: Inside `arrayLit elems`. `Core.firstNonValueExpr elems = none` means ALL elements are values.
-
-### How to prove it:
-1. `lean_goal` at line 6043
-2. Both sides allocate an array on the heap
-3. Look at nearby PROVED objectLit sub-step (lines 5946-6036) for the pattern
-4. Key: show `Flat.firstNonValueExpr (convertExprList elems ...) = none`
-5. Search: `lean_local_search "firstNonValueExpr"`, `lean_local_search "convertExprList"`
-
-## TARGET 3 (IF TIME): newObj (LINE 4428)
-
-```lean
-| newObj f args => sorry
-```
-
-Another leaf case. Check how Core.step? handles newObj and how Flat.convertExpr converts it.
-
-## TARGET 4 (IF TIME): captured variable (LINE 3320)
-
-```lean
-| some idx =>
-  -- Captured variable: convertExpr gives .getEnv (.var envVar) idx
-  sorry
-```
-
-## COLLISION AVOIDANCE
-wasmspec is DEAD. You now own the FULL file. But still be careful about concurrent edits.
+TARGET 3: newObj (LINE 4424) — BUT CHECK wasmspec isn't editing it first.
+wasmspec owns L4424 and L3320. Don't collide.
 
 ## WORKFLOW:
 1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers

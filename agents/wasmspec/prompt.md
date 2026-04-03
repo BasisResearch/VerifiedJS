@@ -1,4 +1,4 @@
-# wasmspec — Close newObj (L4428) or captured variable (L3320)
+# wasmspec — Close newObj (L4424) or captured variable (L3320)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,24 +11,18 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## YOU HAVE BEEN CRASHING FOR 2+ DAYS. PRODUCE OUTPUT THIS RUN OR BE REPLACED.
+## STATE: CC 15 actual sorries. You've been running since 15:00 (2.5 hours).
 
-If you crash immediately: log the error message to agents/wasmspec/log.md before exiting.
+## NOTE: jsspec owns functionDef (L6173) and arrayLit (L6039). DO NOT edit L6000+.
 
-## STATE: CC 14 actual sorries.
-
-## NOTE: jsspec is now also working on CC. Avoid editing the same lines.
-jsspec owns: functionDef (L6177), arrayLit (L6043).
-You own: newObj (L4428), captured variable (L3320).
-
-## TARGET 1: newObj (LINE 4428)
+## TARGET 1: newObj (LINE 4424)
 
 ```lean
 | newObj f args => sorry
 ```
 
-This is a leaf case — `new f(args)`. Check:
-1. `lean_goal` at line 4428
+Leaf case — `new f(args)`. Steps:
+1. `lean_goal` at line 4424
 2. How Core.step? handles newObj
 3. How Flat.convertExpr converts newObj
 4. Show both sides correspond
@@ -45,7 +39,7 @@ When a variable is captured (found in envMap), convertExpr produces `.getEnv (.v
 Core side: variable lookup in env. Flat side: getEnv from environment array.
 
 ## COLLISION AVOIDANCE
-jsspec works on L6043 and L6177. You work on L3320 and L4428.
+jsspec works on L6173 and L6039. You work on L3320 and L4424.
 Do NOT edit L6000+.
 
 ## WORKFLOW:

@@ -17,16 +17,15 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 ## ⚠️ CRITICAL CORRECTION: bindComplex PRODUCES .let ⚠️
 `bindComplex rhs k` returns `.let freshName rhs (k (.var freshName))`.
 Therefore `bindComplex_not_let` is FALSE — DO NOT attempt it.
-The `let_step_sim` characterization approach is WRONG. SKIP `let_step_sim` entirely.
+SKIP `let_step_sim` (L6785) entirely.
 
 ## YOUR IMMEDIATE TASK: if_step_sim (L6864, L6867, L6871)
 
-`bindComplex_not_if` ALREADY EXISTS (line 469). The characterization approach works for `.if`:
+`bindComplex_not_if` ALREADY EXISTS (line 469). The characterization approach works for `.if`.
 
 ### Step 1: Build `normalizeExpr_if_source` characterization
 
-This follows the SAME pattern as `normalizeExpr_seq_while_first_family` (lines ~767-1068).
-The theorem: if normalizeExpr with trivial-preserving k produces `.if cond then_ else_`, then the Flat source was `.if`.
+Follow the SAME pattern as `normalizeExpr_seq_while_first_family` (lines ~767-1068).
 
 ```lean
 private theorem normalizeExpr_if_source
@@ -46,46 +45,36 @@ private theorem normalizeExpr_if_source
     simp [ANF.normalizeExpr] at hnorm
     have ⟨m', hkm⟩ := hk (.var name') n
     rw [hkm] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-  -- For constructors using bindComplex: use bindComplex_not_if
+  -- For constructors using bindComplex: unfold normalizeExpr, use bindComplex_not_if
   -- For .seq, .while_, .let, .tryCatch, .labeled: unfold normalizeExpr, show they don't produce .if
-  | _ => sorry -- Fill per-constructor using bindComplex_not_if or direct contradiction
+  | _ => sorry -- Fill per-constructor
 ```
 
-For each remaining constructor:
-- If it calls `bindComplex`: unfold normalizeExpr, show the result goes through bindComplex, use `bindComplex_not_if` for contradiction
-- `.seq a b`: normalizeExpr produces `.seq` (not `.if`) — use a similar argument
-- `.while_ c d`: normalizeExpr produces `.while_` or `.seq` — not `.if`
-- `.let fname finit fbody`: normalizeExpr calls normalizeExpr on finit with a continuation that normalizeExpr's fbody — this continuation can produce any form, but the outer call goes through bindComplex or direct recursion. Check the actual normalizeExpr code.
-- `.tryCatch`, `.labeled`: produce their own form, not `.if`
+For each constructor:
+- Uses `bindComplex`: unfold normalizeExpr, show result goes through bindComplex, use `bindComplex_not_if`
+- `.seq a b`: normalizeExpr produces seq or while-related, not if
+- `.while_ c d`: normalizeExpr produces while, not if
+- `.let`, `.tryCatch`, `.labeled`: produce their own form
 
-Use `normalizeExpr_seq_while_first_family` as your template for handling each constructor.
+Use `normalizeExpr_seq_while_first_family` as template.
 
-### Step 2: Use normalizeExpr_if_source to close the 3 sub-sorries
+### Step 2: Use normalizeExpr_if_source to close 3 sub-sorries
 
-At L6864 (true branch):
+At L6864 (true branch), L6867 (false branch), L6871 (error):
 ```lean
 have ⟨fc, ft, fe, he_if⟩ := normalizeExpr_if_source sf.expr k hk n m cond then_ else_ hnorm
 subst he_if
--- Now sf.expr = .if fc ft fe
--- Flat.step? on .if: evaluate fc, if truthy step to ft, if falsy step to fe
--- Show: Flat steps to ft, ANF_SimRel for then_ ↔ ft
-sorry -- close with specific Flat step + SimRel construction
+-- Now sf.expr = .if fc ft fe, match flat semantics
 ```
-
-Same pattern for L6867 (false branch) and L6871 (error).
 
 ### Step 3: tryCatch_step_sim (L6895) — SAME PATTERN
 Build `normalizeExpr_tryCatch_source` using `bindComplex_not_tryCatch` (line 480).
 
 ## SKIP THESE:
-- `let_step_sim` (L6785) — bindComplex PRODUCES .let, characterization approach WRONG
+- `let_step_sim` (L6785) — bindComplex PRODUCES .let, characterization WRONG
 - `seq_step_sim` — blocked on SimRel while-loop generalization
 - ClosureConvertCorrect.lean — other agents own it
 - LowerCorrect.lean — DONE (0 sorries)
-
-## DO NOT TOUCH:
-- ClosureConvertCorrect.lean — jsspec and wasmspec are editing it
-- LowerCorrect.lean — DONE
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`
