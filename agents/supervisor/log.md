@@ -1,3 +1,52 @@
+## Run: 2026-04-03T19:30:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 (grep -c) + CC 15 (grep-c, ~12 actual) + Wasm 0 actual = **~36 actual**
+- **Delta from last run (19:05)**: 36 → 36. **NET 0**. No change in ANF. CC consoleLog appears closed (L4270 now has proof, not sorry), but grep-c went 14→15 — jsspec mid-edit during 19:00 run.
+
+### Agent Status
+1. **proof** (last run 17:30-18:39): Partial progress on if_step_sim error case. All literal sub-cases proven by contradiction. Remaining: L6883 (.var name_cond needs normalizeExpr_if_cond_var_free). L6864/6867 (true/false branches) still sorry. Current run started 19:30.
+   - Prompt updated: maintained L6883 focus + added note about 7 "non-labeled inner value" sorries (L5906-L6092) as secondary targets.
+
+2. **jsspec** (started 19:00): RUNNING. Closed consoleLog (L4260-4286 is complete proof). CC grep-c 15 may be mid-edit artifact.
+   - Prompt updated: consoleLog marked DONE, targets now newObj (L4486) → getIndex (L5076) → L3326 staging sorry.
+
+3. **wasmspec**: DEAD 17+ hours. Every run exits code 1 immediately. 30+ consecutive crashes since 02:15.
+   - Prompt updated: ultra-minimal recovery steps. Just log, read one file, grep one thing, exit. If this still crashes, agent is fundamentally broken.
+
+### Actions Taken
+1. Counted sorries: ANF 24 + CC ~12 actual + Wasm 0 = ~36.
+2. Updated proof prompt: maintained L6883 focus, added secondary targets (non-labeled inner value sorries).
+3. Updated jsspec prompt: consoleLog DONE, new targets = newObj (L4486) → getIndex (L5076).
+4. Updated wasmspec prompt: ultra-minimal recovery mode.
+5. Logged to time_estimate.csv.
+
+### Sorry Breakdown (CC, ~12 actual)
+- L1507/1508: forIn/forOf stubs (unprovable)
+- L3326: staging sorry (HeapInj refactor — may be restorable)
+- L3381: captured var (multi-step gap)
+- L3709: if-then CCStateAgree (BLOCKED)
+- L3732: if-else CCStateAgree x2 (BLOCKED)
+- L4288: non-consoleLog call (BLOCKED no FuncsCorr)
+- L4486: newObj (jsspec TARGET 1)
+- L5076: getIndex string (jsspec TARGET 2, may be unprovable)
+- L6309: functionDef (BLOCKED multi-step + CCStateAgree)
+- L6464: tryCatch finally CCStateAgree (BLOCKED)
+- L6535: tryCatch error CCStateAgree (BLOCKED)
+- L6642: while_ CCStateAgree (BLOCKED)
+
+### Tractable targets (non-blocked)
+- **L6883** (ANF): normalizeExpr_if_cond_var_free → proof agent has exact code
+- **L4486** (CC): newObj → jsspec TARGET 1 (similar to arrayLit)
+- **L5076** (CC): getIndex → jsspec TARGET 2
+- **L6864/6867** (ANF): if branch simulation → proof agent after L6883
+- **L5906-L6092** (ANF): 7 "non-labeled inner value" sorries → proof agent secondary
+
+### Biggest blocker: CCStateAgree (6 CC sorries blocked)
+Until CCStateAgree is solved, CC cannot go below 6 sorries. No agent is working on this — needs architectural fix to CC_SimRel.
+
+---
+
 ## Run: 2026-04-03T19:05:01+00:00
 
 ### Metrics
@@ -9066,3 +9115,7 @@ Unknown — all agents exit immediately. Likely harness/infra issue, not proof-r
 ## Run: 2026-04-03T19:05:01+00:00
 
 2026-04-03T19:08:56+00:00 DONE
+
+## Run: 2026-04-03T19:30:02+00:00
+
+2026-04-03T19:33:01+00:00 DONE

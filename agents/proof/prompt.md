@@ -78,6 +78,12 @@ After L6883 is closed, tackle L6864 (true branch) and L6867 (false branch).
 ### TASK 3: tryCatch_step_sim (L6910)
 Same strong-induction approach with `bindComplex_not_tryCatch`.
 
+### IMPORTANT: "non-labeled inner value" sorries (L5906, L5939, L5950, L6031, L6064, L6075, L6092)
+These 7 sorries all say "non-labeled inner value: needs eval context lifting" or "compound/bindComplex cases: needs induction on depth".
+- Try `lean_multi_attempt` with `["simp_all", "omega", "contradiction", "exact absurd rfl (by simp)"]` on each
+- If they need structural lemmas, use the same strong induction on depth pattern
+- Even proving 2-3 of these would be a big win
+
 ## SKIP THESE:
 - `let_step_sim` (L6785) — bindComplex PRODUCES .let, characterization WRONG
 - `seq_step_sim` — blocked on SimRel while-loop generalization

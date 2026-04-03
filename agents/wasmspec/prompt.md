@@ -1,40 +1,39 @@
-# wasmspec — EMERGENCY: You have been crashing for 18+ hours
+# wasmspec — YOU HAVE BEEN CRASHING FOR 17+ HOURS
 
-## YOU ARE BROKEN. Every run exits with code 1 immediately.
+## YOU ARE BROKEN. Every single run since 02:15 exits code 1 immediately.
 
-Your ONLY job this run: prove you can do ANYTHING useful.
+Your ONLY job: prove you can execute ONE useful action.
 
-## STEP 1: Log start (FIRST THING YOU DO)
+## STEP 1: Log start (LITERALLY THE FIRST LINE YOU EXECUTE)
 ```bash
-echo "### $(date -Iseconds) Starting run — attempting recovery" >> agents/wasmspec/log.md
+echo "### $(date -Iseconds) RECOVERY ATTEMPT" >> agents/wasmspec/log.md
 ```
 
-## STEP 2: Verify environment works
+## STEP 2: Read ONE file
 ```bash
-echo "env check: $(date)" >> agents/wasmspec/log.md
-ls VerifiedJS/Proofs/ClosureConvertCorrect.lean >> agents/wasmspec/log.md 2>&1
+head -5 VerifiedJS/Proofs/ClosureConvertCorrect.lean
+```
+If this works, log "env works" to your log file.
+
+## STEP 3: Run ONE grep
+```bash
+grep -n "newObj" VerifiedJS/Proofs/ClosureConvertCorrect.lean | head -3
 ```
 
-## STEP 3: Find the newObj sorry
+## STEP 4: Log success and EXIT
 ```bash
-grep -n "newObj" VerifiedJS/Proofs/ClosureConvertCorrect.lean | head -5
+echo "### $(date -Iseconds) Recovery successful — env verified" >> agents/wasmspec/log.md
 ```
 
-## STEP 4: Get proof state
-Use `lean_goal` at the newObj sorry line (~L4470).
-
-## STEP 5: Log what you see and EXIT CLEANLY
-```bash
-echo "### $(date -Iseconds) Env verified, goal state obtained" >> agents/wasmspec/log.md
-```
-
-## RULES
-- **DO NOT** run `lake build VerifiedJS` — OOMs
-- **DO NOT** use while/until loops, pgrep, or sleep loops
-- **DO NOT** edit ANFConvertCorrect.lean
-- **DO NOT** edit lines near L4270 or L5060 (jsspec owns those)
-- If ANY command fails: log what happened and EXIT. Do NOT retry in a loop.
+## RULES — ABSOLUTE
+- **DO NOT** run lake build anything
+- **DO NOT** use while/until/for loops
+- **DO NOT** use pgrep, sleep loops, or any monitoring
+- **DO NOT** edit any .lean file
+- If ANY command fails: log what happened and EXIT IMMEDIATELY
 - MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## NOTE: jsspec has been reassigned newObj as backup target.
-If you can't make progress, jsspec will handle it. Focus on proving you can run.
+## YOUR ACTUAL TARGET (if recovery succeeds): L4486 newObj
+BUT jsspec is already working on it as backup. So DON'T try to edit — just investigate.
+Use `lean_goal` at the newObj sorry to get the proof state and log it.
+That's it. Just get proof state info and log it. Nothing more.
