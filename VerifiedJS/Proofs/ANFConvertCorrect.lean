@@ -2093,23 +2093,23 @@ private theorem normalizeExpr_if_cond_source :
       | labeled label body =>
         exfalso; unfold ANF.normalizeExpr at hnorm
         simp only [bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
-        split at hnorm
-        · rename_i bodyExpr n' heq; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-        · exact absurd hnorm (by simp)
+        revert hnorm; cases (ANF.normalizeExpr body k).run n with
+        | ok val => simp [Except.ok.injEq, Prod.mk.injEq]; intro h; exact ANF.Expr.noConfusion h
+        | error e => simp
       | while_ cond body =>
         exfalso; unfold ANF.normalizeExpr at hnorm
         simp only [bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
-        repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+        repeat (first | split at hnorm | simp at hnorm | exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1)
       | tryCatch body₁ catchParam catchBody finally_ =>
         exfalso; unfold ANF.normalizeExpr at hnorm
         simp only [bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure, StateT.pure, Except.pure, Functor.map, StateT.map, StateT.run] at hnorm
         cases finally_ with
         | none =>
           simp only [bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
-          repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+          repeat (first | split at hnorm | simp at hnorm | exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1)
         | some fin =>
           simp only [bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure, StateT.pure, Except.pure, Functor.map, StateT.map, StateT.run] at hnorm
-          repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
+          repeat (first | split at hnorm | simp at hnorm | exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1)
       | «return» arg =>
         cases arg with
         | none =>
