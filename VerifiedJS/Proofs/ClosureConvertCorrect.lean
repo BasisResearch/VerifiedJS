@@ -4190,14 +4190,16 @@ private theorem closureConvert_step_simulation
           · -- ConsoleLog call: both sides produce .log msg, result .lit .undefined
             subst hidx
             have hfvals := allValues_convertExprList_valuesFromExprList args argVals scope envVar envMap st hallv
+            have hmsg := consoleLog_msg_convertValue argVals
             have hsf_eta : sf = { sf with expr := (Flat.Expr.call (.lit (.closure Core.consoleLogIdx 0)) (.lit .null)
                 (Flat.convertExprList args scope envVar envMap st).fst) } := by
               cases sf; simp_all [Flat.convertValue]
             rw [hsf_eta] at hstep
             rw [Flat_step?_call_consoleLog_vals _ 0 .null _ _ hfvals] at hstep
+            -- Rewrite flat message to core message before extracting event
+            simp only [hmsg] at hstep
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, hsf'eq⟩ := hstep; subst hsf'eq
-            have hmsg := consoleLog_msg_convertValue argVals
             have hsc_eta : sc = { sc with expr := .call (.lit (.function Core.consoleLogIdx)) args } := by
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
             let core_msg := match argVals with
@@ -4208,10 +4210,9 @@ private theorem closureConvert_step_simulation
                sc.trace ++ [.log core_msg], sc.funcs, sc.callStack⟩
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
             · -- Core.step?
-              simp only [hmsg]; rw [hsc_eta]
+              rw [hsc_eta]
               exact Core_step?_call_consoleLog_general args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
-            · -- trace
-              simp only [sc', core_msg, hmsg, htrace]
+            · simp [sc', htrace]
             · exact hinj
             · exact henvCorr
             · exact henvwf
