@@ -2094,8 +2094,8 @@ private theorem normalizeExpr_if_cond_source :
         exfalso; unfold ANF.normalizeExpr at hnorm
         simp only [bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
         revert hnorm; split
-        · intro h; exact absurd h (by simp)
         · intro h; simp [Except.ok.injEq, Prod.mk.injEq] at h; exact ANF.Expr.noConfusion h.1
+        · intro h; exact absurd h (by simp)
       | while_ cond body =>
         exfalso; unfold ANF.normalizeExpr at hnorm
         simp only [bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
@@ -2163,7 +2163,7 @@ private theorem normalizeExpr_if_cond_source :
               · intro h; exact absurd h (by simp)
               · split
                 · intro h; exact absurd h (by simp)
-                · simp [Except.ok.injEq, Prod.mk.injEq]; intro h; exact ANF.Expr.noConfusion h fun _ _ _ => nomatch _)
+                · simp only [Except.ok.injEq, Prod.mk.injEq]; intro ⟨h, _⟩; cases h)
           hnorm)
       | seq a b =>
         simp only [ANF.normalizeExpr] at hnorm
