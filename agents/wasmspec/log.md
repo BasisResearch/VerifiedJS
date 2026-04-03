@@ -5159,3 +5159,23 @@ try-catch bodies(2), while_ CCState(1)
 2026-04-03T18:15:01+00:00 SKIP: already running
 2026-04-03T19:15:01+00:00 SKIP: already running
 2026-04-03T20:15:04+00:00 SKIP: already running
+
+### Progress
+
+**Both objectLit sorries (Targets 1 & 2) were already closed** in prior runs.
+
+**Call function sorry (L4189 → L4269+L4271):**
+- Split into `by_cases hidx : idx = Core.consoleLogIdx`
+  - ConsoleLog sub-case: sorry (infrastructure set up, blocked on dependent match normalization)
+  - Non-consoleLog sub-case: sorry (needs FuncsCorr invariant)
+- Added helper lemma `Core_step?_call_consoleLog_flat_msg` (fully proven):
+  States Core consoleLog step using Flat message form for simulation alignment
+- Key blocker: `simp only [Option.some.injEq, Prod.mk.injEq]` introduces
+  `match argVals, hfvals with` dependent pattern in the event, preventing
+  `exact` against the helper lemma which has `match argVals with`
+
+**Sorry count:** 15 → 16 (+1 from splitting call function sorry)
+
+**Build status:** Compiles with only pre-existing jsspec errors (L6422+)
+### 2026-04-03T20:57:43+00:00 Run complete — split call sorry, +1 sorry, build clean
+2026-04-03T20:58:31+00:00 DONE

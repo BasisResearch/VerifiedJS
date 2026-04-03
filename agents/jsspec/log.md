@@ -2980,3 +2980,6 @@ Analysis: partially provable (all-values sub-case works, sub-stepping cases bloc
 - **Sorry count**: 12 actual sorries remain. All are blocklisted (CCStateAgree, FuncsCorr, wasmspec, multi-step) or unprovable (getIndex string Float.toString).
 ### 2026-04-03T20:27:39+00:00 Run complete — fixed consoleLog type mismatch, documented getIndex string as unprovable
 2026-04-03T20:27:57+00:00 DONE
+
+## Run: 2026-04-03T21:00:01+00:00
+
