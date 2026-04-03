@@ -7131,8 +7131,8 @@ private theorem normalizeExpr_await_step_sim
       | none =>
         -- Semantic mismatch: Flat .this with none lookup silently resolves to .undefined,
         -- but ANF .var "this" produces ReferenceError. The error case needs ExprWellFormed
-        -- with VarFreeIn.await_arg (currently missing from VarFreeIn inductive).
-        sorry
+        -- with VarFreeIn.await_arg.
+        exfalso; exact absurd hlookup (hewf "this" (VarFreeIn.await_arg _ _ VarFreeIn.this_var))
     | «break» _ =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
