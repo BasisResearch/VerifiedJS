@@ -4190,8 +4190,8 @@ private theorem closureConvert_step_simulation
           · -- ConsoleLog call: both sides produce .log msg, result .lit .undefined
             subst hidx
             have hfvals := allValues_convertExprList_valuesFromExprList args argVals scope envVar envMap st hallv
-            have hsf_eta : sf = { sf with expr := .call (.lit (.closure Core.consoleLogIdx 0)) (.lit .null)
-                (Flat.convertExprList args scope envVar envMap st).fst } := by
+            have hsf_eta : sf = { sf with expr := (Flat.Expr.call (.lit (.closure Core.consoleLogIdx 0)) (.lit .null)
+                (Flat.convertExprList args scope envVar envMap st).fst) } := by
               cases sf; simp_all [Flat.convertValue]
             rw [hsf_eta] at hstep
             rw [Flat_step?_call_consoleLog_vals _ 0 .null _ _ hfvals] at hstep
