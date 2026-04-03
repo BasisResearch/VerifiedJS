@@ -4265,6 +4265,8 @@ private theorem closureConvert_step_simulation
             rw [Flat_step?_call_consoleLog_vals _ 0 .null _ _ hfvals] at hstep
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, hsf'eq⟩ := hstep; subst hsf'eq
+            -- Normalize dependent match (argVals, hfvals) → simple match
+            simp only [] at *
             -- Destructure sc to get explicit fields for Core theorem
             obtain ⟨sc_expr, sc_env, sc_heap, sc_trace, sc_funcs, sc_cs⟩ := sc
             simp only [] at hsc; subst hsc
@@ -4276,8 +4278,7 @@ private theorem closureConvert_step_simulation
                  | vs => String.intercalate " " (vs.map Flat.valueToString))],
                sc_funcs, sc_cs⟩
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · show Core.step? ⟨_, sc_env, sc_heap, sc_trace, sc_funcs, sc_cs⟩ = some (_, sc')
-              exact Core_step?_call_consoleLog_flat_msg args argVals sc_env sc_heap sc_trace sc_funcs sc_cs hallv
+            · exact Core_step?_call_consoleLog_flat_msg args argVals sc_env sc_heap sc_trace sc_funcs sc_cs hallv
             · simp [sc', htrace]
             · exact hinj
             · exact henvCorr
