@@ -1994,6 +1994,50 @@ private theorem trivialChain_consume_ctx
         by rw [observableTrace_append, hobs_a, hobs_b]; rfl⟩
     | _ => simp [isTrivialChain] at htc
 
+/-- If normalizeExpr e k produces .if (.var name) at the top level, then either
+    VarFreeIn name e (the variable came from the expression) or k produced the .if
+    (the variable came from the continuation). Proved by strong induction on depth. -/
+private theorem normalizeExpr_if_cond_source :
+    ∀ (d : Nat),
+      (∀ (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr),
+        e.depth ≤ d →
+        ∀ n m (name : ANF.VarName) (then_ else_ : ANF.Expr),
+        (ANF.normalizeExpr e k).run n = .ok (.if (.var name) then_ else_, m) →
+        VarFreeIn name e ∨ (∃ (arg : ANF.Trivial) (n' m' : Nat) (t' e' : ANF.Expr),
+          (k arg).run n' = .ok (.if (.var name) t' e', m'))) ∧
+      (∀ (es : List Flat.Expr) (k : List ANF.Trivial → ANF.ConvM ANF.Expr),
+        Flat.Expr.listDepth es ≤ d →
+        ∀ n m (name : ANF.VarName) (then_ else_ : ANF.Expr),
+        (ANF.normalizeExprList es k).run n = .ok (.if (.var name) then_ else_, m) →
+        (∃ e ∈ es, VarFreeIn name e) ∨ (∃ (args : List ANF.Trivial) (n' m' : Nat) (t' e' : ANF.Expr),
+          (k args).run n' = .ok (.if (.var name) t' e', m'))) ∧
+      (∀ (ps : List (Flat.PropName × Flat.Expr)) (k : List (ANF.PropName × ANF.Trivial) → ANF.ConvM ANF.Expr),
+        Flat.Expr.propListDepth ps ≤ d →
+        ∀ n m (name : ANF.VarName) (then_ else_ : ANF.Expr),
+        (ANF.normalizeProps ps k).run n = .ok (.if (.var name) then_ else_, m) →
+        (∃ p ∈ ps, VarFreeIn name p.2) ∨ (∃ (args : List (ANF.PropName × ANF.Trivial)) (n' m' : Nat) (t' e' : ANF.Expr),
+          (k args).run n' = .ok (.if (.var name) t' e', m')))
+    := by
+  sorry
+
+/-- When normalizeExpr e k produces .if (.var name) with k trivial-preserving,
+    the variable name is free in e. Since k only produces .trivial (never .if),
+    the .if must come from e. -/
+private theorem normalizeExpr_if_cond_var_free
+    (d : Nat) (e : Flat.Expr) (hd : e.depth ≤ d)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (name : ANF.VarName) (then_ else_ : ANF.Expr)
+    (hk : ∀ (arg : ANF.Trivial) (n' : Nat), ∃ m', (k arg).run n' = .ok (.trivial arg, m'))
+    (hnorm : (ANF.normalizeExpr e k).run n = .ok (.if (.var name) then_ else_, m)) :
+    VarFreeIn name e := by
+  have h := (normalizeExpr_if_cond_source d).1 e k hd n m name then_ else_ hnorm
+  rcases h with hvf | ⟨arg, n', m', t', e', hk_if⟩
+  · exact hvf
+  · exfalso
+    obtain ⟨m'', hk''⟩ := hk arg n'
+    rw [hk''] at hk_if
+    exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hk_if)).1
+
 /-- When normalizeExpr e k produces .trivial (.var name) with k trivial-preserving,
     the variable name (or "this") is free in e. This is used to derive a contradiction
     in the var-not-found case via ExprWellFormed. -/
@@ -6929,9 +6973,10 @@ private theorem normalizeExpr_if_step_sim
       split at herr
       · simp at herr
       · rename_i hnone
-        -- name_cond is not bound: need to show it's free in sf.expr to contradict hewf
-        sorry -- Needs normalizeExpr_if_cond_var_free: if normalizeExpr e k = .if (.var name) ...
-              -- with trivial-preserving k, then VarFreeIn name e
+        -- name_cond is not bound: show it's free in sf.expr to contradict hewf
+        have hfree := normalizeExpr_if_cond_var_free sf.expr.depth sf.expr (Nat.le_refl _)
+          k n m name_cond then_ else_ hk hnorm
+        exact (hewf name_cond hfree) hnone
     | litNull | litUndefined | litBool _ | litNum _ | litStr _ | litObject _ | litClosure _ _ =>
       simp only [ANF.evalTrivial, ANF.trivialValue?] at herr; exact nomatch herr
 
