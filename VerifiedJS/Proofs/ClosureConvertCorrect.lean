@@ -4196,10 +4196,12 @@ private theorem closureConvert_step_simulation
               cases sf; simp_all [Flat.convertValue]
             rw [hsf_eta] at hstep
             rw [Flat_step?_call_consoleLog_vals _ 0 .null _ _ hfvals] at hstep
-            -- Rewrite flat message to core message before extracting event
-            simp only [hmsg] at hstep
+            -- Reduce let binding, then rewrite flat msg → core msg
+            dsimp only [] at hstep
+            rw [hmsg] at hstep
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, hsf'eq⟩ := hstep; subst hsf'eq
+            -- Now ev = .log core_msg
             have hsc_eta : sc = { sc with expr := .call (.lit (.function Core.consoleLogIdx)) args } := by
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
             let core_msg := match argVals with
