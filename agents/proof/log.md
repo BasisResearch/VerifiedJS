@@ -5282,3 +5282,27 @@ After one ANF step on `.seq (.while_ c d) b` (when `exprValue? c = some v`), the
 ## Run: 2026-04-03T22:30:08+00:00
 
 ### 2026-04-03T22:30:21+00:00 Starting run
+### 2026-04-03T22:30:21+00:00 Progress
+1. Closed L7135 sorry (await .this lookup contradiction) — used VarFreeIn.await_arg + VarFreeIn.this_var
+2. Fixed pre-existing build errors in normalizeExpr_if_cond_source:
+   - Fixed labeled/while/tryCatch cases: replaced stale match-form proofs with split-based approach
+   - Fixed ihes/ihps argument order mismatches (hk before hd → hd before hk)
+   - Fixed List.mem_cons_self explicit arg changes
+   - Fixed ANF.normalizeExpr monadic unfolding (simp → unfold + bind simp)
+3. Sorry count: 23 → 22
+4. Build: PASSING
+
+#### Remaining 22 sorries analysis:
+All remaining sorries require "eval context lifting" — stepping compound Flat expressions through evaluation contexts to reach labeled/break/continue/throw/return/yield sub-expressions. These are structurally similar but each requires detailed Flat.step? unfolding for specific expression types. Categories:
+- normalizeExpr_labeled_step_sim: 7 sorries (non-labeled inner value + compound/bindComplex)
+- hasBreakInHead_flat_error_steps: 1 sorry (needs mutual induction)
+- hasContinueInHead_flat_error_steps: 1 sorry (same structure)
+- normalizeExpr_throw_step_sim: 2 sorries (compound flat_arg + non-throw HasThrowInHead)
+- normalizeExpr_return_step_sim: 2 sorries (compound inner_val + HasReturnInHead)
+- normalizeExpr_await_step_sim: 2 sorries (compound inner_arg + HasAwaitInHead)
+- normalizeExpr_yield_step_sim: 2 sorries (compound inner_val + HasYieldInHead)
+- normalizeExpr_seq_step_sim: 2 sorries (.let characterization + while loop)
+- normalizeExpr_if_step_sim: 2 sorries (then/else branch simulation)
+- normalizeExpr_tryCatch_step_sim: 1 sorry (tryCatch characterization)
+### 2026-04-03T23:22:00+00:00 Run complete — 1 sorry closed, build errors fixed, 22 sorries remain
+2026-04-03T23:22:15+00:00 DONE
