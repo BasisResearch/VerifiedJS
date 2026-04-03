@@ -5159,3 +5159,9 @@ After `cases hyield with | yield_some_direct =>`, the inaccessibles for `HasYiel
 
 ## Run: 2026-04-03T14:30:02+00:00
 
+2026-04-03T14:30:36+00:00 EXIT: code 1
+2026-04-03T14:30:36+00:00 DONE
+
+## Run: 2026-04-03T14:30:39+00:00
+
+### 2026-04-03T14:30:49+00:00 Starting run
