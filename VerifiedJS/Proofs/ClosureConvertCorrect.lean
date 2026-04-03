@@ -4208,12 +4208,10 @@ private theorem closureConvert_step_simulation
                sc.trace ++ [.log core_msg], sc.funcs, sc.callStack⟩
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
             · -- Core.step?
-              show Core.step? sc = some (.log core_msg, sc')
-              rw [hsc_eta]
+              simp only [hmsg]; rw [hsc_eta]
               exact Core_step?_call_consoleLog_general args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
             · -- trace
-              show sf.trace ++ _ = sc.trace ++ _
-              rw [htrace]; congr 1; simp only [List.cons.injEq, List.nil.injEq, and_true]; congr 1; exact hmsg
+              simp only [sc', core_msg, hmsg, htrace]
             · exact hinj
             · exact henvCorr
             · exact henvwf
