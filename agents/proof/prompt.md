@@ -1,4 +1,4 @@
-# proof — Close let_step_sim then if_step_sim with characterization lemmas
+# proof — Close let_step_sim (L6763) then if_step_sim (L6842/6845/6849)
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -16,24 +16,37 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## SKIP seq_step_sim — CONFIRMED BLOCKED on SimRel while-loop issue.
 
-## YOUR IMMEDIATE TASK: let_step_sim (L6763) — MOST TRACTABLE
+## YOUR IMMEDIATE TASK: let_step_sim (L6763)
 
-### KEY INSIGHT: normalizeExpr `.let` comes ONLY from Flat `.let`
+### Step 1: Build `bindComplex_not_let` (copy `bindComplex_not_seq` at line 458)
 
-Look at line 307-317 in ANFConvertCorrect.lean:
+`bindComplex_not_seq` is at line 458. It works because `bindComplex` produces `.seq fresh (k trivial)` — which is `.seq`, never `.let`. The EXACT SAME proof works for `.let`:
+
 ```lean
-| «let» name init body =>
-    normalizeExpr init (fun initTriv => do
-        let bodyExpr ← normalizeExpr body k
-        pure (.let name (.trivial initTriv) bodyExpr))
+private theorem bindComplex_not_let (rhs : ANF.ComplexExpr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (n m : Nat) (name : String) (init body : ANF.Expr) :
+    (ANF.bindComplex rhs k).run n ≠ .ok (.let name init body, m) := by
+  show ANF.bindComplex rhs k n ≠ .ok (.let name init body, m)
+  simp only [ANF.bindComplex, ANF.freshName, bind, Bind.bind, StateT.bind, Except.bind,
+             get, GetElem.getElem, MonadState.get, StateT.get, set, MonadState.set,
+             StateT.set, pure, Pure.pure, StateT.pure, Except.pure, getThe, MonadStateOf.get]
+  cases hk : k (.var (toString "_anf" ++ toString (Nat.repr n))) (n + 1) with
+  | error => simp [hk]
+  | ok v => intro habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1
 ```
 
-The continuation `(fun initTriv => do ... pure (.let name (.trivial initTriv) bodyExpr))` is the ONLY thing that produces `.let` — `bindComplex` never produces `.let` (it produces `.seq` or `.trivial`). The outer `normalizeExpr init` with this continuation recurses into subexpressions but the `.let` output always comes from this continuation.
+Place this right after `bindComplex_not_seq` (after line 467).
 
-### Step 1: Prove `normalizeExpr_let_source`
+### Step 2: Build `normalizeExpr_let_source` characterization
 
-This is MUCH simpler than the seq characterization because `.let` can ONLY come from Flat `.let`:
+This follows the SAME pattern as `normalizeExpr_seq_while_first_family` (lines ~767-1068) but is MUCH simpler because we only need to show `.let` output implies `.let` input — not track what the first component is.
 
+For each Flat.Expr constructor in normalizeExpr:
+- Most use `bindComplex` → contradiction via `bindComplex_not_let`
+- `.let fname finit fbody` → produces `.let` directly → ∃ witness found
+- `.while_`, `.labeled`, `.tryCatch` → produce forms that aren't `.let` → contradiction
+
+The theorem:
 ```lean
 private theorem normalizeExpr_let_source
     (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
@@ -42,57 +55,47 @@ private theorem normalizeExpr_let_source
     (hnorm : (ANF.normalizeExpr e k).run n = .ok (.let name rhs body, m)) :
     ∃ (fname : String) (finit fbody : Flat.Expr),
       e = .let fname finit fbody := by
-  -- Since hk says k always produces .trivial, and .let ≠ .trivial,
-  -- k cannot be the source of .let. So it must come from the .let case of normalizeExpr.
-  -- Use normalizeExpr_never_trivial (line ~112): normalizeExpr e k with trivial-preserving k
-  -- never produces .trivial directly — WAIT, it's the opposite.
-  -- Actually: k produces .trivial, but normalizeExpr wraps it.
-  -- The point: trace through each Flat.Expr case and show only .let produces .let output.
-  -- For most cases: normalizeExpr recurses with a continuation that calls bindComplex.
-  --   bindComplex produces .seq or result of k. k produces .trivial. Neither is .let.
-  -- Only .let case: continuation produces .let directly.
-  sorry
+  cases e with
+  | «let» fname finit fbody => exact ⟨fname, finit, fbody, rfl⟩
+  | lit v => -- k produces .trivial, .trivial ≠ .let
+    simp [ANF.normalizeExpr] at hnorm
+    -- hk gives (k (.litTrivial v)).run n = .ok (.trivial _, _), but hnorm says = .ok (.let _, _)
+    have ⟨m', hkm⟩ := hk (.litTrivial v) n
+    rw [hkm] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+  | var name' => -- same: k produces .trivial
+    simp [ANF.normalizeExpr] at hnorm
+    have ⟨m', hkm⟩ := hk (.var name') n
+    rw [hkm] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+  -- ... for each remaining constructor: unfold normalizeExpr, show it calls bindComplex
+  --     (contradiction) or produces non-.let form (contradiction)
+  | _ => sorry -- Fill in per-constructor, each using bindComplex_not_let
 ```
 
-ACTUALLY — the simpler approach: you already proved `bindComplex_not_seq`. You need `bindComplex_not_let`:
+You will need ~30 cases. Most are 2-3 lines using `bindComplex_not_let`. Use the `normalizeExpr_seq_while_first_family` as your template — it handles all the same cases.
 
+### Step 3: Close let_step_sim at L6763
+
+Once you have `normalizeExpr_let_source`, use it at L6763:
 ```lean
-private theorem bindComplex_not_let
-    (complex : ANF.Complex) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
-    (n m : Nat) (name : String) (rhs body : ANF.Expr)
-    (h : (ANF.bindComplex complex k).run n = .ok (.let name rhs body, m)) : False := by
-  simp [ANF.bindComplex, bind, Bind.bind, StateT.bind, Except.bind,
-        pure, Pure.pure, StateT.pure, Except.pure] at h
+  have ⟨fname, finit, fbody, he_let⟩ := normalizeExpr_let_source sf.expr k hk n m name rhs body hnorm
+  subst he_let
+  -- Now sf.expr = .let fname finit fbody
+  -- Flat.step? on .let: if finit is value, extend env; if not, step finit
+  -- ANF.step? on .let: evalComplex rhs → extend env with result → continue with body
+  -- rhs comes from normalizeExpr: rhs = .trivial initTriv (from the .let case of normalizeExpr)
+  -- So evalComplex (.trivial initTriv) evaluates the trivial expression
+  -- Match this with Flat evaluation of finit
 ```
 
-This should close by `simp` because `bindComplex` produces `.seq fresh (k trivial)` — which is `.seq`, never `.let`.
+### Step 4: if_step_sim (L6842, L6845, L6849) — SAME PATTERN
 
-Then the characterization follows by induction on `e`, same structure as `normalizeExpr_seq_while_first_family` but each case is simpler (most are contradictions via `bindComplex_not_let`).
+Build `normalizeExpr_if_source` (analogous to let_source):
+- `.if` output can ONLY come from Flat `.if` constructor
+- Then case-split on cond being true/false/error
 
-### Step 2: Close let_step_sim at L6763
+### Step 5 (stretch): tryCatch_step_sim (L6873)
 
-Once you know `sf.expr = .let fname finit fbody`:
-1. `Flat.step?` on `.let fname finit fbody` evaluates `Flat.step? { sf with expr := finit }` or (if finit is a value) extends env
-2. Show `ANF.step?` on `.let name rhs body` does the corresponding thing
-3. Key: `rhs = .trivial initTriv` (from normalization), so ANF `evalComplex rhs` = evaluate `initTriv`
-4. Flat evaluates `finit` → gets value → extends env with `fname` → continues with `fbody`
-5. ANF evaluates `.trivial initTriv` → gets value → extends env with `name` → continues with `body`
-6. Show `fname = name`, values correspond, `body` is `normalizeExpr fbody k` applied to rest
-
-### Step 3: if_step_sim (L6842, L6845, L6849)
-
-Same approach. `.if` comes ONLY from Flat `.if` (line 318-328). Build `normalizeExpr_if_source`, then:
-- L6842 (then): Flat `.if` with true cond steps to then branch. Show `thenExpr = normalizeExpr then_ k`, establish SimRel.
-- L6845 (else): Same but false cond → else branch.
-- L6849 (error): `evalTrivial` error means Flat eval of cond also errors.
-
-### Step 4 (if time): tryCatch_step_sim (L6873)
-
-`.tryCatch` comes ONLY from Flat `.tryCatch` (line 345-353). Same characterization pattern.
-
-## PRIORITY 2: Compound cases (~14 sorries, L5884-L6736)
-
-These `| _ => sorry` in HasAwait/Return/Yield/Throw proofs need per-constructor case analysis. Lower priority than let/if/tryCatch.
+Same characterization pattern for `.tryCatch`.
 
 ## DO NOT TOUCH:
 - ClosureConvertCorrect.lean — jsspec and wasmspec are editing it

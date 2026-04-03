@@ -4198,19 +4198,20 @@ private theorem closureConvert_step_simulation
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨rfl, hsf'eq⟩ := hstep; subst hsf'eq
             have hmsg := consoleLog_msg_convertValue argVals
-            let sc' : Core.State :=
-              ⟨.lit .undefined, sc.env, sc.heap,
-               sc.trace ++ [.log (match argVals with
-                 | [v] => Core.valueToString v
-                 | vs => String.intercalate " " (vs.map Core.valueToString))],
-               sc.funcs, sc.callStack⟩
             have hsc_eta : sc = { sc with expr := .call (.lit (.function Core.consoleLogIdx)) args } := by
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+            have hcore := Core_step?_call_consoleLog_general args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
+            rw [hsc_eta] at hcore
+            -- Extract sc' from the Core step theorem
+            let core_msg := match argVals with
+              | [v] => Core.valueToString v
+              | vs => String.intercalate " " (vs.map Core.valueToString)
+            let sc' : Core.State :=
+              ⟨.lit .undefined, sc.env, sc.heap,
+               sc.trace ++ [.log core_msg], sc.funcs, sc.callStack⟩
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · -- Core.step?
-              have := Core_step?_call_consoleLog_general args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
-              rw [hsc_eta]; simp only [Core.pushTrace, sc'] at this ⊢; exact this
-            · simp [sc', htrace, hmsg]
+            · exact hcore
+            · simp only [sc', core_msg]; rw [htrace, hmsg]
             · exact hinj
             · exact henvCorr
             · exact henvwf
@@ -4219,7 +4220,7 @@ private theorem closureConvert_step_simulation
             · simp [sc', noCallFrameReturn]
             · simp [sc', ExprAddrWF, ValueAddrWF]
             · refine ⟨st, st, ?_, ⟨rfl, rfl⟩, ?_⟩
-              · simp [sc', Flat.convertExpr, Flat.convertValue]
+              · simp [sc', Flat.convertExpr, Flat.convertValue, core_msg]
               · rw [hst, allValues_convertExprList_state args argVals scope envVar envMap st hallv]
                 exact ⟨rfl, rfl⟩
           · -- Non-consoleLog function call: needs FuncsCorr invariant
@@ -6343,18 +6344,7 @@ private theorem closureConvert_step_simulation
           have heq := Flat_step?_tryCatch_body_error sf fbody catchParam fcatch ffin sb msg hncf hfnv hm
           rw [heq] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨hev_eq, hsf'_eq⟩ := hstep; subst hev_eq; subst hsf'_eq
-          -- Error case: apply IH to body sub-step, construct catch handler state
-          have hdepth : body.depth < n := by simp [Core.Expr.depth] at hd; omega
-          obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
-              hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
-            ih_depth body.depth hdepth envVar envMap injMap
-              { sf with expr := fbody }
-              { sc with expr := body }
-              (.error msg) sb scope st st1
-              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body
-              (by simp)
-              ⟨hm⟩
-          sorry
+          sorry -- error case: scope mismatch (catchBody converted with catchParam :: scope)
         · -- Non-error: body step preserves tryCatch wrapper
           push_neg at herr
           have heq := Flat_step?_tryCatch_body_step sf fbody catchParam fcatch ffin sb t hncf hfnv hm herr

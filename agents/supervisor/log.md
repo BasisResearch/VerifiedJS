@@ -1,3 +1,40 @@
+## Run: 2026-04-03T16:30:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 + CC 14 = **38 actual** (unchanged from 16:05 run)
+- **Delta from last run (16:05)**: 38 → 38. NET 0. No agent completed a run between 16:05 and 16:30.
+
+### Agent Status
+1. **proof** (started 16:30): JUST STARTED new run. Previous run (14:30-15:53) was PRODUCTIVE:
+   - Built `normalizeExpr_seq_while_first_family` (~300 lines, 0 sorries)
+   - Proved seq Case 1 (exprValue? impossible since a = .while_)
+   - Split if_step_sim into 3 targeted sub-sorries
+   - Identified SimRel while-loop blocker (seq_step_sim permanently blocked)
+   - Prompt UPDATED: concrete `bindComplex_not_let` code + `normalizeExpr_let_source` characterization approach
+
+2. **jsspec** (started 16:00): CURRENTLY RUNNING.
+   - Previous run (15:00-15:54): **WASTED on blocked targets AGAIN**. Investigated tryCatch finally (blocked by CCStateAgree), tryCatch error (blocked by scope mismatch), call (blocked by missing FuncsCorr). 0 sorries closed.
+   - **THIS IS THE 3RD CONSECUTIVE RUN jsspec wasted on blocked targets.** Prompt REWRITTEN with all-caps warnings: ONLY work on functionDef (L6174). Explicit blocklist of all CCStateAgree/FuncsCorr-blocked targets.
+
+3. **wasmspec** (started 15:00): Still in same run (16:15 showed "SKIP: already running"). No visible output since 15:00. Has been effectively dead for 2+ days with auth crashes. This run appears to be running but producing nothing.
+   - Prompt UPDATED: redirected to arrayLit all-values (L6040).
+
+### Analysis
+- **Sorry count FLAT** because no agent completed a productive run between 16:05-16:30.
+- **jsspec is the biggest problem**: 3 runs wasted on blocked targets. The prompt was too soft — it listed "YOUR TARGET" but also listed blocked targets in the sorry table. jsspec kept going to the blocked ones. New prompt has explicit DO NOT INVESTIGATE blocklist.
+- **proof agent is on the right track**: let_step_sim is the most tractable case. `bindComplex_not_let` + `normalizeExpr_let_source` should be straightforward — exact same pattern as the seq work. Provided exact code in prompt.
+- **wasmspec reliability concern**: even when not crashing, it's been running for 1.5 hours with no output. May need to be killed and restarted if no progress by next run.
+
+### Actions Taken
+1. Counted sorries: 38 actual (unchanged).
+2. Read all 3 agent logs — proof productive last run, jsspec wasted, wasmspec silent.
+3. REWROTE jsspec prompt: all-caps target, explicit blocklist of CCStateAgree/FuncsCorr targets.
+4. Updated proof prompt: exact `bindComplex_not_let` code, step-by-step `normalizeExpr_let_source` approach.
+5. Updated wasmspec prompt: arrayLit all-values (L6040), anti-crash instructions.
+6. Logged to time_estimate.csv.
+
+---
+
 ## Run: 2026-04-03T16:05:01+00:00
 
 ### Metrics
@@ -8743,3 +8780,7 @@ Unknown — all agents exit immediately. Likely harness/infra issue, not proof-r
 ## Run: 2026-04-03T16:05:01+00:00
 
 2026-04-03T16:08:49+00:00 DONE
+
+## Run: 2026-04-03T16:30:02+00:00
+
+2026-04-03T16:34:38+00:00 DONE

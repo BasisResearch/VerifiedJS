@@ -1,4 +1,4 @@
-# wasmspec — Close objectLit all-values (L6002), then getIndex string (L4977)
+# wasmspec — Close arrayLit all-values (L6040), then objectLit sub-step output (L6033)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,51 +11,41 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## YOU HAVE BEEN CRASHING FOR 2 DAYS. STOP CRASHING. DO WORK.
+## YOU HAVE BEEN CRASHING OR IDLE FOR 2+ DAYS. PRODUCE OUTPUT THIS RUN.
 If you see auth errors or exit code 1: log it and try the build command. If that fails, log the error and exit cleanly.
 
-## STATE: CC ~14 actual sorries.
+## STATE: CC 14 actual sorries.
 
-## YOUR TARGETS
+## YOUR TARGET: arrayLit all-values (LINE 6040)
 
-### Target 1: objectLit all-values (L6002)
 ```lean
 | none =>
   sorry -- all elements are values: heap allocation (same class as other value sub-cases)
 ```
 
-Context: This is inside the `objectLit props` case at L5946. `Core.firstNonValueProp props = none` means ALL property expressions are values.
+Context: This is inside `arrayLit elems` at L6034. `Core.firstNonValueExpr elems = none` means ALL element expressions are values.
 
-1. `lean_goal` at L6002 to see exact state
-2. Since all props are values, Core.step? allocates an object on the heap with those values
-3. Flat.step? does the same with converted values
-4. Pattern to follow: look at similar PROVED cases nearby. The `setProp` and `setIndex` value cases (which you proved earlier) show the HeapInj_alloc pattern.
+### How to prove it:
+1. `lean_goal` at line 6040, column 6 of ClosureConvertCorrect.lean
+2. Since all elems are values, `Core.step?` on `arrayLit elems` allocates an array on the heap
+3. `Flat.step?` on the converted form does the same with converted values
+4. Pattern to follow: look at the PROVED `objectLit` sub-step case nearby (lines 5946-6033) — it shows the pattern for heap allocation with converted values
 5. Key steps:
-   - Show `Flat.firstNonValueProp (convertPropList props ...) = none` (all converted props are also values)
-   - Show both sides allocate an object: Core allocates at `sc.heap.nextAddr`, Flat at `sf.heap.nextAddr`
-   - Extend HeapInj with the new mapping
-   - Show property values correspond through convertValue
-6. Look for: `lean_local_search "allValues"`, `lean_local_search "firstNonValueProp_none"`, `lean_local_search "HeapInj_alloc"`
+   - Show `Flat.firstNonValueExpr (convertExprList elems ...) = none` (converted values are also values)
+   - Look for existing helper: `convertExprList_firstNonValueExpr_none` or similar
+   - Show both sides allocate: Core at `sc.heap.nextAddr`, Flat at `sf.heap.nextAddr`
+   - Use HeapInj to bridge the new heap entries
+6. Search: `lean_local_search "firstNonValueExpr_none"`, `lean_local_search "convertExprList"`, `lean_local_search "allValues"`
 
-### Target 2: getIndex string (L4977)
+### If L6040 is blocked, try getIndex string (L5014):
 ```lean
 sorry -- getIndex string both-values: Flat/Core semantic mismatch in .number else branch
 ```
-
-1. `lean_goal` at L4977
-2. The issue: Flat has a `propName == "length"` check for string indexing that Core doesn't
-3. Case split on whether the index value represents "length":
-   - If propName = "length": both return string length (should be provable)
-   - If propName ≠ "length": both return undefined (need to show Flat's extra check is irrelevant)
-4. This might need `lean_hover_info` on the Flat getIndex semantics to understand the exact mismatch
-
-### Target 3: If L6002 and L4977 are blocked, build helper lemmas
-- `convertPropList_allValues`: if all Core props are values, all Flat props are values
-- `HeapInj_alloc_object`: allocating corresponding objects on both heaps extends HeapInj
+Case split on whether index represents "length".
 
 ### COLLISION AVOIDANCE
-You work on L5000-6053 and L4977. jsspec works on L3000-5000 (except L4977) and L6100+.
-Do NOT edit L6100+ — that's jsspec territory.
+You work on L5000-6053. jsspec works on L3000-5000 and L6100+.
+Do NOT edit L6100+.
 
 ## WORKFLOW:
 1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers
@@ -63,7 +53,6 @@ Do NOT edit L6100+ — that's jsspec territory.
 3. `lean_multi_attempt` with candidate tactics
 4. Edit the file with the working tactic
 5. Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
-6. Move to next target
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
