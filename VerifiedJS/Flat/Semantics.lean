@@ -1945,4 +1945,16 @@ theorem step?_arrayLit_allValues (s : State)
          s.trace ++ [.silent], s.funcs, s.callStack⟩) := by
   unfold step?; simp only [hvs, allocObjectWithProps, pushTrace]
 
+theorem step?_newObj_allValues (s : State)
+    (funcExpr envExpr : Expr) (args : List Expr)
+    (fv ev : Value) (vs : List Value)
+    (hf : exprValue? funcExpr = some fv)
+    (he : exprValue? envExpr = some ev)
+    (hvs : valuesFromExprList? args = some vs) :
+    step? { s with expr := .newObj funcExpr envExpr args } =
+      some (.silent, ⟨.lit (.object s.heap.nextAddr), s.env,
+        ⟨s.heap.objects.push [], s.heap.nextAddr + 1⟩,
+        s.trace ++ [.silent], s.funcs, s.callStack⟩) := by
+  unfold step?; simp only [hf, he, hvs, allocFreshObject, pushTrace]
+
 end VerifiedJS.Flat

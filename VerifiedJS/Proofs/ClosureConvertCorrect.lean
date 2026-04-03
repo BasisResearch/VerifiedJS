@@ -4466,7 +4466,72 @@ private theorem closureConvert_step_simulation
               exact Prod.ext hexpr_eq rfl
             · rw [hst, hargs, hdecomp_snd target_c, hdecomp_snd sc_sub'.expr]
               exact hsd_rest.2
-  | newObj f args => sorry
+  | newObj f args =>
+    rw [hsc] at hconv hncfr hexprwf hd
+    simp [Flat.convertExpr] at hconv
+    obtain ⟨hfexpr, hst⟩ := hconv
+    -- Core.newObj always allocates an empty object at heap.nextAddr, ignoring sub-expressions.
+    -- The simulation only works when all Flat sub-expressions are values (Flat also allocates).
+    cases hfev : Core.exprValue? f with
+    | none =>
+      sorry -- f not a value: Core allocates immediately but Flat steps f → semantic mismatch
+    | some fv =>
+      have hflit : f = .lit fv := by
+        cases f <;> simp [Core.exprValue?] at hfev; subst hfev; rfl
+      subst hflit
+      simp [Flat.convertExpr] at hfexpr hst
+      cases hcfnv : Core.firstNonValueExpr args with
+      | some val =>
+        sorry -- non-value arg: Core allocates immediately but Flat steps arg → semantic mismatch
+      | none =>
+        -- All elements are values: both Core and Flat allocate empty objects on heap.
+        have hffnv := convertExprList_firstNonValueExpr_none args scope envVar envMap st hcfnv
+        have ⟨vs, hvs⟩ := firstNonValueExpr_none_implies_values _ hffnv
+        have hsf_eta : sf = { sf with expr := .newObj (.lit (Flat.convertValue fv)) (.lit .null)
+            (Flat.convertExprList args scope envVar envMap st).fst } := by
+          cases sf; simp_all
+        rw [hsf_eta] at hstep
+        rw [Flat.step?_newObj_allValues _ _ _ _ _ _ _ (by simp [Flat.exprValue?])
+            (by simp [Flat.exprValue?]) hvs] at hstep
+        simp only [Prod.mk.injEq, Option.some.injEq] at hstep
+        obtain ⟨rfl, rfl⟩ := hstep
+        have hna_eq : sc.heap.nextAddr = sf.heap.nextAddr := hinj.2.1
+        have hst_eq : (Flat.convertExprList args scope envVar envMap st).snd = st :=
+          convertExprList_state_none args scope envVar envMap st hcfnv
+        let caddr := sc.heap.nextAddr
+        let cheap' : Core.Heap := { objects := sc.heap.objects.push [], nextAddr := caddr + 1 }
+        let sc' : Core.State := ⟨.lit (.object caddr), sc.env, cheap',
+          sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+        have hcstep : Core.step? sc = some (.silent, sc') := by
+          have hsc' : sc = { sc with expr := .newObj (.lit fv) args } := by
+            obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+          rw [hsc']
+          have := Core.step_newObj_exact (.lit fv) args sc.env sc.heap sc.trace sc.funcs sc.callStack
+          simp only [Core.pushTrace, sc', cheap', caddr] at this ⊢; exact this
+        have hinj' : HeapInj injMap cheap' ⟨sf.heap.objects.push [],
+            sf.heap.nextAddr + 1⟩ :=
+          HeapInj_alloc_both hinj []
+        have hheapvwf' : HeapValuesWF cheap' := by
+          intro addr haddr props' hprops' kv hkv
+          simp only [cheap', caddr, Array.size_push] at haddr
+          rw [Array.getElem?_push] at hprops'
+          split at hprops'
+          · simp only [Option.some.injEq] at hprops'; subst hprops'; simp at hkv
+          · next hne =>
+            have haddr' : addr < sc.heap.objects.size := by omega
+            exact ValueAddrWF_mono (hheapvwf addr haddr' props' hprops' kv hkv) (by simp only [cheap', Array.size_push]; omega)
+        refine ⟨injMap, sc', ⟨hcstep⟩, ?trace_, ?hinj_, ?envcorr_, ?envwf_, ?hvwf_,
+          ?hna_, ?ncfr_, ?ewf_, ?ccst_⟩
+        case trace_ => simp [sc', htrace]
+        case hinj_ => exact hinj'
+        case envcorr_ => exact henvCorr
+        case envwf_ => exact EnvAddrWF_mono henvwf (by simp only [sc', cheap', Array.size_push]; omega)
+        case hvwf_ => exact hheapvwf'
+        case hna_ => simp only [sc', cheap', caddr, Array.size_push, hheapna]
+        case ncfr_ => simp [sc', noCallFrameReturn]
+        case ewf_ => simp only [sc', ExprAddrWF, ValueAddrWF, cheap', caddr, Array.size_push]; rw [hheapna]; omega
+        case ccst_ => exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, caddr, hna_eq],
+          ⟨rfl, rfl⟩, by rw [hst, hst_eq]; exact ⟨rfl, rfl⟩⟩
   | getProp obj prop =>
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv
