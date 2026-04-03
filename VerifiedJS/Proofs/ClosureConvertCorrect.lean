@@ -4266,8 +4266,8 @@ private theorem closureConvert_step_simulation
             rw [hsf_eta] at hstep
             have hflat := Flat_step?_call_consoleLog_vals sf 0 .null _ _ hfvals
             have heq := Option.some.inj (hflat.symm.trans hstep)
-            have hev := (congr_arg Prod.fst heq).symm
-            have hsf'eq := (congr_arg Prod.snd heq).symm
+            have hev := (congrArg Prod.fst heq).symm
+            have hsf'eq := (congrArg Prod.snd heq).symm
             subst hev; subst hsf'eq
             -- Destructure sc to get explicit fields for Core theorem
             obtain ⟨sc_expr, sc_env, sc_heap, sc_trace, sc_funcs, sc_cs⟩ := sc

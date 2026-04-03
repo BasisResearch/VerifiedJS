@@ -5263,3 +5263,11 @@ After one ANF step on `.seq (.while_ c d) b` (when `exprValue? c = some v`), the
 - L6883 now uses normalizeExpr_if_cond_var_free instead of sorry
 - Net sorry change: 0 (removed L6883, added normalizeExpr_if_cond_source)
 - Build passes. 24 sorry occurrences total.
+### 2026-04-03T20:35:53+00:00 Run complete — L6883 structurally closed
+- VarFreeIn extended with 30+ constructors for assign, call, binary, etc.
+- normalizeExpr_if_cond_source: key lemma with condition-on-k approach (sorry)
+- normalizeExpr_if_cond_var_free: wrapper using trivial-preserving to discharge condition
+- L6883 (was: sorry) now uses normalizeExpr_if_cond_var_free — structurally sound
+- Proof strategy for normalizeExpr_if_cond_source designed: Classical.em for seq/compound
+- Build passes. 24 sorry total (net 0: -1 L6883, +1 normalizeExpr_if_cond_source)
+2026-04-03T20:36:11+00:00 DONE
