@@ -102,6 +102,56 @@ private inductive VarFreeIn : String → Flat.Expr → Prop where
   | return_some_arg (x : String) (v : Flat.Expr) : VarFreeIn x v → VarFreeIn x (.«return» (some v))
   | await_arg (x : String) (arg : Flat.Expr) : VarFreeIn x arg → VarFreeIn x (.await arg)
   | yield_some_arg (x : String) (v : Flat.Expr) (d : Bool) : VarFreeIn x v → VarFreeIn x (.yield (some v) d)
+  | assign_value (x name : String) (v : Flat.Expr) : VarFreeIn x v → VarFreeIn x (.assign name v)
+  | unary_arg (x : String) (op : Core.UnaryOp) (arg : Flat.Expr) :
+      VarFreeIn x arg → VarFreeIn x (.unary op arg)
+  | binary_lhs (x : String) (op : Core.BinOp) (l r : Flat.Expr) :
+      VarFreeIn x l → VarFreeIn x (.binary op l r)
+  | binary_rhs (x : String) (op : Core.BinOp) (l r : Flat.Expr) :
+      VarFreeIn x r → VarFreeIn x (.binary op l r)
+  | typeof_arg (x : String) (arg : Flat.Expr) : VarFreeIn x arg → VarFreeIn x (.typeof arg)
+  | getProp_obj (x : String) (obj : Flat.Expr) (prop : Flat.PropName) :
+      VarFreeIn x obj → VarFreeIn x (.getProp obj prop)
+  | setProp_obj (x : String) (obj : Flat.Expr) (prop : Flat.PropName) (val : Flat.Expr) :
+      VarFreeIn x obj → VarFreeIn x (.setProp obj prop val)
+  | setProp_value (x : String) (obj : Flat.Expr) (prop : Flat.PropName) (val : Flat.Expr) :
+      VarFreeIn x val → VarFreeIn x (.setProp obj prop val)
+  | getIndex_obj (x : String) (obj idx : Flat.Expr) :
+      VarFreeIn x obj → VarFreeIn x (.getIndex obj idx)
+  | getIndex_idx (x : String) (obj idx : Flat.Expr) :
+      VarFreeIn x idx → VarFreeIn x (.getIndex obj idx)
+  | setIndex_obj (x : String) (obj idx val : Flat.Expr) :
+      VarFreeIn x obj → VarFreeIn x (.setIndex obj idx val)
+  | setIndex_idx (x : String) (obj idx val : Flat.Expr) :
+      VarFreeIn x idx → VarFreeIn x (.setIndex obj idx val)
+  | setIndex_value (x : String) (obj idx val : Flat.Expr) :
+      VarFreeIn x val → VarFreeIn x (.setIndex obj idx val)
+  | deleteProp_obj (x : String) (obj : Flat.Expr) (prop : Flat.PropName) :
+      VarFreeIn x obj → VarFreeIn x (.deleteProp obj prop)
+  | getEnv_env (x : String) (envPtr : Flat.Expr) (idx : Nat) :
+      VarFreeIn x envPtr → VarFreeIn x (.getEnv envPtr idx)
+  | makeClosure_env (x : String) (funcIdx : Core.FuncIdx) (env : Flat.Expr) :
+      VarFreeIn x env → VarFreeIn x (.makeClosure funcIdx env)
+  | call_func (x : String) (f e : Flat.Expr) (args : List Flat.Expr) :
+      VarFreeIn x f → VarFreeIn x (.call f e args)
+  | call_env (x : String) (f e : Flat.Expr) (args : List Flat.Expr) :
+      VarFreeIn x e → VarFreeIn x (.call f e args)
+  | call_arg (x : String) (f e : Flat.Expr) (args : List Flat.Expr) (a : Flat.Expr) :
+      a ∈ args → VarFreeIn x a → VarFreeIn x (.call f e args)
+  | newObj_func (x : String) (f e : Flat.Expr) (args : List Flat.Expr) :
+      VarFreeIn x f → VarFreeIn x (.newObj f e args)
+  | newObj_env (x : String) (f e : Flat.Expr) (args : List Flat.Expr) :
+      VarFreeIn x e → VarFreeIn x (.newObj f e args)
+  | newObj_arg (x : String) (f e : Flat.Expr) (args : List Flat.Expr) (a : Flat.Expr) :
+      a ∈ args → VarFreeIn x a → VarFreeIn x (.newObj f e args)
+  | makeEnv_elem (x : String) (values : List Flat.Expr) (v : Flat.Expr) :
+      v ∈ values → VarFreeIn x v → VarFreeIn x (.makeEnv values)
+  | arrayLit_elem (x : String) (elems : List Flat.Expr) (e : Flat.Expr) :
+      e ∈ elems → VarFreeIn x e → VarFreeIn x (.arrayLit elems)
+  | objectLit_value (x : String) (props : List (Flat.PropName × Flat.Expr)) (p : Flat.PropName × Flat.Expr) :
+      p ∈ props → VarFreeIn x p.2 → VarFreeIn x (.objectLit props)
+  | tryCatch_finally (x : String) (b : Flat.Expr) (cp : String) (cb fin : Flat.Expr) :
+      VarFreeIn x fin → VarFreeIn x (.tryCatch b cp cb (some fin))
 
 /-- An expression is well-formed w.r.t. an environment if all free vars are bound. -/
 def ExprWellFormed (expr : Flat.Expr) (env : Flat.Env) : Prop :=
