@@ -2095,16 +2095,22 @@ private theorem consoleLog_msg_convertValue (argVals : List Core.Value) :
       | nil => rfl
       | cons h t ih => simp [List.map, valueToString_convertValue, ih]
 
-/-- Core consoleLog step stated with Flat message form (for simulation). -/
+/-- Core consoleLog step stated with Flat message form (for simulation).
+    Unlike Core_step?_call_consoleLog_general, the msg uses Flat.valueToString
+    on converted values, matching the Flat step's event form. -/
 private theorem Core_step?_call_consoleLog_flat_msg (args : List Core.Expr) (argVals : List Core.Value)
     (env : Core.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
     (funcs : Array Core.FuncClosure) (cs : List (List (Core.VarName × Core.Value)))
     (hargs : Core.allValues args = some argVals) :
-    let msg := match argVals.map Flat.convertValue with
-      | [v] => Flat.valueToString v
-      | vs => String.intercalate " " (vs.map Flat.valueToString)
     Core.step? ⟨.call (.lit (.function Core.consoleLogIdx)) args, env, heap, trace, funcs, cs⟩ =
-      some (.log msg, ⟨.lit .undefined, env, heap, trace ++ [.log msg], funcs, cs⟩) := by
+      some (.log (match argVals.map Flat.convertValue with
+        | [v] => Flat.valueToString v
+        | vs => String.intercalate " " (vs.map Flat.valueToString)),
+       ⟨.lit .undefined, env, heap,
+        trace ++ [.log (match argVals.map Flat.convertValue with
+          | [v] => Flat.valueToString v
+          | vs => String.intercalate " " (vs.map Flat.valueToString))],
+        funcs, cs⟩) := by
   unfold Core.step?
   simp [Core.exprValue?, hargs, Core.consoleLogIdx, Core.pushTrace, consoleLog_msg_convertValue argVals]
   cases argVals with | nil => rfl | cons hd tl => cases tl with | nil => rfl | cons _ _ => rfl
