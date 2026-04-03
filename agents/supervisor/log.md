@@ -9123,3 +9123,54 @@ Unknown — all agents exit immediately. Likely harness/infra issue, not proof-r
 ## Run: 2026-04-03T20:00:04+00:00
 
 2026-04-03T20:05:05+00:00 SKIP: already running
+
+## Run: 2026-04-03T20:00:04+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 (grep -c) + CC 15 (grep-c, ~13 actual) = **~37 actual**
+- **Delta from last run (19:30)**: ~36 → ~37. **NET +1** (CC grep went 15→15, but actual count is 13 vs previous 12 — may be recount artifact or jsspec mid-edit).
+- No net sorry reduction this run. Both proof and jsspec agents still running.
+
+### Agent Status
+1. **proof** (started 19:30): RUNNING (30 min). Last run proved all literal sub-cases of if_step_sim error case. Still needs L6978 (.var case — normalizeExpr_if_cond_var_free).
+   - **KEY FINDING**: normalizeExpr_if_cond_var_free ALREADY EXISTS at L2026. L6978 is a 1-LINE FIX.
+   - Prompt updated: L6978 closing code provided verbatim. Then L6959/6962 (if branches).
+
+2. **jsspec** (started 19:00): RUNNING (1 hour). Last run closed arrayLit (15→14 sorries). Currently targeting newObj (L4492).
+   - Prompt updated: minor refinements, line numbers updated.
+
+3. **wasmspec** (started 15:00): HUNG for 5 hours. Never completed. Likely stuck in lake build or infinite wait.
+   - Prompt updated: absolute no-build rule, investigate-only mission (lean_goal at L4492 and L3332).
+
+### Actions Taken
+1. Counted sorries: ANF 24 + CC ~13 actual = ~37.
+2. Updated proof prompt: **CRITICAL** — L6978 is a 1-line fix using existing normalizeExpr_if_cond_var_free lemma. Exact closing code provided.
+3. Updated jsspec prompt: newObj (L4492) remains target 1, line numbers refreshed.
+4. Updated wasmspec prompt: investigate-only mode, no builds allowed.
+5. Logged to time_estimate.csv.
+
+### Sorry Breakdown (CC, ~13 actual)
+- L1507/1508: forIn/forOf stubs (unprovable)
+- L3332/3335: staging sorry (HeapInj refactor)
+- L3387: captured var (multi-step gap)
+- L3715: if-then CCStateAgree (BLOCKED)
+- L3738: if-else CCStateAgree x2 (BLOCKED)
+- L4294: non-consoleLog call (BLOCKED no FuncsCorr)
+- L4492: newObj (jsspec TARGET 1)
+- L5082: getIndex string (likely unprovable)
+- L6320: functionDef (BLOCKED multi-step + CCStateAgree)
+- L6475: tryCatch finally CCStateAgree (BLOCKED)
+- L6546: tryCatch error CCStateAgree (BLOCKED)
+- L6653: while_ CCStateAgree (BLOCKED)
+
+### Tractable targets (non-blocked)
+- **L6978** (ANF): 1-LINE FIX — normalizeExpr_if_cond_var_free already proved at L2026
+- **L6959/6962** (ANF): if branch simulation → proof agent after L6978
+- **L4492** (CC): newObj → jsspec running on it
+- **L3332** (CC): staging sorry → may be restorable from git history
+
+### Biggest blocker: CCStateAgree (6 CC sorries blocked)
+Until CCStateAgree is solved, CC cannot go below ~7 sorries. No agent working on this.
+
+---
+2026-04-03T20:07:54+00:00 DONE

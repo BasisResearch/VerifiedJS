@@ -1,4 +1,4 @@
-# jsspec — newObj (L4486), then getIndex (L5076)
+# jsspec — newObj (L4492), then getIndex (L5082)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,46 +11,48 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC ~12 actual sorries. You closed consoleLog AND arrayLit — EXCELLENT.
+## STATE: CC ~13 actual sorries. You closed consoleLog AND arrayLit — EXCELLENT.
 
 ## ⚠️⚠️⚠️ ABSOLUTE BLOCKLIST — DO NOT TOUCH ⚠️⚠️⚠️
-- L3709, L3732 if-then/else — BLOCKED CCStateAgree
-- L6464 tryCatch finally — BLOCKED CCStateAgree
-- L6535 tryCatch error — BLOCKED CCStateAgree (9/10 goals done, last = CCStateAgree)
-- L6642 while_ — BLOCKED CCStateAgree
-- L4288 non-consoleLog call — BLOCKED no FuncsCorr
-- L6309 functionDef — NOT a leaf case! Multi-step + CCStateAgree blocker. DO NOT ATTEMPT.
-- L3381 captured var — multi-step simulation gap
+- L3715, L3738 if-then/else — BLOCKED CCStateAgree
+- L6475 tryCatch finally — BLOCKED CCStateAgree
+- L6546 tryCatch error — BLOCKED CCStateAgree
+- L6653 while_ — BLOCKED CCStateAgree
+- L4294 non-consoleLog call — BLOCKED no FuncsCorr
+- L6320 functionDef — NOT a leaf case! Multi-step + CCStateAgree. DO NOT ATTEMPT.
+- L3387 captured var — multi-step simulation gap
 - L1507/L1508 forIn/forOf — stubs, unprovable
 
 ## YOUR TARGETS (in priority order):
 
-### TARGET 1: newObj (LINE 4486)
+### TARGET 1: newObj (LINE 4492)
 ```lean
 | newObj f args => sorry
 ```
-This is structurally similar to arrayLit which you already proved. Both allocate heap objects.
+Structurally similar to the call case and arrayLit. Both involve constructor + args list.
 
 1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line number
 2. `lean_goal` at the newObj sorry line
-3. Read your arrayLit proof (~200 lines above) for the pattern
-4. Split on whether `f` and `args` are all values:
-   - All-values case: both Core and Flat allocate, prove correspondence. HeapInj via `alloc_both`.
-   - Non-value case: find first non-value, step it, use IH
-5. CCStateAgree: should be trivial for all-values case since convertExprList of lit elements doesn't change st
+3. Read the call proof above (~L4300-4491) and arrayLit proof for patterns
+4. Pattern:
+   - Check if `f` is a value (`Core.exprValue?`)
+   - If yes, check if all `args` are values
+   - All-values: both Core and Flat allocate new object, prove HeapInj via `alloc_both`
+   - Non-value: find first non-value in `f :: args`, step it, use IH
+5. CCStateAgree: trivial for all-values since convertExprList of literals doesn't change st
+6. Key: `newObj` in Core allocates a heap object with constructor `f` and args. Check what Flat's `newObj` does — may map to Flat.Expr.newObj or similar.
 
-### TARGET 2: getIndex string (LINE 5076)
+### TARGET 2: getIndex string (LINE 5082)
 ```lean
-sorry -- getIndex string both-values: Flat/Core semantic mismatch
+sorry /- getIndex string both-values: UNPROVABLE.
 ```
-MAY be unprovable. Investigate first:
-1. `lean_goal` at L5076
-2. Check if Flat and Core agree on getIndex string semantics
-3. If mismatch is real, add comment and MOVE ON to other targets
+Likely unprovable — investigate first:
+1. `lean_goal` at L5082
+2. If Flat and Core disagree on getIndex string semantics → add comment and SKIP
 
-### IF BOTH DONE: Look at L3326 staging sorry
-Line 3326 says "STAGING: proof temporarily sorry'd during HeapInj refactor".
-Check if the HeapInj refactor is done and this can be restored from git history.
+### IF BOTH DONE: Look at L3332 staging sorry
+Line 3332 says "STAGING: proof temporarily sorry'd during HeapInj refactor".
+Check if HeapInj refactor is done — look at git history for what was there before.
 
 ## WORKFLOW:
 1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers

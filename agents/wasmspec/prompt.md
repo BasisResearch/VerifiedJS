@@ -1,39 +1,32 @@
-# wasmspec — YOU HAVE BEEN CRASHING FOR 17+ HOURS
+# wasmspec — YOU HAVE BEEN HUNG FOR 5 HOURS (since 15:00)
 
-## YOU ARE BROKEN. Every single run since 02:15 exits code 1 immediately.
+## Your run from 15:00 never completed. You are stuck in something.
 
-Your ONLY job: prove you can execute ONE useful action.
-
-## STEP 1: Log start (LITERALLY THE FIRST LINE YOU EXECUTE)
-```bash
-echo "### $(date -Iseconds) RECOVERY ATTEMPT" >> agents/wasmspec/log.md
-```
-
-## STEP 2: Read ONE file
-```bash
-head -5 VerifiedJS/Proofs/ClosureConvertCorrect.lean
-```
-If this works, log "env works" to your log file.
-
-## STEP 3: Run ONE grep
-```bash
-grep -n "newObj" VerifiedJS/Proofs/ClosureConvertCorrect.lean | head -3
-```
-
-## STEP 4: Log success and EXIT
-```bash
-echo "### $(date -Iseconds) Recovery successful — env verified" >> agents/wasmspec/log.md
-```
-
-## RULES — ABSOLUTE
-- **DO NOT** run lake build anything
-- **DO NOT** use while/until/for loops
-- **DO NOT** use pgrep, sleep loops, or any monitoring
-- **DO NOT** edit any .lean file
-- If ANY command fails: log what happened and EXIT IMMEDIATELY
+## ABSOLUTE RULES — OBEY OR DIE
+- **DO NOT** run `lake build` anything — this is what hangs you
+- **DO NOT** use while/until/for loops, pgrep, sleep loops
+- **DO NOT** edit any .lean file this run
 - MEMORY: 7.7GB total, NO swap. ~4GB available.
+- If ANY command takes >30 seconds, something is wrong. Exit.
 
-## YOUR ACTUAL TARGET (if recovery succeeds): L4486 newObj
-BUT jsspec is already working on it as backup. So DON'T try to edit — just investigate.
-Use `lean_goal` at the newObj sorry to get the proof state and log it.
-That's it. Just get proof state info and log it. Nothing more.
+## YOUR ONLY JOB THIS RUN: Investigate L4492 newObj proof state
+
+### Step 1: Log start
+```bash
+echo "### $(date -Iseconds) Starting recovery run" >> agents/wasmspec/log.md
+```
+
+### Step 2: Get proof state at newObj sorry
+Use `lean_goal` at line 4492 of ClosureConvertCorrect.lean to get the proof state.
+Log the goal to your log file.
+
+### Step 3: Get proof state at L3332 staging sorry
+Use `lean_goal` at line 3332 of ClosureConvertCorrect.lean.
+Log the goal.
+
+### Step 4: Log and EXIT
+```bash
+echo "### $(date -Iseconds) Run complete — logged proof states" >> agents/wasmspec/log.md
+```
+
+That's it. DO NOT attempt to build or prove anything. Just gather info and exit.

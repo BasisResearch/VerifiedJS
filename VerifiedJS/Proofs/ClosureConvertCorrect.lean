@@ -4276,8 +4276,8 @@ private theorem closureConvert_step_simulation
                  | vs => String.intercalate " " (vs.map Flat.valueToString))],
                sc_funcs, sc_cs⟩
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · have := Core_step?_call_consoleLog_flat_msg args argVals sc_env sc_heap sc_trace sc_funcs sc_cs hallv
-              exact this
+            · show Core.step? ⟨_, sc_env, sc_heap, sc_trace, sc_funcs, sc_cs⟩ = some (_, sc')
+              exact Core_step?_call_consoleLog_flat_msg args argVals sc_env sc_heap sc_trace sc_funcs sc_cs hallv
             · simp [sc', htrace]
             · exact hinj
             · exact henvCorr
