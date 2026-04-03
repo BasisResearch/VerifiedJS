@@ -4263,10 +4263,32 @@ private theorem closureConvert_step_simulation
               cases sf; simp_all [Flat.convertValue]
             rw [hsf_eta] at hstep
             -- Both Flat and Core produce (.log msg, .lit .undefined)
-            -- Infrastructure: Core_step?_call_consoleLog_flat_msg, Flat_step?_call_consoleLog_vals,
-            --   consoleLog_msg_convertValue, allValues_convertExprList_valuesFromExprList
-            -- Blocked: simp introduces dependent match on (argVals, hfvals) that prevents exact
-            sorry -- consoleLog call: all infrastructure proven, blocked on dependent match normalization
+            rw [Flat_step?_call_consoleLog_vals sf 0 .null _ _ hfvals] at hstep
+            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+            obtain ⟨hev, hsf'⟩ := hstep; subst hev; subst hsf'
+            have hst_eq : (Flat.convertExprList args scope envVar envMap st).snd = st :=
+              allValues_convertExprList_state args argVals scope envVar envMap st hallv
+            let msg := match argVals.map Flat.convertValue with
+              | [v] => Flat.valueToString v
+              | vs => String.intercalate " " (vs.map Flat.valueToString)
+            let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
+              sc.trace ++ [.log msg], sc.funcs, sc.callStack⟩
+            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+            · show Core.step? sc = some (.log msg, sc')
+              have hsc' : sc = { sc with expr := .call (.lit (.function Core.consoleLogIdx)) args } := by
+                obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+              rw [hsc']
+              exact Core_step?_call_consoleLog_flat_msg args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
+            · simp [sc', htrace]
+            · exact hinj
+            · exact henvCorr
+            · exact henvwf
+            · exact hheapvwf
+            · simp [sc', hheapna]
+            · simp [sc', noCallFrameReturn]
+            · simp [sc', ExprAddrWF, ValueAddrWF]
+            · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩,
+                by rw [hst, hst_eq]; exact ⟨rfl, rfl⟩⟩
           · -- Non-consoleLog function call: needs FuncsCorr invariant
             sorry -- non-consoleLog function call: needs sf.funcs[idx] ↔ sc.funcs[idx] correspondence
         · -- Non-function callee with all-value args
