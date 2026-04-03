@@ -6869,7 +6869,7 @@ private theorem normalizeExpr_if_step_sim
       split at hnorm
       · cases hnorm
       · rename_i hft_pair hft_ok
-        simp only [] at hnorm
+        -- continue decomposition
         split at hnorm
         · cases hnorm
         · rename_i hfe_pair hfe_ok
@@ -6959,7 +6959,7 @@ private theorem normalizeExpr_if_step_sim
       split at hnorm
       · cases hnorm
       · rename_i hft_pair hft_ok
-        simp only [] at hnorm
+        -- continue decomposition
         split at hnorm
         · cases hnorm
         · rename_i hfe_pair hfe_ok
@@ -7034,7 +7034,7 @@ private theorem normalizeExpr_if_step_sim
       split at hnorm
       · cases hnorm
       · rename_i hft_pair hft_ok
-        simp only [] at hnorm
+        -- continue decomposition
         split at hnorm
         · cases hnorm
         · rename_i hfe_pair hfe_ok

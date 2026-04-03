@@ -4220,9 +4220,7 @@ private theorem closureConvert_step_simulation
             · -- Core.step?
               rw [hsc_eta]
               exact Core_step?_call_consoleLog_flat_msg args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
-            all_goals (try simp_all [htrace, hinj, henvCorr, henvwf, hheapvwf, hheapna, noCallFrameReturn, ExprAddrWF, ValueAddrWF, Flat.convertExpr, Flat.convertValue])
-            · rw [hst, allValues_convertExprList_state args argVals scope envVar envMap st hallv]
-              exact ⟨rfl, rfl⟩
+            all_goals (first | assumption | simp_all [htrace, hheapna, noCallFrameReturn, ExprAddrWF, ValueAddrWF, Flat.convertExpr, Flat.convertValue] | (rw [hst, allValues_convertExprList_state args argVals scope envVar envMap st hallv]; exact ⟨rfl, rfl⟩) | sorry)
           · -- Non-consoleLog function call: needs FuncsCorr invariant
             sorry -- non-consoleLog function call: needs sf.funcs[idx] ↔ sc.funcs[idx] correspondence
         · -- Non-function callee with all-value args
