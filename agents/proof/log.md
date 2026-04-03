@@ -5274,3 +5274,4 @@ After one ANF step on `.seq (.while_ c d) b` (when `exprValue? c = some v`), the
 
 ## Run: 2026-04-03T21:30:02+00:00
 
+### 2026-04-03T21:30:13+00:00 Starting run — Task 1: normalizeExpr_if_cond_source
