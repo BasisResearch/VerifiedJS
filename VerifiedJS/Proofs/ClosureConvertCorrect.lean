@@ -5955,7 +5955,44 @@ private theorem closureConvert_step_simulation
           (by simp [ExprAddrWF] at hexprwf; exact hexprwf) hexprwf'
           (Core_step_heap_size_mono hcstep_sub)
       · -- CCState agreement (objectLit sub-step)
-        sorry
+        -- IH gives: hconv' at st_a, hAgreeIn : CCStateAgree (convertPropList done_c st).snd st_a
+        --           hAgreeOut : CCStateAgree (convertExpr target_c (convertPropList done_c st).snd).snd st_a'
+        have hsub_det := convertExpr_state_determined sc_sub'.expr scope envVar envMap
+          (Flat.convertPropList done_c scope envVar envMap st).snd st_a hAgreeIn.1 hAgreeIn.2
+        have hsa_fst : (Flat.convertExpr sc_sub'.expr scope envVar envMap
+            (Flat.convertPropList done_c scope envVar envMap st).snd).fst = sa.expr :=
+          hsub_det.1.trans (congrArg Prod.fst hconv').symm
+        have hsa_snd_eq : (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' :=
+          (congrArg Prod.snd hconv').symm
+        have hstate_sub_agree : CCStateAgree
+            (Flat.convertExpr sc_sub'.expr scope envVar envMap
+              (Flat.convertPropList done_c scope envVar envMap st).snd).snd st_a' :=
+          ⟨hsub_det.2.1.trans (hsa_snd_eq ▸ rfl), hsub_det.2.2.trans (hsa_snd_eq ▸ rfl)⟩
+        have hrest_in_agree : CCStateAgree
+            (Flat.convertExpr sc_sub'.expr scope envVar envMap
+              (Flat.convertPropList done_c scope envVar envMap st).snd).snd
+            (Flat.convertExpr target_c scope envVar envMap
+              (Flat.convertPropList done_c scope envVar envMap st).snd).snd :=
+          ⟨hstate_sub_agree.1.trans hAgreeOut.1.symm, hstate_sub_agree.2.trans hAgreeOut.2.symm⟩
+        have hrest_det := convertPropList_state_determined rest_c scope envVar envMap
+          _ _ hrest_in_agree.1 hrest_in_agree.2
+        refine ⟨st, (Flat.convertPropList (done_c ++ [(propName_c, sc_sub'.expr)] ++ rest_c) scope envVar envMap st).snd,
+          ?_, ⟨rfl, rfl⟩, ?_⟩
+        · -- Conversion expression matches sf'.expr
+          simp only [sc', Flat.convertExpr]
+          congr 1
+          rw [convertPropList_append, convertPropList_append, convertPropList_append_snd]
+          simp only [Flat.convertPropList]
+          rw [hsa_fst, hrest_det.1]
+        · -- Output state agreement
+          have hprops := firstNonValueProp_decompose hcfnv
+          rw [hst, hprops]
+          have h_lhs := convertPropList_append_snd (done_c ++ [(propName_c, target_c)]) rest_c scope envVar envMap st
+          have h_lhs2 := convertPropList_append_snd done_c [(propName_c, target_c)] scope envVar envMap st
+          have h_rhs := convertPropList_append_snd (done_c ++ [(propName_c, sc_sub'.expr)]) rest_c scope envVar envMap st
+          have h_rhs2 := convertPropList_append_snd done_c [(propName_c, sc_sub'.expr)] scope envVar envMap st
+          simp only [h_lhs, h_lhs2, h_rhs, h_rhs2, Flat.convertPropList]
+          exact ⟨hrest_det.2.1.symm, hrest_det.2.2.symm⟩
   | arrayLit elems =>
     rw [hsc] at hconv hncfr hexprwf hd
     simp [Flat.convertExpr] at hconv
