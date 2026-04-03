@@ -4263,22 +4263,26 @@ private theorem closureConvert_step_simulation
               cases sf; simp_all [Flat.convertValue]
             rw [hsf_eta] at hstep
             -- Both Flat and Core produce (.log msg, .lit .undefined)
-            rw [Flat_step?_call_consoleLog_vals sf 0 .null _ _ hfvals] at hstep
-            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-            obtain ⟨hev, hsf'⟩ := hstep; subst hev; subst hsf'
+            have hflat := Flat_step?_call_consoleLog_vals sf 0 .null _ _ hfvals
+            rw [hflat] at hstep; dsimp only at hstep
+            have hpair := Option.some.inj hstep
+            have hev : ev = (Prod.fst (ev, sf')) := rfl
+            rw [��� hpair] at hev; simp only [Prod.fst] at hev
+            have hsf'eq : sf' = (Prod.snd (ev, sf')) := rfl
+            rw [← hpair] at hsf'eq; simp only [Prod.snd] at hsf'eq
             have hst_eq : (Flat.convertExprList args scope envVar envMap st).snd = st :=
               allValues_convertExprList_state args argVals scope envVar envMap st hallv
-            let msg := match argVals.map Flat.convertValue with
-              | [v] => Flat.valueToString v
-              | vs => String.intercalate " " (vs.map Flat.valueToString)
+            -- Build Core step with matching message
+            have hsc' : sc = { sc with expr := .call (.lit (.function Core.consoleLogIdx)) args } := by
+              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+            have hcore := Core_step?_call_consoleLog_flat_msg args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
+            rw [hsc'] at hcore; rw [← hsc'] at hcore
+            -- Both sides produce same event and result expression .lit .undefined
+            subst hev; subst hsf'eq
             let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
-              sc.trace ++ [.log msg], sc.funcs, sc.callStack⟩
+              sc.trace ++ [ev], sc.funcs, sc.callStack⟩
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · show Core.step? sc = some (.log msg, sc')
-              have hsc' : sc = { sc with expr := .call (.lit (.function Core.consoleLogIdx)) args } := by
-                obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-              rw [hsc']
-              exact Core_step?_call_consoleLog_flat_msg args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
+            · exact hcore
             · simp [sc', htrace]
             · exact hinj
             · exact henvCorr
