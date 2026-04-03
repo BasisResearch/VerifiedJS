@@ -987,7 +987,7 @@ private theorem normalizeExpr_seq_while_first_family :
           · split at hprod
             · cases hprod
             · have heq := Prod.mk.inj (Except.ok.inj hprod)
-              exact ⟨_, _, (ANF.Expr.seq.inj heq.1).1⟩
+              exact ⟨_, _, (ANF.Expr.seq.inj heq.1).1.symm⟩
       | tryCatch body₁ catchParam catchBody finally_ =>
         simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, Except.bind]
         intro hprod; cases finally_ with
@@ -1074,6 +1074,7 @@ private theorem normalizeExpr_seq_while_first
   (normalizeExpr_seq_while_first_family e.depth).1 e k
     (by intro x n' m' a' b' habs
         obtain ⟨m'', hm''⟩ := hk x n'
+        simp only [StateT.run] at hm''
         rw [hm''] at habs; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj habs)).1)
     (Nat.le_refl _) n m a b h
 
