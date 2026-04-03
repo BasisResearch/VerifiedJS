@@ -2094,7 +2094,7 @@ private theorem normalizeExpr_if_cond_source :
         exfalso; unfold ANF.normalizeExpr at hnorm
         simp only [bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm
         revert hnorm; split
-        · intro h; simp [Except.ok.injEq, Prod.mk.injEq] at h; exact ANF.Expr.noConfusion h.1
+        · intro h; simp [Except.ok.injEq, Prod.mk.injEq] at h
         · intro h; exact absurd h (by simp)
       | while_ cond body =>
         exfalso; unfold ANF.normalizeExpr at hnorm
@@ -2163,7 +2163,8 @@ private theorem normalizeExpr_if_cond_source :
               · intro h; exact absurd h (by simp)
               · split
                 · intro h; exact absurd h (by simp)
-                · simp only [Except.ok.injEq, Prod.mk.injEq]; intro ⟨h, _⟩; cases h)
+                · simp only [Except.ok.injEq, Prod.mk.injEq, ANF.Expr.if.injEq, and_imp]
+                  intro h _ _ _; exact h)
           hnorm)
       | seq a b =>
         simp only [ANF.normalizeExpr] at hnorm
@@ -2403,7 +2404,7 @@ private theorem normalizeExpr_if_cond_source :
             (by intro args n' m' t' e'; exact hk (arg :: args) n' m' t' e')
             hinner
           exact ⟨elem, List.mem_cons_of_mem _ hmem, hfree⟩
-        · exact ⟨e, List.mem_cons_self _ _, ihe e
+        · exact ⟨e, @List.mem_cons_self _ e rest, ihe e
             (fun t => ANF.normalizeExprList rest (fun ts => k (t :: ts)))
             (by simp [Flat.Expr.listDepth] at hd; omega) n m name then_ else_
             (by intro a n' m' t' e' h; exact absurd ⟨a, n', m', t', e', h⟩ hno)
@@ -2422,7 +2423,7 @@ private theorem normalizeExpr_if_cond_source :
             (by intro args n' m' t' e'; exact hk ((pn, arg) :: args) n' m' t' e')
             hinner
           exact ⟨elem, List.mem_cons_of_mem _ hmem, hfree⟩
-        · exact ⟨(pn, pe), List.mem_cons_self _ _, ihe pe
+        · exact ⟨(pn, pe), @List.mem_cons_self _ (pn, pe) rest, ihe pe
             (fun vt => ANF.normalizeProps rest (fun pts => k ((pn, vt) :: pts)))
             (by simp [Flat.Expr.propListDepth] at hd; omega) n m name then_ else_
             (by intro a n' m' t' e' h; exact absurd ⟨a, n', m', t', e', h⟩ hno)

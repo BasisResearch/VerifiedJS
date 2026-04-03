@@ -5354,3 +5354,5 @@ So from `hAgreeIn`, we get the equivalent of `hAgreeOut` for free. No new lemma 
 
 ## Run: 2026-04-03T23:15:01+00:00
 
+2026-04-03T23:15:05+00:00 EXIT: code 1
+2026-04-03T23:15:05+00:00 DONE
