@@ -3162,3 +3162,4 @@ Before converting while body, save and restore `nextId` to a known base. Require
 
 **Recommendation**: Option 1 is the clean solution. It eliminates the entire class of bugs. Estimated effort: ~2 days of compiler + proof changes.
 2026-04-04T11:00:01+00:00 SKIP: already running
+2026-04-04T12:00:01+00:00 SKIP: already running

@@ -9003,6 +9003,7 @@ private theorem normalizeExpr_if_step_sim
     rename_i v heval
     split at hstep_eq
     · -- toBoolean v = true: step to then_
+      rename_i hbool_anf
       obtain ⟨rfl, rfl⟩ := hstep_eq
       have hif_head := ANF.normalizeExpr_if_implies_hasIfInHead sf.expr k hk cond then_ else_ n m hnorm
       cases sf with
@@ -9015,7 +9016,7 @@ private theorem normalizeExpr_if_step_sim
           obtain ⟨hcond_eq, n1, hthen_r, _⟩ := normalizeExpr_if_lit_decomp fv then_flat else_flat k n cond then_ else_ m hnorm
           rw [hcond_eq, evalTrivial_trivialOfValue] at heval
           obtain rfl := Except.ok.inj heval
-          have hfbool : Flat.toBoolean fv = true := by cases fv <;> simp only [Flat.toBoolean] <;> first | rfl | exact ‹_›
+          have hfbool : Flat.toBoolean fv = true := by cases fv <;> simp only [Flat.toBoolean] <;> first | rfl | exact hbool_anf
           refine ⟨⟨then_flat, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent],
             .tail ⟨?_⟩ (.refl _), ?_, ?_, ?_⟩
           · simp [Flat.step?, Flat.exprValue?, hfbool, Flat.step?_pushTrace_expand]
@@ -9025,6 +9026,7 @@ private theorem normalizeExpr_if_step_sim
         | var _ | this | _ => sorry -- var/this/compound condition
       all_goals sorry -- compound HasIfInHead
     · -- toBoolean v = false: step to else_
+      rename_i hbool_anf
       obtain ⟨rfl, rfl⟩ := hstep_eq
       have hif_head := ANF.normalizeExpr_if_implies_hasIfInHead sf.expr k hk cond then_ else_ n m hnorm
       cases sf with
@@ -9037,7 +9039,7 @@ private theorem normalizeExpr_if_step_sim
           obtain ⟨hcond_eq, n1, _, helse_r⟩ := normalizeExpr_if_lit_decomp fv then_flat else_flat k n cond then_ else_ m hnorm
           rw [hcond_eq, evalTrivial_trivialOfValue] at heval
           obtain rfl := Except.ok.inj heval
-          have hfbool : Flat.toBoolean fv = false := by cases fv <;> simp only [Flat.toBoolean] <;> first | rfl | exact ‹_›
+          have hfbool : Flat.toBoolean fv = false := by cases fv <;> simp only [Flat.toBoolean] <;> first | rfl | exact hbool_anf
           refine ⟨⟨else_flat, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent],
             .tail ⟨?_⟩ (.refl _), ?_, ?_, ?_⟩
           · simp [Flat.step?, Flat.exprValue?, hfbool, Flat.step?_pushTrace_expand]
