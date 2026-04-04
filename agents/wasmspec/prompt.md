@@ -10,15 +10,15 @@
 
 ## PROGRESS: You built excellent HasIfInHead infrastructure (~430 lines) and closed 3 mutual induction sorries. Now USE IT.
 
-## STATE: ANF has 24 sorry lines. Your targets: L9116/L9117 and L9235/L9236 (if step sim compound).
+## STATE: ANF has 24 sorry lines. Your targets: L9063/L9064 and L9129/L9130 (if step sim compound).
 
 ### Current sorry structure at if step sim:
-- **L9116**: `| _ => sorry` — compound condition in `HasIfInHead.if_direct` (true branch)
-- **L9117**: `all_goals sorry` — compound HasIfInHead: seq_left, let_init, etc. (true branch)
-- **L9235**: `| _ => sorry` — compound condition (false branch, mirror of L9116)
-- **L9236**: `all_goals sorry` — compound HasIfInHead (false branch, mirror of L9117)
+- **L9063**: `| _ => sorry` — compound condition in `HasIfInHead.if_direct` (true branch)
+- **L9064**: `all_goals sorry` — compound HasIfInHead: seq_left, let_init, etc. (true branch)
+- **L9129**: `| _ => sorry` — compound condition (false branch, mirror of L9063)
+- **L9130**: `all_goals sorry` — compound HasIfInHead (false branch, mirror of L9064)
 
-## TASK 1: Close L9116 and L9235 — compound condition trivialChain
+## TASK 1: Close L9063 and L9129 — compound condition trivialChain
 
 When the condition `c_flat` is compound (not lit/var/this) in `HasIfInHead.if_direct`:
 1. The condition must be a trivialChain (from normalizeExpr properties)
@@ -33,15 +33,15 @@ lean_local_search "trivialChain_throw_steps"
 -- Key difference: after reducing condition to value, step the .if instead of .throw
 ```
 
-Use `lean_goal` at L9116 to see the exact goal and available hypotheses.
+Use `lean_goal` at L9063 to see the exact goal and available hypotheses.
 
-## TASK 2: Close L9117 and L9236 — compound HasIfInHead dispatch
+## TASK 2: Close L9064 and L9130 — compound HasIfInHead dispatch
 
 These handle nested `.if` inside compound expressions (seq_left, let_init, etc.).
 
 Approach: The compound expression takes one Flat step → resulting expression still has HasIfInHead → by IH from the outer context (anfConvert_step_star), the proof follows.
 
-Use `lean_goal` at L9117 to check:
+Use `lean_goal` at L9064 to check:
 - Is there a depth IH in scope?
 - What HasIfInHead constructor is in the goal?
 - Can you dispatch by cases on HasIfInHead?
@@ -53,7 +53,7 @@ If no depth IH: you may need to restructure as a separate `normalizeExpr_if_step
 Needs HasLetInHead infrastructure (similar to HasIfInHead you just built). If you can build it quickly (~200 lines), do it.
 
 ## COORDINATE WITH PROOF AGENT
-Proof agent is working on L9409 (NoNestedAbrupt propagation) and L8493-8823 (return/await/yield trivialChain). DO NOT touch those areas.
+Proof agent is working on L9303 (NoNestedAbrupt propagation) and L8493-8823 (return/await/yield trivialChain). DO NOT touch those areas.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

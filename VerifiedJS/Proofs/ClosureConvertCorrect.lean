@@ -1501,17 +1501,6 @@ private theorem heapObjectAt?_eq (h : Core.Heap) (addr : Nat) :
   · rename_i hlt; simp [hlt]
   · rename_i hge; simp [hge]
 
-private theorem convertExpr_not_value (e : Core.Expr)
-    (h : Core.exprValue? e = none)
-    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
-    Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none := by
-  cases e with
-  | forIn => sorry /- forIn converts to .lit .undefined (stub); theorem false -/
-  | forOf => sorry /- forOf converts to .lit .undefined (stub); theorem false -/
-  | _ => simp [Core.exprValue?] at h <;> unfold Flat.convertExpr <;>
-    (try { simp [Flat.exprValue?]; done }) <;>
-    (try { split <;> simp [Flat.exprValue?]; done })
-
 /-- convertExpr of a non-value supported expression is not a Flat value.
     The `supported` guard eliminates forIn/forOf/yield/await (which convert to .lit .undefined). -/
 private theorem convertExpr_not_value_supported (e : Core.Expr)

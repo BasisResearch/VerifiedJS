@@ -1,4 +1,4 @@
-# proof — NoNestedAbrupt propagation (L9409) is THE blocker
+# proof — NoNestedAbrupt propagation (L9303) is THE blocker
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -17,13 +17,13 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 - If build OOMs: add `set_option maxHeartbeats 200000` above the theorem
 - Do NOT attempt to build the entire file if it's failing
 
-## PROGRESS: You closed NESTED_THROW (L8204) via NoNestedAbrupt exfalso. Well done. But you generated a replacement sorry at L9409. NET ZERO. Close L9409 NOW.
+## PROGRESS: You closed NESTED_THROW (L8204) via NoNestedAbrupt exfalso. Well done. But you generated a replacement sorry at L9303. NET ZERO. Close L9303 NOW.
 
-## STATE: ANF has 24 sorry lines. Your ONE target this run: L9409.
+## STATE: ANF has 24 sorry lines. Your ONE target this run: L9303.
 
-## TASK 1 (DO THIS FIRST, DO NOT SKIP): Close L9409
+## TASK 1 (DO THIS FIRST, DO NOT SKIP): Close L9303
 
-L9409 is:
+L9303 is:
 ```lean
 all_goals have hna_sf : NoNestedAbrupt sf.expr := sorry -- TODO: propagate NoNestedAbrupt invariant
 ```
@@ -50,13 +50,13 @@ This is ~30-80 lines: `cases` on the Flat.step? definition, then for each case u
 Use `lean_hover_info` on `Flat.step?` to see all cases. Use `lean_multi_attempt` to test each case.
 
 ### Step 2: Add hna to anfConvert_step_star signature
-Add `(hna : NoNestedAbrupt sf.expr)` parameter. Replace `sorry` at L9409 with `hna`.
+Add `(hna : NoNestedAbrupt sf.expr)` parameter. Replace `sorry` at L9303 with `hna`.
 
 ### Step 3: Update anfConvert_steps_star
 The caller that invokes `anfConvert_step_star` in a loop. Add `hna` parameter. After each step, use `NoNestedAbrupt_step_preserved` to get `hna'` for the next state.
 
 ### Step 4: Update compiler_correct (top-level)
-The top-level theorem needs to provide initial `hna`. If normalizeExpr produces NoNestedAbrupt output, this should follow from the compiler pipeline. If it's hard, use sorry here temporarily — it's a MUCH better sorry than L9409 because it's at the top level where we know the input is well-formed.
+The top-level theorem needs to provide initial `hna`. If normalizeExpr produces NoNestedAbrupt output, this should follow from the compiler pipeline. If it's hard, use sorry here temporarily — it's a MUCH better sorry than L9303 because it's at the top level where we know the input is well-formed.
 
 ## TASK 2 (ONLY IF TASK 1 IS DONE): Apply trivialChain pattern to return/await/yield
 
@@ -64,10 +64,10 @@ L8493/8496, L8666/8669, L8820/8823 — same pattern as throw. Write `trivialChai
 
 ## DO NOT:
 - Work on Group A (L7516-7702) — PARKED
-- Work on L8850 (let), L8898 (while), L9116/9117/9235/9236 (if) — wasmspec handles
+- Work on L8850 (let), L8898 (while), L9063/9064/9129/9130 (if) — wasmspec handles
 - Work on L8343 (compound throw dispatch) — DEFERRED until after return/await/yield
-- Work on L9280 (tryCatch) — DEFERRED
-- Work on L9660/L9713 (break/continue) — PARKED
+- Work on L9174 (tryCatch) — DEFERRED
+- Work on L9554/L9607 (break/continue) — PARKED
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`
