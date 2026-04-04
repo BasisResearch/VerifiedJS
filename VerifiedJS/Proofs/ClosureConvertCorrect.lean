@@ -6652,13 +6652,12 @@ private theorem closureConvert_step_simulation
           · simp [sc', hheapna']
           · -- noCallFrameReturn
             simp only [sc']
-            have hncfr_fin : (match finally_ with | some f => noCallFrameReturn f | none => true) = true := by
-              cases finally_ with
-              | none => rfl
-              | some f => unfold noCallFrameReturn at hncfr; simp at hncfr; exact hncfr.2
+            simp only [sc']
             unfold noCallFrameReturn
             simp only [bne_iff_ne, Bool.and_eq_true, decide_eq_true_eq]
-            exact ⟨⟨⟨hncf, hncfr'⟩, hncfr_catch⟩, hncfr_fin⟩
+            refine ⟨⟨⟨hncf, hncfr'⟩, hncfr_catch⟩, ?_⟩
+            · unfold noCallFrameReturn at hncfr; simp at hncfr
+              cases finally_ with | none => trivial | some f => exact hncfr.2
           · -- ExprAddrWF
             simp only [sc']
             have hmono := Core_step_heap_size_mono hcstep_sub
