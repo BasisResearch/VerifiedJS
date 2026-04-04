@@ -25,19 +25,18 @@ The if-condition is compound (not lit/var/this). It's a trivialChain. You need t
    - `.seq a b`: case split on `exprValue? a`, value→drop left, non-value→IH
    - Each step uses `step?_if_ctx` to lift the inner step to the `.if` context
 
-3. You need `step?_if_ctx`. If it doesn't exist, write it:
+3. `step?_if_cond_step` ALREADY EXISTS at L1474! Use it directly:
 ```lean
-private theorem step?_if_ctx (c : Flat.Expr) (then_ else_ : Flat.Expr)
-    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
-    (funcs : Array Flat.FuncDef) (cs : List Flat.Env) (ev : Core.TraceEvent) (sc' : Flat.State)
-    (hnv : Flat.exprValue? c = none)
-    (hstep : Flat.step? ⟨c, env, heap, trace, funcs, cs⟩ = some (ev, sc')) :
-    Flat.step? ⟨.if c then_ else_, env, heap, trace, funcs, cs⟩ =
-    some (ev, ⟨.if sc'.expr then_ else_, sc'.env, sc'.heap, sc'.trace, sc'.funcs, sc'.callStack⟩) := by
-  simp [Flat.step?, hnv]
-  -- unfold step? for .if with non-value condition
-  sorry
+-- Signature:
+step?_if_cond_step (s : Flat.State) (cond then_ else_ : Flat.Expr)
+    (hnotval : Flat.exprValue? cond = none)
+    (t : Core.TraceEvent) (sc : Flat.State)
+    (hstep : Flat.step? { s with expr := cond } = some (t, sc))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    ∃ s', Flat.step? { s with expr := .«if» cond then_ else_ } = some (t, s') ∧
+      s'.expr = .«if» sc.expr then_ else_ ...
 ```
+   Also check for `Steps_if_cond_ctx` (multi-step lifting) — search near L1829.
 
 4. The theorem statement should be:
 ```lean
