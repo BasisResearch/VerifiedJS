@@ -8807,7 +8807,7 @@ private theorem normalizeExpr_await_step_sim
           have hstep_var : Flat.step? ⟨.var name, env, heap, trace, funcs, cs⟩ =
               some (.error ("ReferenceError: " ++ name),
                 ⟨.lit .undefined, env, heap, trace ++ [.error ("ReferenceError: " ++ name)], funcs, cs⟩) := by
-            unfold Flat.step?; simp [hlookup]
+            unfold Flat.step?; simp [hv_anf]
           have hstep1 := step?_await_error ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ (.var name)
             (by simp [Flat.exprValue?]) ("ReferenceError: " ++ name) _ hstep_var
           obtain ⟨s1, hs1_eq, hs1_expr, hs1_env, hs1_heap, _, _, hs1_trace⟩ := hstep1
@@ -8959,7 +8959,7 @@ private theorem normalizeExpr_yield_step_sim
         -- Step 1: .yield (some (.var name)) d → .yield (some (.lit v)) d
         have hstep1 : Flat.step? ⟨.yield (some (.var name)) delegate, env, heap, trace, funcs, cs⟩ =
             some (.silent, ⟨.yield (some (.lit v)) delegate, env, heap, trace ++ [.silent], funcs, cs⟩) := by
-          unfold Flat.step?; simp [Flat.exprValue?, hv_flat_env, Flat.step?]
+          unfold Flat.step?; simp [Flat.exprValue?, hv_anf, Flat.step?_pushTrace_expand, Flat.step?]
         -- Step 2: .yield (some (.lit v)) d → .lit v (silent)
         have hstep2 : Flat.step? ⟨.yield (some (.lit v)) delegate, env, heap, trace ++ [.silent], funcs, cs⟩ =
             some (.silent,
@@ -8993,7 +8993,7 @@ private theorem normalizeExpr_yield_step_sim
         -- Step 1: .yield (some .this) d → .yield (some (.lit v)) d
         have hstep1 : Flat.step? ⟨.yield (some .this) delegate, env, heap, trace, funcs, cs⟩ =
             some (.silent, ⟨.yield (some (.lit v)) delegate, env, heap, trace ++ [.silent], funcs, cs⟩) := by
-          unfold Flat.step?; simp [Flat.exprValue?, hv_flat_env, Flat.step?]
+          unfold Flat.step?; simp [Flat.exprValue?, hv_anf, Flat.step?_pushTrace_expand, Flat.step?]
         -- Step 2: .yield (some (.lit v)) d → .lit v (silent)
         have hstep2 : Flat.step? ⟨.yield (some (.lit v)) delegate, env, heap, trace ++ [.silent], funcs, cs⟩ =
             some (.silent,

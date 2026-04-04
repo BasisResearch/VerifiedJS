@@ -3641,10 +3641,10 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         obtain ⟨-, rfl⟩ := hstep; rfl
       | none =>
         cases h_sub : Core.step? { s with expr := rhs } with
-        | none => simp [Core.step?, Core.exprValue?, hval_r, h_sub] at hstep
+        | none => simp [Core.step?, hval_r, h_sub] at hstep
         | some p =>
           obtain ⟨t, sa⟩ := p
-          simp [Core.step?, Core.exprValue?, hval_r, h_sub, Core.pushTrace] at hstep
+          simp [Core.step?, hval_r, h_sub, Core.pushTrace] at hstep
           obtain ⟨-, rfl⟩ := hstep
           simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
           exact ⟨rfl, ih rhs.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
