@@ -8158,27 +8158,28 @@ private theorem anfConvert_step_star
       · simp; intro x hfx; cases hfx
     -- Compound HasBreakInHead cases: simulation gap for dead code after break.
     --
-    -- ROOT CAUSE: When normalizeExpr e k (with trivial-preserving k) produces
+    -- ROOT CAUSE: Flat.step? does not propagate break/continue errors through
+    -- compound expressions. When normalizeExpr e k (trivial-preserving k) produces
     -- .break label, the flat expression e can be compound (e.g., .seq (.break l) b).
-    -- normalizeExpr short-circuits at .break, discarding continuation (b is never
-    -- normalized). In flat semantics, .seq evaluates .break (producing error event),
-    -- then continues with dead code b — which may produce ADDITIONAL observable events.
-    -- ANF_SimRel requires normalizeExpr sf'.expr k' = .trivial .litUndefined, but
-    -- sf'.expr includes dead code b whose normalization is unknown/unrelated.
+    -- ANF short-circuits at .break (continuation bypassed, b never normalized).
+    -- Flat evaluates .break (error event), then continues with dead code b which
+    -- may produce ADDITIONAL observable events — breaking trace correspondence.
     --
-    -- The compound cases split into two categories:
-    -- (A) seq_left/seq_right: break in statement position (reachable in well-formed JS)
-    -- (B) All others (getProp_obj, binary_lhs, call_func, etc.): break in expression
-    --     position, which is a syntax error in JS. Unreachable with a syntactic
-    --     well-formedness condition (BreakOnlyInStatementPosition).
+    -- ANALYSIS (wasmspec 2026-04-04):
+    -- • Strategy A (normalizeExpr_break_implies_direct) is FALSE:
+    --   normalizeExpr (.seq (.break l) b) k = .break l, but sf.expr is compound.
+    -- • Strategy B (prove directly) fails because after the break error event,
+    --   Flat.step? wraps result in .seq/.let/etc. with dead code. The dead code
+    --   may produce observable events, and its normalization ≠ .trivial .litUndefined.
+    -- • Changing Flat.step? (option 3) is the correct fix but would break
+    --   ClosureConvertCorrect.lean (363 refs, Flat_step?_seq_step theorem at L2141).
     --
-    -- FIX OPTIONS:
-    -- (1) Add BreakOnlyInStatementPosition to ExprWellFormed → closes category (B).
-    --     For seq_right: a is trivial chain (normalizeExpr called k on a), so flat
-    --     evaluates a silently, then IH on b. Needs helper by induction on e.depth.
-    --     For seq_left: genuine gap — dead code b after break may have observable events.
-    -- (2) Weaken ANF_SimRel to allow "dead code" states after break/continue.
-    -- (3) Change flat semantics to short-circuit on break/continue error events.
+    -- RECOMMENDED FIX: Change Flat.step? to propagate .error events directly
+    -- through compound expressions (matching ECMA-262 abrupt completion semantics).
+    -- For each compound case, when step? subexpr = (.error msg, sa):
+    --   return (.error msg, {s with expr := sa.expr, env := sa.env, heap := sa.heap})
+    -- instead of wrapping in the compound constructor. This skips dead code.
+    -- Requires coordinating with jsspec agent to update ClosureConvertCorrect.lean.
     | seq_left _ | seq_right _ | let_init _
     | getProp_obj _ | setProp_obj _ | setProp_val _
     | binary_lhs _ | binary_rhs _ | unary_arg _ | typeof_arg _
@@ -8190,7 +8191,7 @@ private theorem anfConvert_step_star
     | setIndex_obj _ | setIndex_idx _ | setIndex_val _
     | getEnv_env _ | makeClosure_env _ | makeEnv_values _
     | objectLit_props _ | arrayLit_elems _ =>
-      -- SORRY: Simulation gap — dead code after break. See analysis above.
+      -- SORRY: Requires Flat.step? error propagation (see analysis above).
       sorry
   | «continue» label =>
     obtain ⟨sa_expr, sa_env, sa_heap, sa_trace⟩ := sa
@@ -8229,8 +8230,9 @@ private theorem anfConvert_step_star
           congr 1
         · exact ANF.normalizeExpr_lit_undefined_trivial n
       · simp; intro x hfx; cases hfx
-    -- Compound HasContinueInHead cases: same simulation gap as break (dead code).
-    -- See detailed analysis in the break compound cases comment above.
+    -- Compound HasContinueInHead cases: same root cause as break compound cases.
+    -- Flat.step? does not propagate continue errors through compound expressions.
+    -- Same fix needed: Flat.step? error propagation (see break analysis above).
     | seq_left _ | seq_right _ | let_init _
     | getProp_obj _ | setProp_obj _ | setProp_val _
     | binary_lhs _ | binary_rhs _ | unary_arg _ | typeof_arg _
@@ -8242,7 +8244,7 @@ private theorem anfConvert_step_star
     | setIndex_obj _ | setIndex_idx _ | setIndex_val _
     | getEnv_env _ | makeClosure_env _ | makeEnv_values _
     | objectLit_props _ | arrayLit_elems _ =>
-      -- SORRY: Simulation gap — dead code after continue. See break analysis above.
+      -- SORRY: Requires Flat.step? error propagation (see break analysis above).
       sorry
 
 set_option maxHeartbeats 400000 in

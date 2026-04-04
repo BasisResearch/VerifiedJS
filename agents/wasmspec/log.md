@@ -5978,3 +5978,27 @@ predicate + inductive helper or SimRel redesign).
 ## Run: 2026-04-04T04:15:02+00:00
 
 ### 2026-04-04T04:15:10+00:00 Starting run
+### 2026-04-04T04:57:16+00:00 Run complete — documented gap, updated sorry comments
+
+#### Analysis: Compound break/continue sorries (L8194, L8246)
+
+**Status**: Cannot close without Flat.step? semantic change.
+
+**Root cause**: Flat.step? wraps error results in compound constructors (`.seq sa.expr b`)
+instead of propagating errors directly. Dead code `b` is evaluated, producing extra
+observable events and breaking ANF_SimRel correspondence.
+
+**Strategies evaluated**:
+1. Strategy A (normalizeExpr_break_implies_direct): FALSE — `.seq (.break l) b` normalizes to `.break l` but sf.expr is compound.
+2. Strategy B (prove directly): BLOCKED — dead code after break produces observable events.
+3. Flat.step? change (option 3): CORRECT fix but breaks ClosureConvertCorrect.lean (363 refs).
+4. Weaken ANF_SimRel (option 2): halt_star theorem breaks (can't prove dead code terminates silently).
+5. BreakOnlyInStatementPosition (option 1): Closes category B but seq_left remains genuine gap.
+
+**Action taken**:
+- Updated comments with detailed analysis and recommended fix
+- Created `.claude-wasmspec/backups/flat_error_propagation.md` with concrete patch plan
+- Build verified: passes with no new errors
+
+**Next steps**: Coordinate with jsspec agent to apply Flat.step? error propagation change.
+2026-04-04T04:57:31+00:00 DONE

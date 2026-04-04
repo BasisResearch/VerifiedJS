@@ -3072,3 +3072,6 @@ Net result: MORE broken cases, not fewer. Approach rejected (consistent with 2 p
 
 **Net result:** Build restored from broken state. 16 grep-sorry lines (was ~15 before breakage + 3 broken proofs). 1 sorry proved (if-else output).
 2026-04-04T04:54:09+00:00 DONE
+
+## Run: 2026-04-04T05:00:01+00:00
+
