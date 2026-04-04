@@ -6556,7 +6556,10 @@ private theorem closureConvert_step_simulation
           rw [heq] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨hev_eq, hsf'_eq⟩ := hstep; subst hev_eq; subst hsf'_eq
           -- Error case: apply IH to body sub-step, construct catch handler state
-          have hdepth : body.depth < n := by cases finally_ <;> simp [Core.Expr.depth] at hd <;> omega
+          have hdepth : body.depth < n := by
+            have : body.depth + 1 ≤ (Core.Expr.tryCatch body catchParam catchBody finally_).depth := by
+              cases finally_ <;> simp [Core.Expr.depth] <;> omega
+            omega
           obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
               hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
             ih_depth body.depth hdepth envVar envMap injMap
@@ -6615,7 +6618,10 @@ private theorem closureConvert_step_simulation
           rw [heq] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨hev_eq, hsf'_eq⟩ := hstep; subst hev_eq; subst hsf'_eq
           -- Apply IH to body sub-step
-          have hdepth : body.depth < n := by cases finally_ <;> simp [Core.Expr.depth] at hd <;> omega
+          have hdepth : body.depth < n := by
+            have : body.depth + 1 ≤ (Core.Expr.tryCatch body catchParam catchBody finally_).depth := by
+              cases finally_ <;> simp [Core.Expr.depth] <;> omega
+            omega
           obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
               hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
             ih_depth body.depth hdepth envVar envMap injMap
@@ -6675,13 +6681,13 @@ private theorem closureConvert_step_simulation
             refine ⟨st_a, (Flat.convertOptExpr finally_ scope envVar envMap
               (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st_a').snd).snd,
               ?_, hAgreeIn, ?_⟩
-            · simp only [sc', Flat.convertExpr]
+            · simp only [sc', Flat.convertExpr, st1]
               rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sb.expr from
                 (congrArg Prod.fst hconv').symm]
               rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from
                 (congrArg Prod.snd hconv').symm]
               rw [hcatch_det.1, hfin_det.1]
-            · rw [hconv.2]; exact hfin_det.2
+            · rw [hconv.2]; simp only [st1]; exact hfin_det.2
       | none =>
         have heq : Flat.step? { sf with expr := .tryCatch fbody catchParam fcatch ffin } = none := by
           simp only [Flat.step?, hfnv, hm]
