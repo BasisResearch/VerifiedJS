@@ -1,4 +1,4 @@
-# proof — Decompose L9178 NoNestedAbrupt_step_preserved into per-constructor cases
+# proof — Fill in NoNestedAbrupt_step_preserved skeleton at L9100
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -17,11 +17,11 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 - If build OOMs: add `set_option maxHeartbeats 200000` above the theorem
 - Do NOT attempt to build the entire file if it's failing
 
-## STATE: You successfully extracted NoNestedAbrupt_step_preserved as a standalone lemma at L9175. GOOD. Now FILL IT IN.
+## STATE: NoNestedAbrupt_step_preserved exists at L9097-9100 with sorry body. hasAbruptCompletion_step_preserved does NOT exist yet.
 
-## TASK (DO THIS NOW): Replace the sorry at L9178 with the full case split
+## TASK (DO THIS NOW): Replace the sorry at L9100 with the full case split
 
-The current code at L9175-9178:
+The current code at L9097-9100:
 ```lean
 private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.TraceEvent)
     (hna : NoNestedAbrupt sf.expr) (hstep : Flat.step? sf = some (ev, sf')) :
@@ -31,7 +31,7 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
 
 ### STEP 1: Write hasAbruptCompletion_step_preserved helper
 
-Insert this BEFORE L9174 (before the `/-- Flat single-step preserves NoNestedAbrupt` doc comment):
+Insert this BEFORE L9096 (before the `/-- Flat single-step preserves NoNestedAbrupt` doc comment):
 
 ```lean
 private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
@@ -43,9 +43,9 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
   sorry -- SEPARATE THEOREM: prove later by same induction pattern
 ```
 
-### STEP 2: Replace L9178 sorry with full skeleton
+### STEP 2: Replace L9100 sorry with full skeleton
 
-Replace `sorry` at L9178 with EXACTLY this code:
+Replace `sorry` at L9100 with EXACTLY this code:
 
 ```lean
   obtain ⟨expr, env, heap, trace, funcs, cs⟩ := sf
@@ -266,7 +266,7 @@ Replace `sorry` at L9178 with EXACTLY this code:
 ### IMPORTANT NOTES ON THE SKELETON:
 - The `ih` call uses `ih _` not `ih n` — the underscore lets Lean infer the nat argument
 - `hasAbruptCompletion_step_preserved` will be defined with sorry body — that's fine, it moves sorries to a separate theorem
-- After this, L9178 goes from 1 sorry → ~16 smaller sorries (1 for hasAbruptCompletion + 15 complex cases)
+- After this, L9100 goes from 1 sorry → ~16 smaller sorries (1 for hasAbruptCompletion + 15 complex cases)
 - This is PROGRESS because each sorry is now isolated and self-contained
 
 ### STEP 3: Try closing easy complex cases
@@ -293,11 +293,11 @@ After skeleton compiles, try closing `getProp` (single sub-expr, same pattern as
 Same pattern works for `deleteProp` and `typeof`.
 
 ## DO NOT:
-- Work on Group A (L7516-7702) — PARKED
-- Work on L8850 (let), L8898 (while), L9063/9064/9129/9130 (if) — wasmspec handles
-- Work on L8343 (compound throw dispatch) — DEFERRED
-- Work on L9174 (tryCatch) — DEFERRED
-- Work on L9571/L9624 (break/continue) — PARKED
+- Work on Group A (L7516-7708) — PARKED
+- Work on L8856 (let), L8904 (while), L9026/9027/9049/9050 (if) — wasmspec handles
+- Work on L8349 (compound throw dispatch) — DEFERRED
+- Work on L9094 (tryCatch) — DEFERRED
+- Work on L9491/L9544 (break/continue) — PARKED
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

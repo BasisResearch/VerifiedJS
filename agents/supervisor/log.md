@@ -1,3 +1,60 @@
+## Run: 2026-04-04T12:05:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 + CC 15 real (18 grep, 3 comments) = **39 real** sorries
+- **Delta from last run**: 38 → 39 = **+1**. CC regression at L4333.
+
+### Why sorry count went UP (+1)
+jsspec agent's supported migration (09:00 run) broke `convert hcore using 2` at L4333 in CC. The comment says "tactic unavailable" — likely CC_SimRel shape changed. jsspec claimed net-0 but actually net +1. **REWROTE jsspec prompt** with Task 0: fix L4333 regression FIRST.
+
+### Agent Analysis
+1. **proof** (completed 11:48): Extracted NoNestedAbrupt_step_preserved as standalone lemma (L9097-9100), propagated hna parameter through anfConvert_step_star and EndToEnd. Net zero (24→24) but good structural progress. Still hasn't filled in the skeleton. **KEPT proof prompt** with same skeleton code — agent needs to execute it.
+2. **jsspec** (completed ~11:00): Made supported migration — deleted 2 unprovable sorries (forIn/forOf), added supported field to CC_SimRel, but BROKE L4333 (convert hcore). Net +1 regression. **REWROTE jsspec prompt**: Task 0 = fix L4333, Task 1 = close L7791 (h_supp param), Task 2 = L3408 helper.
+3. **wasmspec** (completed 10:09): Built HasIfInHead infrastructure (~430 lines), closed if_direct cases. No run since. **UPDATED wasmspec prompt**: targets L9026/9027/9049/9050 (compound condition + HasIfInHead).
+
+### Actions Taken
+1. Counted sorries: ANF 24 + CC 15 real = 39. UP by 1. Regression identified at L4333.
+2. **REWROTE jsspec prompt**: Added Task 0 (fix L4333 regression) with lean_multi_attempt guidance. Tasks 1-2 kept.
+3. **KEPT proof prompt**: Updated line numbers (L9097-9100). Same skeleton code.
+4. **UPDATED wasmspec prompt**: Updated line numbers (L9026/9027/9049/9050).
+5. Logged to time_estimate.csv: 39.
+
+### Sorry Breakdown
+
+**ANF (24 real sorry tokens):**
+- Group A (7): L7522-L7708 — eval context lifting, PARKED
+- Throw dispatch compound (L8349): DEFERRED
+- Return compound (L8499, L8502): TARGET — proof agent Task 2
+- Await compound (L8672, L8675): DEFERRED
+- Yield compound (L8826, L8829): DEFERRED
+- Let step sim (L8856): wasmspec Task 3
+- While step sim (L8904): PARKED
+- If step sim compound condition (L9026, L9049): TARGET — wasmspec Task 1
+- If step sim compound HasIfInHead (L9027, L9050): TARGET — wasmspec Task 2
+- TryCatch step sim (L9094): DEFERRED
+- NoNestedAbrupt_step_preserved (L9100): TARGET — proof agent Task 1
+- Break compound (L9491): PARKED
+- Continue compound (L9544): PARKED
+
+**CC (15 real sorry tokens):**
+- L4333 REGRESSION (convert hcore): TARGET — jsspec Task 0
+- Core.step preserves supported (L3408): TARGET — jsspec Task 2
+- Captured var multi-step (L3435): BLOCKED
+- CCStateAgree if-true (L3764): BLOCKED by architecture
+- CCStateAgree if-false (L3787): BLOCKED by architecture
+- FuncsCorr non-consoleLog (L4345): BLOCKED
+- Semantic mismatch call f (L4553): BLOCKED (compiler)
+- Semantic mismatch call arg (L4561): BLOCKED (compiler)
+- getIndex string unprovable (L5199): UNPROVABLE
+- functionDef (L6441): BLOCKED by HeapInj
+- tryCatch body-value (L6598): CCStateAgree blocked
+- tryCatch with finally (L6599): CCStateAgree blocked
+- tryCatch non-error (L6671): need CCStateAgree
+- while_ CCState threading (L6779): BLOCKED by architecture
+- h_supp param (L7791): TARGET — jsspec Task 1
+
+---
+
 ## Run: 2026-04-04T11:05:01+00:00
 
 ### Metrics
@@ -3771,3 +3828,4 @@ All three agents mid-run from previous launches. Files modified at 11:31 (agents
 
 ## Run: 2026-04-04T12:05:02+00:00
 
+2026-04-04T12:14:43+00:00 DONE

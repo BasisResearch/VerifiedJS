@@ -1,4 +1,4 @@
-# wasmspec — Close L9065/L9127 compound condition + L9066/L9128 HasIfInHead
+# wasmspec — Close L9026/9049 compound condition + L9027/9050 HasIfInHead
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -10,9 +10,9 @@
 
 ## PROGRESS: HasIfInHead infrastructure built. if_direct cases closed. ANF at 24 sorries.
 
-## STATE: Your targets are L9065, L9066, L9127, L9128 (if compound condition + HasIfInHead).
+## STATE: Your targets are L9026, L9027, L9049, L9050 (if compound condition + HasIfInHead).
 
-## TASK 1: Close L9065 and L9127 — trivialChain_if_condition_steps
+## TASK 1: Close L9026 and L9049 — trivialChain_if_condition_steps
 
 ### step?_if_cond_step ALREADY EXISTS at ~L1474. Do NOT rewrite it.
 
@@ -33,7 +33,7 @@ private theorem trivialChain_if_condition_steps (c then_ else_ : Flat.Expr)
   sorry -- fuel induction, same as trivialChain_throw_steps
 ```
 
-Even with sorry body, use it at L9065/L9127 to close those sorries.
+Even with sorry body, use it at L9026/L9049 to close those sorries.
 
 5. Then fill in the fuel-induction proof following trivialChain_throw_steps EXACTLY:
    - Base: `.lit v` → 0 steps, already done
@@ -41,9 +41,9 @@ Even with sorry body, use it at L9065/L9127 to close those sorries.
    - `.this` → 1 step
    - `.seq a b` → step a to value, drop, recurse on b with IH
 
-## TASK 2: Close L9066 and L9128 — compound HasIfInHead
+## TASK 2: Close L9027 and L9050 — compound HasIfInHead
 
-Use `lean_goal` at L9066 to see what goals remain. Each is a HasIfInHead constructor case.
+Use `lean_goal` at L9027 to see what goals remain. Each is a HasIfInHead constructor case.
 
 For each: the `.if` is nested in an expression context (seq, let, etc.). One Flat step on the outer expression steps the context, getting closer to the `.if`. Use depth induction.
 
@@ -57,8 +57,8 @@ Pattern:
 ## TASK 3 (IF TIME): Close L8856 (let step sim)
 
 ## COORDINATE WITH PROOF AGENT
-- proof agent works on L9178 (NoNestedAbrupt_step_preserved). DO NOT touch L9178.
-- proof agent may edit nearby areas. Check before editing L9170-9200.
+- proof agent works on L9100 (NoNestedAbrupt_step_preserved). DO NOT touch L9097-9110.
+- proof agent may edit nearby areas. Check before editing L9090-9115.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
