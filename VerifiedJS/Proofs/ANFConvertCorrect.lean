@@ -9044,6 +9044,43 @@ private theorem normalizeExpr_let_step_sim
   -- Need: sf.expr has .let or bindComplex form at eval head, flat steps matching
   sorry -- Need characterization of what produces .let, flat simulation
 
+/-- When normalizeExpr on a .while_ cond body produces .seq (.while_ c d) b,
+    we can decompose it into the normalization of the condition, body, and continuation. -/
+private theorem normalizeExpr_while_decomp
+    (cond body : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (c d b : ANF.Expr)
+    (h : (ANF.normalizeExpr (.while_ cond body) k).run n = .ok (.seq (.while_ c d) b, m)) :
+    ∃ n1 n2,
+      (ANF.normalizeExpr cond (fun t => pure (.trivial t))).run n = .ok (c, n1) ∧
+      (ANF.normalizeExpr body (fun _ => pure (.trivial .litUndefined))).run n1 = .ok (d, n2) ∧
+      (k .litUndefined).run n2 = .ok (b, m) := by
+  simp only [ANF.normalizeExpr, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at h
+  cases hcond : (ANF.normalizeExpr cond (fun t => pure (ANF.Expr.trivial t))).run n with
+  | error msg => simp [hcond] at h
+  | ok vc =>
+    obtain ⟨c', n1⟩ := vc
+    simp [hcond] at h
+    cases hbody : (ANF.normalizeExpr body (fun _ => pure (ANF.Expr.trivial ANF.Trivial.litUndefined))).run n1 with
+    | error msg => simp [hbody] at h
+    | ok vb =>
+      obtain ⟨d', n2⟩ := vb
+      simp [hbody] at h
+      cases hk : (k ANF.Trivial.litUndefined).run n2 with
+      | error msg => simp [hk] at h
+      | ok vk =>
+        obtain ⟨b', n3⟩ := vk
+        simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h
+        obtain ⟨⟨hseq, hcde⟩, hm⟩ := h
+        have hc_eq : c = c' := by
+          have := ANF.Expr.seq.inj hseq
+          exact (ANF.Expr.while_.inj this.1).1
+        have hd_eq : d = d' := by
+          have := ANF.Expr.seq.inj hseq
+          exact (ANF.Expr.while_.inj this.1).2
+        have hb_eq : b = b' := (ANF.Expr.seq.inj hseq).2
+        subst hc_eq hd_eq hb_eq hm
+        exact ⟨n1, n2, hcond, hbody, hk⟩
+
 /-- If normalizeExpr sf.expr k produces .seq a b (with trivial-preserving k),
     then one ANF step on the seq can be simulated by Flat steps. -/
 private theorem normalizeExpr_seq_step_sim
@@ -9412,8 +9449,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
     (hac : hasAbruptCompletion e = false)
     (hstep : Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf')) :
     hasAbruptCompletion sf'.expr = false := by
-  sorry -- Entire theorem needs rework: split at hstep fails with have bindings in step? unfolding
-  /- suffices ∀ n e, e.depth ≤ n → ∀ env heap trace funcs cs ev sf',
+  suffices ∀ n e, e.depth ≤ n → ∀ env heap trace funcs cs ev sf',
     hasAbruptCompletion e = false →
     Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf') →
     hasAbruptCompletion sf'.expr = false from this _ _ (Nat.le_refl _) _ _ _ _ _ _ _ hac hstep
@@ -9641,9 +9677,61 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         split at hstep
         next ev' sa hsa => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion]; exact ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hac hsa
         next => simp at hstep
-    | call f fenv args => sorry
-    | newObj f fenv args => sorry
-    | getEnv envExpr idx => sorry -- split at hstep fails due to have bindings in step? unfolding
+    | call f fenv args =>
+      simp only [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
+      obtain ⟨⟨hf_ac, hfe_ac⟩, hargs_ac⟩ := hac
+      cases hfv : Flat.exprValue? f with
+      | none =>
+        rw [Flat.step?_call_step_func _ _ _ _ hfv] at hstep
+        simp only [Option.bind_eq_some, Prod.exists] at hstep
+        obtain ⟨t', sf'', hinner, heq⟩ := hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at heq
+        obtain ⟨rfl, rfl⟩ := heq
+        simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]
+        exact ⟨⟨ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hf_ac hinner, hfe_ac⟩, hargs_ac⟩
+      | some fv =>
+        cases hev : Flat.exprValue? fenv with
+        | none =>
+          rw [Flat.step?_call_step_env _ _ _ _ fv hfv hev] at hstep
+          simp only [Option.bind_eq_some, Prod.exists] at hstep
+          obtain ⟨t', se', hinner, heq⟩ := hstep
+          simp only [Option.some.injEq, Prod.mk.injEq] at heq
+          obtain ⟨rfl, rfl⟩ := heq
+          simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]
+          exact ⟨⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hfe_ac hinner⟩, hargs_ac⟩
+        | some envVal =>
+          -- All-values case: consoleLog, normal call, arg stepping
+          sorry
+    | newObj f fenv args =>
+      simp only [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
+      obtain ⟨⟨hf_ac, hfe_ac⟩, hargs_ac⟩ := hac
+      cases hfv : Flat.exprValue? f with
+      | none =>
+        rw [Flat.step?_newObj_step_func _ _ _ _ hfv] at hstep
+        simp only [Option.bind_eq_some, Prod.exists] at hstep
+        obtain ⟨t', sf'', hinner, heq⟩ := hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at heq
+        obtain ⟨rfl, rfl⟩ := heq
+        simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]
+        exact ⟨⟨ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hf_ac hinner, hfe_ac⟩, hargs_ac⟩
+      | some fv =>
+        -- envExpr/args stepping or all-values case
+        sorry
+    | getEnv envExpr idx =>
+      simp only [hasAbruptCompletion] at hac
+      cases hev : Flat.exprValue? envExpr with
+      | none =>
+        rw [Flat.step?_getEnv_step_env _ _ _ hev] at hstep
+        simp only [Option.bind_eq_some, Prod.exists] at hstep
+        obtain ⟨t', se', hinner, heq⟩ := hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at heq
+        obtain ⟨rfl, rfl⟩ := heq
+        simp only [Flat.State.expr, hasAbruptCompletion]
+        exact ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hac hinner
+      | some envVal =>
+        -- envExpr is a value: resolves to .lit (property lookup or error)
+        unfold Flat.step? at hstep
+        split at hstep <;> simp at hstep <;> obtain ⟨_, rfl⟩ := hstep <;> simp [Flat.State.expr, hasAbruptCompletion]
     | makeEnv vals =>
       simp only [hasAbruptCompletion] at hac
       unfold Flat.step? at hstep
@@ -9685,7 +9773,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
           next t se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion]; exact hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueExpr_depth hfnv; omega) _ _ _ _ _ _ _ htarget hse)
           next => simp at hstep
         next => simp at hstep
-    | tryCatch body param catchBody fin => sorry -/
+    | tryCatch body param catchBody fin => sorry
 
 /-- Flat single-step preserves NoNestedAbrupt. -/
 private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.TraceEvent)
