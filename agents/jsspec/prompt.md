@@ -1,4 +1,4 @@
-# jsspec — TASK 1 DONE. Now close the 2 new supported sorries.
+# jsspec — Close L3408 and L7787. Two easy wins.
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,54 +11,64 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC has 14 real sorries. You eliminated forIn/forOf (GOOD). 2 new provable sorries from supported infra.
+## STATE: CC has 14 real sorries. You eliminated forIn/forOf and tryCatch non-error (GOOD). Now close the 2 supported infrastructure sorries.
 
-## TASK 1 — Close L3408 (Core.step preserves supported)
+## TASK 1 — Close L3408 (Core.step preserves supported) — HIGHEST PRIORITY
 
 L3408 is:
 ```lean
 have hsupp' : sc'.expr.supported = true := sorry /- TODO: prove Core.step preserves supported -/
 ```
 
-Write a lemma `Core_step_preserves_supported`:
+Write a lemma ABOVE this line:
 ```lean
-theorem Core_step_preserves_supported (sc sc' : Core.State) (ev : Core.TraceEvent)
+private theorem Core_step_preserves_supported (sc sc' : Core.State) (ev : Core.TraceEvent)
     (hsupp : sc.expr.supported = true)
     (hstep : Core.step? sc = some (ev, sc')) :
     sc'.expr.supported = true := by
-  -- cases on sc.expr, unfold Core.step? in hstep
-  -- For each case: sub-expressions are supported by simp on hsupp
-  -- Resulting expression: either sub-expression (supported by IH) or .lit (trivially supported)
-  sorry
+  simp only [Core.step?] at hstep
+  cases sc.expr with
+  | lit v => simp at hstep
+  | var name => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Core.Expr.supported]
+  -- etc: each constructor unfolds step?, extracts sc', shows sc'.expr.supported
+  | seq a b =>
+    simp [Core.Expr.supported] at hsupp
+    -- case split on exprValue? a; if value steps to b (supported from hsupp)
+    -- if non-value, steps to .seq a' b where a' has same supported
+    sorry
+  -- ... all other cases
 ```
 
-This is ~40-80 lines: unfold `Core.step?`, case split, then for each constructor show that the result expression's `supported` field follows from the input's `supported`. Key insight: `Core.Expr.supported` is defined as AND of all sub-expressions' `supported`, so `simp [Core.Expr.supported] at hsupp` extracts sub-expression supported facts.
+Use `lean_hover_info` on `Core.step?` and `Core.Expr.supported` to see exact definitions. Use `lean_multi_attempt` at each case.
 
-Use `lean_hover_info` on `Core.step?` and `Core.Expr.supported` to see all cases. Use `lean_multi_attempt` to test approaches.
+Then replace L3408 sorry with:
+```lean
+have hsupp' : sc'.expr.supported = true := Core_step_preserves_supported sc sc' ev hsupp hcstep
+```
 
-After proving the lemma, replace `sorry` at L3408 with `Core_step_preserves_supported sc sc' ev hsupp hcstep`.
-
-## TASK 2 — Close L7787 (h_supp parameter)
+## TASK 2 — Close L7787 (h_supp parameter) — QUICK WIN
 
 L7787 is:
 ```lean
 have h_supp : s.body.supported = true := sorry /- TODO: add h_supp param when EndToEnd.lean is updated -/
 ```
 
-This is in `closureConvert_correct` (the end-to-end CC theorem). Fix:
+This is in `closureConvert_correct`. Fix:
 1. Add `(h_supp : s.body.supported = true)` as a parameter to `closureConvert_correct`
-2. Delete the sorry'd `have` line
-3. Check if `EndToEnd.lean` calls `closureConvert_correct` — if so, update the call site to pass the supported hypothesis
-4. Build and verify
+2. Delete the sorry'd `have` line at L7787
+3. Check if anything calls `closureConvert_correct` — grep for it: `grep -n "closureConvert_correct" VerifiedJS/Proofs/ClosureConvertCorrect.lean VerifiedJS/*.lean`
+4. If EndToEnd.lean calls it, add `h_supported` (which should exist from the top-level theorem) as the argument
+5. Build and verify
 
-## TASK 3 (ONLY AFTER TASKS 1-2): L3435 captured variable step
+## TASK 3 (ONLY AFTER 1-2): L3435 captured variable
 
-L3435 is the captured variable case (`.getEnv (.var envVar) idx` needs 2 Flat steps vs 1 Core step). Investigate if the multi-step infrastructure from `closureConvert_steps_simulation` can handle this, or if a specialized `getEnv_var_two_step` lemma is needed.
+L3435 is the captured variable multi-step case. Investigate with `lean_goal` at L3435 to see the exact proof state, then determine if a 2-step simulation lemma is needed.
 
 ## DO NOT:
-- Touch L4549, L4557 (semantic mismatch — compiler needs changing)
+- Touch L4549, L4557 (semantic mismatch — compiler bug)
 - Touch L6437 (functionDef — HeapInj blocked)
 - Touch L5195 (unprovable)
+- Touch L3764, L3787 (CCStateAgree architecture issue)
 - Edit ANFConvertCorrect.lean
 
 ## CRITICAL: LOG YOUR WORK

@@ -1,4 +1,4 @@
-# wasmspec — USE the HasIfInHead infrastructure to CLOSE sorries
+# wasmspec — Close L9063/L9129 compound condition via trivialChain
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -8,52 +8,57 @@
 - You CAN edit ANFConvertCorrect.lean
 - Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
-## PROGRESS: You built excellent HasIfInHead infrastructure (~430 lines) and closed 3 mutual induction sorries. Now USE IT.
+## PROGRESS: EXCELLENT. You built HasIfInHead infrastructure (~430 lines), closed if_direct cases for both branches. ANF at 24 sorries. Now close the compound cases.
 
-## STATE: ANF has 24 sorry lines. Your targets: L9063/L9064 and L9129/L9130 (if step sim compound).
+## STATE: ANF has 24 sorry lines. Your targets: L9063/L9129 (compound condition) and L9064/L9130 (compound HasIfInHead).
 
-### Current sorry structure at if step sim:
-- **L9063**: `| _ => sorry` — compound condition in `HasIfInHead.if_direct` (true branch)
-- **L9064**: `all_goals sorry` — compound HasIfInHead: seq_left, let_init, etc. (true branch)
-- **L9129**: `| _ => sorry` — compound condition (false branch, mirror of L9063)
-- **L9130**: `all_goals sorry` — compound HasIfInHead (false branch, mirror of L9064)
+## TASK 1: Close L9063 and L9129 — trivialChain_if_condition_steps
 
-## TASK 1: Close L9063 and L9129 — compound condition trivialChain
-
-When the condition `c_flat` is compound (not lit/var/this) in `HasIfInHead.if_direct`:
-1. The condition must be a trivialChain (from normalizeExpr properties)
-2. Write `trivialChain_if_condition_steps`: reduces compound condition to a value via trivialChain stepping
-3. Then the `.if (lit v) then else` can step to the appropriate branch
-
-Pattern to follow — `trivialChain_throw_steps` already exists and works:
+L9063 is:
 ```lean
--- Search for it:
-lean_local_search "trivialChain_throw_steps"
--- Adapt the same pattern: fuel-based induction on trivialChainCost
--- Key difference: after reducing condition to value, step the .if instead of .throw
+| _ => sorry -- compound condition: needs trivialChain infrastructure
 ```
 
-Use `lean_goal` at L9063 to see the exact goal and available hypotheses.
+When the if-condition is compound (not lit/var/this), it must be a trivialChain (from normalizeExpr properties). Write:
+
+```lean
+private theorem trivialChain_if_condition_steps (c_flat then_ else_ : Flat.Expr)
+    (sf : Flat.State) (env heap funcs callStack : ...)
+    (htc : trivialChain c_flat)
+    (hstep : Flat.step? ⟨.if c_flat then_ else_, env, heap, funcs, callStack⟩ = some (ev, sf')) :
+    ∃ steps_to_value, ... -- reduces to .if (lit v) then_ else_
+```
+
+**Follow the pattern of `trivialChain_throw_steps`** which already exists and works:
+1. Use `lean_local_search "trivialChain_throw_steps"` to find it
+2. Copy the structure: fuel-based induction on `trivialChainCost`
+3. Key difference: after reducing condition to value, you get `.if (lit v) then_ else_` instead of `.throw (lit v)`
+4. The context-stepping lemma you need is `step?_if_ctx` (or similar) — check with `lean_local_search "step?_if"` or `lean_local_search "if_ctx"`
+
+Use `lean_goal` at L9063 to see the exact goal and hypotheses.
 
 ## TASK 2: Close L9064 and L9130 — compound HasIfInHead dispatch
 
-These handle nested `.if` inside compound expressions (seq_left, let_init, etc.).
+L9064 is:
+```lean
+all_goals sorry -- compound HasIfInHead: needs depth-induction
+```
 
-Approach: The compound expression takes one Flat step → resulting expression still has HasIfInHead → by IH from the outer context (anfConvert_step_star), the proof follows.
+These handle nested `.if` inside compound expressions (seq_left, let_init, etc.). For each HasIfInHead constructor:
+- `seq_left`: `.seq (... if ...) b` → one Flat step moves the left side → still has HasIfInHead → IH
+- `let_init`: `.let x (... if ...) b` → similar
+- etc.
 
-Use `lean_goal` at L9064 to check:
-- Is there a depth IH in scope?
-- What HasIfInHead constructor is in the goal?
-- Can you dispatch by cases on HasIfInHead?
+Approach: cases on the HasIfInHead constructor, then for each case show one Flat step preserves the "has if" property and reduces depth. Use the outer `anfConvert_step_star` IH if available, or build a standalone well-founded recursion on expression depth.
 
-If no depth IH: you may need to restructure as a separate `normalizeExpr_if_step_sim_compound` theorem with explicit Well-founded recursion on expression depth.
+Check with `lean_goal` at L9064 — what hypotheses and IHs are in scope?
 
 ## TASK 3 (IF TIME): L8850 (let step sim)
 
-Needs HasLetInHead infrastructure (similar to HasIfInHead you just built). If you can build it quickly (~200 lines), do it.
+If Tasks 1-2 are done, investigate L8850. Needs HasLetInHead infrastructure (similar to HasIfInHead).
 
 ## COORDINATE WITH PROOF AGENT
-Proof agent is working on L9303 (NoNestedAbrupt propagation) and L8493-8823 (return/await/yield trivialChain). DO NOT touch those areas.
+Proof agent is working on L9180 (NoNestedAbrupt_step_preserved) and L8493-8823 (return/await/yield). DO NOT touch those areas.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
