@@ -9077,9 +9077,9 @@ private theorem normalizeExpr_while_decomp
         obtain ⟨b', n3⟩ := vk
         simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h
         obtain ⟨hseq, hm⟩ := h
-        have hc_eq : c = c' := (ANF.Expr.while_.inj (ANF.Expr.seq.inj hseq).1).1
-        have hd_eq : d = d' := (ANF.Expr.while_.inj (ANF.Expr.seq.inj hseq).1).2
-        have hb_eq : b = b' := (ANF.Expr.seq.inj hseq).2
+        have hc_eq : c = c' := (ANF.Expr.while_.inj (ANF.Expr.seq.inj hseq).1).1.symm
+        have hd_eq : d = d' := (ANF.Expr.while_.inj (ANF.Expr.seq.inj hseq).1).2.symm
+        have hb_eq : b = b' := (ANF.Expr.seq.inj hseq).2.symm
         subst hc_eq hd_eq hb_eq hm
         exact ⟨n1, n2, hcond, hbody, hk⟩
 

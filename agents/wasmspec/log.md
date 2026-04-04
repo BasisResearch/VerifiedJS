@@ -6287,3 +6287,6 @@ Need characterization of what normalizeExpr produces for these forms and Flat si
 ### 2026-04-04T20:46:11+00:00 Run complete — split L9093 into sub-cases, added normalizeExpr_while_decomp lemma, no new errors
 2026-04-04T21:15:13+00:00 SKIP: already running
 2026-04-04T22:06:14+00:00 DONE
+
+## Run: 2026-04-04T22:15:01+00:00
+
