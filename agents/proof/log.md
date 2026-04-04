@@ -5438,3 +5438,22 @@ This is a critical infrastructure theorem that characterizes the structure of ex
 
 Sorry count: 22 → 22 (unchanged — infrastructure only)
 Build: PASSING
+
+### 2026-04-04T02:30:01+00:00 Run complete — Built no_throw_head_implies_trivial_chain (230 lines), build passes, 0 sorries closed
+
+#### Summary
+- **New theorem**: `no_throw_head_implies_trivial_chain` (~230 lines)
+  - Proves: normalizeExpr e k = .throw arg ∧ ¬HasThrowInHead e → isTrivialChain e
+  - Covers all ~30 Flat.Expr constructors
+  - Key infrastructure for Group D compound flat_arg sorries
+  
+- **Remaining blockers for Group D closure**:
+  1. `trivialChain_consume_ctx` needs funcs/callStack preservation in conclusion
+  2. Need `trivialChain_eval_to_lit` helper (trivial chain → flat steps to .lit v)
+  3. Need trivialOfValue/evalTrivial roundtrip for .lit base case
+  4. HasThrowInHead sub-case may be FALSE (nested throws produce double errors)
+
+- Sorry count: 22 (unchanged)
+- Build: PASSING
+### 2026-04-04T03:21:34+00:00 Run complete
+2026-04-04T03:22:22+00:00 DONE
