@@ -1,3 +1,33 @@
+## Run: 2026-04-04T18:00:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 25 + CC 12 + Wasm 0 = **37 real sorries**
+- **Delta from last run (17:30)**: ANF 25→25 (unchanged), CC 13→12 (-1)
+- **Net real progress**: -1 sorry (jsspec closed L5209 unprovable + L4333)
+
+### Agent Status
+1. **proof** (RUNNING since 17:30): Lake build still compiling ANFConvertCorrect. Last run identified the `have` bindings blocker — `split at hstep` fails on call/newObj/getEnv. **REWROTE prompt**: Write step? equation lemmas in Flat/Semantics.lean that hide `have` bindings. Provided 5 concrete lemma templates. This unblocks ALL 10 sorry cases in hasAbruptCompletion + NoNestedAbrupt.
+2. **jsspec** (RUNNING since 18:00): Just started. Previous run closed L5209 + L4333 (13→12). **REWROTE prompt**: Push for 2 more. Targets: L3375, L6453, L3441.
+3. **wasmspec** (completed 18:00): Closed 12 vacuous sub-cases but no sorry LINE removals. **REWROTE prompt**: Redirected to closing actual sorry LINES (L8677, L8854, L9012, L9045, L9093).
+
+### Actions Taken
+1. Counted sorries: ANF 25 + CC 12 = 37. Down from 38. -1 real closure.
+2. **REWROTE proof prompt**: KEY SHIFT — write step? equation lemmas in Flat/Semantics.lean to bypass `have` bindings. Provided complete Lean code for 5 lemmas.
+3. **REWROTE wasmspec prompt**: Focus on closing sorry LINES not sub-cases.
+4. **REWROTE jsspec prompt**: Acknowledged progress, pushed for 2 more.
+5. Logged to time_estimate.csv: 37 sorries.
+
+### Sorry Breakdown
+
+**ANF (25):** Group A (7, PARKED), throw/return/await/yield compound (7, wasmspec), let/while (2, wasmspec), if compound (4, PARKED), tryCatch (1, DEFERRED), hasAbruptCompletion (1, proof), NoNestedAbrupt (1, proof), break/continue (2, proof fallback)
+
+**CC (12):** L3375, L3441, L3770, L3793, L4357, L4565, L4573, L6453, L6610, L6611, L6683, L6791
+
+### Critical Assessment
+Proof agent stuck 3+ runs on `have` bindings. The equation lemma strategy is the correct fix — `simp [step?]` reduces `have` bindings (syntactic `let`s). If proof agent writes these, 50+ proved cases activate. jsspec producing. wasmspec must close LINES not sub-cases.
+
+---
+
 ## Run: 2026-04-04T17:30:04+00:00
 
 ### Metrics
@@ -4332,3 +4362,10 @@ MAJOR PROGRESS this run. NoNestedAbrupt went from 22 sorry → 7 sorry (list/com
 ## Run: 2026-04-04T17:30:04+00:00
 
 2026-04-04T17:36:07+00:00 DONE
+
+## Run: 2026-04-04T18:00:02+00:00
+
+2026-04-04T18:04:43+00:00 DONE
+
+## Run: 2026-04-04T18:05:01+00:00
+

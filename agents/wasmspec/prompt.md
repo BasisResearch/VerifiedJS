@@ -1,4 +1,4 @@
-# wasmspec — Close compound throw/return/await/yield sorries OR help with hasAbruptCompletion
+# wasmspec — Close compound throw/return/await/yield sorries using NoNestedAbrupt
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -11,46 +11,47 @@
 ## MEMORY WARNING
 **WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
 
-## STATUS: Last run was ANALYSIS ONLY with 0 closures. That is NOT acceptable.
+## STATUS: You closed 12 vacuous sub-cases last run. Good. But sorry LINE count didn't change.
 
-You spent an entire run analyzing and writing no code. The sorry count did NOT change. We need CODE CHANGES.
+The 12 sub-cases you closed were INSIDE existing sorry lines. We need the actual sorry LINES to go away.
 
-## STRATEGY CHANGE: You are no longer doing analysis. You are writing proofs.
+## YOUR TARGETS: The "inner compound" sorries
 
-### Option A: Fix the call/newObj/getEnv "have bindings" issue
+These are wildcards inside the `_some_direct` cases:
+- **L8677**: `| _ => sorry` in normalizeExpr_return_step_sim (inner_val compound)
+- **L8854**: `| _ => sorry` in normalizeExpr_await_step_sim (inner_arg compound)
+- **L9012**: `| _ => sorry` in normalizeExpr_yield_step_sim (inner_val compound)
 
-The hasAbruptCompletion_step_preserved theorem (L9383) and NoNestedAbrupt_step_preserved (L9662) both have proof attempts in block comments. The remaining sorry cases (call, newObj, getEnv, objectLit, tryCatch) all fail because `split at hstep` doesn't work when `Flat.step?` uses `have` bindings.
+You already added `hna : NoNestedAbrupt sf.expr` to these 3 theorems. Now USE it:
 
-**Your job**: Figure out how to handle `have` bindings in `Flat.step?` unfolding.
+### Strategy for L8677 (return inner compound):
+The wildcard covers compound inner_val that's not lit/var/this/break/continue/return/yield/await/throw. With `hna`, `hasAbruptCompletion inner_val = false`. The approach:
 
-1. Use `lean_hover_info` on `Flat.step?` to see its definition
-2. Look at how `call`, `newObj`, `getEnv` cases work in `Flat.step?`
-3. Try alternatives to `split at hstep`:
-   - `simp only [Flat.step?] at hstep`
-   - `dsimp only [Flat.step?] at hstep`
-   - `unfold Flat.step? at hstep; dsimp at hstep`
-   - Extract the `have` bindings manually with `match` on the step result
+1. Use `lean_goal` at L8677 to see the exact goal
+2. The inner_val is compound but NOT abrupt (by hna). So it must be: seq, let, assign, if, binary, unary, while_, call, newObj, getProp, setProp, getIndex, setIndex, deleteProp, typeof, getEnv, makeEnv, objectLit, makeClosure
+3. For each of these, the return wrapper around them should step via `trivialChain_return_steps` or similar
 
-4. Test with `lean_multi_attempt` at the call sorry position
+Actually, the simpler approach: if inner_val has no abrupt completion AND isn't a value, it must step. And when it steps, the return wrapper steps with it. You need:
 
-If you crack this, it unblocks 10 sorries across both theorems.
+```lean
+-- The inner expression steps (it's not a value, not abrupt)
+have h_steps : ∃ t s', Flat.step? { sf with expr := inner_val } = some (t, s') := by
+  sorry -- need: non-value, non-abrupt expressions always step
+-- The return wrapping steps through
+sorry
+```
 
-### Option B: Close compound sorries (7 total)
+This decomposes the sorry into smaller pieces. Even 2 sub-sorries per case is progress.
 
-If Option A is too hard:
-- **L8523**: throw compound
-- **L8673, L8676**: return compound
-- **L8846, L8849**: await compound
-- **L9000, L9003**: yield compound
+### Alternative: Close L9045 (let step sim) or L9093 (while step sim)
 
-Use `lean_goal` at each sorry. If they all need "eval context stepping" infrastructure, pick the SIMPLEST one and write the proof.
+These may be more tractable:
+- L9045: `sorry -- Need characterization of what produces .let, flat simulation`
+- L9093: similar
 
-### Option C: tryCatch step sim (L9375)
-Another standalone sorry. Use `lean_goal` to assess.
+Use `lean_goal` to assess. If they're simpler than the compound cases, do those instead.
 
-## DO NOT just analyze. WRITE CODE. Close at least 1 sorry.
-
-## DO NOT EDIT L9377-9662 (proof agent region) unless doing Option A
+## DO NOT just analyze. WRITE CODE. Close at least 1 sorry line.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
