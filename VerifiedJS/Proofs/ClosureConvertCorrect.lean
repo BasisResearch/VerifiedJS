@@ -1550,6 +1550,55 @@ private theorem convertExpr_not_lit_supported (e : Core.Expr) (scope : List Stri
   | functionDef _ _ _ _ _ => unfold Flat.convertExpr; simp
   | _ => unfold Flat.convertExpr; simp
 
+/-- If firstNonValueExpr finds a target in a list, and all elements are supported,
+    then the target is supported. -/
+private theorem listSupported_firstNonValueExpr_target {es : List Core.Expr}
+    {done target rest}
+    (h : Core.firstNonValueExpr es = some (done, target, rest))
+    (hsupp : Core.Expr.listSupported es = true) :
+    target.supported = true := by
+  induction es generalizing done target rest with
+  | nil => simp [Core.firstNonValueExpr] at h
+  | cons e es' ih =>
+    unfold Core.firstNonValueExpr at h
+    simp [Core.Expr.listSupported] at hsupp
+    split at h
+    · -- e = .lit v: recurse
+      match hrest : Core.firstNonValueExpr es' with
+      | some val =>
+        obtain ⟨d', t', r'⟩ := val
+        simp [hrest] at h; obtain ⟨rfl, rfl, rfl⟩ := h
+        exact ih hrest hsupp.2
+      | none => simp [hrest] at h
+    · -- e is the target
+      simp at h; obtain ⟨rfl, rfl, rfl⟩ := h
+      exact hsupp.1
+
+/-- If firstNonValueProp finds a target in a prop list, and all props are supported,
+    then the target is supported. -/
+private theorem propListSupported_firstNonValueProp_target {ps : List (Core.PropName × Core.Expr)}
+    {done name target rest}
+    (h : Core.firstNonValueProp ps = some (done, name, target, rest))
+    (hsupp : Core.Expr.propListSupported ps = true) :
+    target.supported = true := by
+  induction ps generalizing done name target rest with
+  | nil => simp [Core.firstNonValueProp] at h
+  | cons p ps' ih =>
+    obtain ⟨pn, pe⟩ := p
+    unfold Core.firstNonValueProp at h
+    simp [Core.Expr.propListSupported] at hsupp
+    split at h
+    · -- pe = .lit v: recurse
+      match hrest : Core.firstNonValueProp ps' with
+      | some val =>
+        obtain ⟨d', n', t', r'⟩ := val
+        simp [hrest] at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
+        exact ih hrest hsupp.2
+      | none => simp [hrest] at h
+    · -- pe is the target
+      simp at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
+      exact hsupp.1
+
 -- Helper lemmas for Core.step? on simple expressions (Core.step? is too large for simp in context)
 private theorem Core_step?_this_found (s : Core.State) (v : Core.Value)
     (h : s.env.lookup "this" = some v) :
@@ -4341,8 +4390,10 @@ private theorem closureConvert_step_simulation
             cases target_c with
             | lit v => exact absurd rfl (htarget_not_lit v)
             | _ => rfl
+          have htarget_supp : target_c.supported = true :=
+            listSupported_firstNonValueExpr_target hcfnv (by simp [Core.Expr.supported] at hsupp; exact hsupp.2)
           have hffnv := convertExprList_firstNonValueExpr_some args scope envVar envMap st
-              done_c target_c rest_c hcfnv htarget_novalue
+              done_c target_c rest_c hcfnv htarget_novalue htarget_supp
           have hsf_eta : sf = { sf with expr := (Flat.Expr.call (.lit (Flat.convertValue cv)) (.lit .null)
               (Flat.convertExprList args scope envVar envMap st).fst) } := by
             cases sf; simp_all
@@ -4388,7 +4439,7 @@ private theorem closureConvert_step_simulation
               (Flat.convertExprList done_c scope envVar envMap st).snd
               (Flat.convertExpr target_c scope envVar envMap
                 (Flat.convertExprList done_c scope envVar envMap st).snd).snd
-              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_target hexprwf_target
+              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_target hexprwf_target htarget_supp
               (by simp)
               ⟨hsubstep⟩
           let sc' : Core.State :=
@@ -6050,8 +6101,10 @@ private theorem closureConvert_step_simulation
         cases target_c with
         | lit v => exact absurd rfl (htarget_not_lit v)
         | _ => rfl
+      have htarget_supp : target_c.supported = true :=
+        propListSupported_firstNonValueProp_target hcfnv (by simp [Core.Expr.supported] at hsupp; exact hsupp)
       have hffnv := convertPropList_firstNonValueProp_some props scope envVar envMap st
-          done_c propName_c target_c rest_c hcfnv htarget_novalue
+          done_c propName_c target_c rest_c hcfnv htarget_novalue htarget_supp
       have hfnv_target : Flat.exprValue? (Flat.convertExpr target_c scope envVar envMap
           (Flat.convertPropList done_c scope envVar envMap st).snd).fst = none :=
         convertExpr_not_value_supported target_c htarget_novalue htarget_supp scope envVar envMap _
@@ -6098,7 +6151,7 @@ private theorem closureConvert_step_simulation
           (Flat.convertPropList done_c scope envVar envMap st).snd
           (Flat.convertExpr target_c scope envVar envMap
             (Flat.convertPropList done_c scope envVar envMap st).snd).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_target hexprwf_target
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_target hexprwf_target htarget_supp
           (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
@@ -6264,8 +6317,10 @@ private theorem closureConvert_step_simulation
         cases target_c with
         | lit v => exact absurd rfl (htarget_not_lit v)
         | _ => rfl
+      have htarget_supp : target_c.supported = true :=
+        listSupported_firstNonValueExpr_target hcfnv (by simp [Core.Expr.supported] at hsupp; exact hsupp)
       have hffnv := convertExprList_firstNonValueExpr_some elems scope envVar envMap st
-          done_c target_c rest_c hcfnv htarget_novalue
+          done_c target_c rest_c hcfnv htarget_novalue htarget_supp
       have hfnv_target : Flat.exprValue? (Flat.convertExpr target_c scope envVar envMap
           (Flat.convertExprList done_c scope envVar envMap st).snd).fst = none :=
         convertExpr_not_value_supported target_c htarget_novalue htarget_supp scope envVar envMap _
@@ -6312,7 +6367,7 @@ private theorem closureConvert_step_simulation
           (Flat.convertExprList done_c scope envVar envMap st).snd
           (Flat.convertExpr target_c scope envVar envMap
             (Flat.convertExprList done_c scope envVar envMap st).snd).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_target hexprwf_target
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_target hexprwf_target htarget_supp
           (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
