@@ -1,4 +1,4 @@
-# wasmspec — EXCELLENT WORK ON L4472/4478/4484. Now help with trivialChain.
+# wasmspec — Close trivialChain + let/if step sim sorries in ANF
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -6,50 +6,38 @@
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
 - MEMORY: 7.7GB total, NO swap. ~4GB available.
 - You CAN edit ANFConvertCorrect.lean
+- Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
-## CONGRATULATIONS: You closed L4472/4478/4484!
-The mutual induction bridge theorems are proved. NoNestedAbrupt framework is now fully grounded. This unblocks 5+ sorry closures.
+## YOUR TASKS (in priority order)
 
-## YOUR TASK: Help close TRIVIAL_CHAIN_IN_THROW (L7487)
+### TASK 1: Close L7711 (trivialChain seq case normalizeExpr passthrough)
 
-proof agent is working on the NoNestedAbrupt-based exfalso closures (P1). You should work on the complementary problem: the ¬HasThrowInHead branch at L7487.
+The proof agent started the trivialChain_throw_steps proof and got stuck at L7711 in the `.seq a b` case. The issue: after stepping `.seq a b` to `e'`, we need to show `normalizeExpr e' k = normalizeExpr b k` (i.e., normalizeExpr is a "passthrough" for trivial chains that discards the left side of seq).
 
-### What L7487 needs
-At L7482-7487, we have `¬HasThrowInHead e` and `isTrivialChain e = true` (from `no_throw_head_implies_trivial_chain`). Need to show that `.throw e` Flat-steps to a terminal state matching `ANF.evalTrivial env arg`.
-
-The approach:
-1. `isTrivialChain e = true` means `e` is a chain of `.seq(a, b)` / `.var` / `.lit` / `.this` with no compound subexpressions
-2. Flat-stepping `.throw e` first steps `e` to a value (since it's trivial), then `.throw (.lit v)` produces an error
-3. Need a lemma `trivialChain_steps_to_value`: if `isTrivialChain e = true`, then there exist Flat steps from `e` to `.lit v` where `v` corresponds to `ANF.evalTrivial env (trivialToANF e)`
-
-### What to write:
-A helper lemma:
+Read the context around L7700-7712 carefully with `lean_goal` at L7711. You likely need a helper lemma:
 ```lean
-private theorem trivialChain_throw_steps
-    (e : Flat.Expr) (env : Flat.Env) (heap : Core.Heap)
-    (trace : List Core.TraceEvent) (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
-    (arg : ANF.Trivial) (n m : Nat)
-    (htc : isTrivialChain e = true)
-    (hnorm : (ANF.normalizeExpr e (fun t => pure (.throw t))).run n = .ok (.throw arg, m))
-    (hewf : ExprWellFormed (.throw e) env) :
-    (∀ v, ANF.evalTrivial env arg = .ok v → ∃ evs sf',
-      Flat.Steps ⟨.throw e, env, heap, trace, funcs, cs⟩ evs sf' ∧ ...) ∧
-    (∀ msg, ANF.evalTrivial env arg = .error msg → ...) := by
+private theorem normalizeExpr_trivialChain_seq_passthrough
+    (a b : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n : Nat)
+    (htc : isTrivialChain (.seq a b) = true) :
+    (ANF.normalizeExpr (.seq a b) k).run n = (ANF.normalizeExpr b k).run n := by
+  simp [ANF.normalizeExpr]  -- normalizeExpr of seq recurses on a, then b
+  sorry -- may need induction on a if non-trivial
 ```
 
-Use `lean_goal` at L7487 to see the exact goal. Then use `lean_multi_attempt` to test approaches.
+Or the approach might be simpler: `normalizeExpr (.seq a b) k` = `do let _ ← normalizeExpr a (fun _ => pure (.trivial _)); normalizeExpr b k`. For trivial `a`, normalizeExpr a just returns a trivial, so the seq becomes `normalizeExpr b k`.
 
-### Key sub-cases of trivialChain:
-- `e = .lit v`: `.throw (.lit v)` steps directly to error. `normalizeExpr (.lit v) k = k (.lit v)` so `arg = .lit v`.
-- `e = .var name`: `.throw (.var name)` steps to `.throw (.lit v)` then to error. `arg = .var name`.
-- `e = .this`: Same as var but lookup "this".
-- `e = .seq a b`: First step `a` to value (ignored), then continue with `.throw b`.
+Use `lean_hover_info` on `ANF.normalizeExpr` and `lean_goal` at L7711 to understand the exact goal.
+
+### TASK 2: Close L7762 (TRIVIAL_CHAIN_IN_THROW)
+
+After L7711 is closed, the trivialChain proof at L7762 should become provable. The `¬HasThrowInHead e` + `isTrivialChain e = true` branch needs to show `.throw e` steps to a terminal state matching `ANF.evalTrivial env arg`.
+
+### TASK 3: If blocked on T1/T2, work on L8398 (let step sim) or L8477/L8480 (if step sim)
+
+These are independent sorries that don't need NoNestedAbrupt or trivialChain. Use `lean_goal` to understand what's needed.
 
 ### COORDINATE WITH PROOF AGENT
-proof agent is adding NoNestedAbrupt to theorem signatures (modifying L7460-7613 area). Your work at L7487 should NOT conflict since you're adding a new helper BELOW L7487 and replacing the sorry. If proof agent has already touched L7487, check `git diff` first.
-
-## IF TRIVIALCHAIN IS BLOCKED: Work on L8123 (let step sim) or L8202/L8205 (if step sim)
-These are independent sorries that don't need NoNestedAbrupt.
+proof agent is working on NoNestedAbrupt exfalso closures (L7756, L8044, L8217, L8371). DO NOT touch those areas. Your work on L7711/L7762 is below their work and should not conflict. If you see merge conflicts, check the area proof agent is editing and work around it.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

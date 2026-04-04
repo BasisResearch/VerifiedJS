@@ -2153,12 +2153,8 @@ private theorem trivialChain_inner_step
     | «this» =>
       have hbound := hwf "this" .this_var
       obtain ⟨val, hval⟩ := Option.ne_none_iff_exists'.mp hbound
-      obtain ⟨s_i, hstep, hexpr, henv, hheap, hfuncs, hcs, htrace⟩ :=
-        step?_var_bound ⟨Flat.Expr.this, env, heap, trace, funcs, cs⟩ "this" val hval
-      have hs_i : s_i = ⟨.lit val, env, heap, trace ++ [Core.TraceEvent.silent], funcs, cs⟩ := by
-        cases s_i; simp_all
-      rw [hs_i] at hstep
-      exact ⟨.lit val, hstep, rfl, by simp [trivialChainCost], fun _ h => nomatch h⟩
+      exact ⟨.lit val, by simp only [Flat.step?, hval], rfl,
+        by simp [trivialChainCost], fun _ h => nomatch h⟩
     | seq a b =>
       simp [isTrivialChain] at htc; obtain ⟨htc_a, htc_b⟩ := htc
       simp [trivialChainCost] at hcost
@@ -2191,23 +2187,21 @@ private theorem trivialChain_inner_step
     | «this» =>
       have hbound := hwf "this" .this_var
       obtain ⟨val, hval⟩ := Option.ne_none_iff_exists'.mp hbound
-      obtain ⟨s_i, hstep, hexpr, henv, hheap, hfuncs, hcs, htrace⟩ :=
-        step?_var_bound ⟨Flat.Expr.this, env, heap, trace, funcs, cs⟩ "this" val hval
-      have hs_i : s_i = ⟨.lit val, env, heap, trace ++ [Core.TraceEvent.silent], funcs, cs⟩ := by
-        cases s_i; simp_all
-      rw [hs_i] at hstep
-      exact ⟨.lit val, hstep, rfl, by simp [trivialChainCost], fun _ h => nomatch h⟩
+      exact ⟨.lit val, by simp only [Flat.step?, hval], rfl,
+        by simp [trivialChainCost], fun _ h => nomatch h⟩
     | seq a b =>
       simp [isTrivialChain] at htc; obtain ⟨htc_a, htc_b⟩ := htc
       cases ha_val : Flat.exprValue? a with
       | some v_a =>
+        have ha_lit : a = .lit v_a := by
+          match a, ha_val with | .lit _, h => simp [Flat.exprValue?] at h; subst h; rfl
+        subst ha_lit
         obtain ⟨s_i, hstep, hexpr, henv, hheap, hfuncs, hcs, htrace⟩ :=
-          step?_seq_lit ⟨.seq a b, env, heap, trace, funcs, cs⟩ v_a b
-        have ha_lit : a = .lit v_a := by cases a <;> simp [Flat.exprValue?] at ha_val; subst ha_val; rfl
+          step?_seq_lit ⟨.seq (.lit v_a) b, env, heap, trace, funcs, cs⟩ v_a b
         have hs_i : s_i = ⟨b, env, heap, trace ++ [Core.TraceEvent.silent], funcs, cs⟩ := by
           cases s_i; simp_all
-        rw [hs_i] at hstep; rw [ha_lit]
-        exact ⟨b, hstep, htc_b, by rw [ha_lit]; simp [trivialChainCost]; omega,
+        rw [hs_i] at hstep
+        exact ⟨b, hstep, htc_b, by simp [trivialChainCost]; omega,
           fun x hfx => hwf x (.seq_r _ _ _ hfx)⟩
       | none =>
         have hcost_a : trivialChainCost a ≤ fuel + 1 := by

@@ -6042,3 +6042,5 @@ observable events and breaking ANF_SimRel correspondence.
 
 ## Run: 2026-04-04T07:15:01+00:00
 
+2026-04-04T07:15:04+00:00 EXIT: code 1
+2026-04-04T07:15:04+00:00 DONE

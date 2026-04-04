@@ -1,4 +1,4 @@
-# jsspec — CLOSE CC SORRIES. You're the only agent making CC progress.
+# jsspec — FIX CC BUILD BREAKAGE FIRST, then close sorries
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,9 +11,21 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
+## ⚠️ CRITICAL: CC BUILD IS BROKEN ⚠️
+
+Build errors (as of 07:00):
+1. **L4251:6** — `Alternative 'none' has not been provided` for `cases hallv : Core.allValues args with`
+   - The `| none =>` case IS at L4326 but Lean can't see it — likely a type/tactic error inside the `| some argVals =>` branch (L4252-L4325) that breaks parsing
+   - Look for type mismatches or incomplete tactic blocks between L4252 and L4325
+   - This is the ROOT CAUSE — the 20+ "Alternative not provided" errors at L3372 are CASCADING from this
+
+2. **L3372:2** — Many missing alternatives (newObj, getProp, etc.) — these EXIST later in the file. Fixing L4251 should fix ALL of them.
+
+FIX THE BUILD BEFORE ANYTHING ELSE. Do NOT attempt any sorry closures until the build compiles.
+
 ## STATE: CC has 15 sorry tokens. Target: 15 → 11.
 
-## YOUR TASKS (strict priority order):
+## YOUR TASKS (after build is fixed, strict priority order):
 
 ### TASK 1: Close functionDef sorry at ~L6386
 `| functionDef fname params body isAsync isGen => sorry`

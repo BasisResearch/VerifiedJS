@@ -10156,3 +10156,68 @@ proof agent has the infrastructure but hasn't actually CLOSED any sorries with i
 ## Run: 2026-04-04T07:00:03+00:00
 
 2026-04-04T07:05:01+00:00 SKIP: already running
+
+## Run: 2026-04-04T07:00:03+00:00
+
+### Metrics
+- **Sorry count**: ANF ~24 + CC 15 = **~39** (LowerCorrect 0, Wasm/Semantics 0)
+- **Delta from last run**: was 38 → ~39 = **+1**. BAD — proof agent decomposed trivialChain seq case, net +1.
+- **CC BUILD: BROKEN** — L4251 missing `none` alternative cascades to L3372 (20+ missing case errors)
+
+### What happened since last run
+
+1. **proof** (running since 06:30): Expanded trivialChain_throw_steps proof with fuel-based induction. Added ~200 lines (L7600-7730 area). Got stuck at L7711 (seq case needs normalizeExpr passthrough lemma). Net +1 sorry from decomposition. **Problem: working on P2 (trivialChain) instead of P1 (NoNestedAbrupt exfalso).**
+
+2. **jsspec** (05:00-06:35, killed; restarted 07:00): Previous run (05:00) ran for 1.5h and was killed (exit code 1 then 143). CC build is broken with L4251 cascade error. Current run just started.
+
+3. **wasmspec** (06:15-06:25): Closed all 3 mutual induction sorries (L4472/4478/4484). Now idle, will restart at 07:15.
+
+### Agent Status
+
+1. **proof**: REDIRECTED from trivialChain to NoNestedAbrupt P1. Prompt REWRITTEN: explicit instructions to add `hna : NoNestedAbrupt sf.expr` to step_sim theorems and close 5 HasXInHead sorries via exfalso. DO NOT continue trivialChain work.
+
+2. **jsspec**: Prompt REWRITTEN: FIX BUILD FIRST. Specific error diagnosis: L4251 root cause (type/tactic error inside `| some argVals =>` branch L4252-L4325 prevents Lean from seeing `| none =>` at L4326), cascading to L3372 missing cases.
+
+3. **wasmspec**: REDIRECTED to trivialChain work (taking over from proof agent). Prompt REWRITTEN: close L7711 (seq passthrough) then L7762 (TRIVIAL_CHAIN_IN_THROW). Fallback: L8398/L8477/L8480 (let/if step sim).
+
+### Actions Taken
+1. Counted sorries: ANF ~24 + CC 15 = ~39. Up ~1 from last run.
+2. **REWROTE proof prompt**: STOP trivialChain, DO NoNestedAbrupt exfalso (P1). Exact code for L7756 closure.
+3. **REWROTE jsspec prompt**: FIX BUILD FIRST with root cause analysis of L4251 cascade.
+4. **REWROTE wasmspec prompt**: Take over trivialChain (L7711, L7762) from proof agent.
+5. Logged to time_estimate.csv: 39.
+
+### Sorry Breakdown
+
+**ANF (~24 sorry tokens):**
+- Group A (7): L7077-7263 — PARKED (continuation-independence)
+- TrivialChain seq (1): L7711 — NEW, wasmspec target
+- NESTED_THROW (1): L7756 — proof agent P1 target (NoNestedAbrupt exfalso)
+- TRIVIAL_CHAIN (1): L7762 — wasmspec target (after L7711)
+- Compound throw | _ (1): L7891 — proof agent P1 target
+- HasReturn compound (2): L8041, L8044 — proof agent P1 target
+- HasAwait compound (2): L8214, L8217 — proof agent P1 target
+- HasYield compound (2): L8368, L8371 — proof agent P1 target
+- Let/If/TryCatch (5): L8398, L8446, L8477, L8480, L8524 — wasmspec fallback
+- Break/Continue (2): L8903, L8956 — PARKED
+
+**CC (15 sorry tokens):** unchanged from last run
+- BUILD BROKEN — no sorries can be verified until jsspec fixes L4251
+
+### Strategy
+- proof: NoNestedAbrupt exfalso closures → L7756, L8044, L8217, L8371 → ~24→~20
+- wasmspec: trivialChain L7711+L7762 → ~20→~18
+- jsspec: fix build, then functionDef+captured-var → CC 15→13
+- **Floor**: 3 unprovable CC + 7 Group A + 2 break/continue = 12 long-term blockers
+
+### Build Status
+- **ANF**: BUILDS OK (warnings only)
+- **CC**: BROKEN — L4251 `none` missing, cascading to L3372 (20+ alternatives)
+
+### Biggest Risk
+1. proof agent has been redirected 3+ times — if it doesn't close P1 this run, need manual intervention
+2. CC build broken for 2+ runs — jsspec MUST fix before any CC progress
+3. trivialChain L7711 may need a non-trivial normalizeExpr passthrough lemma
+
+2026-04-04T07:19:16+00:00 DONE
+2026-04-04T07:19:44+00:00 DONE
