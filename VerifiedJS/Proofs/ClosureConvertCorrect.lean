@@ -3449,7 +3449,9 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
     rw [state_with_expr_eq hexpr] at hstep
     cases hval : Core.exprValue? init with
     | some v =>
-      simp [Core.step?, Core.pushTrace, Core.exprValue?, hval] at hstep
+      have hlit : init = .lit v := by cases init <;> simp [Core.exprValue?] at hval; subst hval; rfl
+      subst hlit
+      simp [Core.step?, Core.pushTrace, Core.exprValue?] at hstep
       obtain ⟨-, rfl⟩ := hstep; exact hsupp.2
     | none => sorry
   | assign name rhs =>
@@ -3457,7 +3459,9 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
     rw [state_with_expr_eq hexpr] at hstep
     cases hval : Core.exprValue? rhs with
     | some v =>
-      simp [Core.step?, Core.pushTrace, Core.exprValue?, hval] at hstep
+      have hlit : rhs = .lit v := by cases rhs <;> simp [Core.exprValue?] at hval; subst hval; rfl
+      subst hlit
+      simp [Core.step?, Core.pushTrace, Core.exprValue?] at hstep
       obtain ⟨-, rfl⟩ := hstep; rfl
     | none => sorry
   | «if» cond then_ else_ =>
@@ -3465,16 +3469,22 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
     rw [state_with_expr_eq hexpr] at hstep
     cases hval : Core.exprValue? cond with
     | some v =>
-      simp [Core.step?, Core.pushTrace, Core.exprValue?, hval] at hstep
+      have hlit : cond = .lit v := by cases cond <;> simp [Core.exprValue?] at hval; subst hval; rfl
+      subst hlit
+      simp [Core.step?, Core.pushTrace, Core.exprValue?] at hstep
       obtain ⟨-, rfl⟩ := hstep
-      cases Core.toBoolean v <;> simp [Core.Expr.supported] <;> [exact hsupp.2.2; exact hsupp.2.1]
+      cases Core.toBoolean v
+      · exact hsupp.2.2
+      · exact hsupp.2.1
     | none => sorry
   | seq a b =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
     cases hval : Core.exprValue? a with
-    | some _ =>
-      simp [Core.step?, Core.pushTrace, Core.exprValue?, hval] at hstep
+    | some v =>
+      have hlit : a = .lit v := by cases a <;> simp [Core.exprValue?] at hval; subst hval; rfl
+      subst hlit
+      simp [Core.step?, Core.pushTrace, Core.exprValue?] at hstep
       obtain ⟨-, rfl⟩ := hstep; exact hsupp.2
     | none => sorry
   | throw arg =>
@@ -3492,7 +3502,9 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
     rw [state_with_expr_eq hexpr] at hstep
     cases hval : Core.exprValue? arg with
     | some v =>
-      simp [Core.step?, Core.pushTrace, Core.exprValue?, hval] at hstep
+      have hlit : arg = .lit v := by cases arg <;> simp [Core.exprValue?] at hval; subst hval; rfl
+      subst hlit
+      simp [Core.step?, Core.pushTrace, Core.exprValue?] at hstep
       obtain ⟨-, rfl⟩ := hstep; rfl
     | none => sorry
   | unary op arg =>
@@ -3500,7 +3512,9 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
     rw [state_with_expr_eq hexpr] at hstep
     cases hval : Core.exprValue? arg with
     | some v =>
-      simp [Core.step?, Core.pushTrace, Core.exprValue?, hval] at hstep
+      have hlit : arg = .lit v := by cases arg <;> simp [Core.exprValue?] at hval; subst hval; rfl
+      subst hlit
+      simp [Core.step?, Core.pushTrace, Core.exprValue?] at hstep
       split at hstep <;> (obtain ⟨-, rfl⟩ := hstep; rfl)
     | none => sorry
   | call => sorry
