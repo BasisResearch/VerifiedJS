@@ -5595,3 +5595,6 @@ For `HasXInHead compound` sorries (L7154, L7307, L7480, L7634):
 - **L8493/8496** (return), **L8666/8669** (await), **L8820/8823** (yield): Same pattern as throw — need `trivialChain_return_steps`, `trivialChain_await_steps`, `trivialChain_yield_steps` (analogous to `trivialChain_throw_steps`) plus NoNestedAbrupt for HasXInHead exfalso
 ### 2026-04-04T08:42:17+00:00 Run complete — closed NESTED_THROW sorry L8204 via NoNestedAbrupt exfalso, 22→22 sorries (restructured)
 2026-04-04T08:42:23+00:00 DONE
+
+## Run: 2026-04-04T09:30:04+00:00
+

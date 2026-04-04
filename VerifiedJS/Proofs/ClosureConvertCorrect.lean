@@ -3663,7 +3663,7 @@ private theorem closureConvert_step_simulation
           { sf with expr := (Flat.convertExpr rhs scope envVar envMap st).fst }
           { sc with expr := rhs }
           ev sa scope st (Flat.convertExpr rhs scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_rhs hexprwf_rhs
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_rhs hexprwf_rhs (by simp [Core.Expr.supported] at hsupp; exact hsupp)
           (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
@@ -3791,7 +3791,7 @@ private theorem closureConvert_step_simulation
           { sf with expr := (Flat.convertExpr cond scope envVar envMap st).fst }
           { sc with expr := cond }
           ev sa scope st (Flat.convertExpr cond scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_cond hexprwf_cond
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_cond hexprwf_cond (by simp [Core.Expr.supported] at hsupp; exact hsupp.1)
           (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
@@ -3893,7 +3893,7 @@ private theorem closureConvert_step_simulation
           { sf with expr := (Flat.convertExpr a scope envVar envMap st).fst }
           { sc with expr := a }
           ev sa scope st (Flat.convertExpr a scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_a hexprwf_a
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_a hexprwf_a (by simp [Core.Expr.supported] at hsupp; exact hsupp.1)
           (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
@@ -3985,7 +3985,7 @@ private theorem closureConvert_step_simulation
           { sf with expr := (Flat.convertExpr arg scope envVar envMap st).fst }
           { sc with expr := arg }
           ev sa scope st (Flat.convertExpr arg scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_arg hexprwf_arg
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_arg hexprwf_arg (by simp [Core.Expr.supported] at hsupp; exact hsupp)
           (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
@@ -4083,7 +4083,7 @@ private theorem closureConvert_step_simulation
             { sf with expr := (Flat.convertExpr rhs scope envVar envMap st).fst }
             { sc with expr := rhs }
             ev sa scope st (Flat.convertExpr rhs scope envVar envMap st).snd
-            (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_rhs hexprwf_rhs
+            (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_rhs hexprwf_rhs (by simp [Core.Expr.supported] at hsupp; exact hsupp.2)
             (by simp)
             ⟨hsubstep⟩
         let sc' : Core.State :=
@@ -4144,7 +4144,7 @@ private theorem closureConvert_step_simulation
           { sf with expr := (Flat.convertExpr lhs scope envVar envMap st).fst }
           { sc with expr := lhs }
           ev sa scope st (Flat.convertExpr lhs scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_lhs hexprwf_lhs
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_lhs hexprwf_lhs (by simp [Core.Expr.supported] at hsupp; exact hsupp.1)
           (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
@@ -4218,7 +4218,7 @@ private theorem closureConvert_step_simulation
           { sf with expr := (Flat.convertExpr f scope envVar envMap st).fst }
           { sc with expr := f }
           ev sa scope st (Flat.convertExpr f scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_f hexprwf_f
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_f hexprwf_f (by simp [Core.Expr.supported] at hsupp; exact hsupp.1)
           (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
@@ -4740,7 +4740,7 @@ private theorem closureConvert_step_simulation
           { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst }
           { sc with expr := obj }
           ev sa scope st (Flat.convertExpr obj scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_arg hexprwf_arg
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_arg hexprwf_arg (by simp [Core.Expr.supported] at hsupp; exact hsupp)
           (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
@@ -4942,7 +4942,7 @@ private theorem closureConvert_step_simulation
             { sf with expr := (Flat.convertExpr value scope envVar envMap st).fst }
             { sc with expr := value }
             ev sa scope st (Flat.convertExpr value scope envVar envMap st).snd
-            (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_v hexprwf_v
+            (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_v hexprwf_v (by simp [Core.Expr.supported] at hsupp; exact hsupp.2)
             (by simp)
             ⟨hsubstep⟩
         let sc' : Core.State :=
@@ -5004,7 +5004,7 @@ private theorem closureConvert_step_simulation
           { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst }
           { sc with expr := obj }
           ev sa scope st (Flat.convertExpr obj scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_obj hexprwf_obj
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_obj hexprwf_obj (by simp [Core.Expr.supported] at hsupp; exact hsupp.1)
           (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
@@ -5237,7 +5237,7 @@ private theorem closureConvert_step_simulation
             { sf with expr := (Flat.convertExpr idx scope envVar envMap st).fst }
             { sc with expr := idx }
             ev sa scope st (Flat.convertExpr idx scope envVar envMap st).snd
-            (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_i hexprwf_i
+            (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_i hexprwf_i (by simp [Core.Expr.supported] at hsupp; exact hsupp.2)
             (by simp)
             ⟨hsubstep⟩
         let sc' : Core.State :=
@@ -5298,7 +5298,7 @@ private theorem closureConvert_step_simulation
           { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst }
           { sc with expr := obj }
           ev sa scope st (Flat.convertExpr obj scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_arg hexprwf_arg
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_arg hexprwf_arg (by simp [Core.Expr.supported] at hsupp; exact hsupp.1)
           (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
@@ -5528,7 +5528,7 @@ private theorem closureConvert_step_simulation
               { sf with expr := (Flat.convertExpr value scope envVar envMap st).fst }
               { sc with expr := value }
               ev sa scope st (Flat.convertExpr value scope envVar envMap st).snd
-              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_v hexprwf_v
+              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_v hexprwf_v (by simp [Core.Expr.supported] at hsupp; exact hsupp.2.2)
               (by simp)
               ⟨hsubstep⟩
           let sc' : Core.State :=
@@ -5606,7 +5606,7 @@ private theorem closureConvert_step_simulation
             { sf with expr := (Flat.convertExpr idx scope envVar envMap st).fst }
             { sc with expr := idx }
             ev sa scope st (Flat.convertExpr idx scope envVar envMap st).snd
-            (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_i hexprwf_i
+            (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_i hexprwf_i (by simp [Core.Expr.supported] at hsupp; exact hsupp.2.1)
             (by simp)
             ⟨hsubstep⟩
         let sc' : Core.State :=
@@ -5683,7 +5683,7 @@ private theorem closureConvert_step_simulation
           { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst }
           { sc with expr := obj }
           ev sa scope st (Flat.convertExpr obj scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_obj hexprwf_obj
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_obj hexprwf_obj (by simp [Core.Expr.supported] at hsupp; exact hsupp.1)
           (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
@@ -5850,7 +5850,7 @@ private theorem closureConvert_step_simulation
           { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst }
           { sc with expr := obj }
           ev sa scope st (Flat.convertExpr obj scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_arg hexprwf_arg
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_arg hexprwf_arg (by simp [Core.Expr.supported] at hsupp; exact hsupp)
           (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
@@ -5941,7 +5941,7 @@ private theorem closureConvert_step_simulation
           { sf with expr := (Flat.convertExpr arg scope envVar envMap st).fst }
           { sc with expr := arg }
           ev sa scope st (Flat.convertExpr arg scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_arg hexprwf_arg
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_arg hexprwf_arg (by simp [Core.Expr.supported] at hsupp; exact hsupp)
           (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
@@ -6456,7 +6456,7 @@ private theorem closureConvert_step_simulation
           { sf with expr := (Flat.convertExpr val scope envVar envMap st).fst }
           { sc with expr := val }
           ev sa scope st (Flat.convertExpr val scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_val hexprwf_val
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_val hexprwf_val (by simp [Core.Expr.supported] at hsupp; exact hsupp)
           (by simp)
           ⟨hsubstep⟩
       -- Reconstruct Core step on throw
@@ -6575,7 +6575,7 @@ private theorem closureConvert_step_simulation
               { sf with expr := fbody }
               { sc with expr := body }
               (.error msg) sb scope st st1
-              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body
+              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body (by simp [Core.Expr.supported] at hsupp; exact hsupp.1)
               (by simp [fbody, st1])
               ⟨hm⟩
           let handler := match finally_ with | some fin => Core.Expr.seq catchBody fin | none => catchBody
@@ -6635,7 +6635,7 @@ private theorem closureConvert_step_simulation
               { sf with expr := fbody }
               { sc with expr := body }
               t sb scope st st1
-              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body
+              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body (by simp [Core.Expr.supported] at hsupp; exact hsupp.1)
               (by simp [fbody, st1])
               ⟨hm⟩
           let sc' : Core.State :=
@@ -6882,7 +6882,7 @@ private theorem closureConvert_step_simulation
             { sf with expr := (Flat.convertExpr e scope envVar envMap st).fst }
             { sc with expr := e }
             ev sa scope st (Flat.convertExpr e scope envVar envMap st).snd
-            (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_val hexprwf_val
+            (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_val hexprwf_val (by simp [Core.Expr.supported] at hsupp; exact hsupp)
             (by simp)
             ⟨hsubstep⟩
         -- Reconstruct Core step on return
@@ -7024,7 +7024,7 @@ private theorem closureConvert_step_simulation
             { sf with expr := (Flat.convertExpr e scope envVar envMap st).fst }
             { sc with expr := e }
             ev sa scope st (Flat.convertExpr e scope envVar envMap st).snd
-            (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_val hexprwf_val
+            (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_val hexprwf_val (False.elim (by simp [Core.Expr.supported] at hsupp))
             (by simp)
             ⟨hsubstep⟩
         -- Reconstruct Core step on yield
@@ -7113,7 +7113,7 @@ private theorem closureConvert_step_simulation
           { sf with expr := (Flat.convertExpr arg scope envVar envMap st).fst }
           { sc with expr := arg }
           ev sa scope st (Flat.convertExpr arg scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_val hexprwf_val
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_val hexprwf_val (False.elim (by simp [Core.Expr.supported] at hsupp))
           (by simp)
           ⟨hsubstep⟩
       -- Reconstruct Core step on await
