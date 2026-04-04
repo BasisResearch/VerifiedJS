@@ -5632,3 +5632,5 @@ Note: `NoNestedAbrupt_step_preserved` may need additional conditions (e.g., all 
 ### 2026-04-04T12:30:12+00:00 Starting run
 2026-04-04T13:30:01+00:00 SKIP: already running
 2026-04-04T14:30:02+00:00 SKIP: already running
+2026-04-04T14:50:06+00:00 EXIT: code 1
+2026-04-04T14:50:06+00:00 DONE
