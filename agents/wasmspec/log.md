@@ -6266,3 +6266,21 @@ Need characterization of what normalizeExpr produces for these forms and Flat si
 ### 2026-04-04T18:15:10+00:00 Starting run
 2026-04-04T19:15:05+00:00 SKIP: already running
 2026-04-04T20:15:31+00:00 SKIP: already running
+
+### 2026-04-04T20:30:00+00:00 Progress on L9093 (seq/while step sim)
+
+**Changes made:**
+
+1. **Split L9093 sorry into two sub-cases** by unfolding `ANF.step?` on `.while_ c d`:
+   - `exprValue? c = some v` (condition is a value): while unrolls to transient state. Sorry remains — transient `.seq (.seq d (.while_ c d)) b` form is NOT producible by `normalizeExpr` with trivial-preserving k, so `ANF_SimRel` cannot hold. Needs multi-step simulation or SimRel generalization.
+   - `exprValue? c = none` + `step? c = some (t, sc)` (condition steps): while becomes `.while_ sc.expr d`. This form IS `normalizeExpr`-compatible. Sorry remains — needs flat while-condition simulation infrastructure.
+   - `step? c = none` case closed by contradiction (`simp at hstep_inner'`).
+
+2. **Added `normalizeExpr_while_decomp` lemma** (L9047-9082): decomposes `normalizeExpr (.while_ cond body) k` into condition normalization, body normalization, and continuation application. Proved by `unfold`/`split` on the monadic bind structure. Compiles clean.
+
+**Blocking analysis for condition-steps sorry:**
+- Need a "source decomposition" lemma: if `normalizeExpr e k` produces `.seq (.while_ c d) b` (trivial-preserving k), then `e` contains `.while_ cond_flat body_flat` reachable through seq chains of atoms.
+- Then need to show Flat can simulate the ANF condition step. But Flat.step? on `.while_` desugars to `.if` (one silent step), while ANF.step? on `.while_` steps the condition directly. So Flat simulation requires multi-step through the desugared if.
+- The normalizeExpr_while_decomp lemma helps connect the ANF condition `c` back to `cond_flat`.
+
+**Verified:** all errors are pre-existing (if_step_sim at L9283+). No new errors from wasmspec changes.
