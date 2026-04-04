@@ -3713,3 +3713,58 @@ jsspec confirmed ALL 17 ANF sorries are architecturally blocked. normalizeExpr C
 
 ## Run: 2026-04-04T11:30:04+00:00
 
+
+## Run: 2026-04-04T11:30:04+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 + CC 14 = **38** (grep shows 17 CC lines but 3 are comment mentions at L558/3378/3381)
+- **Delta from last run**: 38 → 38 = **0**. All agents mid-run (SKIP detected at 11:30/11:00/11:15).
+
+### Why sorry count is flat
+All three agents mid-run from previous launches. Files modified at 11:31 (agents actively editing). proof agent extracted NoNestedAbrupt_step_preserved as standalone lemma (structural progress, no count change). jsspec has not produced code changes in 4+ DAYS. wasmspec built infrastructure but hasn't closed actual sorries.
+
+### Agent Analysis
+1. **proof** (active, last log 11:30): Successfully extracted NoNestedAbrupt_step_preserved as standalone lemma at L9175 with sorry at L9178. Good structural progress but needs to APPLY the per-constructor skeleton. **REWROTE PROMPT**: Exact 2-step instructions: (1) write hasAbruptCompletion_step_preserved with sorry body, (2) paste full skeleton at L9178. Added easy-case patterns for getProp/deleteProp/typeof.
+2. **jsspec** (SKIP at 11:00, last real work 2026-03-31): ZERO sorry reductions in 4 days. Keeps producing analysis instead of code. L3408 and L7787 are provable. **REWROTE PROMPT**: Added "STOP ANALYZING START WRITING CODE" header. Reordered: L7787 FIRST (5-min parameter addition), L3408 second (helper lemma with sorry sub-cases is fine). Explicitly told it not to spend >10 min reading before writing.
+3. **wasmspec** (SKIP at 11:15): Built HasIfInHead infrastructure (~430 lines) but hasn't closed L9065/L9127. **UPDATED PROMPT**: Updated line numbers (were L9063/L9129, now L9065/L9127 after file shifts). Emphasized using sorry body for trivialChain_if_condition_steps is acceptable progress.
+
+### Actions Taken
+1. Counted sorries: ANF 24 + CC 14 = 38. Flat.
+2. **REWROTE proof prompt**: 2-step instructions with exact code skeleton for L9178.
+3. **REWROTE jsspec prompt**: Aggressive refocus. L7787 first (parameter add), L3408 second (helper lemma). Banned analysis-without-code.
+4. **UPDATED wasmspec prompt**: Corrected line numbers, emphasized sorry-body-is-fine approach.
+5. Logged to time_estimate.csv: 38.
+
+### Sorry Breakdown (unchanged)
+
+**ANF (24 real sorry tokens):**
+- Group A (7): L7522-L7708 — eval context lifting, PARKED
+- Throw dispatch compound (L8349): DEFERRED
+- Return compound (L8499, L8502): TARGET — proof agent Task 2
+- Await compound (L8672, L8675): DEFERRED
+- Yield compound (L8826, L8829): DEFERRED
+- Let step sim (L8856): wasmspec Task 3
+- While step sim (L8904): PARKED
+- If step sim compound condition (L9065, L9127): TARGET — wasmspec Task 1
+- If step sim compound HasIfInHead (L9066, L9128): TARGET — wasmspec Task 2
+- TryCatch step sim (L9172): DEFERRED
+- NoNestedAbrupt_step_preserved (L9178): TARGET — proof agent Task 1
+- Break compound (L9569): PARKED
+- Continue compound (L9622): PARKED
+
+**CC (14 real sorry tokens):**
+- Core.step preserves supported (L3408): TARGET — jsspec Task 2
+- Captured var multi-step (L3435): BLOCKED
+- CCStateAgree if-true (L3764): BLOCKED by architecture
+- CCStateAgree if-false (L3787): BLOCKED by architecture
+- FuncsCorr non-consoleLog (L4341): BLOCKED
+- Semantic mismatch call f (L4549): BLOCKED (compiler)
+- Semantic mismatch call arg (L4557): BLOCKED (compiler)
+- getIndex string unprovable (L5195): UNPROVABLE
+- functionDef (L6437): BLOCKED by HeapInj
+- tryCatch body-value (L6594): CCStateAgree blocked
+- tryCatch with finally (L6595): CCStateAgree blocked
+- tryCatch non-error (L6667): need CCStateAgree
+- while_ CCState threading (L6775): BLOCKED by architecture
+- h_supp param (L7787): TARGET — jsspec Task 1 (QUICK WIN)
+2026-04-04T11:35:38+00:00 DONE

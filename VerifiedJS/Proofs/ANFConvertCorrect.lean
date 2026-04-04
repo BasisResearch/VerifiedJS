@@ -9032,7 +9032,7 @@ private theorem normalizeExpr_if_step_sim
             have hfbool : Flat.toBoolean v' = true := by cases v' <;> first | rfl | assumption
             have hstep1 : Flat.step? ⟨.if (.var name_c) then_flat else_flat, env, heap, trace, funcs, cs⟩ =
                 some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
-              simp [Flat.step?, Flat.exprValue?, hlookup, Flat.step?_pushTrace_expand]
+              simp [Flat.step?, Flat.exprValue?, hlookup, Flat.step?_pushTrace_expand, Flat.step?_var_found]
             have hstep2 : Flat.step? ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
                 some (.silent, ⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
               simp [Flat.step?, Flat.exprValue?, hfbool, Flat.step?_pushTrace_expand]
@@ -9052,7 +9052,7 @@ private theorem normalizeExpr_if_step_sim
             have hfbool : Flat.toBoolean v' = true := by cases v' <;> first | rfl | assumption
             have hstep1 : Flat.step? ⟨.if .this then_flat else_flat, env, heap, trace, funcs, cs⟩ =
                 some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
-              simp [Flat.step?, Flat.exprValue?, hlookup, Flat.step?_pushTrace_expand]
+              simp [Flat.step?, Flat.exprValue?, hlookup, Flat.step?_pushTrace_expand, Flat.step?_var_found]
             have hstep2 : Flat.step? ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
                 some (.silent, ⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
               simp [Flat.step?, Flat.exprValue?, hfbool, Flat.step?_pushTrace_expand]
@@ -9094,7 +9094,7 @@ private theorem normalizeExpr_if_step_sim
             have hfbool : Flat.toBoolean v' = false := by cases v' <;> first | rfl | assumption
             have hstep1 : Flat.step? ⟨.if (.var name_c) then_flat else_flat, env, heap, trace, funcs, cs⟩ =
                 some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
-              simp [Flat.step?, Flat.exprValue?, hlookup, Flat.step?_pushTrace_expand]
+              simp [Flat.step?, Flat.exprValue?, hlookup, Flat.step?_pushTrace_expand, Flat.step?_var_found]
             have hstep2 : Flat.step? ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
                 some (.silent, ⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
               simp [Flat.step?, Flat.exprValue?, hfbool, Flat.step?_pushTrace_expand]
@@ -9114,7 +9114,7 @@ private theorem normalizeExpr_if_step_sim
             have hfbool : Flat.toBoolean v' = false := by cases v' <;> first | rfl | assumption
             have hstep1 : Flat.step? ⟨.if .this then_flat else_flat, env, heap, trace, funcs, cs⟩ =
                 some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
-              simp [Flat.step?, Flat.exprValue?, hlookup, Flat.step?_pushTrace_expand]
+              simp [Flat.step?, Flat.exprValue?, hlookup, Flat.step?_pushTrace_expand, Flat.step?_var_found]
             have hstep2 : Flat.step? ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
                 some (.silent, ⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
               simp [Flat.step?, Flat.exprValue?, hfbool, Flat.step?_pushTrace_expand]
