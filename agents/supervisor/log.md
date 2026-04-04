@@ -1,3 +1,48 @@
+## Run: 2026-04-04T18:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 11 + CC 6 + Wasm 0 = **17 real sorries**
+- **Delta from last run (18:00)**: ANF 25→11 (-14!), CC 12→6 (-6!)
+- **Net real progress**: -20 sorries! MASSIVE progress.
+
+### Agent Status
+1. **proof** (last completed 17:34): Closed many hasAbruptCompletion/NoNestedAbrupt cases. Still blocked on `have` bindings in step? for call/newObj/getEnv. **REWROTE prompt**: Write step? equation lemmas in Flat/Semantics.lean (4 concrete lemmas with code), then use them in L9398/L9677.
+2. **jsspec** (RUNNING since 18:00): Building CC. Previous run closed 2 (L4333 + L3408 restructure). CC went from 12→6. **REWROTE prompt**: Updated targets to remaining 6 (L3375, L3441, L3793, L6453, L6610, L6683).
+3. **wasmspec** (completed 18:00): Closed 12 vacuous sub-cases, added hna params. **REWROTE prompt**: Redirected to L9045 (let step sim) and L9093 (while/seq step sim) — these are the tractable ANF sorries.
+
+### Actions Taken
+1. Counted sorries: ANF 11 + CC 6 = 17. Down from 37. **-20 real closures!!**
+2. **Killed supervisor's duplicate lake build** — freed memory (2.1GB → more available).
+3. **REWROTE proof prompt**: Step? equation lemmas with 4 complete Lean code templates. This is the KEY unblocking move for hasAbruptCompletion + NoNestedAbrupt.
+4. **REWROTE wasmspec prompt**: New targets L9045 (let) and L9093 (while/seq). These are orthogonal to proof agent's work.
+5. **REWROTE jsspec prompt**: Updated sorry list to actual remaining 6. Pushed for 2 more closures.
+6. Logged to time_estimate.csv: 17 sorries.
+
+### Sorry Breakdown
+
+**ANF (11 actual):**
+- L8526: compound HasThrowInHead (eval context) — PARKED
+- L8683: compound HasReturnInHead (eval context) — PARKED
+- L8860: compound HasAwaitInHead (eval context) — PARKED
+- L9018: compound HasYieldInHead (eval context) — PARKED
+- L9045: let step sim — wasmspec target
+- L9093: while/seq step sim — wasmspec target
+- L9390: tryCatch step sim — DEFERRED
+- L9398: hasAbruptCompletion_step_preserved — proof agent target (needs equation lemmas)
+- L9677: NoNestedAbrupt_step_preserved — proof agent target (needs equation lemmas)
+- L10375: break compound — blocked on step? error propagation
+- L10428: continue compound — blocked on step? error propagation
+
+**CC (6 actual):** L3375, L3441, L3793, L6453, L6610, L6683
+
+### Critical Assessment
+BEST RUN YET. -20 sorries in one cycle. Proof agent and jsspec are both producing. Key remaining blockers:
+1. **Equation lemmas** (proof agent): Unblocks L9398 + L9677 → which unblocks compound cases → which unblocks break/continue. This is the critical path.
+2. **Let/while step sim** (wasmspec): Orthogonal, can proceed in parallel.
+3. **CC remaining 6** (jsspec): Steady progress, keep pushing.
+
+---
+
 ## Run: 2026-04-04T18:00:02+00:00
 
 ### Metrics
@@ -4369,3 +4414,4 @@ MAJOR PROGRESS this run. NoNestedAbrupt went from 22 sorry → 7 sorry (list/com
 
 ## Run: 2026-04-04T18:05:01+00:00
 
+2026-04-04T18:09:37+00:00 DONE

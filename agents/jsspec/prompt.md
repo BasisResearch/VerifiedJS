@@ -1,4 +1,4 @@
-# jsspec — Close CC sorries: L3375, L6453, L3441
+# jsspec — Close CC sorries: down to 6! Push for 2 more.
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -9,45 +9,35 @@
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
-## MEMORY: 7.7GB total, NO swap. ~2.9GB available right now.
+## MEMORY: 7.7GB total, NO swap. ~2.1GB available right now.
 **WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
 
-## STATUS: CC has 12 actual sorries. You closed L5209 and L4333 last run. GOOD. Keep going.
+## STATUS: CC down to 6 actual sorry lines. GREAT progress. Keep pushing.
 
-## CC SORRY BREAKDOWN (12):
+## CC SORRY BREAKDOWN (6):
 1. **L3375**: Core_step_preserves_supported — PRIMARY TARGET
-2. L3441: captured var multi-step
-3. L3770: if-true CCStateAgree
-4. L3793: if-false CCStateAgree
-5. L4357: non-consoleLog function call
-6. L4565: f not a value semantic mismatch
-7. L4573: non-value arg semantic mismatch
-8. L6453: functionDef
-9. L6610: tryCatch body-value
-10. L6611: tryCatch with finally
-11. L6683: tryCatch sorry
-12. L6791: while_ CCState
+2. **L3441**: captured var multi-step
+3. **L3793**: if-false CCStateAgree — `sorry` embedded in tuple
+4. **L6453**: functionDef conversion
+5. **L6610**: tryCatch body-value — `sorry` embedded in exact term
+6. **L6683**: tryCatch inner sorry
 
 ## TASK 1 — L3375 Core_step_preserves_supported
-
-Use `lean_goal` at L3375. Split on the expression constructor. Close the easy cases (lit, var, this, break, continue should be simple). Leave sorry on hard cases. Even 8/15 closed is a win.
+Use `lean_goal` at L3375. This needs induction on the step relation. Split on expression constructors. Close easy cases first (lit, var, assign, unary, binary should be straightforward — supported is structural). Leave sorry on hard cases. Even closing 8/15 constructors is great.
 
 ## TASK 2 — L6453 (functionDef)
+`lean_goal` at L6453. functionDef allocates a closure in the converted program. The proof needs to show the closure conversion of the function body preserves the simulation relation.
 
-Use `lean_goal` at L6453. functionDef conversion should allocate a closure. The proof needs CCStateAgree preserved through function allocation.
-
-## TASK 3 — L3441 (captured var multi-step)
-
-Use `lean_goal` at L3441. This is about captured variable access through closure environments.
+## TASK 3 — L3793 (if-false CCStateAgree)
+The sorry is inline: `simp [sc', Flat.convertExpr], sorry, by rw [hconv.2]; exact ⟨rfl, rfl⟩⟩`. Need to close just the middle sorry in the tuple.
 
 ## TASK 4 — Low-hanging fruit sweep
-
-Use `lean_multi_attempt` on ANY sorry to check if simple tactics close it:
+Use `lean_multi_attempt` on EACH sorry to check if simple tactics close it:
 ```
-["simp_all", "omega", "trivial", "exact absurd h1 h2", "contradiction"]
+["simp_all", "omega", "trivial", "exact absurd h1 h2", "contradiction", "rfl", "assumption"]
 ```
 
-## YOU CLOSED 2 LAST RUN. CLOSE 2 MORE THIS RUN.
+## YOU CLOSED 6 SINCE MORNING. Close 2 more this run.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

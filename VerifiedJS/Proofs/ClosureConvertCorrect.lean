@@ -3372,7 +3372,59 @@ private theorem tryCatch_body_depth_lt (body : Core.Expr) (cp : String) (cb : Co
 private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.TraceEvent)
     (hsupp : s.expr.supported = true) (hstep : Core.step? s = some (ev, s')) :
     s'.expr.supported = true := by
-  sorry
+  cases hexpr : s.expr with
+  | lit => simp [Core.step?, hexpr] at hstep
+  | forIn => simp [Core.Expr.supported] at hsupp
+  | forOf => simp [Core.Expr.supported] at hsupp
+  | yield => simp [Core.Expr.supported] at hsupp
+  | await => simp [Core.Expr.supported] at hsupp
+  | var name =>
+    simp [Core.step?, Core.pushTrace, hexpr] at hstep
+    split at hstep <;> simp_all [Core.Expr.supported]
+  | this =>
+    simp [Core.step?, Core.pushTrace, hexpr] at hstep
+    split at hstep <;> simp_all [Core.Expr.supported]
+  | «break» label =>
+    simp [Core.step?, Core.pushTrace, hexpr] at hstep
+    simp_all [Core.Expr.supported]
+  | «continue» label =>
+    simp [Core.step?, Core.pushTrace, hexpr] at hstep
+    simp_all [Core.Expr.supported]
+  | «return» arg =>
+    cases arg with
+    | none =>
+      simp [Core.step?, Core.pushTrace, hexpr] at hstep
+      simp_all [Core.Expr.supported]
+    | some => sorry
+  | labeled _ body =>
+    simp [Core.Expr.supported] at hsupp
+    simp [Core.step?, Core.pushTrace, hexpr] at hstep
+    simp_all [Core.Expr.supported]
+  | functionDef fname params body isAsync isGenerator =>
+    simp [Core.step?, Core.pushTrace, hexpr] at hstep
+    simp_all [Core.Expr.supported]
+  | while_ cond body =>
+    simp [Core.Expr.supported] at hsupp
+    simp [Core.step?, Core.pushTrace, hexpr] at hstep
+    simp_all [Core.Expr.supported]
+  | «let» => sorry
+  | assign => sorry
+  | «if» => sorry
+  | seq => sorry
+  | call => sorry
+  | newObj => sorry
+  | unary => sorry
+  | binary => sorry
+  | getProp => sorry
+  | setProp => sorry
+  | getIndex => sorry
+  | setIndex => sorry
+  | deleteProp => sorry
+  | objectLit => sorry
+  | arrayLit => sorry
+  | throw => sorry
+  | tryCatch => sorry
+  | typeof => sorry
 
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)
