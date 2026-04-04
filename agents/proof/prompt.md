@@ -1,4 +1,4 @@
-# proof — PIVOT: Close ¬HasThrowInHead sub-case of L7122 first, then pattern-match for return/await/yield
+# proof — DECOMPOSE L7151 with by_cases NOW. You have been stuck for 4 runs.
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -17,22 +17,24 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 - If build OOMs: add `set_option maxHeartbeats 200000` above the theorem
 - Do NOT attempt to build the entire file if it's failing
 
-## STATE: ANF has 22 sorries. You have built excellent infrastructure over 4 runs but closed 0 Group D sorries. Time to DECOMPOSE and close sub-cases.
+## STATE: ANF has 22 sorries. You have been stuck for 4 RUNS. You have built infrastructure (Steps_*_ctx wrappers, HasReturnInHead) but CLOSED ZERO sorries. Time to produce RESULTS.
 
-## YOUR TASK: Decompose L7122 using Classical.em, then close the ¬HasThrowInHead half
+## YOUR TASK: Decompose L7151 with by_cases, then close the trivial-chain half
 
-### The problem at L7122
+### Current sorry line numbers (UPDATED — lines shifted since last run):
+- Group A (7): L6531, L6564, L6575, L6656, L6689, L6700, L6717 — PARKED (continuation-independence)
+- Group D (8): L7151, L7154, L7304, L7307, L7477, L7480, L7631, L7634 — YOUR TARGET
+- Group F (5): L7661, L7709, L7740, L7743, L7787 — DEFERRED
+- Group G (2): L8165, L8217 — wasmspec owns these
 
-At L7122, inside `normalizeExpr_throw_step_sim`, `throw_direct` case:
+### Step 1: Split L7151 into two sub-cases (DO THIS FIRST)
+
+At L7151, inside `normalizeExpr_throw_step_sim`, `throw_direct` case:
 - `sf.expr = .throw flat_arg`
-- `flat_arg` is compound (not lit/var/this/break/continue — those are handled above)
+- `flat_arg` is compound
 - `hnorm' : (normalizeExpr flat_arg (fun t => pure (.throw t))).run n = .ok (.throw arg, m)`
 
-You need Flat.Steps from `{expr := .throw flat_arg, env, heap, trace, funcs, cs}` to a terminal state.
-
-### Step 1: Split L7122 into two sub-cases
-
-Replace the `sorry` at L7122 with:
+Replace the `sorry` at L7151 with:
 ```lean
     | _ =>
       by_cases hth : HasThrowInHead flat_arg
@@ -44,13 +46,9 @@ Replace the `sorry` at L7122 with:
         sorry -- TRIVIAL_CHAIN_IN_THROW: consume trivial chain in .throw [·] context
 ```
 
-**This alone is worth doing** — it decomposes 1 opaque sorry into 2 categorized ones.
-
 ### Step 2: Close the TRIVIAL_CHAIN_IN_THROW sorry
 
-You have `htc : isTrivialChain flat_arg = true`. A trivial chain is a `.seq` spine of `.lit`/`.var`/`.this` leaves. In the `.throw [·]` context, the inner expression steps (resolving vars to values, discarding seq left operands) until reaching a value. Then `.throw (.lit v)` produces the error event.
-
-Build a helper `trivialChain_throw_steps` (analogous to `trivialChain_consume_ctx` at L1993 but for the `.throw [·]` context instead of `wrapSeqCtx`):
+Build `trivialChain_throw_steps` following the pattern of `trivialChain_consume_ctx` (around L1993):
 
 ```lean
 private theorem trivialChain_throw_steps
@@ -67,29 +65,25 @@ private theorem trivialChain_throw_steps
   sorry -- induction on fuel, similar to trivialChain_consume_ctx
 ```
 
-This is a standalone lemma you can build and test independently. Then use it to close the TRIVIAL_CHAIN_IN_THROW sorry.
+### Step 3: Apply same pattern to L7304 (return), L7477 (await), L7631 (yield)
 
-### Step 3: Apply same pattern to L7275, L7448, L7602
+Each needs the same by_cases + trivialChain helper. Do them ONE AT A TIME.
 
-These are the same structure but for `.return (some [·])`, `.await [·]`, `.yield (some [·])`. Each needs:
-1. `by_cases` on HasXInHead
-2. `no_X_head_implies_trivial_chain` (you may need to prove these, or the existing `no_throw_head_implies_trivial_chain` might generalize)
-3. A `trivialChain_X_steps` helper
+### DO NOT attempt L7154, L7307, L7480, L7634 yet
+Those are the compound HasXInHead cases from the CALLER. Park them.
 
-### DO NOT attempt L7125, L7278, L7451, L7605 yet
-Those are the compound HasXInHead cases from the CALLER and need a fundamentally different approach (multi-step simulation through compound expressions). Park them.
+### Target: 22 → close at least 2 sorries. Even decomposing all 4 is progress.
 
-### Target: 22 sorries → 24 (decomposition) → 20 (close 4 trivial chain halves)
-
-Even just Step 1 (decomposing 4 sorries into 8 categorized ones) is valuable progress.
+## ACCOUNTABILITY: If you complete this run with ZERO sorry changes, you will be replaced.
 
 ## WORKFLOW:
-1. Edit L7122: replace `sorry` with `by_cases` split
-2. Build to verify it compiles
-3. Write `trivialChain_throw_steps` (start with sorry body, build signature)
-4. Prove `trivialChain_throw_steps` by induction on fuel (follow `trivialChain_consume_ctx` pattern)
-5. Use it to close the ¬HasThrowInHead sorry at L7122
-6. Repeat for L7275, L7448, L7602
+1. `lean_goal` at L7151 to see exact proof state
+2. Edit L7151: replace `sorry` with `by_cases` split
+3. Build to verify it compiles
+4. Write `trivialChain_throw_steps` with sorry body, build
+5. Prove body by induction (follow `trivialChain_consume_ctx`)
+6. Use it to close ¬HasThrowInHead sorry
+7. Repeat for L7304, L7477, L7631
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

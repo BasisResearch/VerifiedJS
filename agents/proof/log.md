@@ -5461,3 +5461,44 @@ Build: PASSING
 ## Run: 2026-04-04T03:30:01+00:00
 
 ### 2026-04-04T03:30:15+00:00 Starting run
+
+#### Analysis of Group D sorries (8 total)
+
+**Lines**: L7151, L7154 (throw); L7304, L7307 (return); L7477, L7480 (await); L7631, L7634 (yield)
+
+**Root cause: Theorem is FALSE for nested abrupt completions.**
+
+The simulation theorems (`normalizeExpr_throw_step_sim`, `normalizeExpr_return_step_sim`, `normalizeExpr_await_step_sim`, `normalizeExpr_yield_step_sim`) claim that Flat.Steps produce observable events matching one ANF error/return/yield/await event. However, when expressions contain nested abrupt completions (e.g., `.throw (.throw (.lit 1))`), the flat semantics produce MULTIPLE error events:
+
+1. Inner `.throw (.lit 1)` fires: error "1", result `.lit .undefined`
+2. Outer `.throw (.lit .undefined)` fires: error "undefined"
+
+Observable trace: `[.error "1", .error "undefined"]`
+
+But ANF normalizeExpr short-circuits at the inner throw:
+```
+normalizeExpr (.throw (.throw (.lit 1))) k
+= normalizeExpr (.lit 1) (fun t => pure (.throw t))
+= pure (.throw (.litNum 1))
+```
+
+ANF produces `.throw (.litNum 1)`, observable: `[.error "1"]`. These DON'T match.
+
+**This applies to ALL compound cases where HasThrowInHead/HasReturnInHead/HasAwaitInHead/HasYieldInHead holds in the sub-expression.**
+
+**Cases within each sorry:**
+
+For `*_direct compound` sorries (L7151, L7304, L7477, L7631):
+- The wildcard catches ~20 Flat.Expr constructors
+- For `.while_`, `.labeled`, `.tryCatch`: normalizeExpr produces `.seq`/`.labeled`/`.tryCatch`, NOT `.throw` → could prove by `exfalso`
+- For `.seq a b` with `¬HasThrowInHead a ∧ ¬HasThrowInHead b`: trivial chain case → PROVABLE
+- For all others (nested `.throw`, `.return`, `.yield`, `.await`, or `bindComplex` users with `HasThrowInHead` sub-expressions): theorem is FALSE
+
+For `HasXInHead compound` sorries (L7154, L7307, L7480, L7634):
+- These match on `seq_left`, `seq_right`, `let_init`, etc.
+- ALL require nested abrupt completions → theorem is FALSE
+
+**Fix required:** Add a `NoNestedAbrupt` precondition to the theorems, asserting that sub-expressions of throw/return/await/yield don't contain other abrupt completions. This is a natural invariant of JavaScript programs (throw/return/yield/await are statements, not expressions). The callers (`anfConvert_step_star`) would need to maintain this invariant.
+
+### 2026-04-04T04:05:58+00:00 Run complete — CANNOT CLOSE: theorem is false for nested abrupt completions. See analysis above.
+2026-04-04T04:06:15+00:00 DONE
