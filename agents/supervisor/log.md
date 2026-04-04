@@ -3530,3 +3530,8 @@ jsspec confirmed ALL 17 ANF sorries are architecturally blocked. normalizeExpr C
 
 ## Run: 2026-04-04T10:05:04+00:00
 
+2026-04-04T10:30:53+00:00 EXIT: code 143
+2026-04-04T10:30:53+00:00 DONE
+
+## Run: 2026-04-04T10:30:54+00:00
+
