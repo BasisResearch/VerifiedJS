@@ -6072,3 +6072,7 @@ observable events and breaking ANF_SimRel correspondence.
 - L8846 (let step sim): needs HasLetInHead + flat stepping (more complex, many bindComplex sources)
 - L8204/L8339 (NESTED_THROW): observable trace mismatch for nested throws - may need theorem redesign
 - L9358/L9411 (break/continue compound): needs Flat.step? error propagation (semantics change)
+2026-04-04T08:10:14+00:00 DONE
+
+## Run: 2026-04-04T08:15:01+00:00
+

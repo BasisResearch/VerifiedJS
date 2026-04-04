@@ -1,3 +1,67 @@
+## Run: 2026-04-04T08:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 22 + CC 14 = **36** (LowerCorrect 0, Wasm/Semantics 0)
+- **Delta from last run**: was 38 → 36 = **-2**. GOOD DIRECTION.
+- **LowerCorrect**: 0 sorries (DONE)
+
+### Why sorry count went DOWN (-2)
+- proof agent closed TRIVIAL_CHAIN_IN_THROW (ANF 23→22): proved `trivialChain_throw_steps` + helpers (~210 lines), replaced sorry with `exact trivialChain_throw_steps ...`
+- jsspec agent closed L6673 tryCatch (CC 15→14): threaded IH's CCStateAgree through tryCatch sub-conversions
+
+### What happened since last run
+
+1. **proof**: Closed TRIVIAL_CHAIN_IN_THROW. Built trivialChain_inner_step (~80 lines), trivialChain_throw_steps (~130 lines), evalTrivial_trivialOfValue. Handles lit/var/this/seq. Run finished 07:37.
+
+2. **jsspec**: Closed L6673 (tryCatch non-error body). Investigated L6386 (functionDef), L3391 (captured var), L4296 (call) — ALL blocked by architecture (HeapInj, multi-step, FuncsCorr). Most CC sorries are permanently blocked without architectural changes. Run finished 08:00.
+
+3. **wasmspec**: Built HasIfInHead infrastructure (~430 lines): inductive types, bindComplex_never_if, normalizeExprList_if_or_k, normalizeProps_if_or_k, normalizeExpr_if_or_k, normalizeExpr_if_implies_hasIfInHead. Targets L8925/L8928 (if step sim). Still needs flat stepping proof. Run finished ~08:05.
+
+### Actions Taken
+1. Counted sorries: ANF 22 + CC 14 = 36. Down 2.
+2. **REWROTE proof prompt**: Single priority = close L8204 (NESTED_THROW) via NoNestedAbrupt exfalso. Step-by-step: add hna hypothesis, use hasThrowInHead_implies_hasAbruptCompletion + AbruptFree contradiction. Then propagate to L8339, L8489/8492, L8816/8819.
+3. **REWROTE wasmspec prompt**: Close L8925/L8928 using freshly built HasIfInHead. Detailed proof pattern: normalizeExpr_if_implies_hasIfInHead → Flat.step?_if_true/false → ANF_SimRel.
+4. **REWROTE jsspec prompt**: Close L6616 (similar to L6673). If blocked, investigate FuncsCorr (L4296), multi-step (L3391). Architecture analysis for CCStateAgree (5 blocked sorries).
+5. Logged to time_estimate.csv: 36.
+
+### Sorry Breakdown
+
+**ANF (22 sorry tokens):**
+- Group A (7): L7516, L7549, L7560, L7641, L7674, L7685, L7702 — eval context lifting, PARKED
+- NESTED_THROW (L8204): TARGET — proof agent, NoNestedAbrupt exfalso
+- Throw dispatch (L8339): TARGET — proof agent, flows from L8204
+- Return compound (L8489, L8492): TARGET — proof agent, same NoNestedAbrupt pattern
+- Await compound (L8662, L8665): DEFERRED — same pattern after throw/return
+- Yield compound (L8816, L8819): DEFERRED — same pattern
+- Let step sim (L8846): DEFERRED — wasmspec if time
+- While step sim (L8894): PARKED — needs multi-step sim
+- If step sim (L8925, L8928): TARGET — wasmspec, HasIfInHead ready
+- TryCatch step sim (L8972): DEFERRED
+- Break/Continue (L9351, L9404): PARKED
+
+**CC (14 sorry tokens):**
+- Unprovable (3): L1507, L1508, L5148
+- Semantic mismatch (2): L4502, L4510
+- CCStateAgree blocked (5): L3719, L3742, L6543, L6544, L6724
+- HeapInj blocked (1): L6386
+- FuncsCorr blocked (1): L4296
+- Multi-step blocked (1): L3391
+- Actionable (1): L6616 — jsspec target
+
+### Strategy
+- proof: Close L8204+L8339 (NoNestedAbrupt throw) → 36→34
+- proof: Close L8489+L8492 (NoNestedAbrupt return) → 32
+- wasmspec: Close L8925+L8928 (if step sim) → 30
+- jsspec: Close L6616 → 29
+- Floor: 3 CC unprovable + 2 CC semantic + 5 CC CCStateAgree + 1 HeapInj + 1 FuncsCorr + 1 multi-step + 7 Group A + 2 break/continue = 22 permanently blocked
+
+### Biggest Risks
+1. proof agent has NOT yet started NoNestedAbrupt — first attempt this run. May take 2+ iterations to get lemma names right.
+2. wasmspec's HasIfInHead infra may not be sufficient — still needs flat stepping proofs which could be complex.
+3. CC is approaching minimum — 13 of 14 remaining sorries may be permanently blocked. Need architecture discussion.
+
+---
+
 ## Run: 2026-04-04T06:30:11+00:00
 
 ### Metrics
@@ -10224,3 +10288,4 @@ proof agent has the infrastructure but hasn't actually CLOSED any sorries with i
 
 ## Run: 2026-04-04T08:05:01+00:00
 
+2026-04-04T08:10:14+00:00 DONE
