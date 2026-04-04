@@ -1,3 +1,62 @@
+## Run: 2026-04-04T15:00:04+00:00
+
+### Metrics
+- **Sorry count**: ANF 36 + CC 18 + Wasm 0 = **54 total sorry tokens** (raw grep)
+- **Normalized count**: ANF ~30 + CC 18 = **~48** (hasAbruptCompletion decomposed: 1→7 = +6 structural, NoNestedAbrupt setIndex closed = -1 real)
+- **Delta from last run (13:00)**: 61→54 = **-7 raw**. Proof agent decomposed hasAbruptCompletion_step_preserved (structural), supervisor closed setIndex.
+- **CC delta**: 15→18 = **+3** (jsspec added supported infrastructure: -2 unprovable + 3 provable = net better quality)
+
+### Agent Status
+1. **proof** (RUNNING since 15:00): Working on L7791 (EndToEnd param) + hasAbruptCompletion_step_preserved. Decomposed hasAbruptCompletion from 1 monolithic sorry into 7 case-specific sorries. **REWROTE prompt**: added firstNonValueExpr_reconstruct helper lemma template for list cases.
+2. **jsspec** (EXITED code 1 at 15:00): Previous run (09:00-14:12) did major structural work: deleted unprovable convertExpr_not_value, added CC_SimRel.supported field, switched callers to _supported variant. Net +3 sorry but replaced 2 FALSE sorries with 3 PROVABLE ones. **REWROTE prompt**: L4333 (try exact Core.Step.mk hcore) and L3408 (Core_step_preserves_supported helper).
+3. **wasmspec** (RUNNING since 15:00): Working on if compound/HasIfInHead targets (L9083/9084/9156/9157). **REWROTE prompt**: updated state after supervisor setIndex fix.
+
+### Actions Taken
+1. Counted sorries: ANF 36 + CC 18 = 54 raw. Down from 61.
+2. **CLOSED NoNestedAbrupt_step_preserved setIndex case** (-1 sorry): Wrote full proof following getIndex pattern but with 3 sub-expressions (obj, idx, val). Build verified, 0 errors at edit site.
+3. **REWROTE proof prompt**: Added firstNonValueExpr_reconstruct helper lemma + call case template for closing remaining 6 list cases.
+4. **REWROTE jsspec prompt**: L4333 fix strategies (Core.Step.mk hcore, constructor), L3408 helper.
+5. **REWROTE wasmspec prompt**: Updated state, same targets.
+6. Logged to time_estimate.csv.
+
+### Sorry Breakdown
+
+**ANF (36 sorry tokens):**
+- Group A (7): L7522-L7708 — eval context lifting, PARKED
+- Throw dispatch (1): L8349, DEFERRED
+- Return compound (2): L8499, L8502, DEFERRED
+- Await compound (2): L8672, L8675, DEFERRED
+- Yield compound (2): L8826, L8829, DEFERRED
+- Let step sim (1): L8856, DEFERRED
+- While step sim (1): L8904, PARKED
+- If compound (4): L9083, L9084, L9156, L9157 — wasmspec targets
+- TryCatch (1): L9201, DEFERRED
+- hasAbruptCompletion list cases (7): L9382+, proof agent target
+- NoNestedAbrupt list cases (6): L9703+, proof agent target (setIndex CLOSED this run)
+- Break/Continue compound (2): L10128, L10181, PARKED
+
+**CC (18 sorry tokens):**
+- L3408: Core_step_preserves_supported — jsspec Task 2
+- L3435: captured var multi-step — BLOCKED
+- L3764, L3787: CCStateAgree if — BLOCKED by architecture
+- L4333: convert tactic regression — jsspec Task 1
+- L4345: non-consoleLog function call — BLOCKED
+- L4553, L4561: semantic mismatch call — BLOCKED
+- L5199: getIndex string — UNPROVABLE
+- L6441: functionDef — BLOCKED by HeapInj
+- L6598, L6599, L6671: tryCatch CCStateAgree — BLOCKED
+- L6779: while_ CCState — BLOCKED by architecture
+- L7791: h_supp param — proof agent Task 1
+
+### Critical Assessment
+First real sorry reduction in 4+ hours. Proof agent is active and decomposing theorems (good structural progress). jsspec exited but did valuable restructuring. wasmspec is active on if compound. Next run should see:
+- proof agent: L7791 closed (-1 CC sorry) + possibly hasAbruptCompletion cases
+- jsspec: needs restart, should close L4333 (-1 CC sorry)
+- wasmspec: if compound cases (4 sorry targets)
+Target: -3 to -6 sorries next run.
+
+---
+
 ## Run: 2026-04-04T13:00:11+00:00
 
 ### Metrics
@@ -4025,3 +4084,4 @@ MAJOR PROGRESS this run. NoNestedAbrupt went from 22 sorry → 7 sorry (list/com
 ## Run: 2026-04-04T15:00:04+00:00
 
 2026-04-04T15:05:01+00:00 SKIP: already running
+2026-04-04T15:23:39+00:00 DONE
