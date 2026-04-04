@@ -3040,32 +3040,6 @@ private theorem hasAbruptCompletionProps_firstNonValueProp_preserved
   simp only [hasAbruptCompletionProps, Bool.or_eq_false_iff]
   exact ⟨hd, he, hr⟩
 
-private theorem firstNonValueProp_noNestedAbrupt_preserved
-    {props : List (Flat.PropName × Flat.Expr)}
-    {done : List (Flat.PropName × Flat.Expr)} {name : Flat.PropName}
-    {target : Flat.Expr} {remaining : List (Flat.PropName × Flat.Expr)}
-    (hfnv : Flat.firstNonValueProp props = some (done, name, target, remaining))
-    (hna : ∀ p ∈ props, NoNestedAbrupt p.2) :
-    NoNestedAbrupt target ∧
-    (∀ p ∈ remaining, NoNestedAbrupt p.2) ∧
-    (∀ (e' : Flat.Expr), NoNestedAbrupt e' →
-      ∀ p ∈ done ++ (name, e') :: remaining, NoNestedAbrupt p.2) := by
-  have hsplit := firstNonValueProp_eq_append hfnv
-  rw [hsplit] at hna
-  have ht : NoNestedAbrupt target := by
-    have := hna (name, target) (List.mem_append_right _ (List.mem_cons_self _ _))
-    exact this
-  have hr : ∀ p ∈ remaining, NoNestedAbrupt p.2 := fun p hp =>
-    hna p (List.mem_append_right _ (List.mem_cons.mpr (Or.inr hp)))
-  have hd : ∀ p ∈ done, NoNestedAbrupt p.2 := fun p hp =>
-    hna p (List.mem_append_left _ hp)
-  refine ⟨ht, hr, fun e' he' x hx => ?_⟩
-  cases List.mem_append.mp hx with
-  | inl h => exact hd x h
-  | inr h => cases List.mem_cons.mp h with
-    | inl h => simp at h; obtain ⟨_, rfl⟩ := h; exact he'
-    | inr h => exact hr x h
-
 set_option autoImplicit true in
 /-- No nested abrupt completions: arguments to throw/return/yield/await are free
     of abrupt completion forms. All other sub-expressions recursively satisfy
@@ -3162,6 +3136,32 @@ private theorem firstNonValueExpr_noNestedAbrupt_preserved
   | inl h => exact hd x h
   | inr h => cases List.mem_cons.mp h with
     | inl h => subst h; exact he'
+    | inr h => exact hr x h
+
+private theorem firstNonValueProp_noNestedAbrupt_preserved
+    {props : List (Flat.PropName × Flat.Expr)}
+    {done : List (Flat.PropName × Flat.Expr)} {name : Flat.PropName}
+    {target : Flat.Expr} {remaining : List (Flat.PropName × Flat.Expr)}
+    (hfnv : Flat.firstNonValueProp props = some (done, name, target, remaining))
+    (hna : ∀ p ∈ props, NoNestedAbrupt p.2) :
+    NoNestedAbrupt target ∧
+    (∀ p ∈ remaining, NoNestedAbrupt p.2) ∧
+    (∀ (e' : Flat.Expr), NoNestedAbrupt e' →
+      ∀ p ∈ done ++ (name, e') :: remaining, NoNestedAbrupt p.2) := by
+  have hsplit := firstNonValueProp_eq_append hfnv
+  rw [hsplit] at hna
+  have ht : NoNestedAbrupt target := by
+    have := hna (name, target) (List.mem_append_right _ (List.mem_cons_self _ _))
+    exact this
+  have hr : ∀ p ∈ remaining, NoNestedAbrupt p.2 := fun p hp =>
+    hna p (List.mem_append_right _ (List.mem_cons.mpr (Or.inr hp)))
+  have hd : ∀ p ∈ done, NoNestedAbrupt p.2 := fun p hp =>
+    hna p (List.mem_append_left _ hp)
+  refine ⟨ht, hr, fun e' he' x hx => ?_⟩
+  cases List.mem_append.mp hx with
+  | inl h => exact hd x h
+  | inr h => cases List.mem_cons.mp h with
+    | inl h => simp at h; obtain ⟨_, rfl⟩ := h; exact he'
     | inr h => exact hr x h
 
 /-\! ### ANF Inversion Infrastructure (inlined from ANFInversion.lean) -/

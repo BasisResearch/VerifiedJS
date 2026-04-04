@@ -6146,3 +6146,57 @@ observable events and breaking ANF_SimRel correspondence.
 ## Run: 2026-04-04T16:15:01+00:00
 
 ### 2026-04-04T16:15:12+00:00 Starting run
+
+#### Analysis of compound condition + HasIfInHead sorries (L9257/9258/9330/9331)
+
+**Problem structure:**
+- `normalizeExpr_if_step_sim` proves: when `normalizeExpr sf.expr k` produces `.if cond then_ else_`, one ANF step can be simulated by Flat steps
+- `cases hif_head` decomposes by HasIfInHead constructor:
+  - `if_direct` → `cases c_flat with | lit | var | this` all proved; `| _ =>` is L9257/9330
+  - 33 other HasIfInHead constructors → `all_goals sorry` at L9258/9331
+
+**Why these are hard:**
+1. **Compound condition (L9257/9330):** `c_flat ∉ {lit, var, this}`. Could be:
+   - Trivial chain (`.seq` of lit/var/this): needs multi-step flat evaluation of the chain inside the if condition, then branching. Closable with ~100-line helper theorem by induction on `trivialChainCost`.
+   - Non-trivial (`.let`, `.assign`, `.binary`, etc. with nested HasIfInHead): the normalization "lifts" an inner `.if` to the top. Needs depth-inductive stepping through evaluation contexts. Same infrastructure as HasIfInHead cases.
+
+2. **HasIfInHead cases (L9258/9331):** 33 sub-goals (seq_left, seq_right, let_init, getProp_obj, ...). For each:
+   - `sf.expr = C[e]` where `C[]` is an evaluation context and `e` has HasIfInHead
+   - `normalizeExpr C[e] k` produces `.if` by lifting the inner `.if` through `C[]`
+   - Flat machine must step through `C[]` to reach the `.if`, then branch
+   - ALL 33 cases are reachable (none are contradictions with well-formedness)
+   - Each needs the same depth-inductive infrastructure
+
+**What's needed:** A theorem like `normalizeExpr_labeled_step_sim` (which exists at L7500 with depth induction) but for the `.if` case:
+```
+normalizeExpr_if_eval_sim :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    normalizeExpr e k n = .ok (.if cond then_ else_, m) →
+    k trivial-preserving →
+    ExprWellFormed e env →
+    ∃ sf' evs, Flat.Steps ⟨e, env, ...⟩ evs sf' ∧
+    sf'.expr = .if c' then_flat else_flat ∧ c' ∈ {lit, var, this} ∧
+    normalizeExpr (.if c' then_flat else_flat) k = .ok (.if cond then_ else_, m') ∧
+    ...
+```
+Estimated size: ~300-500 lines, mirroring `normalizeExpr_labeled_step_sim` structure.
+
+**No changes made to code in this run.** The sorries require significant new infrastructure that cannot be incrementally added without risk of build breakage.
+### 2026-04-04T16:47:48+00:00 Run complete — analysis only, no code changes. See analysis above.
+
+#### Broader sorry analysis
+All 35 remaining sorries fall into 3 categories:
+1. **Eval context stepping** (L7696/7729/7740/7821/7854/7865/7882/8523/8673/8676/8846/8849/9000/9003/9030/9078/9257/9258/9330/9331/9375): Need depth-inductive flat stepping through `.seq`, `.let`, `.assign`, `.binary`, `.unary`, etc. wrappers. The `normalizeExpr_labeled_step_sim` at L7500 is the existing model for this pattern.
+2. **Flat.step? error propagation** (L10603/10656): break/continue in compound expressions — need Flat semantics extension.
+3. **hasAbruptCompletion/NoNestedAbrupt** (L9630/9771/10070/10202): need analysis of function bodies and catch handlers.
+
+**Key insight:** A single general-purpose helper theorem —
+```
+normalizeExpr_eval_context_step_sim :
+    ∀ d e, e.depth ≤ d → normalizeExpr e k = ok (target, m) →
+    ∃ evs sf', Flat.Steps ⟨e, ...⟩ evs sf' ∧
+    sf'.expr directly matches target's shape ∧ ...
+```
+— would close categories 1 entirely (20+ sorries). This is the highest-impact infrastructure to build next.
+### 2026-04-04T16:49:05+00:00 Run complete — analysis only, 0 sorries closed. Sorry count: 27 lines (was 35 per prompt; the count represents sorry-containing lines, some covering multiple goals like all_goals sorry).
+2026-04-04T16:49:22+00:00 DONE
