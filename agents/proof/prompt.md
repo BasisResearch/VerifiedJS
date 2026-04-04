@@ -1,4 +1,4 @@
-# proof — Steps_*_ctx are BUILT. Now USE them to close Group D sorries.
+# proof — YOU HAVE BEEN STUCK ON GROUP D FOR 3 RUNS. CLOSE THEM NOW.
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -17,62 +17,67 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 - If build OOMs: add `set_option maxHeartbeats 200000` above the theorem
 - Do NOT attempt to build the entire file if it's failing
 
-## STATE: ANF has 22 sorries. Steps_ctx_lift + 7 wrappers are BUILT at L1737-1853. EXCELLENT WORK.
+## STATE: ANF has 22 sorries. Steps_ctx_lift + 7 wrappers are BUILT (L1737-1853). You built them 3 RUNS AGO. USE THEM.
 
-## SORRY MAP (22 tokens, CURRENT line numbers):
+## SORRY MAP (22 tokens, CURRENT line numbers as of 03:05 UTC):
 
 ### Group A — normalizeExpr_labeled_step_sim (7): L6531, L6564, L6575, L6656, L6689, L6700, L6717
-- BLOCKED: needs continuation-independence (Task 2). Do NOT attempt yet.
+- BLOCKED: needs continuation-independence. Do NOT attempt yet.
 
-### Group D — throw/return/await/yield compound flat_arg (4 sorries, 4 HasXInHead sorries = 8 total):
-- **L6894**: throw compound flat_arg ← YOUR #1 TARGET
-- **L6897**: HasThrowInHead compound cases
-- **L7047**: return compound inner_val ← YOUR #2 TARGET
-- **L7050**: HasReturnInHead compound cases
-- **L7220**: await compound inner_arg ← YOUR #3 TARGET
-- **L7223**: HasAwaitInHead compound cases
-- **L7374**: yield compound inner_val ← YOUR #4 TARGET
-- **L7377**: HasYieldInHead compound cases
+### Group D — throw/return/await/yield compound (8 sorries):
+- **L7122**: throw compound flat_arg ← TARGET #1
+- **L7125**: HasThrowInHead compound cases ← TARGET #2
+- **L7275**: return compound inner_val ← TARGET #3
+- **L7278**: HasReturnInHead compound cases ← TARGET #4
+- **L7448**: await compound inner_arg ← TARGET #5
+- **L7451**: HasAwaitInHead compound cases ← TARGET #6
+- **L7602**: yield compound inner_val ← TARGET #7
+- **L7605**: HasYieldInHead compound cases ← TARGET #8
 
-### Group F — let/seq/if/tryCatch (5): L7404, L7452, L7483, L7486, L7530
-- DEFER: needs characterization lemmas.
+### Group F — let/seq/if/tryCatch (5): L7632, L7680, L7711, L7714, L7758
+- DEFER until Group D is done.
 
-### Group G — anfConvert_step_star break/continue dead code (2): L7891, L7942
-- DEFER: needs hasBreak/hasContinue reformulation (wasmspec working on this).
+### Group G — break/continue dead code (2): L8119, L8170
+- DEFER: wasmspec is working on reformulation.
 
-## YOUR TASKS (in strict priority order):
+## YOUR ONE AND ONLY TASK: Close Group D sorries (8 sorries → 0)
 
-### TASK 1: Close Group D compound flat_arg sorries using Steps_*_ctx (DO THIS FIRST)
+You have ALL the tools. They compile. You built them. Now USE them.
 
-You have Steps_throw_ctx at L1799, Steps_return_some_ctx at L1828, Steps_await_ctx at L1848, Steps_yield_some_ctx at L1838.
+### How L7122 works (throw compound flat_arg):
 
-**Start with L6894** (throw compound flat_arg). The pattern:
-1. The IH gives you `Flat.Steps` for the sub-expression (flat_arg stepping to a value)
-2. Apply `Steps_throw_ctx` to lift those steps through `.throw [·]`
-3. The result gives you `Flat.Steps` for `.throw flat_arg` stepping to `.throw val`
-4. Then one more step handles `.throw val` → emit throw event
+The proof state at L7122 is inside `normalizeExpr_throw_step_sim`. The match on `sf.expr` has handled literal, var, this, break, continue cases. The `| _ =>` catches compound expressions (seq, let, assign, if, call, etc.).
 
-Read L6860-6897 to understand the proof state. The sorry at L6894 is inside a match on `sf.expr` cases — the compound cases (seq, let, assign, if, call, etc.) need the sub-expression to step first, then the throw context wrapping.
+For compound flat_arg (L7122):
+1. `sf.expr` is compound (not a value/var/this/break/continue)
+2. The normalizeExpr produced `.throw (some (.trivial t))` from this compound expr
+3. This means sf.expr must have `.throw` at its eval head (HasThrowInHead)
+4. The sub-expression (flat_arg) needs to step first
+5. Use `Steps_throw_ctx` (L1799) to lift sub-expression steps through the throw context
 
-Use `lean_goal` at L6894 to see the exact proof state. Then try:
+**CONCRETE APPROACH for L7122:**
 ```lean
     | _ =>
-      -- Use IH to step sub-expression, then Steps_throw_ctx to lift
-      obtain ⟨sf_mid, evs_sub, hsteps_sub, hsf_mid⟩ := ih_sub ...
-      exact ⟨_, _, Steps_throw_ctx hsteps_sub hpres, ...⟩
+      -- The sub-expression inside .throw needs to step.
+      -- Use HasThrowInHead to get that sf.expr = .throw sub for some sub,
+      -- then sub takes a step, and Steps_throw_ctx lifts it.
+      sorry
 ```
 
-Use `lean_multi_attempt` at each sorry to test closing tactics.
+Use `lean_goal` at L7122 col 7 to see the EXACT proof state. Then use `lean_multi_attempt` to try tactics.
 
-After L6894, do the same for L7047 (return), L7220 (await), L7374 (yield), adapting the context wrapper.
+For L7125 (HasThrowInHead compound): similar — the HasThrowInHead inductive gives compound constructors. Use `lean_goal` at L7125 to see the proof state.
 
-### TASK 2: Continuation-independence (if time permits)
+### WORKFLOW:
+1. `lean_goal` at L7122 to see proof state
+2. `lean_multi_attempt` with candidate tactics
+3. If needed, read the HasThrowInHead definition to understand what constructors appear
+4. Write the proof, build `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+5. Repeat for L7275, L7448, L7602 (same pattern, different context wrapper)
+6. Then L7125, L7278, L7451, L7605 (HasXInHead compound cases)
 
-For Group A (labeled sorries), `.throw X` discards outer continuation:
-```lean
-normalizeExpr (.throw e) k = normalizeExpr e (fun v => .throw (.trivial v))
-```
-This means k is irrelevant and can be trivialK for the IH. Prove ONE case.
+### IF YOU CANNOT CLOSE THEM:
+Tell me EXACTLY what the proof state is at L7122 (copy the `lean_goal` output) and what tactic you tried that failed. Do NOT just say "it's hard" — show me the goal.
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`
