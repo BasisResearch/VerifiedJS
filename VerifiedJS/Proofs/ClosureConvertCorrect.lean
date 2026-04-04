@@ -3377,57 +3377,64 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
     s'.expr.supported = true := by
   cases hexpr : s.expr with
   | lit v =>
-    rw [state_with_expr_eq hexpr] at hstep
-    simp [Core.step?] at hstep
-  | forIn binding obj body =>
-    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
-  | forOf binding iterable body =>
-    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
-  | yield arg delegate =>
-    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
-  | await arg =>
-    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+    rw [state_with_expr_eq hexpr] at hstep; simp [Core.step?] at hstep
+  | forIn => rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+  | forOf => rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+  | yield => rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+  | await => rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
   | var name =>
     rw [state_with_expr_eq hexpr] at hstep
-    simp [Core.step?, Core.pushTrace] at hstep
-    split at hstep <;> simp_all [Core.Expr.supported]
+    cases hlookup : Core.Env.lookup s.env name with
+    | some v =>
+      have h := Core_step?_var_found { s with expr := .var name } name v (by simp [hlookup])
+      rw [h] at hstep; injection hstep with hstep; obtain ⟨-, rfl⟩ := Prod.mk.inj hstep; rfl
+    | none =>
+      have h := Core_step?_var_not_found { s with expr := .var name } name (by simp [hlookup])
+      rw [h] at hstep; injection hstep with hstep; obtain ⟨-, rfl⟩ := Prod.mk.inj hstep; rfl
   | this =>
     rw [state_with_expr_eq hexpr] at hstep
-    simp [Core.step?, Core.pushTrace] at hstep
-    split at hstep <;> simp_all [Core.Expr.supported]
+    cases hlookup : Core.Env.lookup s.env "this" with
+    | some v =>
+      have h := Core_step?_this_found { s with expr := .this } v (by simp [hlookup])
+      rw [h] at hstep; injection hstep with hstep; obtain ⟨-, rfl⟩ := Prod.mk.inj hstep; rfl
+    | none =>
+      have h := Core_step?_this_not_found { s with expr := .this } (by simp [hlookup])
+      rw [h] at hstep; injection hstep with hstep; obtain ⟨-, rfl⟩ := Prod.mk.inj hstep; rfl
   | «break» label =>
     rw [state_with_expr_eq hexpr] at hstep
-    simp [Core.step?, Core.pushTrace] at hstep
-    simp_all [Core.Expr.supported]
+    have h := Core_step?_break { s with expr := .«break» label } label
+    rw [h] at hstep; injection hstep with hstep; obtain ⟨-, rfl⟩ := Prod.mk.inj hstep; rfl
   | «continue» label =>
     rw [state_with_expr_eq hexpr] at hstep
-    simp [Core.step?, Core.pushTrace] at hstep
-    simp_all [Core.Expr.supported]
+    have h := Core_step?_continue { s with expr := .«continue» label } label
+    rw [h] at hstep; injection hstep with hstep; obtain ⟨-, rfl⟩ := Prod.mk.inj hstep; rfl
   | «return» arg =>
     cases arg with
     | none =>
       rw [state_with_expr_eq hexpr] at hstep
-      simp [Core.step?, Core.pushTrace] at hstep
-      simp_all [Core.Expr.supported]
+      have h := Core_step?_return_none { s with expr := .«return» none }
+      rw [h] at hstep; injection hstep with hstep; obtain ⟨-, rfl⟩ := Prod.mk.inj hstep; rfl
     | some => sorry
   | labeled lbl body =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
-    simp [Core.step?, Core.pushTrace] at hstep
-    simp_all [Core.Expr.supported]
+    have h := Core_step?_labeled { s with expr := .labeled lbl body } lbl body
+    rw [h] at hstep; injection hstep with hstep; obtain ⟨-, rfl⟩ := Prod.mk.inj hstep
+    exact hsupp
   | functionDef fname params body isAsync isGenerator =>
     rw [state_with_expr_eq hexpr] at hstep
     simp [Core.step?, Core.pushTrace] at hstep
-    simp_all [Core.Expr.supported]
+    obtain ⟨-, rfl⟩ := hstep; rfl
   | while_ cond body =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
     simp [Core.step?, Core.pushTrace] at hstep
-    simp_all [Core.Expr.supported]
+    obtain ⟨-, rfl⟩ := hstep
+    simp [Core.Expr.supported]; exact ⟨hsupp.1, hsupp.2, hsupp.1, hsupp.2⟩
   | newObj callee args =>
     rw [state_with_expr_eq hexpr] at hstep
     simp [Core.step?, Core.pushTrace] at hstep
-    simp_all [Core.Expr.supported]
+    obtain ⟨-, rfl⟩ := hstep; rfl
   | «let» => sorry
   | assign => sorry
   | «if» => sorry
