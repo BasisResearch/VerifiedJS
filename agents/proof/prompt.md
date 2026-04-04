@@ -1,4 +1,4 @@
-# proof — Build multi-step context lifting lemmas, then close compound sorries
+# proof — Build Steps_*_ctx multi-step lifting lemmas, then close compound sorries
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -21,67 +21,84 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 `bindComplex rhs k` returns `.let freshName rhs (k (.var freshName))`.
 SKIP `let_step_sim` entirely.
 
-## STATE: ANF has 22 sorries, ALL in L6400-7414.
+## STATE: ANF has 22 sorries, ALL in L6400-7414. Down 1 from last run (closed L7135 await .this).
 
-## ⚠️⚠️⚠️ KEY FINDING FROM WASMSPEC ⚠️⚠️⚠️
+## YOUR EXCELLENT ANALYSIS from last run is correct:
+- hasBreakInHead/hasContinueInHead (L6612, L6625) are FALSE as stated — SKIP THEM
+- All remaining compound sorries need eval context lifting
+- Continuation-independence approach for .return/.yield/.throw/.await is the key
 
-**hasBreakInHead_flat_error_steps (L6612) is NOT PROVABLE as stated.**
-Error events do NOT short-circuit eval contexts in Flat semantics. When `.break label` is inside `.seq (.break label) b`, Flat.step? produces `.seq (.lit .undefined) b`, then steps to `b` — NOT to `.lit .undefined`.
-
-**DO NOT waste time on L6612 or L6625 (hasContinueInHead).**
-
-**Instead**: All 12 compound sorries + 4 non-labeled sorries share ONE common blocker: missing multi-step context lifting lemmas.
-
-## YOUR TASKS (in order):
+## YOUR TASKS (in priority order):
 
 ### TASK 1: Build Steps_*_ctx multi-step context lifting lemmas (HIGHEST PRIORITY)
 
-These are MECHANICAL — just induction on `Flat.Steps` using existing single-step lemmas.
+Single-step versions already exist:
+- `step?_seq_ctx` at L1452
+- `step?_let_init_ctx` at L1566
+- `step?_throw_ctx` at L1549
+- `step?_if_cond_step` at L1469
 
-Build these lemmas (add them near the existing single-step versions around L1450-1650):
+Build multi-step versions by induction on `Flat.Steps`. Place them after the single-step versions (~L1600).
 
+**Template** (adapt for each context):
 ```lean
--- Multi-step seq context: if e steps to e' in multiple steps, then .seq e b steps to .seq e' b
 private theorem Steps_seq_ctx
-    (sf : Flat.State) (evs : List Core.TraceEvent) (sf' : Flat.State)
     (b : Flat.Expr)
-    (hsteps : Flat.Steps sf evs sf')
-    (hsf : sf.expr = .seq e₁ b → False) -- maybe not needed
-    : Flat.Steps
-        ⟨.seq sf.expr b, sf.env, sf.heap, sf.trace, sf.funcs, sf.callStack⟩
-        evs
-        ⟨.seq sf'.expr b, sf'.env, sf'.heap, sf'.trace, sf'.funcs, sf'.callStack⟩ := by
+    (hsteps : Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs ⟨e', env', heap', trace', funcs', cs'⟩)
+    (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hnotval : ∀ sf_mid, -- each intermediate state's expr is not a value
+       ... ) :
+    Flat.Steps
+      ⟨.seq e b, env, heap, trace, funcs, cs⟩
+      evs
+      ⟨.seq e' b, env', heap', trace', funcs', cs'⟩ := by
   induction hsteps with
-  | refl _ => exact Flat.Steps.refl _
+  | refl => exact .refl _
   | tail hsteps hstep ih =>
-    exact Flat.Steps.tail ih (by -- use step?_seq_ctx here)
+    exact .tail (ih ...) (step?_seq_ctx ...)
 ```
 
-You need multi-step versions for:
-1. `Steps_seq_ctx` — `.seq [·] b` (use `step?_seq_ctx` at L1452)
-2. `Steps_let_init_ctx` — `.let name [·] body` (use `step?_let_init_ctx`)
-3. `Steps_throw_ctx` — `.throw [·]` (use `step?_throw_ctx`)
-4. `Steps_return_some_ctx` — `.return (some [·])` (use `step?_return_some_ctx`)
-5. `Steps_await_ctx` — `.await [·]` (use `step?_await_ctx`)
-6. `Steps_yield_some_ctx` — `.yield (some [·]) d` (use `step?_yield_some_ctx`)
+**Important**: The `hnotval` hypothesis needs to state that EVERY intermediate expression is not a value (not just the initial one). Use `Flat.Steps` induction carefully.
 
-First `grep -n "step?_seq_ctx\|step?_let_init_ctx\|step?_throw_ctx\|step?_return_some_ctx\|step?_await_ctx\|step?_yield_some_ctx"` to find exact locations of single-step versions. Read them. Then build multi-step versions by induction on Flat.Steps.
+Build these 4 (in order):
+1. `Steps_seq_ctx` — uses `step?_seq_ctx`
+2. `Steps_throw_ctx` — uses `step?_throw_ctx`
+3. `Steps_let_init_ctx` — uses `step?_let_init_ctx`
+4. `Steps_if_cond_ctx` — uses `step?_if_cond_step`
 
-### TASK 2: Use Steps_*_ctx to close compound Type A sorries (L6778, L6931, L7104, L7258)
+### TASK 2: Use Steps_*_ctx to close compound Type A sorries
 
-Pattern for each: the sub-expression is compound (not a value). Apply IH to get multi-step reduction to value. Lift through context with Steps_*_ctx. Then apply the final single-step rule.
+After building the multi-step lemmas, use them to close:
+- **L6778** (throw compound flat_arg): sub-expression steps via IH, lift through `.throw [·]` context
+- **L6931** (return compound inner_val): lift through `.return (some [·])` context
+- **L7104** (await compound inner_arg): lift through `.await [·]` context
+- **L7258** (yield compound inner_val): lift through `.yield (some [·]) d` context
 
-### TASK 3: Close non-labeled inner value sorries (L6409, L6442, L6534, L6567)
+Pattern for each: IH gives multi-step reduction of sub-expr. Steps_*_ctx lifts it through the context. Then single-step rule applies.
 
-These need TWO-LAYER context lifting (e.g., `.return (some (.return (some [·])))`). Build by composing two Steps_*_ctx calls.
+### TASK 3: Continuation-independence lemmas (if time permits)
 
-### SKIP THESE:
-- L6612 (hasBreakInHead) — NOT PROVABLE as stated
-- L6625 (hasContinueInHead) — NOT PROVABLE as stated
-- L7288 (.let characterization) — bindComplex PRODUCES .let
-- L6781, L6934, L7107, L7261 (Type B compound — HasXInHead cases) — depend on fixing HasBreakInHead first
+For Categories 2-3 (non-labeled inner value, compound/bindComplex), you identified:
+- `.return (some X)`, `.yield (some X)`, `.throw X`, `.await X` all DISCARD outer continuation
+- So `normalizeExpr (.return (some X)) k = normalizeExpr X returnK` regardless of k
+- This means the IH can use k' = trivialK (satisfying trivial-preserving) for these wrappers
+
+Build ONE continuation-independence lemma for `.throw`:
+```lean
+private theorem normalizeExpr_throw_k_independent (e : Flat.Expr) (k1 k2 : ...) (n : Nat) :
+    (ANF.normalizeExpr (.throw e) k1 n).fst = (ANF.normalizeExpr (.throw e) k2 n).fst
+```
+If this works, do the same for return/yield/await.
+
+### SKIP THESE (confirmed not provable or blocked):
+- L6612 (hasBreakInHead) — FALSE as stated
+- L6625 (hasContinueInHead) — FALSE as stated
+- L7288 (.let characterization) — bindComplex produces .let
+- L6781, L6934, L7107, L7261 (Type B compound — HasXInHead cases) — need break fix first
 - L7336, L7367, L7370 (if simulation) — separate approach needed
 - L7414 (final sorry) — depends on everything else
+- L6409, L6442, L6534, L6567 (non-labeled inner value) — need continuation-independence first
+- L6453, L6578, L6595 (compound/bindComplex) — need continuation-independence first
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

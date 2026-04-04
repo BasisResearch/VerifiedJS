@@ -1,3 +1,65 @@
+## Run: 2026-04-04T01:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 22 + CC 14 = **36 actual** (was 38 last run)
+- **Delta**: -2. Proof closed 1 (await .this L7135), jsspec closed 1 (consoleLog L4269).
+- **LowerCorrect**: 0 sorries (DONE since earlier)
+
+### Agent Status
+1. **proof** (last completed 00:53): Detailed analysis of all 22 ANF sorries. Key finding: hasBreakInHead/hasContinueInHead FALSE as stated. Identified continuation-independence as key to unlocking categories 2-3. No sorries closed this run (analysis run).
+   - **Prompt REWRITTEN**: Focus on Steps_*_ctx multi-step lifting lemmas (TASK 1), then compound Type A sorries (TASK 2), then continuation-independence (TASK 3). Skip hasBreakInHead/hasContinueInHead entirely.
+
+2. **jsspec** (started 01:00): Running on CCStateAgree invariant fix — but its OWN analysis says this would BREAK 14 working cases.
+   - **Prompt REWRITTEN**: ABORT CCStateAgree change. New targets: newObj all-values (L4498/L4506), tryCatch error investigation (L6608).
+
+3. **wasmspec** (completed 00:45): Delivered both investigations — break_fix_plan and if_step_sim_plan. Concrete proposals for both.
+   - **Prompt REWRITTEN**: Implement normalizeExpr_no_compound_break lemma (fixes L6612/L6625 area). Research CCStateAgree alternative.
+
+### Actions Taken
+1. Counted sorries: ANF 22 + CC 14 = 36.
+2. **REWROTE proof prompt**: Steps_*_ctx multi-step lifting lemmas → compound Type A sorries → continuation-independence.
+3. **REWROTE jsspec prompt**: ABORTED CCStateAgree invariant change (would break 14 cases). Redirected to newObj + tryCatch error.
+4. **REWROTE wasmspec prompt**: Implement normalizeExpr_no_compound_break (unblocks L6612/L6625 area). Research CCStateAgree alternatives.
+5. Logged to time_estimate.csv.
+
+### Sorry Breakdown
+
+**ANF (22 sorries):**
+- L6409, L6442, L6534, L6567: non-labeled inner value (need continuation-independence)
+- L6453, L6578, L6595: compound/bindComplex (need continuation-independence)
+- L6612: hasBreakInHead (FALSE as stated — wasmspec fixing)
+- L6625: hasContinueInHead (FALSE as stated — wasmspec fixing)
+- L6778, L6931, L7104, L7258: compound Type A (CLOSABLE via Steps_*_ctx — proof TASK 2)
+- L6781, L6934, L7107, L7261: compound Type B (need break fix first)
+- L7288: .let characterization (bindComplex produces .let — structural)
+- L7336, L7367, L7370: if simulation (separate approach)
+- L7414: final sorry (depends on all above)
+
+**CC (14 sorries, 6 CCStateAgree-blocked → PARKED):**
+- L1507/1508: forIn/forOf stubs (UNPROVABLE)
+- L3387: captured var (multi-step gap)
+- L3715: if-then CCStateAgree (PARKED)
+- L3738: if-else CCStateAgree ×2 (PARKED)
+- L4292: non-consoleLog call (BLOCKED no FuncsCorr)
+- L4498/4506: newObj (jsspec TARGET)
+- L5144: getIndex string (UNPROVABLE)
+- L6382: functionDef (PARKED — CCStateAgree)
+- L6537: tryCatch finally (PARKED — CCStateAgree)
+- L6608: tryCatch error (jsspec investigating)
+- L6715: while_ (PARKED — CCStateAgree)
+
+### Strategy Assessment
+CCStateAgree invariant change was wrong bet — breaks more than it fixes. New strategy:
+- **Quick wins**: proof agent Steps_*_ctx → 4 compound Type A. Target: 36 → 32.
+- **Medium-term**: wasmspec normalizeExpr_no_compound_break → restructure L6612/L6625 → unblock 4 Type B. Target: 32 → 28.
+- **Research**: wasmspec investigates CCStateAgree alternatives for 6 parked CC sorries.
+- **jsspec**: newObj + tryCatch error. Target: 32 → 30.
+
+### Biggest Risk
+Steps_*_ctx lemmas need careful intermediate-state invariants. If they don't compose, compound Type A sorries remain blocked.
+
+---
+
 ## Run: 2026-04-03T22:05:01+00:00
 
 ### Metrics
@@ -9491,3 +9553,4 @@ hasBreakInHead_flat_error_steps may be UNPROVABLE as currently stated. Error eve
 
 ## Run: 2026-04-04T01:05:01+00:00
 
+2026-04-04T01:09:47+00:00 DONE

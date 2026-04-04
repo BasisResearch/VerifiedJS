@@ -1,51 +1,60 @@
-# wasmspec — Fix hasBreakInHead/hasContinueInHead theorems + if_step_sim approach
+# wasmspec — Implement normalizeExpr_no_compound_break + CCStateAgree alternative
 
-## EXCELLENT analysis on break error propagation. Your finding that hasBreakInHead_flat_error_steps is NOT PROVABLE was critical.
+## EXCELLENT work on break analysis and if_step_sim investigation.
 
 ## ABSOLUTE RULES
-- **DO NOT** edit ClosureConvertCorrect.lean — jsspec is implementing CCStateAgree fix
-- **DO NOT** run `lake build` anything
+- **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
+- **DO NOT** run `lake build` anything large
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
 - MEMORY: 7.7GB total, NO swap. ~4GB available.
-- You CAN edit ANFConvertCorrect.lean for investigation 1 (but coordinate with proof agent — only edit L6600-6625 and call sites L7757-7900)
+- You CAN edit ANFConvertCorrect.lean L6600-6625 area (coordinate with proof agent)
 
-## YOUR JOB: Two investigations
+## YOUR JOB: Two tasks
 
-### Investigation 1: Fix hasBreakInHead/hasContinueInHead (CRITICAL — 2 sorries + downstream)
+### TASK 1: Implement normalizeExpr_no_compound_break (HIGHEST PRIORITY)
 
-The theorems at L6600-6625 are NOT PROVABLE as stated. But the call sites at L7757+ NEED them.
+Your analysis confirmed hasBreakInHead_flat_error_steps (L6612) and hasContinueInHead_flat_error_steps (L6625) are FALSE as stated. The proof agent CONFIRMED this independently.
 
-**Key insight**: `normalizeExpr_seq_while_first_family` proved that if normalizeExpr produces `.seq a b`, then `a = .while_ c d`. This means normalizeExpr NEVER produces `.seq (.break label) b`. Similarly for `.let`, `.if`, etc. — normalizeExpr CPS-transforms everything, so compound HasBreakInHead constructors (seq_left, seq_right, let_init, etc.) are UNREACHABLE for ANF-normalized expressions.
+The fix you proposed: normalizeExpr NEVER produces compound HasBreakInHead forms (.seq, .let, etc.) — it CPS-transforms everything. So the only reachable HasBreakInHead constructor for ANF-normalized expressions is `break_direct`.
 
-**Your task**: Verify this by checking:
-1. Read HasBreakInHead definition (grep for `inductive HasBreakInHead`)
-2. For each compound constructor of HasBreakInHead, determine if normalizeExpr can produce that form
-3. If confirmed unreachable: the FIX is to add a lemma:
+**Implementation steps:**
+1. `grep -n "inductive HasBreakInHead" VerifiedJS/` to find the definition
+2. Read it — list all constructors
+3. For each compound constructor (seq_left, seq_right, let_init, let_body, etc.):
+   - Determine which normalizeExpr output form it requires
+   - Show normalizeExpr cannot produce that form (e.g., normalizeExpr never produces `.seq (.break label) b` because it CPS-transforms seq)
+4. Write the lemma in ANFConvertCorrect.lean near L6600:
+
 ```lean
-private theorem normalizeExpr_no_compound_break
-    (e : Flat.Expr) (label : Option Flat.LabelName)
-    (h : HasBreakInHead e label)
-    (hnorm : ∃ orig k n, e = (ANF.normalizeExpr orig k n).fst) :
-    h = .break_direct := by
-  -- cases on h; for break_direct: rfl
-  -- for each compound case: derive contradiction from hnorm
-  sorry
+private theorem normalizeExpr_no_compound_HasBreakInHead
+    (e : Core.Expr) (k : Flat.Expr → Flat.Expr) (n : Nat) (label : Option Flat.LabelName)
+    (h : HasBreakInHead (ANF.normalizeExpr e k n).fst label) :
+    ∃ l, (ANF.normalizeExpr e k n).fst = .break l ∧ label = some l := by
+  cases e <;> simp [ANF.normalizeExpr] at h ⊢ <;> sorry -- per-constructor
 ```
-Then hasBreakInHead_flat_error_steps only needs to handle break_direct (already provable).
-And call sites for compound cases use `absurd` with normalizeExpr_no_compound_break.
 
-4. Read the call sites at L7757-7900 to understand exactly how to restructure
-5. Write your analysis and proposed code changes to `agents/wasmspec/break_fix_plan.md`
+5. Use `lean_multi_attempt` on each constructor case to find which close by `simp`
+6. Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
-### Investigation 2: if_step_sim approach (L7336, L7367, L7370)
+Then replace L6612 with:
+```lean
+  have ⟨l, heq, hlabel⟩ := normalizeExpr_no_compound_HasBreakInHead ... hbreak
+  subst hlabel; rw [heq]; -- now it's just .break l, which has direct stepping
+  sorry -- direct break case (simpler)
+```
 
-The proof agent found that characterizing normalizeExpr output as `.if` is harder than expected (not just from `.if` source — `.seq`, `.let` can propagate `.if`).
+### TASK 2: CCStateAgree alternative analysis (RESEARCH ONLY)
 
-Tasks:
-1. Read around L7330-7370 to see current proof state
-2. What does if_step_sim actually need to prove? Use `lean_goal` at L7336
-3. Can it be proved by strong induction on expression depth without full characterization?
-4. Write findings to `agents/wasmspec/if_step_sim_plan.md`
+jsspec found that the proposed CCStateAgree invariant change (dropping output agreement) would BREAK 14 working cases. The 6 blocked CC sorries remain parked.
+
+**Research question**: Is there a WEAKER invariant that works for both?
+
+Options to investigate:
+1. **Monotone state agreement**: `CCStateAgree_monotone st st_a` meaning `st_a.nextId ≥ st.nextId` (instead of equality). If convertExpr only cares about state monotonically...
+2. **Expression-level state independence**: Show that `(convertExpr e scope envVar envMap st1).fst = (convertExpr e scope envVar envMap st2).fst` when `st1.nextId ≥ N ∧ st2.nextId ≥ N` for some bound N. This would make the output state irrelevant.
+3. **Alpha-equivalence**: convertExpr with different states produces alpha-equivalent expressions (same structure, different fresh variable names). If the simulation is alpha-equivalence-preserving...
+
+Use `lean_hover_info` on `convertExpr` and `CCStateAgree` to understand their exact definitions. Write findings to agents/wasmspec/ccstateagree_analysis.md.
 
 ### LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

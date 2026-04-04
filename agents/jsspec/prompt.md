@@ -1,4 +1,4 @@
-# jsspec — IMPLEMENT CCStateAgree FIX (unblocks 6 sorries!)
+# jsspec — ABORT CCStateAgree invariant change. Focus on closable targets.
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,78 +11,47 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC ~15 actual sorries. You closed arrayLit and consoleLog — EXCELLENT.
-All easy non-blocked targets are exhausted. 6 of remaining sorries are BLOCKED by CCStateAgree.
+## ⚠️⚠️⚠️ ABORT CCStateAgree INVARIANT CHANGE ⚠️⚠️⚠️
 
-## ⚠️⚠️⚠️ THIS IS THE HIGHEST IMPACT TASK ⚠️⚠️⚠️
+Your OWN analysis from last run found:
+> "The change would close 2-3 of the 6 blocked sorries but would BREAK 14 currently-working USES-OUTPUT cases"
 
-### TOP PRIORITY: Fix CCStateAgree invariant (L3355-3357)
+**DO NOT attempt the invariant change.** The 6 CCStateAgree-blocked sorries (if-then, if-else, tryCatch×2, while_, functionDef) are PARKED. We will revisit when we have a better strategy.
 
-wasmspec completed a FULL ANALYSIS of all CCStateAgree uses. Here is the complete mapping:
+## STATE: CC has 14 actual sorries. You closed consoleLog — EXCELLENT.
 
-#### The invariant change (L3355-3357):
-**BEFORE:**
-```lean
-∃ (st_a st_a' : Flat.CCState),
-  (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
-  CCStateAgree st st_a ∧ CCStateAgree st' st_a'
-```
+## YOUR TASKS (in priority order):
 
-**AFTER:**
-```lean
-∃ (st_a : Flat.CCState),
-  sf'.expr = (Flat.convertExpr sc'.expr scope envVar envMap st_a).fst ∧
-  CCStateAgree st st_a
-```
+### TASK 1: newObj all-values case (L4498/L4506)
 
-#### Also fix the unpacking/packing (L3358-3361):
-- **L3359**: Change `obtain ⟨..., st_a, st_a', hconv', _, _⟩` to `obtain ⟨..., st_a, hconv', _⟩`
-- **L3361**: Change the `exact` to remove `st_a'` from the packed result
+This is the same pattern as arrayLit (which you already proved). The `f not a value` sorry at L4498 and `non-value arg` sorry at L4506 deal with the sub-stepping cases where Core allocates immediately but Flat needs to step first.
 
-#### wasmspec analysis: 13 PASS-THROUGH cases (just delete st_a'/hAgreeOut):
-These cases don't use output agreement at all. Simply remove `st_a'` and `CCStateAgree st' st_a'`:
-- lit, var, this, break, continue, forIn, forOf, return-none, yield-none, labeled, while_ (loop unroll), if-then (L3715), if-else (L3738)
+For the ALL-VALUES sub-case within newObj (if it exists separately):
+- Both Core and Flat allocate the object in one step
+- HeapInj via `alloc_both`
+- Same as your arrayLit proof
 
-#### wasmspec analysis: 14 USES-OUTPUT cases (need rework):
-These cases used `hAgreeOut` from the IH. **REPLACEMENT**: use `convertExpr_state_determined` (L567-570):
-```lean
-CCStateAgree st1 st2 →
-CCStateAgree (convertExpr e scope envVar envMap st1).snd (convertExpr e scope envVar envMap st2).snd
-```
-From `hAgreeIn : CCStateAgree st_input st_a`, derive output agreement via:
-```lean
-have hAgreeOut := convertExpr_state_determined sub_e scope envVar envMap hAgreeIn
-```
-Cases: seq (sub-step), let (init-step + body-step), assign, call, throw, setProp, getProp, getIndex, setIndex, binary, objectLit (prop step), arrayLit (elem step), tryCatch (body step + catch body)
+Read L4490-4510 to see what the actual proof state looks like. If there's a sub-case where both f and arg are values, that's your target.
 
-#### Specific blocked sorries:
-- **L3715 (if-then)**: `st_a = st`, `CCStateAgree st st` trivial by `⟨rfl, rfl⟩`
-- **L3738 (if-else)**: `st_a` = state after converting then_. Use `convertExpr_state_determined then_ ... hAgreeIn` to derive agreement
-- **L6516 (tryCatch finally)**: Same as if-else pattern — use `convertExpr_state_determined`
-- **L6587 (tryCatch error)**: Same pattern
-- **L6694 (while_)**: `st_a = st`, trivial
+### TASK 2: Investigate tryCatch error (L6608)
 
-### AFTER CCStateAgree FIX: newObj (L4477/4485)
+Read around L6600-6615. This sorry is in the tryCatch error handling case. Your previous analysis (run at 16:55) showed you proved 9/10 goals — only CCStateAgree remained. But check: is the CCStateAgree needed here truly blocked, or is there a way to provide it?
 
-If CCStateAgree fix goes well:
-- Similar to arrayLit (which you already proved)
-- All-values: both Core and Flat allocate, HeapInj via `alloc_both`
+If tryCatch error creates a NEW scope (entering catch block), the CC state threading might be simpler — the catch block's CCState might agree with the input.
+
+### TASK 3: Survey remaining non-blocked sorries
+
+After Task 1, do `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` and categorize:
+- Which sorries are genuinely CCStateAgree-blocked?
+- Which might have alternative approaches?
+- Are there any new opportunities you haven't explored?
 
 ### DO NOT TOUCH:
 - L1507/L1508 forIn/forOf — stubs, unprovable
-- L5123 getIndex string — UNPROVABLE (Float.toString opaque)
-- L4271 non-consoleLog call — BLOCKED no FuncsCorr
-- L3387 captured var — multi-step gap
-
-## WORKFLOW:
-1. `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find CURRENT line numbers
-2. Read L3340-3365 (theorem sig + invariant)
-3. Make the invariant change
-4. Fix unpacking/packing at L3358-3361
-5. Fix the 13 pass-through cases (delete st_a'/hAgreeOut)
-6. Fix the 14 uses-output cases (replace with convertExpr_state_determined)
-7. Close the 6 blocked sorries
-8. Build: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
+- L5144 getIndex string — UNPROVABLE (Float.toString opaque)
+- L4292 non-consoleLog call — BLOCKED no FuncsCorr
+- L3387 captured var — multi-step gap, needs closure env correspondence
+- L3715, L3738, L6537, L6715 — CCStateAgree blocked, PARKED
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`
