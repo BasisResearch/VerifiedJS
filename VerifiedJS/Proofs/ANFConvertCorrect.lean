@@ -9113,7 +9113,7 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
   suffices ∀ n e, e.depth ≤ n → ∀ env heap trace funcs cs ev sf',
     NoNestedAbrupt e →
     Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf') →
-    NoNestedAbrupt sf'.expr from this _ _ (Nat.le_refl _) _ _ _ _ _ hna hstep
+    NoNestedAbrupt sf'.expr from this _ _ (Nat.le_refl _) _ _ _ _ _ _ _ hna hstep
   intro n
   induction n with
   | zero =>
