@@ -3110,3 +3110,54 @@ Net result: MORE broken cases, not fewer. Approach rejected (consistent with 2 p
 
 ### 2026-04-04T09:00:13+00:00 Starting run
 2026-04-04T10:00:02+00:00 SKIP: already running
+
+### 2026-04-04T09:00 Starting run
+
+#### Task 1: Switch convertExpr_not_value callers to _supported
+**Status**: Code changes complete, awaiting build verification.
+
+Changes made:
+1. Added `sc.expr.supported = true` to `CC_SimRel` definition
+2. Added `h_supp` parameter to `closureConvert_init_related`
+3. Added `hsupp` input to the main simulation `suffices` (26 cases updated)
+4. Deleted dead `convertExpr_not_value` theorem (contained 2 unprovable sorries for forIn/forOf)
+5. Switched all 25 callers to `convertExpr_not_value_supported`
+6. Added `hsupp` to all 27 `ih_depth` recursive calls
+7. Added `supported` derivations (`hsupp_init`, `htarget_supp`, etc.) at each call site
+8. Added helper lemmas: `listSupported_firstNonValueExpr_target`, `propListSupported_firstNonValueProp_target`
+9. Updated `convertExprList_firstNonValueExpr_some` and `convertPropList_firstNonValueProp_some` helper theorems with `hsupp` param
+10. Updated `closureConvert_halt_preservation` destructuring for new CC_SimRel field
+11. Added `h_supp` to `closureConvert_trace_reflection`
+12. Kept `closureConvert_correct` backward-compatible (sorry for h_supp internally; EndToEnd.lean is read-only)
+
+Sorry trade:
+- Removed: 2 unprovable sorries (forIn/forOf in deleted theorem — theorem was FALSE)
+- Added: 2 provable sorries (supported preservation in unwrap, h_supp precondition)
+- Net: 0 count change, but qualitative improvement (provable vs unprovable)
+
+Build: OOMed (code 137) due to 5+ concurrent ANF builds using all memory. Will retry.
+
+#### Task 4: CCStateAgree Architecture Analysis
+
+**Problem**: CCState uses a counter (`nextId`) for generating fresh variable names during closure conversion. When the simulation recurses on sub-expressions, the resulting CCState diverges from the original because different expressions consume different amounts of `nextId`. This makes 5+ sorry cases unprovable.
+
+**Affected sorries**: L3764 (if-then), L3787 (if-else), L6594 (tryCatch), L6595 (tryCatch-finally), L6667 (tryCatch body-error), L6775 (while_ duplication)
+
+**Root cause for while_**: `while_ cond body` converts once, but at runtime becomes `seq body (while_ cond body)` — body and cond are converted TWICE with different `nextId` bases. The second conversion produces different variable names.
+
+**Option 1: Expression-path-based naming** (RECOMMENDED)
+Replace `nextId` counter with names derived from expression tree position (e.g., `__cc_let_0_init`, `__cc_if_1_cond`). This makes `convertExpr` output deterministic w.r.t. state.
+- Pros: Eliminates ALL CCStateAgree sorries at once; `convertExpr_state_determined` becomes trivial
+- Cons: Changes compiler (`convertExpr` in ClosureConvert.lean), ~20 theorems that reference CCState behavior
+- Breakage estimate: ~30-40 theorems need updating (state threading proofs, `convertExpr_*` lemmas)
+
+**Option 2: Prove same nextId delta**
+`convertExpr_state_determined` already proves: given same `nextId`+`funcs.size`, outputs match. But this doesn't help when INPUTS differ (which is the actual problem in while_/if/tryCatch).
+- Verdict: INSUFFICIENT for while_ case.
+
+**Option 3: State reset before while/if/tryCatch sub-conversions**
+Before converting while body, save and restore `nextId` to a known base. Requires compiler change.
+- Pros: Minimal compiler change, targeted
+- Cons: Fragile; doesn't generalize to nested while loops well
+
+**Recommendation**: Option 1 is the clean solution. It eliminates the entire class of bugs. Estimated effort: ~2 days of compiler + proof changes.
