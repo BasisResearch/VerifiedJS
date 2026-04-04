@@ -6031,3 +6031,11 @@ observable events and breaking ANF_SimRel correspondence.
 ## Run: 2026-04-04T06:15:01+00:00
 
 ### 2026-04-04T06:15:12+00:00 Starting run
+### 2026-04-04T06:25:42+00:00 Run complete — Closed all 3 mutual induction sorries (L4472, L4478, L4484)
+- hasThrowInHead_implies_hasAbruptCompletion: proved via cases h with + mutual recursive calls
+- hasThrowInHeadList_implies_hasAbruptCompletionList: proved (2 cases: head/tail)
+- hasThrowInHeadProps_implies_hasAbruptCompletionProps: proved (2 cases: head/tail)
+- Key insight: induction fails on mutual inductives in Lean 4, but cases + mutual theorem references work because Lean's mutual recursion handler sees the arguments are structurally smaller
+- Verified: zero errors, axiom check shows only propext (no sorry)
+- Has{Await,Return,Yield}InHead variants were already proven — no action needed
+2026-04-04T06:25:53+00:00 DONE
