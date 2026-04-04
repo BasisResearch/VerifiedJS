@@ -7024,6 +7024,35 @@ private theorem no_throw_head_implies_trivial_chain :
       · exact hno (HasThrowInHead.arrayLit_elems hleft)
       · exact absurd hkt (ANF.bindComplex_never_throw_general _ _ _ _ _)
 
+/-- Helper for the compound (non-base) case in normalizeExpr_throw_step_sim.
+    Splits into HasThrowInHead (nested throw) vs trivial chain sub-cases. -/
+private theorem normalizeExpr_throw_compound_case
+    (e : Flat.Expr)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+    (arg : ANF.Trivial) (n m : Nat)
+    (hnorm' : (ANF.normalizeExpr e (fun t => pure (ANF.Expr.throw t))).run n = .ok (.throw arg, m))
+    (hewf : ExprWellFormed (.throw e) env) :
+    (∀ v, ANF.evalTrivial env arg = .ok v →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps ⟨.throw e, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧
+        observableTrace evs = observableTrace [.error (Flat.valueToString v)]) ∧
+    (∀ msg, ANF.evalTrivial env arg = .error msg →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps ⟨.throw e, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧
+        observableTrace evs = observableTrace [.error msg]) := by
+  rcases Classical.em (HasThrowInHead e) with hth | hnth
+  · -- NESTED_THROW: e itself contains a throw in head position
+    sorry
+  · -- No throw in head: e must be a trivial chain
+    have htc := no_throw_head_implies_trivial_chain e.depth e (Nat.le_refl _)
+      (fun t => pure (.throw t)) arg n m hnorm' hnth
+    sorry -- TRIVIAL_CHAIN_IN_THROW: consume trivial chain in .throw [·] context
+
 /-- If normalizeExpr sf.expr k produces .throw arg (with trivial-preserving k),
     then there exist Flat steps from sf that produce the same error event
     as the ANF throw step. Covers both evalTrivial ok and error cases. -/
@@ -7148,7 +7177,7 @@ private theorem normalizeExpr_throw_step_sim
     | «continue» _ =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
-    | _ => sorry -- compound flat_arg: use no_throw_head_implies_trivial_chain + Steps_throw_ctx
+    | _ => exact normalizeExpr_throw_compound_case _ env heap trace funcs cs arg n m hnorm' hewf
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
     sorry
