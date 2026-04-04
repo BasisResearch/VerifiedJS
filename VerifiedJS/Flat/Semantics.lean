@@ -1133,6 +1133,38 @@ theorem step?_call_consoleLog (s : State)
       some (.log msg, pushTrace { s with expr := .lit .undefined } (.log msg)) := by
   simp [step?, exprValue?, Core.consoleLogIdx, valuesFromExprList?_map_lit]
 
+/-- Stepping a call when funcExpr is not a value: recurse into funcExpr. -/
+@[simp] theorem step?_call_step_func (s : State) (f envE : Expr) (args : List Expr)
+    (hf : exprValue? f = none) :
+    step? { s with expr := .call f envE args } =
+      (step? { s with expr := f }).bind fun (t, sf) =>
+        some (t, pushTrace { s with expr := .call sf.expr envE args, env := sf.env, heap := sf.heap } t) := by
+  simp [step?, hf]
+
+/-- Stepping a call when funcExpr is a value but envExpr is not: recurse into envExpr. -/
+@[simp] theorem step?_call_step_env (s : State) (f envE : Expr) (args : List Expr)
+    (fv : Value) (hf : exprValue? f = some fv) (he : exprValue? envE = none) :
+    step? { s with expr := .call f envE args } =
+      (step? { s with expr := envE }).bind fun (t, se) =>
+        some (t, pushTrace { s with expr := .call f se.expr args, env := se.env, heap := se.heap } t) := by
+  simp [step?, hf, he]
+
+/-- Stepping a newObj when funcExpr is not a value: recurse into funcExpr. -/
+@[simp] theorem step?_newObj_step_func (s : State) (f envE : Expr) (args : List Expr)
+    (hf : exprValue? f = none) :
+    step? { s with expr := .newObj f envE args } =
+      (step? { s with expr := f }).bind fun (t, sf) =>
+        some (t, pushTrace { s with expr := .newObj sf.expr envE args, env := sf.env, heap := sf.heap } t) := by
+  simp [step?, hf]
+
+/-- Stepping a getEnv when envExpr is not a value: recurse into envExpr. -/
+@[simp] theorem step?_getEnv_step_env (s : State) (envE : Expr) (idx : Nat)
+    (he : exprValue? envE = none) :
+    step? { s with expr := .getEnv envE idx } =
+      (step? { s with expr := envE }).bind fun (t, se) =>
+        some (t, pushTrace { s with expr := .getEnv se.expr idx, env := se.env, heap := se.heap } t) := by
+  simp [step?, he]
+
 /-- Step relation is equivalent to step? returning some. -/
 theorem Step_iff (s : State) (t : Core.TraceEvent) (s' : State) :
     Step s t s' ↔ step? s = some (t, s') :=
