@@ -5709,3 +5709,4 @@ Same strategy. Replaced 1 monolithic sorry with:
 2026-04-04T20:30:05+00:00 SKIP: already running
 2026-04-04T21:30:04+00:00 SKIP: already running
 ### 2026-04-04T21:32:19+00:00 Run complete — 4 equation lemmas BUILT, 2 theorems decomposed (ANF build OOM'd by competing processes)
+2026-04-04T21:35:26+00:00 DONE
