@@ -5570,3 +5570,28 @@ For `HasXInHead compound` sorries (L7154, L7307, L7480, L7634):
 ## Run: 2026-04-04T08:30:01+00:00
 
 ### 2026-04-04T08:30:14+00:00 Starting run — closing NESTED_THROW L8204 via NoNestedAbrupt exfalso
+
+#### Changes made:
+1. **Closed NESTED_THROW sorry at L8204** in `normalizeExpr_throw_compound_case`:
+   - Added `(hna : NoNestedAbrupt (.throw e))` parameter to the theorem
+   - Replaced `sorry` with `exact absurd hth (fun h => noNestedAbrupt_hasThrowInHead_absurd_throw hna h)`
+   - This derives contradiction: `HasThrowInHead e` implies `hasAbruptCompletion e = true`, but `NoNestedAbrupt (.throw e)` requires `hasAbruptCompletion e = false`
+
+2. **Propagated `hna` through `normalizeExpr_throw_step_sim`**:
+   - Added `(hna : NoNestedAbrupt sf.expr)` parameter
+   - Added `simp only [Flat.State.expr] at hna` after destructing `sf`
+   - Updated call to `normalizeExpr_throw_compound_case` at L8340 to pass `hna`
+
+3. **Added sorry-ed `hna_sf` at caller** (`anfConvert_step_star` L9112):
+   - `have hna_sf : NoNestedAbrupt sf.expr := sorry -- TODO: propagate NoNestedAbrupt invariant`
+   - Converted content-sorry (hard proof) into hypothesis-sorry (invariant assertion)
+
+#### Sorry count: 22 → 22 (net zero: -1 closed + 1 new hypothesis sorry)
+#### Build: PASSING
+
+#### Analysis of remaining work:
+- **L9112 sorry** (`NoNestedAbrupt sf.expr`): Needs `NoNestedAbrupt` added to `anfConvert_step_star` and `anfConvert_steps_star` signatures, plus proof that the SimRel preserves NoNestedAbrupt through steps
+- **L8343** (compound HasThrowInHead in `normalizeExpr_throw_step_sim`): Real proof needed, not exfalso. Expressions like `.seq (.throw x) b` are valid under NoNestedAbrupt
+- **L8493/8496** (return), **L8666/8669** (await), **L8820/8823** (yield): Same pattern as throw — need `trivialChain_return_steps`, `trivialChain_await_steps`, `trivialChain_yield_steps` (analogous to `trivialChain_throw_steps`) plus NoNestedAbrupt for HasXInHead exfalso
+### 2026-04-04T08:42:17+00:00 Run complete — closed NESTED_THROW sorry L8204 via NoNestedAbrupt exfalso, 22→22 sorries (restructured)
+2026-04-04T08:42:23+00:00 DONE
