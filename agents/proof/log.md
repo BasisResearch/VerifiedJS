@@ -5641,3 +5641,6 @@ Note: `NoNestedAbrupt_step_preserved` may need additional conditions (e.g., all 
 2026-04-04T15:30:01+00:00 SKIP: already running
 ### 2026-04-04T16:23:35+00:00 Run complete — Task 1 DONE: Added h_supp param to closureConvert_correct + updated EndToEnd callsite (both LSP-verified error-free). Task 2 PARTIAL: hasAbruptCompletion_step_preserved proof structure in place with 12 cases proved (unary, binary, while_, labeled, seq, let, assign, if, typeof, makeClosure + trivial cases). 11 cases sorry'd (getProp, setProp, getIndex, setIndex, deleteProp, getEnv, call, newObj, makeEnv, objectLit, arrayLit, tryCatch). Pre-existing build errors in ANFConvertCorrect prevent clean build (NOT from our changes).
 2026-04-04T16:23:54+00:00 DONE
+
+## Run: 2026-04-04T16:30:01+00:00
+
