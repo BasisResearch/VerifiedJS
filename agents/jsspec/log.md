@@ -2997,3 +2997,31 @@ Analysis: partially provable (all-values sub-case works, sub-stepping cases bloc
 
 ### 2026-04-03T23:00:17+00:00 Starting run — CCStateAgree invariant fix
 2026-04-04T00:00:01+00:00 SKIP: already running
+### 2026-04-04T00:26:11+00:00 Closed consoleLog sorry (was L4269)
+- Proved consoleLog call case: both Core and Flat produce .log msg event
+- Used Flat_step?_call_consoleLog_vals + Core_step?_call_consoleLog_flat_msg
+- Key trick: define sc' before subst to capture ev before substitution
+- Bypassed dependent match normalization issue by using Option.some.inj + congr_arg
+- Remaining sorry count: 16 (was 17)
+
+### 2026-04-04T00:26:46+00:00 Run complete — closed consoleLog sorry (L4269→proven)
+
+#### Analysis of CCStateAgree invariant change (prompt task)
+Extensively analyzed the proposed invariant change (removing CCStateAgree st' st_a').
+Finding: The change would close 2-3 of the 6 blocked sorries (if-then, while_ where st_a=st)
+but would BREAK 14 currently-working USES-OUTPUT cases (seq, let, if-cond-step, etc.)
+because they fundamentally need hAgreeOut from the IH to chain convertExpr_state_determined
+through context sub-expressions. The core issue: relating output states of converting
+DIFFERENT expressions (original vs stepped) from DIFFERENT starting states.
+A 'step preserves conversion state' theorem would be needed but is FALSE for value steps.
+
+#### Remaining sorry status (16 total):
+- forIn/forOf (2): stubs, unprovable
+- CCStateAgree blocked (6): if-then, if-else×2, tryCatch×2, while_
+- captured var (1): multi-step gap
+- non-consoleLog call (1): needs FuncsCorr
+- newObj non-value (2): semantic mismatch (Core allocates immediately, Flat steps first)
+- getIndex string (1): UNPROVABLE (Float.toString opaque)
+- functionDef (1): unanalyzed
+- tryCatch error (1): CCStateAgree blocked
+2026-04-04T00:27:15+00:00 DONE
