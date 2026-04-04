@@ -9424,3 +9424,6 @@ CCStateAgree fix remains highest impact (6 sorries). jsspec has been running 1.5
 ### Key Risk
 hasBreakInHead_flat_error_steps may be UNPROVABLE as currently stated. Error events propagate through eval contexts (seq, let, if, etc.) but the resulting expression is NOT `.lit .undefined` — it's the compound expression with `.lit .undefined` substituted in the sub-position. The theorem claims `sf'.expr = .lit .undefined` which may not hold for non-base cases. Wasmspec is investigating.
 2026-04-03T23:05:40+00:00 DONE
+
+## Run: 2026-04-04T00:05:02+00:00
+
