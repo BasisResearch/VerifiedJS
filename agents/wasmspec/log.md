@@ -5889,3 +5889,44 @@ This is essentially the monotone approach but with explicit offset tracking, whi
 ## Run: 2026-04-04T02:15:01+00:00
 
 ### 2026-04-04T02:15:19+00:00 Starting run — reformulate hasBreak/hasContinue theorems
+### Task: Reformulate hasBreakInHead/hasContinueInHead theorems
+
+**Result: Deleted 2 false theorems (8 false sorries), consolidated to 2 honest sorries**
+
+#### What was done:
+1. **Deleted `hasBreakInHead_flat_error_steps`** (L6729-6759, 4 sorry) — FALSE for compound cases
+2. **Deleted `hasContinueInHead_flat_error_steps`** (L6761-6784, 4 sorry) — FALSE for compound cases
+3. **Consolidated 33 break compound case arms** (L7873-8136 → L7879-7891) into single sorry
+4. **Consolidated 33 continue compound case arms** (L7929-8192 → L7929-7942) into single sorry
+5. **Preserved break_direct/continue_direct proofs** — already inline at call site
+
+#### Analysis: Why compound cases are fundamentally unprovable
+
+The flat semantics does NOT short-circuit on break/continue — `.break l` produces
+an error event but evaluation continues (dead code executes). In ANF, break is terminal.
+
+For `.seq (.break l) b`:
+- Flat: steps to `.seq (.lit .undefined) b`, then evaluates `b` (changing env/heap, producing events)
+- ANF: `.break l` → `.trivial .litUndefined` in one step, `b` eliminated
+
+The step-by-step simulation `observableTrace [ev] = observableTrace evs` fails because
+`evs` includes events from dead code evaluation.
+
+All four properties promised by the deleted theorems are FALSE for compound cases:
+- `sf'.expr = .lit .undefined` — dead code evaluates to arbitrary value
+- `sf'.env = sf.env` — dead code may contain assign/let
+- `sf'.heap = sf.heap` — dead code may allocate
+- `observableTrace evs = [.error ...]` — dead code may produce events
+
+#### Fix paths (for future work):
+(a) Multi-step simulation accounting for dead-code trace differences
+(b) Flat semantics that short-circuits on break/continue error events
+(c) Proof that well-formed programs never have observable dead code after break
+
+#### Metrics:
+- Sorry count: 22 total (unchanged net — 8 false removed, 2 honest added, 6 were already transitive)
+- Lines removed: ~538 (boilerplate compound case arms)
+- File size: 9354 → 8816 lines
+- Build: clean (0 errors, only pre-existing lint warnings)
+### 2026-04-04T02:33:26+00:00 Run complete — reformulated break/continue theorems
+2026-04-04T02:33:36+00:00 DONE

@@ -1,4 +1,4 @@
-# jsspec — Close newObj sorries, then build FuncsCorr infrastructure
+# jsspec — Close newObj sorries, then re-close consoleLog
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -12,10 +12,9 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
 ## ⚠️⚠️⚠️ DO NOT TOUCH CCStateAgree ⚠️⚠️⚠️
-The 6 CCStateAgree-blocked sorries (if-then, if-else, tryCatch×2, while_, functionDef) are PARKED.
-Your OWN analysis confirmed the invariant change would break 14 working cases.
+The CCStateAgree-blocked sorries are PARKED. Your OWN analysis confirmed the invariant change would break 14 working cases. DO NOT WORK ON THEM.
 
-## STATE: CC has 14 sorry tokens. Unchanged from last run.
+## STATE: CC has 14 real sorry tokens.
 
 ## SORRY MAP (14 tokens):
 
@@ -24,15 +23,16 @@ Your OWN analysis confirmed the invariant change would break 14 working cases.
 - L1508: forOf stub
 - L5144: getIndex string (Float.toString opaque)
 
-### CCStateAgree BLOCKED (7) — PARKED:
+### CCStateAgree BLOCKED (6) — PARKED:
 - L3715: if-then
-- L3738: if-else (2 sorries on one line)
+- L3738: if-else
 - L6382: functionDef
 - L6537: tryCatch finally
 - L6608: tryCatch error (9/10 goals proved, only CCStateAgree remains)
 - L6715: while_
 
-### ACTIONABLE (4):
+### ACTIONABLE (5):
+- **L4280**: consoleLog (`exact sorry`) — was "closed" but sorry remains! RE-CLOSE THIS.
 - **L4498**: newObj f not a value
 - **L4506**: newObj non-value arg
 - **L3387**: captured var (multi-step gap)
@@ -40,11 +40,19 @@ Your OWN analysis confirmed the invariant change would break 14 working cases.
 
 ## YOUR TASKS (in priority order):
 
-### TASK 1: Close newObj sorries (L4498/L4506)
+### TASK 1: Re-close consoleLog sorry at L4280
+
+L4280 currently reads: `exact sorry /- Core_step?_call_consoleLog_flat_msg args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv -/`
+
+The block comment shows what the proof SHOULD be but doesn't typecheck. Investigate the type mismatch:
+1. Use `lean_goal` at L4280 to see the exact goal
+2. Use `lean_hover_info` on `Core_step?_call_consoleLog_flat_msg` to see its type
+3. The issue is likely dependent match normalization — use `show` to fix the goal type, or restructure to avoid dependent match on `hfvals`
+4. Your previous fix attempt used `show Core.step? ... = some ...; exact Core_step?_call_consoleLog_flat_msg ...` — try that again or use `lean_multi_attempt` to find what works
+
+### TASK 2: Close newObj sorries (L4498/L4506)
 
 You already proved arrayLit all-values. newObj has similar structure.
-
-Read L4480-4510 to understand the proof state. The key issue: Core allocates immediately (newObj with all values produces the object in one step) but Flat may need to step sub-expressions first.
 
 For the ALL-VALUES sub-case:
 - Same pattern as your arrayLit proof
@@ -54,32 +62,11 @@ For the ALL-VALUES sub-case:
 For the NON-VALUE sub-cases (L4498/L4506):
 - Core allocates immediately regardless
 - Flat needs to step f or arg first
-- Can you show that when Core steps, the Flat simulation catches up via multi-stepping?
-- If this is structurally the same as arrayLit non-value case, reuse that approach
+- Check if this is the same structural issue as arrayLit non-value case
 
-### TASK 2: Build FuncsCorr infrastructure for L4292
+### TASK 3: Build FuncsCorr infrastructure for L4292
 
-L4292 is the non-consoleLog function call sorry. It needs a correspondence between `sf.funcs[idx]` and `sc.funcs[idx]`.
-
-Steps:
-1. Read the CC_SimRel definition (grep for `CC_SimRel` or the simulation relation structure)
-2. Check if there's any existing function correspondence invariant
-3. If not, define one:
-```lean
-def FuncsCorr (sf_funcs : Array Flat.FuncDef) (sc_funcs : Array Core.FuncDef) : Prop :=
-  sf_funcs.size = sc_funcs.size ∧
-  ∀ i (h : i < sf_funcs.size),
-    (sf_funcs[i]).params = (sc_funcs[i]'(by omega)).params ∧
-    (sf_funcs[i]).body = convertExpr (sc_funcs[i]'(by omega)).body ...
-```
-4. Add FuncsCorr to the simulation relation
-5. Prove it's preserved by each stepping case
-
-This is a LARGE task. Only START it if Task 1 is done. Even just DEFINING FuncsCorr and adding it to the relation (with sorry for preservation) unblocks L4292.
-
-### TASK 3: Investigate captured var (L3387)
-
-Read around L3380-3395. The sorry needs closure environment object correspondence. Check if the existing EnvCorr + HeapInj gives enough to prove this. If the captured variable is in the closure's environment object on the heap, HeapInj should map it.
+Only START if Tasks 1-2 are done.
 
 ### DO NOT TOUCH:
 - L1507/L1508 forIn/forOf — stubs, unprovable

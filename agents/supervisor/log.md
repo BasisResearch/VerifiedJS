@@ -9683,3 +9683,59 @@ hasBreakInHead_flat_error_steps may be UNPROVABLE as currently stated. Error eve
 ## Run: 2026-04-04T02:05:01+00:00
 
 2026-04-04T02:12:59+00:00 DONE
+
+## Run: 2026-04-04T02:30:03+00:00
+
+
+### Metrics
+- **Sorry count**: ANF 22 + CC 14 = **36** (stable from last run)
+- **Delta from last run (02:05)**: 0. No sorries closed, no sorries added.
+- **LowerCorrect**: 0 sorries
+- **Wasm/Semantics**: 0 actual sorries (comments only)
+- **Note**: CC raw grep shows 17 hits but 3 are in comments. 14 real sorries.
+
+### What happened since last run
+1. **proof** (completed 02:08): BUILT Steps_ctx_lift + 7 specialized wrappers (Steps_seq_ctx, Steps_throw_ctx, Steps_let_init_ctx, Steps_if_cond_ctx, Steps_return_some_ctx, Steps_yield_some_ctx, Steps_await_ctx) at L1737-1853. EXCELLENT infrastructure. 0 sorries closed but these wrappers ENABLE Group D closure. Just restarted (02:30).
+
+2. **jsspec** (started 01:00, RUNNING 1.5h): No log updates. Working on "CCStateAgree invariant fix" per old prompt. Current prompt says DO NOT touch CCStateAgree. L4280 consoleLog sorry still present (`exact sorry`).
+
+3. **wasmspec** (started 02:15, RUNNING 15min): Working on reformulating hasBreak/hasContinue theorems per prompt.
+
+### Agent Status
+1. **proof**: Steps_*_ctx infrastructure COMPLETE. Prompt REWRITTEN: focus on USING Steps_throw_ctx/return/await/yield to close Group D (L6894, L7047, L7220, L7374). Updated sorry map with current line numbers.
+
+2. **jsspec**: Prompt REWRITTEN: Task 1 = re-close consoleLog L4280, Task 2 = newObj L4498/L4506, Task 3 = FuncsCorr. CCStateAgree clearly marked PARKED.
+
+3. **wasmspec**: Prompt KEPT. Already correctly targeting hasBreak/hasContinue reformulation.
+
+### Actions Taken
+1. Counted sorries: ANF 22 + CC 14 = 36 (stable).
+2. **REWROTE proof prompt**: Steps_*_ctx is DONE. Updated to use them on Group D with correct line numbers. Removed stale Task 1.
+3. **REWROTE jsspec prompt**: Added L4280 consoleLog as Task 1. Kept newObj as Task 2.
+4. **KEPT wasmspec prompt**: Reformulation task is correct.
+5. Logged to time_estimate.csv.
+
+### Sorry Breakdown
+
+**ANF (22 sorries):**
+- Group A: normalizeExpr_labeled_step_sim (7): L6531, L6564, L6575, L6656, L6689, L6700, L6717 — BLOCKED (continuation-independence)
+- Group D: compound flat_arg + HasXInHead (8): L6894, L6897, L7047, L7050, L7220, L7223, L7374, L7377 — TARGET (proof using Steps_*_ctx)
+- Group F: let/seq/if/tryCatch (5): L7404, L7452, L7483, L7486, L7530 — DEFERRED (characterization)
+- Group G: anfConvert_step_star break/continue (2): L7891, L7942 — DEFERRED (wasmspec reformulation)
+
+**CC (14 real sorries):**
+- Unprovable (3): L1507 forIn, L1508 forOf, L5144 getIndex
+- CCStateAgree blocked (6): L3715, L3738, L6382, L6537, L6608, L6715
+- Actionable (5): L4280 consoleLog, L4498 newObj-f, L4506 newObj-arg, L3387 captured-var, L4292 call
+
+### Strategy
+- **Quick wins**: proof uses Steps_*_ctx → close Group D flat_arg (4 sorries: L6894, L7047, L7220, L7374). Target: 36→32.
+- **Medium-term**: wasmspec reformulates hasBreak/hasContinue → unblocks Group G (2 sorries) and downstream. Target: 32→30.
+- **jsspec**: consoleLog L4280 + newObj (2-3 sorries). Target: 36→33.
+- **Hard**: continuation-independence → Group A (7 sorries). CCStateAgree architecture → 6 CC sorries.
+
+### Biggest Risk
+proof agent has the infrastructure but hasn't actually CLOSED any sorries with it yet. The Group D sorries need the IH to provide sub-expression steps — if the theorem signature doesn't provide the right IH, Steps_*_ctx alone won't suffice. Need to check if `normalizeExpr_throw_step_sim` has depth-based induction or if it needs refactoring.
+
+2026-04-04T02:34:54+00:00 DONE
+2026-04-04T02:35:01+00:00 DONE
