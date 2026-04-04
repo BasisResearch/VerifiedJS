@@ -5699,3 +5699,81 @@ The key difficulty is step 1 (characterization), but the existing `normalizeExpr
 ## Run: 2026-04-04T01:15:01+00:00
 
 ### 2026-04-04T01:15:15+00:00 Starting run
+
+## Break/Continue Compound Case Analysis
+
+### Summary
+
+`hasBreakInHead_flat_error_steps` (L6612) and `hasContinueInHead_flat_error_steps` are **FALSE as stated** for ALL compound HasBreakInHead constructors. Proved `break_direct` case for both. Updated theorem bodies with cases and annotations.
+
+### Why the theorem is false for compound cases
+
+The theorem claims: if `HasBreakInHead e label`, then Flat stepping produces sf' with:
+1. `sf'.expr = .lit .undefined`
+2. `sf'.env = sf.env` (env preserved)
+3. `sf'.heap = sf.heap` (heap preserved)
+4. Observable trace = `[.error ("break:" ++ label.getD "")]`
+
+**Counterexample 1: seq_left (dead code)** — `e = .seq (.break label) (.lit 42)`
+- Break fires → `.seq (.lit .undefined) (.lit 42)` → `.lit 42` (NOT `.lit .undefined`)
+- Claim (1) fails.
+
+**Counterexample 2: assign_val (env changes)** — `e = .assign "x" (.break label)`
+- Break fires → `.assign "x" (.lit .undefined)` → assigns .undefined to "x"
+- Claim (2) fails (env modified).
+
+**Counterexample 3: let_init (env changes + wrong expr)** — `e = .let "y" (.break label) body`
+- Break fires → `.let "y" (.lit .undefined) body` → `body` with env.extend "y" .undefined
+- Claims (1) and (2) fail.
+
+**Counterexample 4: seq_right with side-effecting a** — `e = .seq (.assign "x" (.lit 5)) (.break label)`
+- Evaluate `.assign "x" (.lit 5)` → env changes → then `.break label` → `.lit .undefined` + error
+- Claim (2) fails.
+
+### Root cause: semantic mismatch between ANF and Flat
+
+**ANF**: `.break label` → `.trivial .litUndefined` + error. Break is CPS-transformed; continuation never called. No dead code, no surrounding context.
+
+**Flat**: `.break label` → `.lit .undefined` + error, BUT within evaluation contexts. The break error event is emitted, but surrounding context continues: `.seq (.break label) b` evaluates b after break; `.assign "x" (.break label)` still assigns. Flat does NOT short-circuit on break errors.
+
+### ALL compound HasBreakInHead constructors ARE reachable in the simulation
+
+When `normalizeExpr sf.expr k` produces `.break label` (k trivial-preserving), break can be deeply nested:
+- `normalizeExpr (.seq (.var "x") (.break label)) k = .break label` ✓
+- `normalizeExpr (.getProp (.break label) "p") k = .break label` ✓ (normalizeExpr recurses into obj, finds break, ignores continuation)
+- `normalizeExpr (.assign "x" (.break label)) k = .break label` ✓
+- ANY eval-position sub-expression containing `.break` causes normalizeExpr to produce `.break`
+
+So Strategy A (eliminate compound cases) is **FALSE** — compound cases DO arise.
+
+### Impact on main proof (anfConvert_step_star, L7720)
+
+All 33 compound HasBreakInHead cases (L7757-8015) call the false `hasBreakInHead_flat_error_steps`. These need restructuring.
+
+### Recommended fix: Strategy D — eval-context stepping + induction
+
+Instead of one big theorem, use strong induction on `HasBreakInHead`:
+
+1. `break_direct`: already proved
+2. Compound cases: step ONE sub-step through the evaluation context (via an eval-context lifting lemma), creating a new flat state where the break sub-expression has progressed. Apply IH.
+
+Key building block needed:
+```lean
+theorem flat_step_lift_seq_left (a b : Flat.Expr) (sf : Flat.State) (t : TraceEvent) (sa : Flat.State) :
+    sf.expr = .seq a b → Flat.exprValue? a = none →
+    Flat.step? {sf with expr := a} = some (t, sa) →
+    Flat.step? sf = some (t, {sf with expr := .seq sa.expr b, env := sa.env, heap := sa.heap})
+```
+
+**CRITICAL ISSUE**: The `seq_left` dead-code problem remains. After break fires in `a` of `.seq a b`, `b` still evaluates. The final `sf'.expr` is NOT `.lit .undefined` but the value of `b`. The SimRel requires `normalizeExpr sf'.expr k' = .trivial .litUndefined`, which fails unless `b` evaluates to `.lit .undefined`.
+
+**Possible resolution**: Change the SimRel or main proof to NOT require `sf'.expr = .lit .undefined` for break/continue cases. Instead, allow the flat side to be "ahead" — the error is in the trace, and the remaining flat evaluation is dead code that doesn't affect observable behavior.
+
+This is a non-trivial architectural change to the proof.
+
+### Changes made this run
+
+1. Proved `break_direct` case in `hasBreakInHead_flat_error_steps` (was sorry)
+2. Proved `continue_direct` case in `hasContinueInHead_flat_error_steps` (was sorry)
+3. Added detailed annotations to remaining sorry'd cases
+4. Separated compound cases in both theorems (seq_left, seq_right, let_init, wildcard)
