@@ -1,3 +1,62 @@
+## Run: 2026-04-04T10:30:54+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 + CC 14 = **38** (Wasm/Semantics 0)
+- **Delta from last run**: 38 → 38 = **0**. All agents mid-run, no completed work since 10:05.
+
+### Why sorry count is flat
+All three agents are mid-run. proof agent started at 09:30 (still running at 10:30 — SKIP detected). jsspec started at 09:00 (still running at 10:00 — SKIP detected). wasmspec completed 10:09 run (closed if_direct cases). No file changes since last supervisor run (ANF last modified 09:42, CC last modified 09:37).
+
+### Agent Analysis
+1. **proof** (09:30 run, still active): Working on L9180 (NoNestedAbrupt_step_preserved). Previously closed L9303→L9180 restructuring and NESTED_THROW L8204 via exfalso. **UPDATED PROMPT** with detailed WF induction strategy and case-by-case analysis from reading Flat.step? definition. Key insight: 10+ constructors are vacuously true (no NoNestedAbrupt constructor), simple cases produce .lit, context cases need IH via depth induction.
+2. **jsspec** (09:00 run, still active): Completed supported infrastructure (convertExpr_not_value → _supported migration). Targets L3408 and L7787. **UPDATED PROMPT** with clearer guidance on Core_step_preserves_supported structure.
+3. **wasmspec** (completed 10:09): Closed if_direct cases for normalizeExpr_if_step_sim. ANF at 24 sorries. **UPDATED PROMPT** with explicit trivialChain_if_condition_steps template and step?_if_ctx helper.
+
+### Actions Taken
+1. Counted sorries: ANF 24 + CC 14 = 38. Flat (all agents mid-run).
+2. **UPDATED proof prompt**: Rewrote with complete WF induction strategy for L9180. Enumerated all ~30 Flat.step? constructors, classified as vacuous (10), simple (5), medium (8), complex (7). Provided hasAbruptCompletion_step_preserved helper pattern.
+3. **UPDATED jsspec prompt**: Refined L3408 guidance with Core_step_preserves_supported template. Clarified EndToEnd.lean ownership for L7787.
+4. **UPDATED wasmspec prompt**: Added trivialChain_if_condition_steps template and step?_if_ctx helper code for L9063/L9129.
+5. Logged to time_estimate.csv: 38.
+
+### Sorry Breakdown (unchanged from last run)
+
+**ANF (24 real sorry tokens):**
+- Group A (7): L7516, L7549, L7560, L7641, L7674, L7685, L7702 — eval context lifting, PARKED
+- Throw dispatch compound (L8343): DEFERRED
+- Return compound (L8493, L8496): TARGET — proof agent Task 2
+- Await compound (L8666, L8669): DEFERRED — same pattern
+- Yield compound (L8820, L8823): DEFERRED — same pattern
+- Let step sim (L8850): wasmspec Task 3 if time
+- While step sim (L8898): PARKED
+- If step sim compound condition (L9063, L9129): TARGET — wasmspec Task 1
+- If step sim compound HasIfInHead (L9064, L9130): TARGET — wasmspec Task 2
+- TryCatch step sim (L9174): DEFERRED
+- NoNestedAbrupt_step_preserved (L9180): TARGET — proof agent Task 1
+- Break compound (L9571): PARKED
+- Continue compound (L9624): PARKED
+
+**CC (14 real sorry tokens):**
+- Core.step preserves supported (L3408): TARGET — jsspec Task 1
+- Captured var multi-step (L3435): jsspec Task 3
+- CCStateAgree if-true (L3764): BLOCKED by architecture
+- CCStateAgree if-false (L3787): BLOCKED by architecture
+- FuncsCorr non-consoleLog (L4341): BLOCKED
+- Semantic mismatch call f (L4549): BLOCKED (compiler)
+- Semantic mismatch call arg (L4557): BLOCKED (compiler)
+- getIndex string unprovable (L5195): UNPROVABLE
+- functionDef (L6437): BLOCKED by HeapInj
+- tryCatch body-value (L6594): CCStateAgree blocked
+- tryCatch with finally (L6595): CCStateAgree blocked
+- tryCatch error (L6667): CCStateAgree blocked
+- while_ CCState threading (L6775): BLOCKED
+- h_supp param (L7787): TARGET — jsspec Task 2 (quick win)
+
+### OUTLOOK: Target next run = ≤36 (proof closes L9180 = -1, jsspec closes L7787 = -1, possible L3408 partial = -1)
+### RISK: L9180 WF induction is non-trivial (~30 cases). May need 2 agent runs. jsspec L3408 same complexity.
+
+---
+
 ## Run: 2026-04-04T10:05:04+00:00
 
 ### Metrics
@@ -3535,3 +3594,4 @@ jsspec confirmed ALL 17 ANF sorries are architecturally blocked. normalizeExpr C
 
 ## Run: 2026-04-04T10:30:54+00:00
 
+2026-04-04T10:46:09+00:00 DONE
