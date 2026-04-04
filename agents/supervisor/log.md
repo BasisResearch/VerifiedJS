@@ -1,3 +1,62 @@
+## Run: 2026-04-04T06:30:11+00:00
+
+### Metrics
+- **Sorry count**: ANF 23 + CC 15 = **38** (LowerCorrect 0, Wasm/Semantics 0)
+- **Delta from last run**: was 41 → 38 = **-3**. GOOD DIRECTION.
+- **LowerCorrect**: 0 sorries (DONE)
+
+### Why sorry count went DOWN (-3)
+wasmspec closed L4472/4478/4484 (the 3 mutual induction bridge theorems for HasThrowInHead). Used `cases h` + mutual theorem references instead of `induction h` (which is broken in Lean 4 for mutual inductives). NoNestedAbrupt framework is now FULLY GROUNDED.
+
+### What happened since last run
+
+1. **proof**: New run just started (06:30). Previous run (04:30-05:55) decomposed L7151 but added net +3 sorries. Given maximally directive prompt targeting NoNestedAbrupt exfalso closures.
+
+2. **jsspec**: Still running from 05:00. Previous run (01:00-04:53) proved L3742 second sorry + fixed build breakage from proof agent. NET: -1 sorry. Solid, steady progress.
+
+3. **wasmspec**: EXCELLENT. Closed all 3 mutual induction sorries (L4472/4478/4484) at 06:15-06:25. Key insight: `cases h` + mutual theorem references work where `induction h` fails in Lean 4. Zero new errors. Redirected to trivialChain work.
+
+### Actions Taken
+1. Counted sorries: ANF 23 + CC 15 = 38. Down 3 (wasmspec).
+2. **REWROTE proof prompt**: P1 = add NoNestedAbrupt hypothesis to 5 compound case theorems, close HasXInHead sorries via exfalso. Exact code provided for L7481. P2 = TRIVIAL_CHAIN.
+3. **REWROTE jsspec prompt**: Same 4 targets (functionDef, captured var, call, if-else-input). Target 15→11.
+4. **REWROTE wasmspec prompt**: Redirected from closed L4472 to trivialChain_throw_steps helper for L7487. Detailed sub-case analysis provided.
+5. Logged to time_estimate.csv: 38.
+
+### Sorry Breakdown
+
+**ANF (23 sorry tokens):**
+- Group A (7): L6962, L6995, L7006, L7087, L7120, L7131, L7148 — eval context lifting, PARKED
+- NESTED_THROW (L7481): TARGET — closable via NoNestedAbrupt exfalso (proof agent P1)
+- TRIVIAL_CHAIN (L7487): TARGET — wasmspec writing helper
+- HasThrowInHead compound (L7616): TARGET — closable via NoNestedAbrupt (proof agent P1)
+- HasReturnInHead compound (L7769): TARGET — closable via NoNestedAbrupt (proof agent P1)
+- HasAwaitInHead compound (L7942): TARGET — closable via NoNestedAbrupt (proof agent P1)
+- HasYieldInHead compound (L8096): TARGET — closable via NoNestedAbrupt (proof agent P1)
+- Compound `| _ =>` trivialChain (L7766, L7939, L8093): DEFERRED (need trivialChain)
+- Let/If/TryCatch step sim (L8123, L8202, L8205, L8249): DEFERRED
+- Break/Continue compound (L8628, L8681): PARKED (needs Flat.step? error propagation)
+- L8171: DEFERRED
+
+**CC (15 sorry tokens):**
+- Unprovable (3): L1507, L1508, L5148
+- CCStateAgree blocked (3): L3719, L6544, L6709
+- Semantic mismatch (2): L4502, L4510
+- Actionable (7): L3391, L3742, L4296, L6386, L6543, L6616, L6673
+
+### Strategy
+- proof: Close 5 HasXInHead sorries via NoNestedAbrupt → 38→33
+- wasmspec: Close L7487 trivialChain → 32
+- jsspec: Close functionDef+captured-var+call+if-else → 28
+- Floor: 3 CC unprovable + 3 CC CCStateAgree + 2 CC semantic + 2 break/continue + 7 Group A = 17 permanent
+
+### Biggest Risks
+1. Adding NoNestedAbrupt to anfConvert_step_star propagates upward — may need proof at top level
+2. proof+wasmspec both editing ANFConvertCorrect.lean — merge conflict risk (mitigated: different line ranges)
+3. ANF file very large (~8700 lines) — build may OOM
+
+---
+
 ## Run: 2026-04-04T06:00:08+00:00
 
 ### Metrics
@@ -10089,3 +10148,7 @@ proof agent has the infrastructure but hasn't actually CLOSED any sorries with i
 
 2026-04-04T06:05:01+00:00 SKIP: already running
 2026-04-04T06:06:02+00:00 DONE
+
+## Run: 2026-04-04T06:30:11+00:00
+
+2026-04-04T06:34:12+00:00 DONE

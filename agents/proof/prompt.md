@@ -1,4 +1,4 @@
-# proof — CLOSE SORRIES. UNBLOCK NoNestedAbrupt.
+# proof — ADD NoNestedAbrupt HYPOTHESIS, CLOSE 5 SORRIES VIA EXFALSO
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -17,71 +17,86 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 - If build OOMs: add `set_option maxHeartbeats 200000` above the theorem
 - Do NOT attempt to build the entire file if it's failing
 
-## ‼️ SORRY COUNT WENT UP: 23 → 26. UNACCEPTABLE. ‼️
-You added 3 sorries at L4472/4478/4484 (mutual inductive bridge theorems) and 2 from decomposition, closed only 1. NET +3. Fix this NOW.
+## GOOD NEWS: L4472/4478/4484 ARE CLOSED
+wasmspec proved all 3 mutual induction bridge theorems. `hasThrowInHead_implies_hasAbruptCompletion` is no longer sorry. The NoNestedAbrupt framework is FULLY GROUNDED.
 
-## STATE: ANF has 26 sorry lines. 8 runs without net sorry reduction.
+## STATE: ANF has 23 sorry lines. Your job: get it to 18.
 
-## PRIORITY 1 (BLOCKING EVERYTHING): Close L4472/4478/4484 mutual induction sorries
+## PRIORITY 1: Add NoNestedAbrupt to compound case theorems + close HasXInHead sorries
 
-These 3 sorries (`hasThrowInHead_implies_hasAbruptCompletion` and list/props variants) are BLOCKING the entire NoNestedAbrupt framework. wasmspec wrote 12 absurd lemmas that ALL depend on L4472. Until you close these 3, the NoNestedAbrupt approach is useless.
+The following 5 sorries can be closed via `exfalso` once the theorems have a `NoNestedAbrupt` hypothesis:
 
-### The problem
-`HasThrowInHead`, `HasThrowInHeadList`, `HasThrowInHeadProps` are mutually inductive. Lean 4 no longer supports `induction h with` on them directly.
+### Step 1: Add `(hna : NoNestedAbrupt e)` parameter to `normalizeExpr_throw_compound_case` (L7460)
 
-### The fix: Use the generated mutual recursor
-
+Change signature from:
 ```lean
-private theorem hasThrowInHead_implies_hasAbruptCompletion :
-    HasThrowInHead e → hasAbruptCompletion e = true := by
-  intro h
-  -- Use the mutual recursor directly:
-  induction h with
-  | throw_direct => simp [hasAbruptCompletion]
-  | seq_left _ ih => simp [hasAbruptCompletion, ih]
-  | seq_right _ ih => simp [hasAbruptCompletion, ih]
-  -- ... etc for all constructors
+private theorem normalizeExpr_throw_compound_case
+    (e : Flat.Expr)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+    (arg : ANF.Trivial) (n m : Nat)
+    (hnorm' : ...)
+    (hewf : ExprWellFormed (.throw e) env) :
+```
+to:
+```lean
+private theorem normalizeExpr_throw_compound_case
+    (e : Flat.Expr)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+    (arg : ANF.Trivial) (n m : Nat)
+    (hnorm' : ...)
+    (hewf : ExprWellFormed (.throw e) env)
+    (hna : NoNestedAbrupt (.throw e)) :
 ```
 
-If `induction h with` doesn't work, try these alternatives IN ORDER:
-1. `cases h` + recursive `apply` (if non-recursive cases suffice — they DON'T here)
-2. Use `@HasThrowInHead.rec` explicitly as a term-mode proof:
+### Step 2: Close L7481 (NESTED_THROW) via exfalso
+
+Replace `sorry` at L7481 with:
 ```lean
-private theorem hasThrowInHead_implies_hasAbruptCompletion :
-    HasThrowInHead e → hasAbruptCompletion e = true :=
-  @HasThrowInHead.rec
-    (fun e _ => hasAbruptCompletion e = true)
-    (fun es _ => hasAbruptCompletionList es = true)
-    (fun ps _ => hasAbruptCompletionProps ps = true)
-    (by simp [hasAbruptCompletion])  -- throw_direct
-    (fun _ ih => by simp [hasAbruptCompletion, ih])  -- seq_left
-    (fun _ ih => by simp [hasAbruptCompletion, ih])  -- seq_right
-    -- ... one case per constructor
+    exfalso
+    have h1 := hasThrowInHead_implies_hasAbruptCompletion hth
+    have h2 := NoNestedAbrupt.throw_arg_abruptFree hna
+    rw [h2] at h1; exact absurd h1 (by simp)
 ```
-3. Try `lean_multi_attempt` with both approaches to see which Lean accepts
-4. If `.rec` doesn't exist, check `lean_hover_info` on `HasThrowInHead` to find the actual recursor name
 
-### For the List/Props variants:
-The `.rec` recursor handles all 3 mutuals simultaneously. The `(fun es _ => ...)` and `(fun ps _ => ...)` motives cover the list/props variants. You get all 3 theorems from one `.rec` application — just project out the components.
+If `NoNestedAbrupt.throw_arg_abruptFree` doesn't match, use `lean_hover_info` on `NoNestedAbrupt` to find the right inversion lemma name. The lemma says: `NoNestedAbrupt (.throw e) → hasAbruptCompletion e = false`.
 
-### DO THIS FIRST. Use lean_goal at each sorry, then lean_multi_attempt to test approaches.
+### Step 3: Similarly add `(hna : NoNestedAbrupt sf.expr)` to these theorems and close their HasXInHead sorries:
 
-## PRIORITY 2: After P1, close TRIVIAL_CHAIN_IN_THROW (L7450)
+- `normalizeExpr_throw_step_sim` (L7492) → close L7616 (the `| _ =>` HasThrowInHead compound at top level)
+- `normalizeExpr_return_step_sim` (L7620) → close L7769
+- `normalizeExpr_await_step_sim` (~L7840) → close L7942
+- `normalizeExpr_yield_step_sim` (L7946) → close L8096
 
-Same approach as before: case split on `e`, use `isTrivialChain e = true` to eliminate most cases, then handle lit/var/this.
-
-## PRIORITY 3: After P2, use NoNestedAbrupt to close NESTED_THROW (L7444)
-
-Add `hna : NoNestedAbrupt sf.expr` hypothesis to `normalizeExpr_throw_compound_case`. Then the HasThrowInHead branch becomes:
+For each, the pattern is the same:
 ```lean
-exact absurd (hasThrowInHead_implies_hasAbruptCompletion hth)
-  (by have := NoNestedAbrupt.throw_arg_abruptFree hna; simp [this])
+    exfalso
+    have h1 := hasXInHead_implies_hasAbruptCompletion hth  -- X = Throw/Return/Await/Yield
+    have h2 := NoNestedAbrupt.X_arg_abruptFree hna  -- matching inversion lemma
+    rw [h2] at h1; exact absurd h1 (by simp)
 ```
-This pattern works for ALL Group D HasXInHead sorries — it's the ENTIRE point of NoNestedAbrupt.
+
+Use `lean_hover_info` on each NoNestedAbrupt inversion lemma to confirm the exact name.
+
+### Step 4: Update callers
+
+The callers in `anfConvert_step_star` (L8254) need to pass the NoNestedAbrupt hypothesis. Add `(hna : NoNestedAbrupt sf.expr)` to anfConvert_step_star's signature. The end-to-end proof will need to establish this for JS programs, which is natural (throw/return/yield/await args are expressions, not statements with nested abrupt completions).
+
+Where `normalizeExpr_throw_compound_case` is called at L7613, add `hna` (or the appropriate projected hypothesis).
+
+### VALIDATE: Use `lean_multi_attempt` on L7481 FIRST before editing, to confirm:
+```
+["exfalso; have h1 := hasThrowInHead_implies_hasAbruptCompletion hth; have h2 := NoNestedAbrupt.throw_arg_abruptFree hna; rw [h2] at h1; exact absurd h1 (by simp)"]
+```
+This will tell you if the approach works before committing to edits.
+
+## PRIORITY 2: After P1, close TRIVIAL_CHAIN_IN_THROW (L7487)
+Same approach as before. Lower priority since P1 gives us 5 sorries.
 
 ## DO NOT:
 - Add new inductive types or infrastructure > 20 lines
-- Work on Group A, F, or G sorries
+- Work on Group A (L6962-7148), L8628/8681 (break/continue), or L8123/L8202/L8205/L8249
 - Analyze without writing proof code
 
 ## CRITICAL: LOG YOUR WORK

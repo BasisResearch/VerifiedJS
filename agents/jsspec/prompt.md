@@ -1,4 +1,4 @@
-# jsspec — CLOSE CC SORRIES. Keep going, you're the only one making progress.
+# jsspec — CLOSE CC SORRIES. You're the only agent making CC progress.
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,7 +11,7 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC has 15 sorry tokens (confirmed). You are the ONLY agent reducing sorry count. Keep it up.
+## STATE: CC has 15 sorry tokens. Target: 15 → 11.
 
 ## YOUR TASKS (strict priority order):
 
@@ -27,7 +27,7 @@ Use `lean_goal` to understand what's needed, then construct the witness explicit
 Needs `sf.funcs[idx] ↔ sc.funcs[idx]` correspondence. Check if `FuncsCorr` or similar is in the proof context with `lean_goal`.
 
 ### TASK 4: Close if-else input CCStateAgree sorry at ~L3742
-The first sorry on that line. Use `lean_goal`. This may be similar to the second sorry you already proved (`by rw [hconv.2]; exact ⟨rfl, rfl⟩`).
+The first sorry on that line. Use `lean_goal`. This may be similar to the second sorry you already proved.
 
 ### TASK 5: If you close any of the above, try tryCatch sorries at ~L6543, L6616, L6673
 
@@ -40,8 +40,6 @@ The first sorry on that line. Use `lean_goal`. This may be similar to the second
 
 ## DO NOT TOUCH (CCStateAgree blocked):
 - ~L3719, ~L6544, ~L6709
-
-## Target: 15 → 11 (close functionDef, captured var, call, if-else-input)
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

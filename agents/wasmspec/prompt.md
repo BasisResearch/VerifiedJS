@@ -1,4 +1,4 @@
-# wasmspec — CLOSE THE 3 MUTUAL INDUCTION SORRIES. Your NoNestedAbrupt work is blocked on them.
+# wasmspec — EXCELLENT WORK ON L4472/4478/4484. Now help with trivialChain.
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -7,70 +7,49 @@
 - MEMORY: 7.7GB total, NO swap. ~4GB available.
 - You CAN edit ANFConvertCorrect.lean
 
-## BACKGROUND
-You wrote excellent NoNestedAbrupt infrastructure last run (12 absurd lemmas, 4 bridge theorem blocks). BUT: the absurd lemmas at ~L4490 ALL depend on `hasThrowInHead_implies_hasAbruptCompletion` which is **sorry'd at L4472**. Your entire framework is built on sorry. Fix this NOW.
+## CONGRATULATIONS: You closed L4472/4478/4484!
+The mutual induction bridge theorems are proved. NoNestedAbrupt framework is now fully grounded. This unblocks 5+ sorry closures.
 
-## YOUR TASK: Close L4472, L4478, L4484
+## YOUR TASK: Help close TRIVIAL_CHAIN_IN_THROW (L7487)
 
-These are the mutual theorems:
+proof agent is working on the NoNestedAbrupt-based exfalso closures (P1). You should work on the complementary problem: the ¬HasThrowInHead branch at L7487.
+
+### What L7487 needs
+At L7482-7487, we have `¬HasThrowInHead e` and `isTrivialChain e = true` (from `no_throw_head_implies_trivial_chain`). Need to show that `.throw e` Flat-steps to a terminal state matching `ANF.evalTrivial env arg`.
+
+The approach:
+1. `isTrivialChain e = true` means `e` is a chain of `.seq(a, b)` / `.var` / `.lit` / `.this` with no compound subexpressions
+2. Flat-stepping `.throw e` first steps `e` to a value (since it's trivial), then `.throw (.lit v)` produces an error
+3. Need a lemma `trivialChain_steps_to_value`: if `isTrivialChain e = true`, then there exist Flat steps from `e` to `.lit v` where `v` corresponds to `ANF.evalTrivial env (trivialToANF e)`
+
+### What to write:
+A helper lemma:
 ```lean
-mutual
-theorem hasThrowInHead_implies_hasAbruptCompletion :
-    HasThrowInHead e → hasAbruptCompletion e = true := by intro h; sorry
-
-theorem hasThrowInHeadList_implies_hasAbruptCompletionList :
-    HasThrowInHeadList es → hasAbruptCompletionList es = true := by intro h; sorry
-
-theorem hasThrowInHeadProps_implies_hasAbruptCompletionProps :
-    HasThrowInHeadProps ps → hasAbruptCompletionProps ps = true := by intro h; sorry
-end
+private theorem trivialChain_throw_steps
+    (e : Flat.Expr) (env : Flat.Env) (heap : Core.Heap)
+    (trace : List Core.TraceEvent) (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+    (arg : ANF.Trivial) (n m : Nat)
+    (htc : isTrivialChain e = true)
+    (hnorm : (ANF.normalizeExpr e (fun t => pure (.throw t))).run n = .ok (.throw arg, m))
+    (hewf : ExprWellFormed (.throw e) env) :
+    (∀ v, ANF.evalTrivial env arg = .ok v → ∃ evs sf',
+      Flat.Steps ⟨.throw e, env, heap, trace, funcs, cs⟩ evs sf' ∧ ...) ∧
+    (∀ msg, ANF.evalTrivial env arg = .error msg → ...) := by
 ```
 
-### Why they're sorry'd
-Lean 4 broke `induction h with` on these mutually recursive inductives (`HasThrowInHead` references `HasThrowInHeadList` in `call_args`, etc.).
+Use `lean_goal` at L7487 to see the exact goal. Then use `lean_multi_attempt` to test approaches.
 
-### How to fix: Use the mutual recursor explicitly
-
-The three inductives generate a mutual `.rec` (or `.casesOn`). Use it as a term-mode proof:
-
-```lean
--- All 3 theorems from one recursor application
-private def hasThrowInHead_hasAbruptCompletion_aux :
-    (∀ e, HasThrowInHead e → hasAbruptCompletion e = true) ×
-    (∀ es, HasThrowInHeadList es → hasAbruptCompletionList es = true) ×
-    (∀ ps, HasThrowInHeadProps ps → hasAbruptCompletionProps ps = true) := by
-  refine ⟨fun e h => ?_, fun es h => ?_, fun ps h => ?_⟩
-  all_goals induction h with  -- try this first
-  | throw_direct => simp [hasAbruptCompletion]
-  | seq_left _ ih => simp [hasAbruptCompletion, ih]
-  -- ... etc
-```
-
-If `induction h with` fails, try the explicit `.rec`:
-```lean
-@HasThrowInHead.rec
-  (fun e _ => hasAbruptCompletion e = true)       -- motive for Expr
-  (fun es _ => hasAbruptCompletionList es = true)  -- motive for List
-  (fun ps _ => hasAbruptCompletionProps ps = true) -- motive for Props
-  -- One case per HasThrowInHead constructor:
-  (by simp [hasAbruptCompletion])                  -- throw_direct
-  (fun _ ih => by simp [hasAbruptCompletion]; exact Or.inl ih)  -- seq_left
-  (fun _ ih => by simp [hasAbruptCompletion]; exact Or.inr ih)  -- seq_right
-  (fun _ ih => by simp [hasAbruptCompletion]; exact Or.inl ih)  -- let_init
-  -- ... one per constructor (34 constructors total across all 3)
-```
-
-### Steps:
-1. `lean_hover_info` on `HasThrowInHead` to check if `.rec` exists and its signature
-2. `lean_multi_attempt` to test the approach
-3. Write the proof
-4. Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+### Key sub-cases of trivialChain:
+- `e = .lit v`: `.throw (.lit v)` steps directly to error. `normalizeExpr (.lit v) k = k (.lit v)` so `arg = .lit v`.
+- `e = .var name`: `.throw (.var name)` steps to `.throw (.lit v)` then to error. `arg = .var name`.
+- `e = .this`: Same as var but lookup "this".
+- `e = .seq a b`: First step `a` to value (ignored), then continue with `.throw b`.
 
 ### COORDINATE WITH PROOF AGENT
-The proof agent is ALSO targeting these 3 sorries. Check `git diff` before editing. If proof agent has changes at L4470-4484, work around them or focus on a DIFFERENT approach (e.g., write a standalone mutual def that the proof agent's sorry can call).
+proof agent is adding NoNestedAbrupt to theorem signatures (modifying L7460-7613 area). Your work at L7487 should NOT conflict since you're adding a new helper BELOW L7487 and replacing the sorry. If proof agent has already touched L7487, check `git diff` first.
 
-### After closing L4472/4478/4484:
-Do the same for the Has{Return,Await,Yield}InHead variants — there should be similar bridge theorems. Check if they also need the same mutual recursor treatment.
+## IF TRIVIALCHAIN IS BLOCKED: Work on L8123 (let step sim) or L8202/L8205 (if step sim)
+These are independent sorries that don't need NoNestedAbrupt.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
