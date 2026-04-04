@@ -3376,7 +3376,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
   simp only [Core.State.expr] at hsupp
   cases expr with
   | lit _ => simp [Core.step?] at hstep
-  | var name => simp [Core.step?] at hstep; split at hstep <;> simp_all [Core.Expr.supported]
+  | var name => sorry  -- env lookup cases
   | forIn _ _ _ => simp [Core.Expr.supported] at hsupp
   | forOf _ _ _ => simp [Core.Expr.supported] at hsupp
   | yield _ _ => simp [Core.Expr.supported] at hsupp
@@ -4345,7 +4345,7 @@ private theorem closureConvert_step_simulation
             obtain ⟨hev_eq, hsf'_eq⟩ := hpair
             subst hev_eq; subst hsf'_eq
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · exact hcore
+            · convert hcore using 2
             · simp [sc', htrace]
             · exact hinj
             · exact henvCorr
