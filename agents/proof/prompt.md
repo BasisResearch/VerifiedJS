@@ -1,4 +1,4 @@
-# proof — YOU HAVE BEEN STUCK ON GROUP D FOR 3 RUNS. CLOSE THEM NOW.
+# proof — PIVOT: Close ¬HasThrowInHead sub-case of L7122 first, then pattern-match for return/await/yield
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -17,67 +17,79 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 - If build OOMs: add `set_option maxHeartbeats 200000` above the theorem
 - Do NOT attempt to build the entire file if it's failing
 
-## STATE: ANF has 22 sorries. Steps_ctx_lift + 7 wrappers are BUILT (L1737-1853). You built them 3 RUNS AGO. USE THEM.
+## STATE: ANF has 22 sorries. You have built excellent infrastructure over 4 runs but closed 0 Group D sorries. Time to DECOMPOSE and close sub-cases.
 
-## SORRY MAP (22 tokens, CURRENT line numbers as of 03:05 UTC):
+## YOUR TASK: Decompose L7122 using Classical.em, then close the ¬HasThrowInHead half
 
-### Group A — normalizeExpr_labeled_step_sim (7): L6531, L6564, L6575, L6656, L6689, L6700, L6717
-- BLOCKED: needs continuation-independence. Do NOT attempt yet.
+### The problem at L7122
 
-### Group D — throw/return/await/yield compound (8 sorries):
-- **L7122**: throw compound flat_arg ← TARGET #1
-- **L7125**: HasThrowInHead compound cases ← TARGET #2
-- **L7275**: return compound inner_val ← TARGET #3
-- **L7278**: HasReturnInHead compound cases ← TARGET #4
-- **L7448**: await compound inner_arg ← TARGET #5
-- **L7451**: HasAwaitInHead compound cases ← TARGET #6
-- **L7602**: yield compound inner_val ← TARGET #7
-- **L7605**: HasYieldInHead compound cases ← TARGET #8
+At L7122, inside `normalizeExpr_throw_step_sim`, `throw_direct` case:
+- `sf.expr = .throw flat_arg`
+- `flat_arg` is compound (not lit/var/this/break/continue — those are handled above)
+- `hnorm' : (normalizeExpr flat_arg (fun t => pure (.throw t))).run n = .ok (.throw arg, m)`
 
-### Group F — let/seq/if/tryCatch (5): L7632, L7680, L7711, L7714, L7758
-- DEFER until Group D is done.
+You need Flat.Steps from `{expr := .throw flat_arg, env, heap, trace, funcs, cs}` to a terminal state.
 
-### Group G — break/continue dead code (2): L8119, L8170
-- DEFER: wasmspec is working on reformulation.
+### Step 1: Split L7122 into two sub-cases
 
-## YOUR ONE AND ONLY TASK: Close Group D sorries (8 sorries → 0)
-
-You have ALL the tools. They compile. You built them. Now USE them.
-
-### How L7122 works (throw compound flat_arg):
-
-The proof state at L7122 is inside `normalizeExpr_throw_step_sim`. The match on `sf.expr` has handled literal, var, this, break, continue cases. The `| _ =>` catches compound expressions (seq, let, assign, if, call, etc.).
-
-For compound flat_arg (L7122):
-1. `sf.expr` is compound (not a value/var/this/break/continue)
-2. The normalizeExpr produced `.throw (some (.trivial t))` from this compound expr
-3. This means sf.expr must have `.throw` at its eval head (HasThrowInHead)
-4. The sub-expression (flat_arg) needs to step first
-5. Use `Steps_throw_ctx` (L1799) to lift sub-expression steps through the throw context
-
-**CONCRETE APPROACH for L7122:**
+Replace the `sorry` at L7122 with:
 ```lean
     | _ =>
-      -- The sub-expression inside .throw needs to step.
-      -- Use HasThrowInHead to get that sf.expr = .throw sub for some sub,
-      -- then sub takes a step, and Steps_throw_ctx lifts it.
-      sorry
+      by_cases hth : HasThrowInHead flat_arg
+      · -- nested throw: flat_arg itself contains a throw
+        sorry -- NESTED_THROW: needs multi-step simulation through double error
+      · -- no throw in head: flat_arg is a trivial chain
+        have htc := no_throw_head_implies_trivial_chain flat_arg.depth flat_arg (Nat.le_refl _)
+          (fun t => pure (.throw t)) arg n m hnorm' hth
+        sorry -- TRIVIAL_CHAIN_IN_THROW: consume trivial chain in .throw [·] context
 ```
 
-Use `lean_goal` at L7122 col 7 to see the EXACT proof state. Then use `lean_multi_attempt` to try tactics.
+**This alone is worth doing** — it decomposes 1 opaque sorry into 2 categorized ones.
 
-For L7125 (HasThrowInHead compound): similar — the HasThrowInHead inductive gives compound constructors. Use `lean_goal` at L7125 to see the proof state.
+### Step 2: Close the TRIVIAL_CHAIN_IN_THROW sorry
 
-### WORKFLOW:
-1. `lean_goal` at L7122 to see proof state
-2. `lean_multi_attempt` with candidate tactics
-3. If needed, read the HasThrowInHead definition to understand what constructors appear
-4. Write the proof, build `lake build VerifiedJS.Proofs.ANFConvertCorrect`
-5. Repeat for L7275, L7448, L7602 (same pattern, different context wrapper)
-6. Then L7125, L7278, L7451, L7605 (HasXInHead compound cases)
+You have `htc : isTrivialChain flat_arg = true`. A trivial chain is a `.seq` spine of `.lit`/`.var`/`.this` leaves. In the `.throw [·]` context, the inner expression steps (resolving vars to values, discarding seq left operands) until reaching a value. Then `.throw (.lit v)` produces the error event.
 
-### IF YOU CANNOT CLOSE THEM:
-Tell me EXACTLY what the proof state is at L7122 (copy the `lean_goal` output) and what tactic you tried that failed. Do NOT just say "it's hard" — show me the goal.
+Build a helper `trivialChain_throw_steps` (analogous to `trivialChain_consume_ctx` at L1993 but for the `.throw [·]` context instead of `wrapSeqCtx`):
+
+```lean
+private theorem trivialChain_throw_steps
+    (fuel : Nat) (tc : Flat.Expr) (sf : Flat.State)
+    (htc : isTrivialChain tc = true)
+    (hcost : trivialChainCost tc ≤ fuel)
+    (hsf : sf.expr = .throw tc)
+    (hwf : ∀ x, VarFreeIn x tc → sf.env.lookup x ≠ none) :
+    ∃ (v : Flat.Value) (evs : List Core.TraceEvent) (sf' : Flat.State),
+      Flat.Steps sf evs sf' ∧
+      sf'.expr = .lit .undefined ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+      sf'.trace = sf.trace ++ evs ∧
+      observableTrace evs = observableTrace [.error (Flat.valueToString v)] := by
+  sorry -- induction on fuel, similar to trivialChain_consume_ctx
+```
+
+This is a standalone lemma you can build and test independently. Then use it to close the TRIVIAL_CHAIN_IN_THROW sorry.
+
+### Step 3: Apply same pattern to L7275, L7448, L7602
+
+These are the same structure but for `.return (some [·])`, `.await [·]`, `.yield (some [·])`. Each needs:
+1. `by_cases` on HasXInHead
+2. `no_X_head_implies_trivial_chain` (you may need to prove these, or the existing `no_throw_head_implies_trivial_chain` might generalize)
+3. A `trivialChain_X_steps` helper
+
+### DO NOT attempt L7125, L7278, L7451, L7605 yet
+Those are the compound HasXInHead cases from the CALLER and need a fundamentally different approach (multi-step simulation through compound expressions). Park them.
+
+### Target: 22 sorries → 24 (decomposition) → 20 (close 4 trivial chain halves)
+
+Even just Step 1 (decomposing 4 sorries into 8 categorized ones) is valuable progress.
+
+## WORKFLOW:
+1. Edit L7122: replace `sorry` with `by_cases` split
+2. Build to verify it compiles
+3. Write `trivialChain_throw_steps` (start with sorry body, build signature)
+4. Prove `trivialChain_throw_steps` by induction on fuel (follow `trivialChain_consume_ctx` pattern)
+5. Use it to close the ¬HasThrowInHead sorry at L7122
+6. Repeat for L7275, L7448, L7602
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`
