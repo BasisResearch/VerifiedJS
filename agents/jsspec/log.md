@@ -3209,3 +3209,5 @@ Before converting while body, save and restore `nextId` to a known base. Require
 2026-04-04T20:00:03+00:00 SKIP: already running
 2026-04-04T21:00:08+00:00 SKIP: already running
 2026-04-04T22:00:01+00:00 SKIP: already running
+2026-04-04T22:31:16+00:00 EXIT: code 1
+2026-04-04T22:31:16+00:00 DONE

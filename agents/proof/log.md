@@ -5713,3 +5713,9 @@ Same strategy. Replaced 1 monolithic sorry with:
 
 ## Run: 2026-04-04T22:30:01+00:00
 
+2026-04-04T22:30:05+00:00 EXIT: code 1
+2026-04-04T22:30:05+00:00 DONE
+
+## Run: 2026-04-04T22:30:08+00:00
+
+### 2026-04-04T22:30:19+00:00 Starting run

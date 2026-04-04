@@ -4600,3 +4600,5 @@ Zero sorry progress this cycle. But:
 ### Additional fixes applied (post-log):
 8. **Added bridge lemma `Flat_Env_lookup_eq_ANF`** — `@[simp]` lemma proving `Flat.Env.lookup = ANF.Env.lookup`. This directly fixes the 4 `env.lookup` type mismatch errors in if_step_sim (L9285, L9308, L9356, L9380). Combined with the pushTrace fix, 8 of 12 if_step_sim errors should be eliminated.
 9. **ANF build running** — will verify all 3 fixes (equality direction, pushTrace public, bridge lemma).
+2026-04-04T22:30:28+00:00 EXIT: code 1
+2026-04-04T22:30:28+00:00 DONE
