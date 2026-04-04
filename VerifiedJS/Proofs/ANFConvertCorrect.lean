@@ -2996,6 +2996,76 @@ private theorem hasAbruptCompletionList_firstNonValue_preserved
   simp only [hasAbruptCompletionList, Bool.or_eq_false_iff]
   exact ⟨hd, he, hr⟩
 
+private theorem hasAbruptCompletionProps_append (a b : List (Flat.PropName × Flat.Expr)) :
+    hasAbruptCompletionProps (a ++ b) = (hasAbruptCompletionProps a || hasAbruptCompletionProps b) := by
+  induction a with
+  | nil => simp [hasAbruptCompletionProps]
+  | cons p tl ih => simp [hasAbruptCompletionProps, ih, Bool.or_assoc]
+
+private theorem firstNonValueProp_eq_append {props : List (Flat.PropName × Flat.Expr)}
+    {done : List (Flat.PropName × Flat.Expr)} {name : Flat.PropName} {target : Flat.Expr}
+    {remaining : List (Flat.PropName × Flat.Expr)}
+    (h : Flat.firstNonValueProp props = some (done, name, target, remaining)) :
+    props = done ++ (name, target) :: remaining := by
+  induction props generalizing done name target remaining with
+  | nil => simp [Flat.firstNonValueProp] at h
+  | cons p tl ih =>
+    obtain ⟨pn, pe⟩ := p
+    unfold Flat.firstNonValueProp at h
+    split at h
+    · -- pe = .lit _
+      split at h
+      · next heq => simp at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h; simp; exact ih heq
+      · simp at h
+    · -- pe is not a lit
+      simp at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h; simp
+
+private theorem hasAbruptCompletionProps_firstNonValueProp_preserved
+    {props : List (Flat.PropName × Flat.Expr)}
+    {done : List (Flat.PropName × Flat.Expr)} {name : Flat.PropName}
+    {target : Flat.Expr} {remaining : List (Flat.PropName × Flat.Expr)}
+    (hfnv : Flat.firstNonValueProp props = some (done, name, target, remaining))
+    (hac : hasAbruptCompletionProps props = false) :
+    hasAbruptCompletion target = false ∧
+    hasAbruptCompletionProps remaining = false ∧
+    ∀ (e : Flat.Expr), hasAbruptCompletion e = false →
+      hasAbruptCompletionProps (done ++ (name, e) :: remaining) = false := by
+  have hsplit := firstNonValueProp_eq_append hfnv
+  rw [hsplit] at hac
+  rw [hasAbruptCompletionProps_append] at hac
+  simp only [hasAbruptCompletionProps, Bool.or_eq_false_iff] at hac
+  obtain ⟨hd, ht, hr⟩ := hac
+  refine ⟨ht, hr, fun e he => ?_⟩
+  rw [hasAbruptCompletionProps_append]
+  simp only [hasAbruptCompletionProps, Bool.or_eq_false_iff]
+  exact ⟨hd, he, hr⟩
+
+private theorem firstNonValueProp_noNestedAbrupt_preserved
+    {props : List (Flat.PropName × Flat.Expr)}
+    {done : List (Flat.PropName × Flat.Expr)} {name : Flat.PropName}
+    {target : Flat.Expr} {remaining : List (Flat.PropName × Flat.Expr)}
+    (hfnv : Flat.firstNonValueProp props = some (done, name, target, remaining))
+    (hna : ∀ p ∈ props, NoNestedAbrupt p.2) :
+    NoNestedAbrupt target ∧
+    (∀ p ∈ remaining, NoNestedAbrupt p.2) ∧
+    (∀ (e' : Flat.Expr), NoNestedAbrupt e' →
+      ∀ p ∈ done ++ (name, e') :: remaining, NoNestedAbrupt p.2) := by
+  have hsplit := firstNonValueProp_eq_append hfnv
+  rw [hsplit] at hna
+  have ht : NoNestedAbrupt target := by
+    have := hna (name, target) (List.mem_append_right _ (List.mem_cons_self _ _))
+    exact this
+  have hr : ∀ p ∈ remaining, NoNestedAbrupt p.2 := fun p hp =>
+    hna p (List.mem_append_right _ (List.mem_cons.mpr (Or.inr hp)))
+  have hd : ∀ p ∈ done, NoNestedAbrupt p.2 := fun p hp =>
+    hna p (List.mem_append_left _ hp)
+  refine ⟨ht, hr, fun e' he' x hx => ?_⟩
+  cases List.mem_append.mp hx with
+  | inl h => exact hd x h
+  | inr h => cases List.mem_cons.mp h with
+    | inl h => simp at h; obtain ⟨_, rfl⟩ := h; exact he'
+    | inr h => exact hr x h
+
 set_option autoImplicit true in
 /-- No nested abrupt completions: arguments to throw/return/yield/await are free
     of abrupt completion forms. All other sub-expressions recursively satisfy
@@ -9538,8 +9608,66 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         split at hstep
         next ev' sa hsa => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion]; exact ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hac hsa
         next => simp at hstep
-    | call f fenv args => sorry
-    | newObj f fenv args => sorry
+    | call f fenv args =>
+      simp only [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
+      obtain ⟨⟨hf, henv⟩, hargs⟩ := hac
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- f not value → step f
+        split at hstep
+        next ev' sf hsf => simp at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]
+          exact ⟨⟨ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hf hsf, henv⟩, hargs⟩
+        next => simp at hstep
+      next =>  -- f value, env not value → step env
+        split at hstep
+        next ev' se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]
+          exact ⟨⟨hf, ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ henv hse⟩, hargs⟩
+        next => simp at hstep
+      next =>  -- all values → call executes
+        split at hstep
+        · sorry -- all values: call body has unknown hasAbruptCompletion
+        · -- firstNonValueExpr args
+          split at hstep
+          next done target remaining hfnv =>
+            have ⟨htarget, hrem, hrecon⟩ := hasAbruptCompletionList_firstNonValue_preserved hfnv hargs
+            split at hstep
+            next t sa hsa => simp at hstep; obtain ⟨_, rfl⟩ := hstep
+              simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]
+              exact ⟨⟨hf, henv⟩, hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueExpr_depth hfnv; omega) _ _ _ _ _ _ _ htarget hsa)⟩
+            next => simp at hstep
+          next => simp at hstep
+    | newObj f fenv args =>
+      simp only [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
+      obtain ⟨⟨hf, henv⟩, hargs⟩ := hac
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- f not value → step f
+        split at hstep
+        next ev' sf hsf => simp at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]
+          exact ⟨⟨ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hf hsf, henv⟩, hargs⟩
+        next => simp at hstep
+      next =>  -- f value, env not value → step env
+        split at hstep
+        next ev' se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]
+          exact ⟨⟨hf, ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ henv hse⟩, hargs⟩
+        next => simp at hstep
+      next =>  -- all values → newObj allocates
+        split at hstep
+        · simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+        · -- firstNonValueExpr args
+          split at hstep
+          next done target remaining hfnv =>
+            have ⟨htarget, hrem, hrecon⟩ := hasAbruptCompletionList_firstNonValue_preserved hfnv hargs
+            split at hstep
+            next t sa hsa => simp at hstep; obtain ⟨_, rfl⟩ := hstep
+              simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]
+              exact ⟨⟨hf, henv⟩, hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueExpr_depth hfnv; omega) _ _ _ _ _ _ _ htarget hsa)⟩
+            next => simp at hstep
+          next => simp at hstep
     | getEnv envExpr idx =>
       simp only [hasAbruptCompletion] at hac
       unfold Flat.step? at hstep
@@ -9557,7 +9685,22 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         split at hstep
         next ev' se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion]; exact ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hac hse
         next => simp at hstep
-    | makeEnv vals => sorry
+    | makeEnv vals =>
+      simp only [hasAbruptCompletion] at hac
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- all values → allocate env
+        simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+      next =>  -- firstNonValueExpr
+        split at hstep
+        next done target remaining hfnv =>
+          have ⟨htarget, hrem, hrecon⟩ := hasAbruptCompletionList_firstNonValue_preserved hfnv hac
+          split at hstep
+          next t se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep
+            simp only [Flat.State.expr, hasAbruptCompletion]
+            exact hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueExpr_depth hfnv; omega) _ _ _ _ _ _ _ htarget hse)
+          next => simp at hstep
+        next => simp at hstep
     | makeClosure funcIdx envExpr =>
       simp only [hasAbruptCompletion] at hac
       unfold Flat.step? at hstep
@@ -9570,9 +9713,77 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         split at hstep
         next ev' se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion]; exact ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hac hse
         next => simp at hstep
-    | objectLit props => sorry
-    | arrayLit elems => sorry
-    | tryCatch body param catchBody fin => sorry
+    | objectLit props =>
+      simp only [hasAbruptCompletion] at hac
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- all values → allocate object
+        simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+      next =>  -- firstNonValueProp
+        split at hstep
+        next done propName target remaining hfnv =>
+          have ⟨htarget, hrem, hrecon⟩ := hasAbruptCompletionProps_firstNonValueProp_preserved hfnv hac
+          split at hstep
+          next t se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep
+            simp only [Flat.State.expr, hasAbruptCompletion]
+            exact hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueProp_depth hfnv; omega) _ _ _ _ _ _ _ htarget hse)
+          next => simp at hstep
+        next => simp at hstep
+    | arrayLit elems =>
+      simp only [hasAbruptCompletion] at hac
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- all values → allocate array
+        simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+      next =>  -- firstNonValueExpr
+        split at hstep
+        next done target remaining hfnv =>
+          have ⟨htarget, hrem, hrecon⟩ := hasAbruptCompletionList_firstNonValue_preserved hfnv hac
+          split at hstep
+          next t se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep
+            simp only [Flat.State.expr, hasAbruptCompletion]
+            exact hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueExpr_depth hfnv; omega) _ _ _ _ _ _ _ htarget hse)
+          next => simp at hstep
+        next => simp at hstep
+    | tryCatch body param catchBody fin =>
+      unfold Flat.step? at hstep
+      split at hstep
+      next v =>  -- body is value
+        split at hstep  -- isCallFrame
+        · split at hstep  -- finally
+          all_goals (simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion])
+        · split at hstep  -- finally
+          next =>  -- some fin
+            simp at hstep; obtain ⟨_, rfl⟩ := hstep
+            simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]
+            cases fin with
+            | some f => simp [hasAbruptCompletion, Bool.or_eq_false_iff] at hac; exact ⟨hac.2.2, by simp [hasAbruptCompletion]⟩
+            | none => simp [hasAbruptCompletion] at hac; simp at hstep
+          next =>  -- none
+            simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+      next =>  -- body not value → step body
+        split at hstep
+        next =>  -- error event
+          split at hstep  -- isCallFrame && startsWith "return:"
+          · simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+          · split at hstep  -- isCallFrame (throw)
+            · simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+            · sorry -- catch handler: needs hasAbruptCompletion of catch body + finally
+        next =>  -- non-error event → step body
+          next t sb hsb => simp at hstep; obtain ⟨_, rfl⟩ := hstep
+            simp only [Flat.State.expr, hasAbruptCompletion]
+            cases fin with
+            | some f =>
+              simp [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
+              obtain ⟨⟨hbody, hcatch⟩, hfin⟩ := hac
+              simp [Bool.or_eq_false_iff]
+              exact ⟨⟨ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hbody hsb, hcatch⟩, hfin⟩
+            | none =>
+              simp [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
+              obtain ⟨hbody, hcatch⟩ := hac
+              simp [Bool.or_eq_false_iff]
+              exact ⟨ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hbody hsb, hcatch⟩
+        next => simp at hstep
 
 /-- Flat single-step preserves NoNestedAbrupt. -/
 private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.TraceEvent)
@@ -9840,8 +10051,56 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
         split at hstep
         next ev' sa hsa => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.typeof (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ harg hsa)
         next => simp at hstep
-    | call f fenv args => sorry
-    | newObj f fenv args => sorry
+    | call f fenv args =>
+      cases hna with | call hf henv hargs =>
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- f not value → step f
+        split at hstep
+        next ev' sf hsf => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
+          exact NoNestedAbrupt.call (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hf hsf) henv hargs
+        next => simp at hstep
+      next =>  -- f value, env not value → step env
+        split at hstep
+        next ev' se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
+          exact NoNestedAbrupt.call hf (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ henv hse) hargs
+        next => simp at hstep
+      next =>  -- all values → call executes
+        split at hstep
+        · sorry -- all values: function body NoNestedAbrupt unknown
+        · split at hstep
+          next done target remaining hfnv =>
+            have ⟨htarget, hrem, hrecon⟩ := firstNonValueExpr_noNestedAbrupt_preserved hfnv hargs
+            split at hstep
+            next t sa hsa => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
+              exact NoNestedAbrupt.call hf henv (hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueExpr_depth hfnv; omega) _ _ _ _ _ _ htarget hsa))
+            next => simp at hstep
+          next => simp at hstep
+    | newObj f fenv args =>
+      cases hna with | newObj hf henv hargs =>
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- f not value → step f
+        split at hstep
+        next ev' sf hsf => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
+          exact NoNestedAbrupt.newObj (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hf hsf) henv hargs
+        next => simp at hstep
+      next =>  -- f value, env not value → step env
+        split at hstep
+        next ev' se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
+          exact NoNestedAbrupt.newObj hf (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ henv hse) hargs
+        next => simp at hstep
+      next =>  -- all values → newObj allocates
+        split at hstep
+        · simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+        · split at hstep
+          next done target remaining hfnv =>
+            have ⟨htarget, hrem, hrecon⟩ := firstNonValueExpr_noNestedAbrupt_preserved hfnv hargs
+            split at hstep
+            next t sa hsa => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
+              exact NoNestedAbrupt.newObj hf henv (hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueExpr_depth hfnv; omega) _ _ _ _ _ _ htarget hsa))
+            next => simp at hstep
+          next => simp at hstep
     | getEnv envExpr idx =>
       cases hna with | getEnv henv =>
       unfold Flat.step? at hstep
@@ -9859,7 +10118,21 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
         split at hstep
         next ev' se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.getEnv (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ henv hse)
         next => simp at hstep
-    | makeEnv vals => sorry -- needs firstNonValueExpr induction + list membership preservation
+    | makeEnv vals =>
+      cases hna with | makeEnv hvals =>
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- all values → allocate env
+        simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+      next =>  -- firstNonValueExpr
+        split at hstep
+        next done target remaining hfnv =>
+          have ⟨htarget, hrem, hrecon⟩ := firstNonValueExpr_noNestedAbrupt_preserved hfnv hvals
+          split at hstep
+          next t se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
+            exact NoNestedAbrupt.makeEnv (hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueExpr_depth hfnv; omega) _ _ _ _ _ _ htarget hse))
+          next => simp at hstep
+        next => simp at hstep
     | makeClosure funcIdx envExpr =>
       cases hna with | makeClosure henv =>
       unfold Flat.step? at hstep
@@ -9872,9 +10145,71 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
         split at hstep
         next ev' se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.makeClosure (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ henv hse)
         next => simp at hstep
-    | objectLit props => sorry
-    | arrayLit elems => sorry
-    | tryCatch body param catchBody fin => sorry
+    | objectLit props =>
+      cases hna with | objectLit hprops =>
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- all values → allocate object
+        simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+      next =>  -- firstNonValueProp
+        split at hstep
+        next done propName target remaining hfnv =>
+          have ⟨htarget, hrem, hrecon⟩ := firstNonValueProp_noNestedAbrupt_preserved hfnv hprops
+          split at hstep
+          next t se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
+            exact NoNestedAbrupt.objectLit (hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueProp_depth hfnv; omega) _ _ _ _ _ _ htarget hse))
+          next => simp at hstep
+        next => simp at hstep
+    | arrayLit elems =>
+      cases hna with | arrayLit helems =>
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- all values → allocate array
+        simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+      next =>  -- firstNonValueExpr
+        split at hstep
+        next done target remaining hfnv =>
+          have ⟨htarget, hrem, hrecon⟩ := firstNonValueExpr_noNestedAbrupt_preserved hfnv helems
+          split at hstep
+          next t se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
+            exact NoNestedAbrupt.arrayLit (hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueExpr_depth hfnv; omega) _ _ _ _ _ _ htarget hse))
+          next => simp at hstep
+        next => simp at hstep
+    | tryCatch body param catchBody fin =>
+      unfold Flat.step? at hstep
+      split at hstep
+      next v =>  -- body is value
+        split at hstep  -- isCallFrame
+        · split at hstep  -- finally check within call frame
+          all_goals (simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit)
+        · split at hstep  -- finally
+          next =>  -- some fin case
+            simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
+            cases fin with
+            | some f =>
+              cases hna with | tryCatch_some hbody hcatch hfin =>
+              exact NoNestedAbrupt.seq hfin NoNestedAbrupt.lit
+            | none => simp at hstep
+          next =>  -- none case
+            simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+      next =>  -- body not value → step body
+        split at hstep
+        next =>  -- error event
+          split at hstep  -- isCallFrame && startsWith "return:"
+          · simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+          · split at hstep  -- isCallFrame (throw)
+            · simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+            · sorry -- catch handler NoNestedAbrupt: needs catch body + finally analysis
+        next =>  -- non-error event → step body
+          next t sb hsb => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
+            cases fin with
+            | some f =>
+              cases hna with | tryCatch_some hbody hcatch hfin =>
+              exact NoNestedAbrupt.tryCatch_some (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hbody hsb) hcatch hfin
+            | none =>
+              cases hna with | tryCatch_none hbody hcatch =>
+              exact NoNestedAbrupt.tryCatch_none (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hbody hsb) hcatch
+        next => simp at hstep
 
 /-- Flat multi-step preserves NoNestedAbrupt. -/
 private theorem NoNestedAbrupt_steps_preserved {sf sf' : Flat.State} {evs : List Core.TraceEvent}

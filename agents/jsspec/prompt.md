@@ -1,4 +1,4 @@
-# jsspec — Close L3384 (Core_step_preserves_supported remaining cases)
+# jsspec — Close L3375 (Core_step_preserves_supported remaining cases)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -9,20 +9,20 @@
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
-## MEMORY: 7.7GB total, NO swap. ~4GB available.
+## MEMORY: 7.7GB total, NO swap. ~1.1GB available.
 **WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
 
-## STATUS UPDATE
+## STATUS
 - **L4333 is CLOSED** ✓
 - **L7791 is CLOSED** ✓
-- **L3384** is the target: `| _ => sorry -- remaining cases need case analysis on step?`
-- CC has 13 actual sorries. Your target: L3384.
+- CC has 13 actual sorries. Your target: L3375 (`sorry` inside Core_step_preserves_supported).
+- You've been running since 15:30 — **PLEASE SHOW PROGRESS**. If L3375 is blocked, document exactly why and move to the next closeable sorry.
 
-## TASK 1 — Complete Core_step_preserves_supported (L3384)
+## TASK 1 — Complete Core_step_preserves_supported (L3375)
 
-L3384 is inside `Core_step_preserves_supported` at line 3372. The wildcard `| _ => sorry` needs expanding into per-constructor cases.
+The wildcard `sorry` at L3375 needs expanding into per-constructor cases on the expression.
 
-### Strategy: Replace `| _ => sorry` with explicit constructor cases.
+### Strategy: Replace `sorry` with explicit constructor cases.
 
 **Easy cases** (single sub-expression, same pattern):
 ```lean
@@ -36,23 +36,18 @@ L3384 is inside `Core_step_preserves_supported` at line 3372. The wildcard `| _ 
   | assign _ _ => unfold Core.step? at hstep; split at hstep <;> (try simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Core.State.expr, Core.Expr.supported]) <;> simp_all [Core.Expr.supported]
 ```
 
-**Medium cases** (compound with 2-3 sub-expressions): seq, let, if, binary, deleteProp, getProp, getIndex, setProp, setIndex, while_, labeled. For these:
-1. `unfold Core.step? at hstep; unfold Core.Expr.supported at hsupp`
-2. Split on `exprValue?` of first sub-expression
-3. Value case: result is simpler → `simp_all` or use `hsupp` components
-4. Step case: result has same constructor with one stepped sub-expression → supported from `hsupp` components
+**Medium cases**: seq, let, if, binary, deleteProp, getProp, getIndex, setProp, setIndex, while_, labeled.
 
-**Hard cases** (list args): call, newObj, objectLit, arrayLit. These need list induction via `firstNonValueExpr`. Try `sorry` on these if they don't yield quickly.
+**Hard cases** (list args): call, newObj, objectLit, arrayLit → sorry these.
 
 ### Efficient approach:
-1. Use `lean_multi_attempt` at L3384 to quickly test if any single tactic closes it
-2. Replace `| _ => sorry` with all explicit constructors
-3. Start with easy cases — get as many as possible proved
-4. Use `| _ => sorry` as fallback for hard cases
+1. First use `lean_goal` at L3375 to see the exact proof state
+2. Replace `sorry` with the explicit constructor cases above
+3. Use `| _ => sorry` for any cases that don't close quickly
+4. Even 10 proved + 5 sorry is great progress
 
-**IMPORTANT**: Use `lean_hover_info` on `Core.Expr.supported` (in Core/Syntax.lean or similar) to see its full definition. This tells you which constructors return `true` and how supported recurses.
-
-Even replacing 1 wildcard sorry with 10 proved + 5 sorry is great progress.
+## TASK 2 (IF TASK 1 BLOCKED) — Try L3441
+L3441 is `sorry` in captured var multi-step. Use `lean_goal` at L3441 to assess.
 
 ## DO NOT ANALYZE ARCHITECTURE. CLOSE SORRIES.
 
