@@ -6669,8 +6669,23 @@ private theorem closureConvert_step_simulation
               exact ⟨hexprwf',
                 ExprAddrWF_mono catchBody (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.1) hmono,
                 ExprAddrWF_mono fin (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.2) hmono⟩
-          · -- CCStateAgree: broken by upstream Flat.Semantics changes (st1 def not unfolding)
-            sorry
+          · -- CCStateAgree: thread IH result through tryCatch sub-conversions
+            have hconv'_fst : sb.expr = (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst :=
+              congrArg Prod.fst hconv'.symm
+            have hconv'_snd : (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' :=
+              congrArg Prod.snd hconv'.symm
+            have hAgreeOut_sym : st_a'.nextId = st1.nextId ∧ st_a'.funcs.size = st1.funcs.size :=
+              ⟨hAgreeOut.1.symm, hAgreeOut.2.symm⟩
+            have hsd_c := convertExpr_state_determined catchBody (catchParam :: scope) envVar envMap
+              st_a' st1 hAgreeOut_sym.1 hAgreeOut_sym.2
+            have hsd_f := convertOptExpr_state_determined finally_ scope envVar envMap
+              (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st_a').snd
+              st2 hsd_c.2.1 hsd_c.2.2
+            refine ⟨st_a,
+              (Flat.convertOptExpr finally_ scope envVar envMap
+                (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st_a').snd).snd,
+              ?_, hAgreeIn, by rw [hconv.2]; exact ⟨hsd_f.2.1.symm, hsd_f.2.2.symm⟩⟩
+            simp only [Flat.convertExpr, ← hconv'_fst, hconv'_snd, hsd_c.1, hsd_f.1]
       | none =>
         have heq : Flat.step? { sf with expr := .tryCatch fbody catchParam fcatch ffin } = none := by
           simp only [Flat.step?, hfnv, hm]

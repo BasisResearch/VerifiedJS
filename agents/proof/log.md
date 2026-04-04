@@ -5548,3 +5548,21 @@ For `HasXInHead compound` sorries (L7154, L7307, L7480, L7634):
 
 ### 2026-04-04T06:30:23+00:00 Starting run
 2026-04-04T07:30:01+00:00 SKIP: already running
+
+#### Changes made:
+1. **Added `evalTrivial_trivialOfValue`**: proves `evalTrivial env (trivialOfValue v) = .ok v` for any value `v`
+2. **Added `trivialChain_inner_step`** (~80 lines): proves that one step of a non-value trivial chain preserves env/heap/funcs/callStack, produces a trivial chain with strictly smaller cost. Uses fuel-based induction on `trivialChainCost`. Handles var (resolve), this (resolve), seq-with-value-left (drop), seq-with-nonvalue-left (recursive via `step?_seq_ctx`).
+3. **Added `trivialChain_throw_steps`** (~130 lines): proves that `.throw e` where `e` is a trivial chain evaluates to the correct error event matching `evalTrivial env arg`. Handles:
+   - `.lit v`: 1 throw step, connects arg to trivialOfValue via evalTrivial_trivialOfValue
+   - `.var name`: 2 steps (resolve var in throw ctx + throw lit), connects arg to env lookup
+   - `.this`: 2 steps (resolve this in throw ctx + throw lit)
+   - `.seq a b`: case splits on `exprValue? a`:
+     - `some v_a` (a is lit): 1 step to `.throw b`, IH on b
+     - `none` (a is not value): use `trivialChain_inner_step` + `step?_seq_ctx` + `step?_throw_ctx` to take 1 step, then IH on `.seq a' b`. Uses `normalizeExpr_trivialChain_passthrough` to show arg is unchanged.
+4. **Closed TRIVIAL_CHAIN_IN_THROW sorry** at former L7487: replaced with `exact trivialChain_throw_steps ...`
+
+#### Sorry count: 23 → 22 (closed 1 sorry)
+#### Build: PASSING
+
+### 2026-04-04T07:37:08+00:00 Run complete — closed TRIVIAL_CHAIN_IN_THROW sorry, 23→22 sorries
+2026-04-04T07:37:17+00:00 DONE
