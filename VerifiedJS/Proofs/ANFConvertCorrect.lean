@@ -8898,6 +8898,78 @@ private theorem normalizeExpr_seq_step_sim
       sorry
     · exact absurd hstep_eq (by simp)
 
+/-- Decompose normalizeExpr (.if (.lit fv) then_flat else_flat) k into its components. -/
+private theorem normalizeExpr_if_lit_decomp
+    (fv : Flat.Value) (then_flat else_flat : Flat.Expr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n : Nat)
+    (cond : ANF.Trivial) (then_ else_ : ANF.Expr) (m : Nat)
+    (hnorm : ANF.normalizeExpr (.if (.lit fv) then_flat else_flat) k n = .ok (.if cond then_ else_, m)) :
+    cond = ANF.trivialOfValue fv ∧
+    ∃ n1, ANF.normalizeExpr then_flat k n = .ok (then_, n1) ∧
+          ANF.normalizeExpr else_flat k n1 = .ok (else_, m) := by
+  simp only [ANF.normalizeExpr_if', ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue] at hnorm
+  simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
+  cases hthen : ANF.normalizeExpr then_flat k n with
+  | error msg => simp [hthen] at hnorm
+  | ok val_then =>
+    obtain ⟨then_anf, n1⟩ := val_then
+    simp [hthen] at hnorm
+    cases helse : ANF.normalizeExpr else_flat k n1 with
+    | error msg => simp [helse] at hnorm
+    | ok val_else =>
+      obtain ⟨else_anf, n2⟩ := val_else
+      simp [helse, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
+      obtain ⟨⟨hc, ht, he⟩, hm⟩ := hnorm
+      exact ⟨hc, n1, by subst ht; exact hthen, by subst he; subst hm; exact helse⟩
+
+/-- Same decomposition for var condition. -/
+private theorem normalizeExpr_if_var_decomp
+    (name_c : Flat.VarName) (then_flat else_flat : Flat.Expr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n : Nat)
+    (cond : ANF.Trivial) (then_ else_ : ANF.Expr) (m : Nat)
+    (hnorm : ANF.normalizeExpr (.if (.var name_c) then_flat else_flat) k n = .ok (.if cond then_ else_, m)) :
+    cond = .var name_c ∧
+    ∃ n1, ANF.normalizeExpr then_flat k n = .ok (then_, n1) ∧
+          ANF.normalizeExpr else_flat k n1 = .ok (else_, m) := by
+  simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_var'] at hnorm
+  simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
+  cases hthen : ANF.normalizeExpr then_flat k n with
+  | error msg => simp [hthen] at hnorm
+  | ok val_then =>
+    obtain ⟨then_anf, n1⟩ := val_then
+    simp [hthen] at hnorm
+    cases helse : ANF.normalizeExpr else_flat k n1 with
+    | error msg => simp [helse] at hnorm
+    | ok val_else =>
+      obtain ⟨else_anf, n2⟩ := val_else
+      simp [helse, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
+      obtain ⟨⟨hc, ht, he⟩, hm⟩ := hnorm
+      exact ⟨hc, n1, by subst ht; exact hthen, by subst he; subst hm; exact helse⟩
+
+/-- Same decomposition for .this condition. -/
+private theorem normalizeExpr_if_this_decomp
+    (then_flat else_flat : Flat.Expr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n : Nat)
+    (cond : ANF.Trivial) (then_ else_ : ANF.Expr) (m : Nat)
+    (hnorm : ANF.normalizeExpr (.if .this then_flat else_flat) k n = .ok (.if cond then_ else_, m)) :
+    cond = .var "this" ∧
+    ∃ n1, ANF.normalizeExpr then_flat k n = .ok (then_, n1) ∧
+          ANF.normalizeExpr else_flat k n1 = .ok (else_, m) := by
+  simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_this'] at hnorm
+  simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
+  cases hthen : ANF.normalizeExpr then_flat k n with
+  | error msg => simp [hthen] at hnorm
+  | ok val_then =>
+    obtain ⟨then_anf, n1⟩ := val_then
+    simp [hthen] at hnorm
+    cases helse : ANF.normalizeExpr else_flat k n1 with
+    | error msg => simp [helse] at hnorm
+    | ok val_else =>
+      obtain ⟨else_anf, n2⟩ := val_else
+      simp [helse, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
+      obtain ⟨⟨hc, ht, he⟩, hm⟩ := hnorm
+      exact ⟨hc, n1, by subst ht; exact hthen, by subst he; subst hm; exact helse⟩
+
 /-- If normalizeExpr sf.expr k produces .if cond then_ else_ (with trivial-preserving k),
     then one ANF step on the if can be simulated by Flat steps. -/
 private theorem normalizeExpr_if_step_sim
@@ -8965,19 +9037,22 @@ private theorem normalizeExpr_if_step_sim
               · intro x hfx; exact hewf x (VarFreeIn.if_then _ _ _ _ hfx)
         | var name_c =>
           rw [ANF.normalizeExpr_if', ANF.normalizeExpr_var'] at hnorm
-          simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
-          cases hthen_r : ANF.normalizeExpr then_flat k n with
-          | error msg => simp [hthen_r] at hnorm
+          cases hthen_r : (ANF.normalizeExpr then_flat k).run n with
+          | error msg =>
+            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
           | ok val_then =>
             obtain ⟨then_anf, n1⟩ := val_then
-            simp [hthen_r] at hnorm
-            cases helse_r : ANF.normalizeExpr else_flat k n1 with
-            | error msg => simp [helse_r] at hnorm
+            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
+            cases helse_r : (ANF.normalizeExpr else_flat k).run n1 with
+            | error msg =>
+              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r] at hnorm
             | ok val_else =>
               obtain ⟨else_anf, n2⟩ := val_else
-              simp [helse_r, pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
+              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r,
+                          pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
               obtain ⟨hcond_eq, hthen_eq, helse_eq, hm_eq⟩ := hnorm
-              subst hcond_eq hthen_eq helse_eq hm_eq
+              rw [← hcond_eq] at heval
+              subst hthen_eq helse_eq hm_eq
               simp only [ANF.evalTrivial] at heval
               split at heval
               · rename_i v' hlookup
@@ -8994,25 +9069,29 @@ private theorem normalizeExpr_if_step_sim
                 refine ⟨⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩,
                   [.silent, .silent], .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)), ?_, ?_, ?_⟩
                 · simp [observableTrace]
-                · refine ⟨rfl, rfl, ?_, k, n, n1, hthen_r, hk⟩
-                  simp [observableTrace_append, observableTrace]; exact htrace
+                · refine ⟨rfl, rfl, ?_, k, n, n1, ?_, hk⟩
+                  · simp [observableTrace_append, observableTrace]; exact htrace
+                  · simp [StateT.run] at hthen_r; exact hthen_r
                 · intro x hfx; exact hewf x (VarFreeIn.if_then _ _ _ _ hfx)
               · simp at heval
         | this =>
           rw [ANF.normalizeExpr_if', ANF.normalizeExpr_this'] at hnorm
-          simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
-          cases hthen_r : ANF.normalizeExpr then_flat k n with
-          | error msg => simp [hthen_r] at hnorm
+          cases hthen_r : (ANF.normalizeExpr then_flat k).run n with
+          | error msg =>
+            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
           | ok val_then =>
             obtain ⟨then_anf, n1⟩ := val_then
-            simp [hthen_r] at hnorm
-            cases helse_r : ANF.normalizeExpr else_flat k n1 with
-            | error msg => simp [helse_r] at hnorm
+            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
+            cases helse_r : (ANF.normalizeExpr else_flat k).run n1 with
+            | error msg =>
+              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r] at hnorm
             | ok val_else =>
               obtain ⟨else_anf, n2⟩ := val_else
-              simp [helse_r, pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
+              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r,
+                          pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
               obtain ⟨hcond_eq, hthen_eq, helse_eq, hm_eq⟩ := hnorm
-              subst hcond_eq hthen_eq helse_eq hm_eq
+              rw [← hcond_eq] at heval
+              subst hthen_eq helse_eq hm_eq
               simp only [ANF.evalTrivial] at heval
               split at heval
               · rename_i v' hlookup
@@ -9029,8 +9108,9 @@ private theorem normalizeExpr_if_step_sim
                 refine ⟨⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩,
                   [.silent, .silent], .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)), ?_, ?_, ?_⟩
                 · simp [observableTrace]
-                · refine ⟨rfl, rfl, ?_, k, n, n1, hthen_r, hk⟩
-                  simp [observableTrace_append, observableTrace]; exact htrace
+                · refine ⟨rfl, rfl, ?_, k, n, n1, ?_, hk⟩
+                  · simp [observableTrace_append, observableTrace]; exact htrace
+                  · simp [StateT.run] at hthen_r; exact hthen_r
                 · intro x hfx; exact hewf x (VarFreeIn.if_then _ _ _ _ hfx)
               · simp at heval
         | _ => sorry -- compound condition: needs trivialChain infrastructure
@@ -9047,17 +9127,19 @@ private theorem normalizeExpr_if_step_sim
         | lit fv =>
           rw [ANF.normalizeExpr_if'] at hnorm
           simp only [ANF.normalizeExpr, ANF.trivialOfFlatValue, trivialOfFlatValue_eq_trivialOfValue] at hnorm
-          simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
-          cases hthen_r : ANF.normalizeExpr then_flat k n with
-          | error msg => simp [hthen_r] at hnorm
+          cases hthen_r : (ANF.normalizeExpr then_flat k).run n with
+          | error msg =>
+            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
           | ok val_then =>
             obtain ⟨then_anf, n1⟩ := val_then
-            simp [hthen_r] at hnorm
-            cases helse_r : ANF.normalizeExpr else_flat k n1 with
-            | error msg => simp [helse_r] at hnorm
+            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
+            cases helse_r : (ANF.normalizeExpr else_flat k).run n1 with
+            | error msg =>
+              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r] at hnorm
             | ok val_else =>
               obtain ⟨else_anf, n2⟩ := val_else
-              simp [helse_r, pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
+              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r,
+                          pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
               obtain ⟨hcond_eq, hthen_eq, helse_eq, hm_eq⟩ := hnorm
               subst hthen_eq helse_eq hm_eq
               rw [hcond_eq, evalTrivial_trivialOfValue] at heval
@@ -9069,23 +9151,27 @@ private theorem normalizeExpr_if_step_sim
                   some (.silent, ⟨else_flat, env, heap, trace ++ [.silent], funcs, cs⟩)
                 simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
               · rfl
-              · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace, k, n1, n2, helse_r, hk⟩
+              · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace,
+                  k, n1, n2, by simp [StateT.run] at helse_r; exact helse_r, hk⟩
               · intro x hfx; exact hewf x (VarFreeIn.if_else _ _ _ _ hfx)
         | var name_c =>
           rw [ANF.normalizeExpr_if', ANF.normalizeExpr_var'] at hnorm
-          simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
-          cases hthen_r : ANF.normalizeExpr then_flat k n with
-          | error msg => simp [hthen_r] at hnorm
+          cases hthen_r : (ANF.normalizeExpr then_flat k).run n with
+          | error msg =>
+            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
           | ok val_then =>
             obtain ⟨then_anf, n1⟩ := val_then
-            simp [hthen_r] at hnorm
-            cases helse_r : ANF.normalizeExpr else_flat k n1 with
-            | error msg => simp [helse_r] at hnorm
+            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
+            cases helse_r : (ANF.normalizeExpr else_flat k).run n1 with
+            | error msg =>
+              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r] at hnorm
             | ok val_else =>
               obtain ⟨else_anf, n2⟩ := val_else
-              simp [helse_r, pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
+              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r,
+                          pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
               obtain ⟨hcond_eq, hthen_eq, helse_eq, hm_eq⟩ := hnorm
-              subst hcond_eq hthen_eq helse_eq hm_eq
+              rw [← hcond_eq] at heval
+              subst hthen_eq helse_eq hm_eq
               simp only [ANF.evalTrivial] at heval
               split at heval
               · rename_i v' hlookup
@@ -9102,25 +9188,29 @@ private theorem normalizeExpr_if_step_sim
                 refine ⟨⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩,
                   [.silent, .silent], .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)), ?_, ?_, ?_⟩
                 · simp [observableTrace]
-                · refine ⟨rfl, rfl, ?_, k, n1, n2, helse_r, hk⟩
-                  simp [observableTrace_append, observableTrace]; exact htrace
+                · refine ⟨rfl, rfl, ?_, k, n1, n2, ?_, hk⟩
+                  · simp [observableTrace_append, observableTrace]; exact htrace
+                  · simp [StateT.run] at helse_r; exact helse_r
                 · intro x hfx; exact hewf x (VarFreeIn.if_else _ _ _ _ hfx)
               · simp at heval
         | this =>
           rw [ANF.normalizeExpr_if', ANF.normalizeExpr_this'] at hnorm
-          simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
-          cases hthen_r : ANF.normalizeExpr then_flat k n with
-          | error msg => simp [hthen_r] at hnorm
+          cases hthen_r : (ANF.normalizeExpr then_flat k).run n with
+          | error msg =>
+            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
           | ok val_then =>
             obtain ⟨then_anf, n1⟩ := val_then
-            simp [hthen_r] at hnorm
-            cases helse_r : ANF.normalizeExpr else_flat k n1 with
-            | error msg => simp [helse_r] at hnorm
+            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
+            cases helse_r : (ANF.normalizeExpr else_flat k).run n1 with
+            | error msg =>
+              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r] at hnorm
             | ok val_else =>
               obtain ⟨else_anf, n2⟩ := val_else
-              simp [helse_r, pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
+              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r,
+                          pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
               obtain ⟨hcond_eq, hthen_eq, helse_eq, hm_eq⟩ := hnorm
-              subst hcond_eq hthen_eq helse_eq hm_eq
+              rw [← hcond_eq] at heval
+              subst hthen_eq helse_eq hm_eq
               simp only [ANF.evalTrivial] at heval
               split at heval
               · rename_i v' hlookup
@@ -9137,8 +9227,9 @@ private theorem normalizeExpr_if_step_sim
                 refine ⟨⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩,
                   [.silent, .silent], .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)), ?_, ?_, ?_⟩
                 · simp [observableTrace]
-                · refine ⟨rfl, rfl, ?_, k, n1, n2, helse_r, hk⟩
-                  simp [observableTrace_append, observableTrace]; exact htrace
+                · refine ⟨rfl, rfl, ?_, k, n1, n2, ?_, hk⟩
+                  · simp [observableTrace_append, observableTrace]; exact htrace
+                  · simp [StateT.run] at helse_r; exact helse_r
                 · intro x hfx; exact hewf x (VarFreeIn.if_else _ _ _ _ hfx)
               · simp at heval
         | _ => sorry -- compound condition
