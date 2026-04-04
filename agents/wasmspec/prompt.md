@@ -1,61 +1,96 @@
-# wasmspec — Implement normalizeExpr_no_compound_break + CCStateAgree alternative
+# wasmspec — Reformulate hasBreakInHead/hasContinueInHead theorems
 
-## EXCELLENT work on break analysis and if_step_sim investigation.
+## Your analysis was EXCELLENT. break_direct/continue_direct proofs are solid.
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
 - **DO NOT** run `lake build` anything large
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
 - MEMORY: 7.7GB total, NO swap. ~4GB available.
-- You CAN edit ANFConvertCorrect.lean L6600-6625 area (coordinate with proof agent)
+- You CAN edit ANFConvertCorrect.lean (coordinate with proof agent on L6700-6800)
 
-## YOUR JOB: Two tasks
+## STATE: 8 ANF sorries in hasBreak/hasContinue compound cases (L6751-6784). All FALSE as stated.
 
-### TASK 1: Implement normalizeExpr_no_compound_break (HIGHEST PRIORITY)
+## YOUR ANALYSIS RECAP:
+- break_direct/continue_direct: PROVED ✓
+- Compound cases (seq_left, seq_right, let_init, wildcard): FALSE because:
+  1. `.seq (.break l) b` → b still evaluates → final expr ≠ `.lit .undefined`
+  2. `.assign "x" (.break l)` → env modified
+  3. `.let "y" (.break l) body` → body evaluates with modified env
+- While loops with break in body ARE reachable from normalizeExpr output
+- So the compound cases CANNOT be eliminated by contradiction
 
-Your analysis confirmed hasBreakInHead_flat_error_steps (L6612) and hasContinueInHead_flat_error_steps (L6625) are FALSE as stated. The proof agent CONFIRMED this independently.
+## YOUR TASK: Reformulate the theorems
 
-The fix you proposed: normalizeExpr NEVER produces compound HasBreakInHead forms (.seq, .let, etc.) — it CPS-transforms everything. So the only reachable HasBreakInHead constructor for ANF-normalized expressions is `break_direct`.
+The current theorems promise too much for compound cases. The fix is to WEAKEN the conclusion for compound HasBreakInHead.
 
-**Implementation steps:**
-1. `grep -n "inductive HasBreakInHead" VerifiedJS/` to find the definition
-2. Read it — list all constructors
-3. For each compound constructor (seq_left, seq_right, let_init, let_body, etc.):
-   - Determine which normalizeExpr output form it requires
-   - Show normalizeExpr cannot produce that form (e.g., normalizeExpr never produces `.seq (.break label) b` because it CPS-transforms seq)
-4. Write the lemma in ANFConvertCorrect.lean near L6600:
+### Option A: Split into two theorems (RECOMMENDED)
+
+Replace the current monolithic theorem with:
+
+1. **Direct case** (already proved): keep as-is
+2. **Compound case**: weaker conclusion — only promise the error event appears in the trace, NOT that the final expression is `.lit .undefined`
 
 ```lean
-private theorem normalizeExpr_no_compound_HasBreakInHead
-    (e : Core.Expr) (k : Flat.Expr → Flat.Expr) (n : Nat) (label : Option Flat.LabelName)
-    (h : HasBreakInHead (ANF.normalizeExpr e k n).fst label) :
-    ∃ l, (ANF.normalizeExpr e k n).fst = .break l ∧ label = some l := by
-  cases e <;> simp [ANF.normalizeExpr] at h ⊢ <;> sorry -- per-constructor
+/-- For compound HasBreakInHead, the break error event eventually appears in the trace,
+    but the final expression state depends on the surrounding context. -/
+private theorem hasBreakInHead_flat_error_trace
+    (hbreak : HasBreakInHead e label)
+    (hbreak_compound : ¬∃ l, e = .break l) :
+    ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
+      Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs sf' ∧
+      .error ("break:" ++ label.getD "") ∈ evs.join ∧
+      sf'.env = env ∨ True  -- weaken env/heap preservation claims
 ```
 
-5. Use `lean_multi_attempt` on each constructor case to find which close by `simp`
-6. Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+Wait — check what the DOWNSTREAM code actually NEEDS from this theorem. Read:
+- `grep -n "hasBreakInHead_flat_error_steps" VerifiedJS/Proofs/ANFConvertCorrect.lean`
+- Look at all call sites (should be in anfConvert_step_star around L7757-8015)
+- Determine what properties the callers actually USE from the result
 
-Then replace L6612 with:
+### Step 1: Find all callers
+```
+grep -n "hasBreakInHead_flat_error_steps\|hasContinueInHead_flat_error_steps" VerifiedJS/Proofs/ANFConvertCorrect.lean
+```
+
+### Step 2: For each caller, determine what it needs:
+- Does it use `sf'.expr = .lit .undefined`?
+- Does it use `sf'.env = sf.env`?
+- Does it use `sf'.heap = sf.heap`?
+- Does it only use the error trace event?
+
+### Step 3: Reformulate to provide EXACTLY what callers need
+
+If callers only need the error trace event + multi-step relationship, reformulate accordingly. If callers need expression equality, the caller needs to be restructured too.
+
+### Step 4: Implement the reformulated theorem
+- Prove it by induction on HasBreakInHead
+- break_direct: use existing proof
+- Compound cases: use eval context stepping (step?_seq_ctx etc.) + IH
+
+### Step 5: Update callers to use the new theorem
+
+### Alternative: normalizeExpr_break_only_direct
+
+If investigation shows normalizeExpr output (with trivial-preserving k) ONLY produces HasBreakInHead via while loops, and while loops with break are handled separately in the proof, then maybe the compound cases in hasBreakInHead_flat_error_steps are UNREACHABLE from anfConvert_step_star.
+
+Check: does anfConvert_step_star call hasBreakInHead_flat_error_steps on normalizeExpr output? If so, can we prove that normalizeExpr output only has break_direct (excluding .seq (.while_ ...) patterns)?
+
+This would be:
 ```lean
-  have ⟨l, heq, hlabel⟩ := normalizeExpr_no_compound_HasBreakInHead ... hbreak
-  subst hlabel; rw [heq]; -- now it's just .break l, which has direct stepping
-  sorry -- direct break case (simpler)
+theorem normalizeExpr_break_only_via_while
+    (hnorm : (ANF.normalizeExpr e k).run n = .ok (e', m))
+    (hk : trivial_preserving k)
+    (hbreak : HasBreakInHead e' label) :
+    (∃ l, e' = .break l) ∨
+    (∃ c d b, e' = .seq (.while_ c d) b ∧ HasBreakInHead (.while_ c d) label)
 ```
 
-### TASK 2: CCStateAgree alternative analysis (RESEARCH ONLY)
+If this is provable, then anfConvert_step_star only needs break_direct + while-break, both of which can be handled separately.
 
-jsspec found that the proposed CCStateAgree invariant change (dropping output agreement) would BREAK 14 working cases. The 6 blocked CC sorries remain parked.
+## Build command
+`lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
-**Research question**: Is there a WEAKER invariant that works for both?
-
-Options to investigate:
-1. **Monotone state agreement**: `CCStateAgree_monotone st st_a` meaning `st_a.nextId ≥ st.nextId` (instead of equality). If convertExpr only cares about state monotonically...
-2. **Expression-level state independence**: Show that `(convertExpr e scope envVar envMap st1).fst = (convertExpr e scope envVar envMap st2).fst` when `st1.nextId ≥ N ∧ st2.nextId ≥ N` for some bound N. This would make the output state irrelevant.
-3. **Alpha-equivalence**: convertExpr with different states produces alpha-equivalent expressions (same structure, different fresh variable names). If the simulation is alpha-equivalence-preserving...
-
-Use `lean_hover_info` on `convertExpr` and `CCStateAgree` to understand their exact definitions. Write findings to agents/wasmspec/ccstateagree_analysis.md.
-
-### LOG YOUR WORK
+## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

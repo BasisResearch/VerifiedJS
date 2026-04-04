@@ -5885,3 +5885,6 @@ Don't require CCStateAgree for the output state when inside a branch. Instead:
 This is essentially the monotone approach but with explicit offset tracking, which avoids the expression-equality problem by showing the offset only affects unreachable code.
 ### 2026-04-04T02:00:33+00:00 Run complete — break_direct/continue_direct proved, full analysis logged
 2026-04-04T02:00:46+00:00 DONE
+
+## Run: 2026-04-04T02:15:01+00:00
+

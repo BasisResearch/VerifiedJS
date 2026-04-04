@@ -1,4 +1,4 @@
-# jsspec — ABORT CCStateAgree invariant change. Focus on closable targets.
+# jsspec — Close newObj sorries, then build FuncsCorr infrastructure
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,47 +11,80 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## ⚠️⚠️⚠️ ABORT CCStateAgree INVARIANT CHANGE ⚠️⚠️⚠️
+## ⚠️⚠️⚠️ DO NOT TOUCH CCStateAgree ⚠️⚠️⚠️
+The 6 CCStateAgree-blocked sorries (if-then, if-else, tryCatch×2, while_, functionDef) are PARKED.
+Your OWN analysis confirmed the invariant change would break 14 working cases.
 
-Your OWN analysis from last run found:
-> "The change would close 2-3 of the 6 blocked sorries but would BREAK 14 currently-working USES-OUTPUT cases"
+## STATE: CC has 14 sorry tokens. Unchanged from last run.
 
-**DO NOT attempt the invariant change.** The 6 CCStateAgree-blocked sorries (if-then, if-else, tryCatch×2, while_, functionDef) are PARKED. We will revisit when we have a better strategy.
+## SORRY MAP (14 tokens):
 
-## STATE: CC has 14 actual sorries. You closed consoleLog — EXCELLENT.
+### UNPROVABLE (3) — SKIP:
+- L1507: forIn stub
+- L1508: forOf stub
+- L5144: getIndex string (Float.toString opaque)
+
+### CCStateAgree BLOCKED (7) — PARKED:
+- L3715: if-then
+- L3738: if-else (2 sorries on one line)
+- L6382: functionDef
+- L6537: tryCatch finally
+- L6608: tryCatch error (9/10 goals proved, only CCStateAgree remains)
+- L6715: while_
+
+### ACTIONABLE (4):
+- **L4498**: newObj f not a value
+- **L4506**: newObj non-value arg
+- **L3387**: captured var (multi-step gap)
+- **L4292**: non-consoleLog call (needs FuncsCorr)
 
 ## YOUR TASKS (in priority order):
 
-### TASK 1: newObj all-values case (L4498/L4506)
+### TASK 1: Close newObj sorries (L4498/L4506)
 
-This is the same pattern as arrayLit (which you already proved). The `f not a value` sorry at L4498 and `non-value arg` sorry at L4506 deal with the sub-stepping cases where Core allocates immediately but Flat needs to step first.
+You already proved arrayLit all-values. newObj has similar structure.
 
-For the ALL-VALUES sub-case within newObj (if it exists separately):
-- Both Core and Flat allocate the object in one step
-- HeapInj via `alloc_both`
-- Same as your arrayLit proof
+Read L4480-4510 to understand the proof state. The key issue: Core allocates immediately (newObj with all values produces the object in one step) but Flat may need to step sub-expressions first.
 
-Read L4490-4510 to see what the actual proof state looks like. If there's a sub-case where both f and arg are values, that's your target.
+For the ALL-VALUES sub-case:
+- Same pattern as your arrayLit proof
+- Both Core and Flat allocate, HeapInj via `alloc_both`
+- CCStateAgree satisfied trivially when sub-exprs are all values
 
-### TASK 2: Investigate tryCatch error (L6608)
+For the NON-VALUE sub-cases (L4498/L4506):
+- Core allocates immediately regardless
+- Flat needs to step f or arg first
+- Can you show that when Core steps, the Flat simulation catches up via multi-stepping?
+- If this is structurally the same as arrayLit non-value case, reuse that approach
 
-Read around L6600-6615. This sorry is in the tryCatch error handling case. Your previous analysis (run at 16:55) showed you proved 9/10 goals — only CCStateAgree remained. But check: is the CCStateAgree needed here truly blocked, or is there a way to provide it?
+### TASK 2: Build FuncsCorr infrastructure for L4292
 
-If tryCatch error creates a NEW scope (entering catch block), the CC state threading might be simpler — the catch block's CCState might agree with the input.
+L4292 is the non-consoleLog function call sorry. It needs a correspondence between `sf.funcs[idx]` and `sc.funcs[idx]`.
 
-### TASK 3: Survey remaining non-blocked sorries
+Steps:
+1. Read the CC_SimRel definition (grep for `CC_SimRel` or the simulation relation structure)
+2. Check if there's any existing function correspondence invariant
+3. If not, define one:
+```lean
+def FuncsCorr (sf_funcs : Array Flat.FuncDef) (sc_funcs : Array Core.FuncDef) : Prop :=
+  sf_funcs.size = sc_funcs.size ∧
+  ∀ i (h : i < sf_funcs.size),
+    (sf_funcs[i]).params = (sc_funcs[i]'(by omega)).params ∧
+    (sf_funcs[i]).body = convertExpr (sc_funcs[i]'(by omega)).body ...
+```
+4. Add FuncsCorr to the simulation relation
+5. Prove it's preserved by each stepping case
 
-After Task 1, do `grep -n sorry VerifiedJS/Proofs/ClosureConvertCorrect.lean` and categorize:
-- Which sorries are genuinely CCStateAgree-blocked?
-- Which might have alternative approaches?
-- Are there any new opportunities you haven't explored?
+This is a LARGE task. Only START it if Task 1 is done. Even just DEFINING FuncsCorr and adding it to the relation (with sorry for preservation) unblocks L4292.
+
+### TASK 3: Investigate captured var (L3387)
+
+Read around L3380-3395. The sorry needs closure environment object correspondence. Check if the existing EnvCorr + HeapInj gives enough to prove this. If the captured variable is in the closure's environment object on the heap, HeapInj should map it.
 
 ### DO NOT TOUCH:
 - L1507/L1508 forIn/forOf — stubs, unprovable
-- L5144 getIndex string — UNPROVABLE (Float.toString opaque)
-- L4292 non-consoleLog call — BLOCKED no FuncsCorr
-- L3387 captured var — multi-step gap, needs closure env correspondence
-- L3715, L3738, L6537, L6715 — CCStateAgree blocked, PARKED
+- L5144 getIndex string — UNPROVABLE
+- L3715, L3738, L6382, L6537, L6608, L6715 — CCStateAgree blocked, PARKED
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

@@ -1,3 +1,67 @@
+## Run: 2026-04-04T02:05:01+00:00
+
+### Metrics
+- **Sorry count (by token)**: ANF 28 + CC 14 = **42 tokens**
+- **Sorry count (by logical unit)**: ~24 (previous methodology counted ~36)
+- **Delta from last run**: ANF 22→28 (+6 from decomposition), CC 14→14 (0). Net: +6 tokens but GOOD decomposition.
+- **LowerCorrect**: 0 sorries (DONE)
+
+### What happened since last run
+1. **wasmspec** (completed 02:00): EXCELLENT work:
+   - Proved break_direct case in hasBreakInHead_flat_error_steps
+   - Proved continue_direct case in hasContinueInHead_flat_error_steps
+   - Decomposed compound cases into per-constructor arms (seq_left, seq_right, let_init, wildcard)
+   - Full analysis of CCStateAgree alternatives — Options 1-3 all have issues:
+     - Monotone: breaks expression equality in 10+ cases
+     - Expression-level independence: FALSE (freshVar/addFunc differ)
+     - Alpha-equivalence: correct but impractical (weeks of work)
+   - Proposed branch-parallel conversion as architectural fix
+   - Confirmed ALL compound HasBreakInHead constructors ARE reachable (via while loops with break)
+
+2. **jsspec** (running since 01:00): Working on CCStateAgree — confirmed invariant change would break 14 cases. Closed consoleLog (L4269) in previous run.
+
+3. **proof** (started 01:30): Running. Previous run (23:30-00:53) did deep analysis of all 22 sorries, confirmed break/continue FALSE, identified continuation-independence as key. Still hasn't built Steps_*_ctx lemmas (assigned for 2 runs).
+
+### Agent Status
+1. **proof**: STUCK on Steps_*_ctx — assigned for 2 runs, hasn't built them. Prompt REWRITTEN with exact Lean code for Steps_throw_ctx. Clear priority: build it, then close 4 compound flat_arg sorries.
+
+2. **jsspec**: CC stuck at 14. Most blocked by CCStateAgree (7) or unprovable (3). Prompt REWRITTEN: focus on newObj (L4498/4506), then start FuncsCorr infrastructure for L4292.
+
+3. **wasmspec**: Excellent analysis complete. Now needs to REFORMULATE hasBreakInHead/hasContinueInHead theorems. Prompt REWRITTEN: find all callers, determine what they actually need, provide weaker but TRUE conclusion.
+
+### Actions Taken
+1. Counted sorries: ANF 28 + CC 14 = 42 tokens.
+2. **REWROTE proof prompt**: Exact Lean code for Steps_throw_ctx. Strict priority: build it FIRST, then close Group D (4 sorries).
+3. **REWROTE jsspec prompt**: newObj L4498/L4506 → FuncsCorr infrastructure for L4292 → captured var L3387.
+4. **REWROTE wasmspec prompt**: Reformulate hasBreak/hasContinue theorems. Find callers, determine minimal requirements, provide weaker TRUE conclusion.
+5. Logged to time_estimate.csv.
+
+### Sorry Breakdown
+
+**ANF (28 sorry tokens in 12 theorems):**
+- Group A: normalizeExpr_labeled_step_sim (7): L6531, L6564, L6656, L6689, L6575, L6700, L6717 → BLOCKED (continuation-independence)
+- Group B: hasBreakInHead compound (4): L6751, L6753, L6755, L6759 → BLOCKED (FALSE as stated)
+- Group C: hasContinueInHead compound (4): L6781, L6782, L6783, L6784 → BLOCKED (FALSE as stated)
+- Group D: throw/return/await/yield compound flat_arg (4): L6937, L7090, L7263, L7417 → TARGET (Steps_*_ctx)
+- Group E: throw/return/await/yield HasXInHead compound (4): L6940, L7093, L7266, L7420 → BLOCKED (needs break fix)
+- Group F: let/seq/if/tryCatch (5): L7447, L7495, L7526, L7529, L7573 → DEFERRED (characterization)
+
+**CC (14 sorry tokens):**
+- Unprovable (3): L1507 forIn, L1508 forOf, L5144 getIndex
+- CCStateAgree blocked (7): L3715, L3738×2, L6382, L6537, L6608, L6715
+- Actionable (4): L4498 newObj-f, L4506 newObj-arg, L3387 captured-var, L4292 call
+
+### Strategy
+- **Quick wins**: proof Steps_*_ctx → close Group D (4 sorries). Target: 42→38.
+- **Medium-term**: wasmspec reformulates hasBreak/hasContinue → unblocks Group B+C (8 sorries) and Group E (4 sorries). Target: 38→26.
+- **jsspec**: newObj (2 sorries) + FuncsCorr (1 sorry). Target: 38→35.
+- **Hard**: continuation-independence → Group A (7 sorries). CCStateAgree alternatives → 7 CC sorries.
+
+### Biggest Risk
+proof agent hasn't built Steps_*_ctx in 2 runs. If it doesn't build them THIS run, manually write the implementation.
+
+---
+
 ## Run: 2026-04-04T01:05:01+00:00
 
 ### Metrics
@@ -9618,3 +9682,4 @@ hasBreakInHead_flat_error_steps may be UNPROVABLE as currently stated. Error eve
 
 ## Run: 2026-04-04T02:05:01+00:00
 
+2026-04-04T02:12:59+00:00 DONE
