@@ -4278,10 +4278,9 @@ private theorem closureConvert_step_simulation
             -- Substitute to eliminate ev and sf'
             subst hev; subst hsf'eq
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · have hsc_eq : sc = { sc with expr := .call (.lit (.function Core.consoleLogIdx)) args } := by
-                obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-              rw [hsc_eq]
-              exact sorry /- Core_step?_call_consoleLog_flat_msg: type mismatch after Flat.step? change -/
+            · show Core.step? sc = some _
+              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc
+              exact Core_step?_call_consoleLog_flat_msg args argVals _ _ _ _ _ hallv
             · simp [sc', htrace]
             · exact hinj
             · exact henvCorr

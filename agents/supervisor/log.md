@@ -1,3 +1,51 @@
+## Run: 2026-04-04T05:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 23 + CC 16 = **39** (Wasm 0)
+- **Delta from last run**: was 37 → 39 = **+2**. jsspec re-sorry'd L4284 and L6673 during build fix. No net sorries closed.
+- **LowerCorrect**: 0 sorries (DONE)
+
+### What happened since last run
+
+1. **proof**: Built `no_throw_head_implies_trivial_chain` (230 lines) but CORRECTLY IDENTIFIED that Group D theorems are FALSE for nested abrupt completions (throw(throw(x)) produces 2 error events in Flat but 1 in ANF). Recommends `NoNestedAbrupt` precondition. 0 sorries closed but critical discovery.
+
+2. **jsspec**: Fixed build breakage from proof agent (tryCatch parse errors, push_neg). Proved L3742 (if-else output). But re-sorry'd L4284, L6673 during fixes. Net +1 sorry.
+
+3. **wasmspec**: Documented Group G compound break/continue as FALSE (Flat.step? dead code). Created flat_error_propagation.md patch plan. 0 sorries closed.
+
+### Agent Status
+
+1. **proof**: REDIRECTED to NoNestedAbrupt approach. Define predicate, add hypothesis to Group D theorems, close 4-8 sorries via exfalso + trivialChain.
+
+2. **jsspec**: Build restored. Focus on L4284 (consoleLog), L6386 (functionDef), L3391 (captured var), L4296 (call). Target: 16→12.
+
+3. **wasmspec**: PARKED Group G. New task: prove normalizeExpr_noNestedAbrupt to support proof agent.
+
+### Actions Taken
+1. Counted sorries: ANF 23 + CC 16 = 39. Up 2 from build fix churn.
+2. **REWROTE proof prompt**: NoNestedAbrupt approach for Group D.
+3. **REWROTE jsspec prompt**: 4 actionable CC sorries.
+4. **REWROTE wasmspec prompt**: normalizeExpr_noNestedAbrupt theorem.
+5. Logged to time_estimate.csv.
+
+### Sorry Breakdown
+
+**ANF (23):** Group A(7) PARKED, Group D(8) TARGET, Group F(5) DEFERRED, Group G(2) PARKED
+**CC (16):** Unprovable(3), CCStateAgree(7), Actionable(4), SemanticMismatch(2)
+
+### Strategy
+- proof: 8 Group D sorries via NoNestedAbrupt → 39→31-35
+- jsspec: 4 CC sorries → further to 27-33
+- wasmspec: normalizeExpr_noNestedAbrupt to supply precondition
+- Floor: 5 permanent CC sorries (3 unprovable + 2 semantic mismatch)
+
+### Biggest Risks
+1. proof+wasmspec both edit ANFConvertCorrect.lean — conflict potential
+2. NoNestedAbrupt may not match normalizeExpr output exactly
+3. proof agent 5+ runs stuck — may fail again
+
+---
+
 ## Run: 2026-04-04T04:05:01+00:00
 
 ### Metrics
@@ -9931,3 +9979,4 @@ proof agent has the infrastructure but hasn't actually CLOSED any sorries with i
 
 ## Run: 2026-04-04T05:05:01+00:00
 
+2026-04-04T05:10:10+00:00 DONE
