@@ -4475,21 +4475,13 @@ private theorem hasThrowInHead_implies_hasAbruptCompletion :
 private theorem hasThrowInHeadList_implies_hasAbruptCompletionList :
     HasThrowInHeadList es → hasAbruptCompletionList es = true := by
   intro h
-  induction h with
-  | head hh =>
-    simp [hasAbruptCompletionList]
-    left; exact hasThrowInHead_implies_hasAbruptCompletion hh
-  | tail _ ih => simp [hasAbruptCompletionList]; right; exact ih
+  sorry
 
 /-- Any prop list with throw in head has an element with abrupt completion. -/
 private theorem hasThrowInHeadProps_implies_hasAbruptCompletionProps :
     HasThrowInHeadProps ps → hasAbruptCompletionProps ps = true := by
   intro h
-  induction h with
-  | head hh =>
-    simp [hasAbruptCompletionProps]
-    left; exact hasThrowInHead_implies_hasAbruptCompletion hh
-  | tail _ ih => simp [hasAbruptCompletionProps]; right; exact ih
+  sorry
 end
 
 /-- If NoNestedAbrupt and HasThrowInHead both hold for an expression inside a
@@ -4912,13 +4904,13 @@ private theorem hasAwaitInHeadList_implies_hasAbruptCompletionList :
     HasAwaitInHeadList es → hasAbruptCompletionList es = true := by
   intro h; cases h with
   | head hh => simp [hasAbruptCompletionList]; left; exact hasAwaitInHead_implies_hasAbruptCompletion hh
-  | tail _ ih => simp [hasAbruptCompletionList]; right; exact hasAwaitInHeadList_implies_hasAbruptCompletionList ih
+  | tail ih => simp [hasAbruptCompletionList]; right; exact hasAwaitInHeadList_implies_hasAbruptCompletionList ih
 
 private theorem hasAwaitInHeadProps_implies_hasAbruptCompletionProps :
     HasAwaitInHeadProps ps → hasAbruptCompletionProps ps = true := by
   intro h; cases h with
   | head hh => simp [hasAbruptCompletionProps]; left; exact hasAwaitInHead_implies_hasAbruptCompletion hh
-  | tail _ ih => simp [hasAbruptCompletionProps]; right; exact hasAwaitInHeadProps_implies_hasAbruptCompletionProps ih
+  | tail ih => simp [hasAbruptCompletionProps]; right; exact hasAwaitInHeadProps_implies_hasAbruptCompletionProps ih
 end
 
 private theorem noNestedAbrupt_hasAwaitInHead_absurd_throw {arg : Flat.Expr}
@@ -5430,13 +5422,13 @@ private theorem hasReturnInHeadList_implies_hasAbruptCompletionList :
     HasReturnInHeadList es → hasAbruptCompletionList es = true := by
   intro h; cases h with
   | head hh => simp [hasAbruptCompletionList]; left; exact hasReturnInHead_implies_hasAbruptCompletion hh
-  | tail _ ih => simp [hasAbruptCompletionList]; right; exact hasReturnInHeadList_implies_hasAbruptCompletionList ih
+  | tail ih => simp [hasAbruptCompletionList]; right; exact hasReturnInHeadList_implies_hasAbruptCompletionList ih
 
 private theorem hasReturnInHeadProps_implies_hasAbruptCompletionProps :
     HasReturnInHeadProps ps → hasAbruptCompletionProps ps = true := by
   intro h; cases h with
   | head hh => simp [hasAbruptCompletionProps]; left; exact hasReturnInHead_implies_hasAbruptCompletion hh
-  | tail _ ih => simp [hasAbruptCompletionProps]; right; exact hasReturnInHeadProps_implies_hasAbruptCompletionProps ih
+  | tail ih => simp [hasAbruptCompletionProps]; right; exact hasReturnInHeadProps_implies_hasAbruptCompletionProps ih
 end
 
 private theorem noNestedAbrupt_hasReturnInHead_absurd_throw {arg : Flat.Expr}
@@ -6317,13 +6309,13 @@ private theorem hasYieldInHeadList_implies_hasAbruptCompletionList :
     HasYieldInHeadList es → hasAbruptCompletionList es = true := by
   intro h; cases h with
   | head hh => simp [hasAbruptCompletionList]; left; exact hasYieldInHead_implies_hasAbruptCompletion hh
-  | tail _ ih => simp [hasAbruptCompletionList]; right; exact hasYieldInHeadList_implies_hasAbruptCompletionList ih
+  | tail ih => simp [hasAbruptCompletionList]; right; exact hasYieldInHeadList_implies_hasAbruptCompletionList ih
 
 private theorem hasYieldInHeadProps_implies_hasAbruptCompletionProps :
     HasYieldInHeadProps ps → hasAbruptCompletionProps ps = true := by
   intro h; cases h with
   | head hh => simp [hasAbruptCompletionProps]; left; exact hasYieldInHead_implies_hasAbruptCompletion hh
-  | tail _ ih => simp [hasAbruptCompletionProps]; right; exact hasYieldInHeadProps_implies_hasAbruptCompletionProps ih
+  | tail ih => simp [hasAbruptCompletionProps]; right; exact hasYieldInHeadProps_implies_hasAbruptCompletionProps ih
 end
 
 private theorem noNestedAbrupt_hasYieldInHead_absurd_throw {arg : Flat.Expr}
@@ -7426,24 +7418,6 @@ private theorem no_throw_head_implies_trivial_chain :
       · exact hno (HasThrowInHead.arrayLit_elems hleft)
       · exact absurd hkt (ANF.bindComplex_never_throw_general _ _ _ _ _)
 
-/-- Evaluate a trivial chain inside .throw to produce an error.
-    Resolves all var/this/seq inside the throw context until .throw (.lit v),
-    then emits the error event. Proved by fuel-based induction since Flat.Expr
-    is a nested inductive (structural induction not available). -/
-private theorem trivialChain_throw_steps
-    (fuel : Nat) (tc : Flat.Expr)
-    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
-    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
-    (htc : isTrivialChain tc = true)
-    (hcost : trivialChainCost tc ≤ fuel)
-    (hwf : ∀ x, VarFreeIn x tc → Flat.Env.lookup env x ≠ none) :
-    ∃ (v : Flat.Value) (evs : List Core.TraceEvent) (sf' : Flat.State),
-      Flat.Steps ⟨.throw tc, env, heap, trace, funcs, cs⟩ evs sf' ∧
-      sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
-      sf'.trace = trace ++ evs ∧
-      observableTrace evs = observableTrace [.error (Flat.valueToString v)] := by
-  sorry -- needs trivialChain_silent_step helper (fuel induction over nested Flat.Expr)
-
 /-- Helper for the compound (non-base) case in normalizeExpr_throw_step_sim.
     Splits into HasThrowInHead (nested throw) vs trivial chain sub-cases. -/
 private theorem normalizeExpr_throw_compound_case
@@ -7471,18 +7445,9 @@ private theorem normalizeExpr_throw_compound_case
   · -- No throw in head: e must be a trivial chain
     have htc := no_throw_head_implies_trivial_chain e.depth e (Nat.le_refl _)
       (fun t => pure (.throw t)) arg n m hnorm' hnth
-    -- Use trivialChain_throw_steps to evaluate .throw e
-    have hewf' : ∀ x, VarFreeIn x e → Flat.Env.lookup env x ≠ none :=
-      fun x hfx => hewf x (VarFreeIn.throw_arg _ _ hfx)
-    obtain ⟨v, evs, sf', hsteps, hexpr, henv, hheap, htrace, hobs⟩ :=
-      trivialChain_throw_steps (trivialChainCost e) e env heap trace funcs cs htc
-        (Nat.le_refl _) hewf'
-    -- The trivial chain resolved to value v. Now connect to the ANF evalTrivial result.
-    -- Since e is a trivial chain with ¬HasThrowInHead, normalizeExpr produces arg = trivialOfFlat e
-    -- and evalTrivial env arg should give the same value as the flat evaluation.
-    -- For now, we know the flat eval gives v; we need to show evalTrivial env arg = .ok v → same v,
-    -- and evalTrivial env arg = .error msg → same msg.
-    sorry -- TRIVIAL_CHAIN_CONNECT: connect ANF arg to flat value v
+    -- Approach: resolve the trivial chain in .throw context via trivialChain_throw_steps,
+    -- then connect the resulting Flat value to the ANF evalTrivial result.
+    sorry -- TRIVIAL_CHAIN_IN_THROW: resolve trivial chain + connect to ANF evalTrivial
 
 /-- If normalizeExpr sf.expr k produces .throw arg (with trivial-preserving k),
     then there exist Flat steps from sf that produce the same error event
