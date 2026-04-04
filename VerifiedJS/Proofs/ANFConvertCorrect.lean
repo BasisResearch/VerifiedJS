@@ -9567,9 +9567,11 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       unfold Flat.step? at hstep
       split at hstep
       next v hv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+      next str hstr => simp [Flat.step?_pushTrace_expand] at hstep; obtain ⟨_, rfl⟩ := hstep; simp [hasAbruptCompletion]
+      next val nobj nstr hv => simp [Flat.step?_pushTrace_expand] at hstep; obtain ⟨_, rfl⟩ := hstep; simp [hasAbruptCompletion]
       next hv =>
         split at hstep
-        next ev' so hso => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion]; exact ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hac hso
+        next ev' so hso => simp [Flat.step?_pushTrace_expand] at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion]; exact ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hac hso
         next => simp at hstep
     | setProp obj prop val =>
       simp only [hasAbruptCompletion, Bool.or_eq_false_iff] at hac

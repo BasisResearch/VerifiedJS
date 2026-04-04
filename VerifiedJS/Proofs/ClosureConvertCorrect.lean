@@ -3647,7 +3647,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           simp [Core.step?, hval_r, h_sub, Core.pushTrace] at hstep
           obtain ⟨-, rfl⟩ := hstep
           simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-          exact ⟨rfl, ih rhs.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          exact ⟨trivial, ih rhs.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
             { s with expr := rhs } sa t (Nat.le_refl _) hsupp.2 h_sub⟩
   | deleteProp obj prop =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
