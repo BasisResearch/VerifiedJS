@@ -1,4 +1,4 @@
-# proof — Close L7791 (EndToEnd param) + hasAbruptCompletion_step_preserved + list helper lemmas
+# proof — Close hasAbruptCompletion value-matching (6 easy) + NoNestedAbrupt list (6 hard)
 
 ## RULES
 - Edit: ANFConvertCorrect.lean AND EndToEnd.lean
@@ -19,118 +19,172 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 - If build OOMs: add `set_option maxHeartbeats 200000` above the theorem
 - Do NOT attempt to build the entire file if it's failing
 
-## TASK 1 (PRIORITY): Close L7791 in ClosureConvertCorrect.lean via EndToEnd.lean
+## STATUS: L7791 IS DONE ✓ — Great work!
 
-L7791 in ClosureConvertCorrect.lean is:
+The h_supp sorry is gone from CC. Now focus ALL effort on closing sorry cases.
+
+## TASK 1 (HIGHEST PRIORITY): Close 6 easy hasAbruptCompletion cases
+
+In `hasAbruptCompletion_step_preserved` (succ branch), these 6 cases are mechanical copies of the already-proved patterns. Replace each sorry with the exact code below.
+
+### getProp (L9418) — copy of typeof pattern:
 ```lean
-  have h_supp : s.body.supported = true := sorry
-```
-inside `closureConvert_correct`. The fix requires TWO coordinated edits:
-
-### Step A: Add param to closureConvert_correct (ClosureConvertCorrect.lean)
-
-Change the theorem signature from:
-```lean
-theorem closureConvert_correct (s : Core.Program) (t : Flat.Program)
-    (h : Flat.closureConvert s = .ok t)
-    (h_wf : noCallFrameReturn s.body = true)
-    (h_addr_wf : ExprAddrWF s.body 1)
-    (hnofor : ...) :
-```
-to:
-```lean
-theorem closureConvert_correct (s : Core.Program) (t : Flat.Program)
-    (h : Flat.closureConvert s = .ok t)
-    (h_wf : noCallFrameReturn s.body = true)
-    (h_addr_wf : ExprAddrWF s.body 1)
-    (h_supp : s.body.supported = true)
-    (hnofor : ...) :
-```
-And DELETE the sorry line `have h_supp : s.body.supported = true := sorry`.
-
-### Step B: Update EndToEnd.lean callsite
-
-In `flat_to_wasm_correct`, add `(h_supp_core : core.body.supported = true)` after `h_addr_wf`, and pass it at the callsite on L70:
-```lean
-    obtain ⟨coreTrace, hcoreb, heq⟩ := closureConvert_correct core flat hcc h_wf h_addr_wf h_supp_core hnofor flatTrace hflatb
-```
-
-Build BOTH files after.
-
-## TASK 2: Close hasAbruptCompletion_step_preserved (L9209)
-
-L9209: `sorry -- SEPARATE THEOREM: prove later by same induction pattern`
-
-This theorem says: if `hasAbruptCompletion expr = false` and `Flat.step?` succeeds, then the result also has `hasAbruptCompletion = false`. It follows the EXACT same induction-on-depth structure as `NoNestedAbrupt_step_preserved`. Each case: unfold step?, split on exprValue?, value case → .lit (hasAbruptCompletion false by def), sub-step case → recursive call.
-
-The `hasAbruptCompletion` function returns true only for break/continue/return/throw/yield/await with nested abrupt. For all other constructors, it recurses on sub-expressions. Use the same `ih` pattern.
-
-## TASK 3: Write firstNonValueExpr_reconstruct helper lemma
-
-The remaining 6 NoNestedAbrupt list cases (call, newObj, makeEnv, objectLit, arrayLit, tryCatch) all need this lemma:
-
-```lean
-theorem firstNonValueExpr_reconstruct {l : List Flat.Expr} {done target rest}
-    (h : Flat.firstNonValueExpr l = some (done, target, rest)) :
-    l = done ++ [target] ++ rest := by
-  induction l generalizing done target rest with
-  | nil => simp [Flat.firstNonValueExpr] at h
-  | cons e tl ih =>
-    unfold Flat.firstNonValueExpr at h
-    split at h
-    · -- e = .lit _
-      split at h
-      · next heq => simp at h; obtain ⟨rfl, rfl, rfl⟩ := h; simp; exact ih heq
-      · simp at h
-    · -- e is not lit
-      simp at h; obtain ⟨rfl, rfl, rfl⟩ := h; rfl
-```
-
-Place this near `firstNonValueExpr_depth` in Flat/Syntax.lean or ANFConvertCorrect.lean (whichever compiles). Then use it to prove the call case:
-
-```lean
-    | call f fenv args =>
-      cases hna with | call hf henv hargs =>
+    | getProp obj prop =>
+      unfold hasAbruptCompletion at hac
       unfold Flat.step? at hstep
       split at hstep
-      next =>  -- f not value → step f
+      next v hv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+      next hv =>
         split at hstep
-        next ev' sf hsf => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
-          exact NoNestedAbrupt.call (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hf hsf) henv hargs
+        next ev' so hso => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]; exact ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hac hso
         next => simp at hstep
-      next =>  -- f is value
-        split at hstep
-        next =>  -- env not value → step env
-          split at hstep
-          next ev' se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
-            exact NoNestedAbrupt.call hf (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ henv hse) hargs
-          next => simp at hstep
-        next envVal =>  -- env is value
-          split at hstep
-          next argVals =>  -- all args values
-            -- All call dispatch cases produce .lit or function body (need NNA for body separately)
-            sorry  -- function call dispatch: produces .lit or wrapped tryCatch
-          next =>  -- some arg not value
-            split at hstep
-            next done target remaining hfnve =>
-              split at hstep
-              next ev' sa hsa =>
-                simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
-                have hrec := firstNonValueExpr_reconstruct hfnve
-                have htarget_na : NoNestedAbrupt target := by
-                  have : target ∈ args := by rw [hrec]; simp
-                  exact hargs _ this
-                exact NoNestedAbrupt.call hf henv (fun e he => by
-                  simp [List.mem_append] at he
-                  rcases he with hmem | rfl | hmem
-                  · have : e ∈ args := by rw [hrec]; simp [List.mem_append]; left; left; exact hmem
-                    exact hargs _ this
-                  · exact ih _ (by simp [Flat.Expr.depth] at hd; have := firstNonValueExpr_depth hfnve; omega) _ _ _ _ _ _ htarget_na hsa
-                  · have : e ∈ args := by rw [hrec]; simp [List.mem_append]; right; right; exact hmem
-                    exact hargs _ this)
-              next => simp at hstep
-            next => simp at hstep
 ```
+
+### deleteProp (L9422) — same as getProp:
+```lean
+    | deleteProp obj prop =>
+      unfold hasAbruptCompletion at hac
+      unfold Flat.step? at hstep
+      split at hstep
+      next v hv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+      next hv =>
+        split at hstep
+        next ev' so hso => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]; exact ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hac hso
+        next => simp at hstep
+```
+
+### getEnv (L9434) — same pattern (single sub-expression):
+```lean
+    | getEnv envExpr idx =>
+      unfold hasAbruptCompletion at hac
+      unfold Flat.step? at hstep
+      split at hstep
+      next v hv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+      next hv =>
+        split at hstep
+        next ev' se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]; exact ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hac hse
+        next => simp at hstep
+```
+
+### setProp (L9419) — copy of NoNestedAbrupt setProp pattern but with Bool:
+```lean
+    | setProp obj prop val =>
+      simp only [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
+      obtain ⟨hobj, hval⟩ := hac
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- obj not value → step obj
+        split at hstep
+        next ev' so hso => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hobj hso, hval��
+        next => simp at hstep
+      next addr =>  -- obj = .object addr
+        split at hstep
+        next vv =>  -- val is value
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+        next =>  -- val not value → step val
+          split at hstep
+          next ev' sv hsv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hval hsv⟩
+          next => simp at hstep
+      next =>  -- obj = some other value
+        split at hstep
+        next vv =>  -- val is value
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+        next =>  -- val not value → step val
+          split at hstep
+          next ev' sv hsv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hval hsv⟩
+          next => simp at hstep
+```
+
+### getIndex (L9420) — 2 sub-expressions, follow NoNestedAbrupt getIndex:
+```lean
+    | getIndex obj idx =>
+      simp only [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
+      obtain ⟨hobj, hidx⟩ := hac
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- obj not value → step obj
+        split at hstep
+        next ev' so hso => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hobj hso, hidx⟩
+        next => simp at hstep
+      next addr =>  -- obj = .object addr
+        split at hstep
+        next iv =>  -- idx is value
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+        next =>  -- idx not value → step idx
+          split at hstep
+          next ev' si hsi => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hidx hsi⟩
+          next => simp at hstep
+      next str =>  -- obj = .string str
+        split at hstep
+        next iv =>  -- idx is value
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+        next =>  -- idx not value → step idx
+          split at hstep
+          next ev' si hsi => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hidx hsi⟩
+          next => simp at hstep
+      next =>  -- obj = some other value
+        split at hstep
+        next iv =>  -- idx is value
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+        next =>  -- idx not value → step idx
+          split at hstep
+          next ev' si hsi => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hidx hsi��
+          next => simp at hstep
+```
+
+### setIndex (L9421) — 3 sub-expressions, follow NoNestedAbrupt setIndex:
+```lean
+    | setIndex obj idx val =>
+      simp only [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
+      obtain ⟨⟨hobj, hidx⟩, hval⟩ := hac
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- obj not value → step obj
+        split at hstep
+        next ev' so hso => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨⟨ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hobj hso, hidx⟩, hval⟩
+        next => simp at hstep
+      next addr =>  -- obj = .object addr
+        split at hstep
+        next =>  -- idx not value → step idx
+          split at hstep
+          next ev' si hsi => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hidx hsi⟩, hval���
+          next => simp at hstep
+        next idxVal =>  -- idx is value
+          split at hstep
+          next =>  -- val not value → step val
+            split at hstep
+            next ev' sv hsv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨⟨by simp [hasAbruptCompletion], by simp [hasAbruptCompletion]⟩, ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hval hsv⟩
+            next => simp at hstep
+          next valVal =>  -- all values → dispatch
+            simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+      next =>  -- obj = some other value
+        split at hstep
+        next =>  -- idx not value → step idx
+          split at hstep
+          next ev' si hsi => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hidx hsi⟩, hval⟩
+          next => simp at hstep
+        next idxVal =>  -- idx is value
+          split at hstep
+          next =>  -- val not value → step val
+            split at hstep
+            next ev' sv hsv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨⟨by simp [hasAbruptCompletion], by simp [hasAbruptCompletion]⟩, ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hval hsv⟩
+            next => simp at hstep
+          next valVal =>  -- all values → dispatch
+            simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+```
+
+**NOTE**: If `split at hstep` generates different goals than expected (e.g., 3 goals instead of 2 for getProp due to object/string/other), use `lean_goal` to check and adapt. The `simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]` pattern handles ALL value branches since they all produce `.lit something`.
+
+**If any case doesn't compile**: Use `lean_multi_attempt` at the sorry position with these tactics:
+- `unfold hasAbruptCompletion at hac; unfold Flat.step? at hstep; simp_all [Flat.State.expr, hasAbruptCompletion]`
+- `simp_all [hasAbruptCompletion, Flat.step?, Flat.State.expr]`
+
+## TASK 2: NoNestedAbrupt list cases (6 remaining)
+
+After closing TASK 1, move to the 6 list cases in NoNestedAbrupt_step_preserved:
+- call (L9625), newObj (L9626), makeEnv (L9644), objectLit (L9657), arrayLit (L9658), tryCatch (L9659)
+
+These need `firstNonValueExpr_reconstruct` helper. Write it near `firstNonValueExpr` definitions, then use it for call pattern (see previous prompt for template).
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

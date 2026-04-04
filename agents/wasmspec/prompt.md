@@ -1,4 +1,4 @@
-# wasmspec — Close L9083/9084/9156/9157 (if compound + HasIfInHead)
+# wasmspec — Close L9186/9187/9259/9260 (if compound + HasIfInHead)
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -11,57 +11,39 @@
 ## MEMORY WARNING
 **WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
 
-## STATE — SUPERVISOR CLOSED setIndex
+## STATE UPDATE
 
-Supervisor just closed the setIndex case in NoNestedAbrupt_step_preserved. ANF sorry count is now 30 (was 31). Your if compound targets are still open.
+Current ANF sorry count: 41 grep-sorry. Your 4 targets at updated line numbers:
+- L9186: `| _ => sorry -- compound condition: multi-step`
+- L9187: `all_goals sorry -- compound HasIfInHead`
+- L9259: `| _ => sorry -- compound condition: multi-step`
+- L9260: `all_goals sorry -- compound HasIfInHead`
 
-Find current line numbers:
-```
-grep -n "compound condition: multi-step\|compound HasIfInHead" VerifiedJS/Proofs/ANFConvertCorrect.lean
-```
+## TASK 1: Close compound condition sorries (L9186, L9259)
 
-## TASK 1: Close compound condition sorries (remaining non-var/non-this cases)
-
-These are the `| _ => sorry -- compound condition: multi-step` cases. The condition is a compound expression (seq, let, assign, call, etc.) — NOT var/this/lit.
-
-For compound conditions:
+The condition `c` is a compound expression (not var/this/lit). For compound conditions:
 1. The condition `c` is not a value, so `Flat.step?` on `.if c then_ else_` steps `c` first
 2. After stepping c → c', we get `.if c' then_ else_`
-3. This requires: show Flat takes 1+ steps on the if, matching the ANF step
 
-Use `lean_goal` at the sorry to see exactly what's needed. The key lemma pattern:
-```lean
-        | _ =>
-          -- c is compound: Flat.step? on .if c _ _ steps c via step?_if_cond_step
-          have hc_not_val : Flat.exprValue? c = none := by cases c <;> simp [Flat.exprValue?] <;> contradiction
-          sorry
-```
+Use `lean_goal` at L9186 to see the exact goal. The proof likely requires showing that the ANF normalizeExpr for `.if c then_ else_` can take a flat step matching the compound condition step.
 
-If you can prove the compound case needs trivialChain infrastructure, document what's needed and move to Task 2.
+If you can prove it needs trivialChain infrastructure (multi-step simulation), document what's needed precisely and move to Task 2.
 
-## TASK 2: Close compound HasIfInHead sorries
+## TASK 2: Close compound HasIfInHead sorries (L9187, L9260)
 
-Find `all_goals sorry -- compound HasIfInHead` (2 occurrences).
+Use `lean_goal` at L9187 to see all the HasIfInHead sub-goals. Each HasIfInHead constructor (seq_left, let_init, assign_val, etc.) says the `.if` is nested inside a compound expression. For each:
+1. The outer expression steps by stepping the inner sub-expression containing `.if`
+2. Show the flat step matches
 
-These handle HasIfInHead cases where .if is nested inside seq/let/assign/etc. Each HasIfInHead constructor (seq_left, let_init, assign_val, etc.) provides a sub-expression that IS an .if. The outer expression steps by stepping this inner sub-expression.
+Pattern: for each HasIfInHead constructor, unfold step? for the outer expression and show the inner `.if` step propagates.
 
-Pattern for each case:
-```lean
-    | seq_left hif =>
-      -- sf.expr = .seq a b where a contains .if via HasIfInHead
-      -- Flat.step? steps a, reducing the inner .if
-      sorry
-```
+## TASK 3 (IF TIME): Close L8866 (let_step_sim)
 
-Use `lean_goal` on each case to see what's available.
-
-## TASK 3 (IF TIME): Close L8856 (let_step_sim)
-
-L8856: `sorry -- Need characterization of what produces .let, flat simulation`
+L8866: `sorry -- Need characterization of what produces .let, flat simulation`
 
 ## COORDINATE WITH PROOF AGENT
-- proof agent works on L7791 (EndToEnd param addition), hasAbruptCompletion, and list helper lemmas
-- DO NOT touch EndToEnd.lean or the hasAbruptCompletion theorem or firstNonValueExpr helpers
+- proof agent works on hasAbruptCompletion value-matching cases and NoNestedAbrupt list cases
+- DO NOT touch the hasAbruptCompletion or NoNestedAbrupt theorems
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

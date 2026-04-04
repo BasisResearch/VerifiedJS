@@ -1,4 +1,4 @@
-# jsspec — Close L4333 FIRST, THEN L3408
+# jsspec — Close L3384 (Core_step_preserves_supported remaining cases)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -12,59 +12,47 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 **WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
 
-## ⚠️ L7791 IS NOW HANDLED BY PROOF AGENT. DO NOT TOUCH IT. ⚠️
+## STATUS UPDATE
+- **L4333 is CLOSED** ✓ — consoleLog case now uses `exact hcore`. Great work!
+- **L7791 is CLOSED** ✓ — proof agent handled it.
+- **L3384** is the new target: `| _ => sorry -- remaining cases need case analysis on step?`
 
-CC has 18 sorry tokens (grep count). Your 2 targets:
+## CC has 13 actual sorry statements. Your target: L3384.
 
-## TASK 1 — Fix L4333 REGRESSION (HIGHEST PRIORITY)
+## TASK 1 — Complete Core_step_preserves_supported (L3384)
 
-L4333: `· sorry /- was: convert hcore using 2 — tactic unavailable -/`
+L3384 is inside `Core_step_preserves_supported` at line 3372. The theorem proves that `Core.step?` preserves the `.supported` property. Base cases (lit, var, forIn, forOf, yield, await) are done.
 
-Context: This is inside the consoleLog call case. `hcore` proves `Core.step? sc = some (ev, sc')` for some sc'. The goal at L4333 is likely `Core.Step sc ev sc'` (the inductive step wrapper around step?).
+The wildcard `| _ => sorry` needs expanding into per-constructor cases. Most cases follow this pattern:
 
-**Strategy**: Look at the `Core.Step` definition. If it's a wrapper around `step?`:
-```lean
-inductive Core.Step (s : Core.State) (ev : Core.TraceEvent) (s' : Core.State) : Prop where
-  | mk : s.step? = some (ev, s') → Core.Step s ev s'
-```
-Then the proof is simply `exact Core.Step.mk hcore` or `constructor; exact hcore`.
+1. `unfold Core.step? at hstep` (or `simp [Core.step?] at hstep`)
+2. Split on sub-expression value checks
+3. For value results: `simp [Flat.State.expr, Core.Expr.supported]` or `simp_all`
+4. For step results: `simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Core.State.expr, Core.Expr.supported]` then use `hsupp` which after unfold gives sub-expression supported
 
-Try these tactics in order:
-1. `exact Core.Step.mk hcore`
-2. `constructor; exact hcore`
-3. `exact ⟨hcore⟩`
-4. `exact hcore`
-5. Use `lean_goal` at L4333 col 9 to see the actual goal, then match
-
-## TASK 2 — Close L3408 (Core_step_preserves_supported)
-
-L3408: `have hsupp' : sc'.expr.supported = true := sorry`
-
-This needs a helper lemma proving Core.step preserves `supported`. Write it:
+**Strategy**: Replace `| _ => sorry` with explicit cases. Start with the easy ones:
 
 ```lean
-private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.TraceEvent)
-    (hsupp : s.expr.supported = true) (hstep : Core.step? s = some (ev, s')) :
-    s'.expr.supported = true := by
-  obtain ⟨expr, env, heap, trace, funcs, callStack⟩ := s
-  simp only [Core.State.expr] at hsupp
-  cases expr with
-  | lit _ => simp [Core.step?] at hstep
-  | var name => simp [Core.step?] at hstep; split at hstep <;> simp_all [Core.Expr.supported]
-  | forIn _ _ _ => simp [Core.Expr.supported] at hsupp
-  | forOf _ _ _ => simp [Core.Expr.supported] at hsupp
-  | yield _ _ => simp [Core.Expr.supported] at hsupp
-  | _ => sorry  -- remaining cases need case analysis on step?
+  | this => simp [Core.step?] at hstep; split at hstep <;> simp_all [Core.Expr.supported]
+  | «break» _ => simp [Core.step?] at hstep; simp_all [Core.Expr.supported]
+  | «continue» _ => simp [Core.step?] at hstep; simp_all [Core.Expr.supported]
+  | «return» _ => unfold Core.step? at hstep; split at hstep <;> (try simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Core.State.expr, Core.Expr.supported]) <;> simp_all [Core.Expr.supported]
+  | throw _ => unfold Core.step? at hstep; split at hstep <;> (try simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Core.State.expr, Core.Expr.supported]) <;> simp_all [Core.Expr.supported]
+  | unary _ _ => unfold Core.step? at hstep; split at hstep <;> (try simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Core.State.expr, Core.Expr.supported]) <;> simp_all [Core.Expr.supported]
+  | typeof _ => unfold Core.step? at hstep; split at hstep <;> (try simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Core.State.expr, Core.Expr.supported]) <;> simp_all [Core.Expr.supported]
+  | assign _ _ => unfold Core.step? at hstep; split at hstep <;> (try simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Core.State.expr, Core.Expr.supported]) <;> simp_all [Core.Expr.supported]
 ```
 
-Place above L3405 and replace L3408's sorry:
-```lean
-    have hsupp' := Core_step_preserves_supported _ _ _ hsupp (by obtain ⟨h⟩ := hcstep; exact h)
-```
+For compound constructors (seq, let, if, binary, call, etc.):
+1. Use `lean_hover_info` on `Core.Expr.supported` to see its definition
+2. Use `lean_goal` at the sorry position to see what's needed
+3. `unfold Core.step? at hstep; unfold Core.Expr.supported at hsupp`
+4. Split on sub-expression values
+5. For sub-step cases: the result has the same outer constructor but with a stepped sub-expression — supported is preserved because the outer constructor's supported recurses
 
-Wait — `hcstep` is `Core.Step sc ev sc'`. You need to extract `step?` from it. Check if `Core.Step` has a field like `.step_eq` or use `cases hcstep with | mk h => ...`.
+If too many cases are hard, use `| _ => sorry` for the hard ones but close as many as possible. Even replacing 1 wildcard sorry with 5 proved + 3 sorry is progress.
 
-This converts 1 deep sorry into 1 sorry inside a helper — same count but better structure.
+**IMPORTANT**: Use `lean_multi_attempt` at L3384 to quickly test if `simp_all [Core.step?, Core.Expr.supported, Core.State.expr]` or `aesop` closes any cases.
 
 ## DO NOT ANALYZE ARCHITECTURE. CLOSE SORRIES.
 

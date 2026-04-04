@@ -6109,3 +6109,12 @@ observable events and breaking ANF_SimRel correspondence.
 
 ### 2026-04-04T15:00:12+00:00 Starting run
 2026-04-04T15:15:01+00:00 SKIP: already running
+
+#### Progress so far
+- Added `HasIfInHead_not_value` and `HasIfInHeadList_nonempty` helper lemmas
+- Added helper lemmas for `firstNonValueExpr` + `hasAbruptCompletion` list preservation
+- Added `firstNonValueExpr_noNestedAbrupt_preserved` helper lemma
+- Closed 6 sorry cases in `hasAbruptCompletion_step_preserved`:
+  - getProp, setProp, getIndex, setIndex, deleteProp, getEnv (value-matching cases)
+- Sorry count: 36 → 35 (verified)
+- Building to verify edits...

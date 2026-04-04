@@ -1,3 +1,60 @@
+## Run: 2026-04-04T15:30:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 41 + CC 13 (actual) + Wasm 0 = **54 actual sorries** (grep: ANF 41 + CC 17 = 58, but CC has 4 comment lines)
+- **Delta from last run (15:00)**: ANF 36→41 (+5 structural), CC 15→13 actual (-2 real closures)
+- **Net real progress**: -2 real sorries closed (L4333 consoleLog + L7791 h_supp)
+- **ANF +5 explained**: hasAbruptCompletion decomposition — proof agent proved 10 constructor cases (seq, let, assign, if, binary, while_, labeled, unary, typeof, makeClosure) and left 12 individual sorry cases. Previous 7 group sorries → 12 specific = more sorries but each now standalone provable.
+
+### Agent Status
+1. **proof** (RUNNING since 15:00): Closed L7791 in CC ✓. Decomposed hasAbruptCompletion — proved 10 cases, 12 remaining. Currently building ANF (lean --worker using 2GB). **REWROTE prompt**: exact Lean code for 6 easy value-matching cases (getProp, setProp, getIndex, setIndex, deleteProp, getEnv) + NoNestedAbrupt list case guidance.
+2. **jsspec** (JUST STARTED at 15:30): Previous run closed L4333 ✓ and partially built Core_step_preserves_supported (L3384: wildcard sorry for remaining cases). **REWROTE prompt**: L3384 as primary target with per-constructor strategy.
+3. **wasmspec** (RUNNING since 15:00): Building ANF. Targets unchanged: L9186/9187/9259/9260 (if compound + HasIfInHead). **REWROTE prompt**: updated line numbers.
+
+### Actions Taken
+1. Counted sorries: ANF 41 + CC 13 actual = 54. Delta: -2 real closures.
+2. **KILLED 3 duplicate supervisor builds** — memory was at 62MB free (critical). Freed ~700MB.
+3. **REWROTE proof prompt**: Exact Lean code for 6 hasAbruptCompletion value-matching cases (getProp, setProp, getIndex, setIndex, deleteProp, getEnv). Each follows proved NoNestedAbrupt pattern.
+4. **REWROTE jsspec prompt**: L3384 (Core_step_preserves_supported remaining cases). L4333 confirmed closed.
+5. **REWROTE wasmspec prompt**: Updated line numbers for if compound targets.
+6. Logged to time_estimate.csv.
+
+### Sorry Breakdown
+
+**ANF (41 sorry tokens):**
+- Group A (7): L7532-L7718 — eval context lifting, PARKED
+- Throw dispatch (1): L8359, DEFERRED
+- Return compound (2): L8509, L8512, DEFERRED
+- Await compound (2): L8682, L8685, DEFERRED
+- Yield compound (2): L8836, L8839, DEFERRED
+- Let step sim (1): L8866, DEFERRED
+- While step sim (1): L8914, PARKED
+- If compound (4): L9186, L9187, L9259, L9260 — wasmspec targets
+- TryCatch (1): L9211, DEFERRED
+- hasAbruptCompletion (12): L9418-9450 — proof agent target (6 easy + 6 hard)
+- NoNestedAbrupt list (6): L9625-9659 — proof agent target (need firstNonValueExpr)
+- Break/Continue compound (2): L10050, L10103, PARKED
+
+**CC (13 actual sorries):**
+- L3384: Core_step_preserves_supported wildcard — jsspec target
+- L3450: captured var multi-step — BLOCKED
+- L3779, L3802: CCStateAgree if — BLOCKED by architecture
+- L4360: non-consoleLog function call — BLOCKED
+- L4568, L4576: semantic mismatch call — BLOCKED
+- L5214: getIndex string — UNPROVABLE
+- L6456: functionDef — BLOCKED by HeapInj
+- L6613, L6614, L6686: tryCatch CCStateAgree — BLOCKED
+- L6794: while_ CCState — BLOCKED by architecture
+
+### Critical Assessment
+First real sorry closures in CC since jsspec last ran March 31. L4333 and L7791 both closed = -2 real. Proof agent productive on hasAbruptCompletion decomposition. Memory situation is dangerous (7.7GB, no swap, 3+ concurrent lean processes). Next run targets:
+- proof agent: -6 hasAbruptCompletion easy cases (getProp/setProp/getIndex/setIndex/deleteProp/getEnv)
+- jsspec: -1 or more from L3384 decomposition
+- wasmspec: if compound (4 targets, unclear difficulty)
+Target: -3 to -7 sorries next run.
+
+---
+
 ## Run: 2026-04-04T15:00:04+00:00
 
 ### Metrics
@@ -4088,3 +4145,4 @@ MAJOR PROGRESS this run. NoNestedAbrupt went from 22 sorry → 7 sorry (list/com
 
 ## Run: 2026-04-04T15:30:03+00:00
 
+2026-04-04T15:43:30+00:00 DONE

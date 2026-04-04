@@ -2989,11 +2989,12 @@ private theorem hasAbruptCompletionList_firstNonValue_preserved
   have hsplit := firstNonValueExpr_eq_append hfnv
   rw [hsplit] at hac
   rw [hasAbruptCompletionList_append] at hac
-  simp [Bool.or_eq_false_iff] at hac
+  simp only [hasAbruptCompletionList, Bool.or_eq_false_iff] at hac
   obtain ⟨hd, ht, hr⟩ := hac
   refine ⟨ht, hr, fun e he => ?_⟩
   rw [hasAbruptCompletionList_append]
-  simp [Bool.or_eq_false_iff, hasAbruptCompletionList, he, hr, hd]
+  simp only [hasAbruptCompletionList, Bool.or_eq_false_iff]
+  exact ⟨hd, he, hr⟩
 
 set_option autoImplicit true in
 /-- No nested abrupt completions: arguments to throw/return/yield/await are free
@@ -9415,11 +9416,119 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         split at hstep
         next ev' sc hsc => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨⟨ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hc hsc, ht⟩, he⟩
         next => simp at hstep
-    | getProp obj prop => sorry -- value-matching case
-    | setProp obj prop val => sorry -- value-matching case
-    | getIndex obj idx => sorry -- value-matching case
-    | setIndex obj idx val => sorry -- value-matching case
-    | deleteProp obj prop => sorry -- value-matching case
+    | getProp obj prop =>
+      simp only [hasAbruptCompletion] at hac
+      unfold Flat.step? at hstep
+      split at hstep
+      next v hv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+      next hv =>
+        split at hstep
+        next ev' so hso => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion]; exact ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hac hso
+        next => simp at hstep
+    | setProp obj prop val =>
+      simp only [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
+      obtain ⟨ho, hv⟩ := hac
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- obj not value → step obj
+        split at hstep
+        next ev' so hso => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ ho hso, hv⟩
+        next => simp at hstep
+      next addr =>  -- obj = .object addr
+        split at hstep
+        next vv =>  -- val is value
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+        next =>  -- val not value → step val
+          split at hstep
+          next ev' sv hsv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hv hsv⟩
+          next => simp at hstep
+      next =>  -- obj = some other value
+        split at hstep
+        next vv =>  -- val is value
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+        next =>  -- val not value → step val
+          split at hstep
+          next ev' sv hsv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hv hsv⟩
+          next => simp at hstep
+    | getIndex obj idx =>
+      simp only [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
+      obtain ⟨ho, hi⟩ := hac
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- obj not value → step obj
+        split at hstep
+        next ev' so hso => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ ho hso, hi⟩
+        next => simp at hstep
+      next addr =>  -- obj = .object addr
+        split at hstep
+        next iv =>  -- idx is value
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+        next =>  -- idx not value → step idx
+          split at hstep
+          next ev' si hsi => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hi hsi⟩
+          next => simp at hstep
+      next str =>  -- obj = .string str
+        split at hstep
+        next iv =>  -- idx is value
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+        next =>  -- idx not value → step idx
+          split at hstep
+          next ev' si hsi => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hi hsi⟩
+          next => simp at hstep
+      next =>  -- obj = some other value
+        split at hstep
+        next iv =>  -- idx is value
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+        next =>  -- idx not value → step idx
+          split at hstep
+          next ev' si hsi => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hi hsi⟩
+          next => simp at hstep
+    | setIndex obj idx val =>
+      simp only [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
+      obtain ⟨⟨ho, hi⟩, hv⟩ := hac
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- obj not value → step obj
+        split at hstep
+        next ev' so hso => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨⟨ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ ho hso, hi⟩, hv⟩
+        next => simp at hstep
+      next addr =>  -- obj = .object addr
+        split at hstep
+        next =>  -- idx not value
+          split at hstep
+          next ev' si hsi => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hi hsi⟩, hv⟩
+          next => simp at hstep
+        next idxVal =>  -- idx is value
+          split at hstep
+          next vv =>  -- val is value
+            simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+          next =>  -- val not value → step val
+            split at hstep
+            next ev' sv hsv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨⟨by simp [hasAbruptCompletion], by simp [hasAbruptCompletion]⟩, ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hv hsv⟩
+            next => simp at hstep
+      next =>  -- obj = some other value
+        split at hstep
+        next =>  -- idx not value
+          split at hstep
+          next ev' si hsi => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hi hsi⟩, hv⟩
+          next => simp at hstep
+        next =>  -- idx is value
+          split at hstep
+          next vv =>  -- val is value
+            simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+          next =>  -- val not value → step val
+            split at hstep
+            next ev' sv hsv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨⟨by simp [hasAbruptCompletion], by simp [hasAbruptCompletion]⟩, ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hv hsv⟩
+            next => simp at hstep
+    | deleteProp obj prop =>
+      simp only [hasAbruptCompletion] at hac
+      unfold Flat.step? at hstep
+      split at hstep
+      next v hv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+      next hv =>
+        split at hstep
+        next ev' so hso => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion]; exact ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hac hso
+        next => simp at hstep
     | typeof arg =>
       simp only [hasAbruptCompletion] at hac
       unfold Flat.step? at hstep
@@ -9431,7 +9540,23 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         next => simp at hstep
     | call f fenv args => sorry
     | newObj f fenv args => sorry
-    | getEnv envExpr idx => sorry -- value-matching case
+    | getEnv envExpr idx =>
+      simp only [hasAbruptCompletion] at hac
+      unfold Flat.step? at hstep
+      split at hstep
+      next addr =>  -- envExpr is .object addr
+        split at hstep  -- heapObjectAt?
+        next props =>
+          split at hstep  -- find slot
+          next kv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+          next => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+        next => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+      next =>  -- envExpr is some other value
+        simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+      next =>  -- envExpr not value → step
+        split at hstep
+        next ev' se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion]; exact ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hac hse
+        next => simp at hstep
     | makeEnv vals => sorry
     | makeClosure funcIdx envExpr =>
       simp only [hasAbruptCompletion] at hac
