@@ -1,4 +1,4 @@
-# wasmspec — Close L8925/L8928 (if step sim) using HasIfInHead you just built
+# wasmspec — Close if step sim compound cases (L9116/L9117, L9235/L9236)
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -8,45 +8,48 @@
 - You CAN edit ANFConvertCorrect.lean
 - Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
-## GREAT JOB building HasIfInHead infrastructure. Now USE it.
+## STATE: ANF has 24 sorry lines. Your targets: L9116/L9117 and L9235/L9236 (if step sim compound).
 
-## STATE: ANF has 22 sorry lines. Your targets: L8925 + L8928.
+The if step sim now has 4 sorries instead of 2 — two per branch (toBoolean true/false):
+- **L9116**: `| _ => sorry -- compound condition: needs trivialChain infrastructure` (true branch)
+- **L9117**: `all_goals sorry -- compound HasIfInHead: needs depth-induction` (true branch)
+- **L9235**: `| _ => sorry -- compound condition` (false branch)
+- **L9236**: `all_goals sorry -- compound HasIfInHead: needs depth-induction` (false branch)
 
-## YOUR TASKS (in priority order)
+### Understanding the structure
 
-### TASK 1: Close L8925 (if step sim, toBoolean = true → then_)
+The lit/var/this cases of `if_direct` condition are PROVED. The `| _ =>` at L9116/L9235 handles compound conditions (seq, let, call, etc.) in `HasIfInHead.if_direct`. These compound conditions need trivialChain stepping to reduce to a value first.
 
-You built `normalizeExpr_if_or_k` and `normalizeExpr_if_implies_hasIfInHead`. Now use them.
+The `all_goals sorry` at L9117/L9236 handles ALL `HasIfInHead` constructors EXCEPT `if_direct` — these are cases like `seq_left`, `let_init`, etc. where the if is nested inside compound expressions.
 
-At L8925, the goal is: given `ANF.step?` on `.if cond then_ else_` with `toBoolean v = true`, show Flat steps from sf to some sf' matching the then_ branch.
+### TASK 1: Close L9116 and L9235 — compound condition in if_direct
 
-The proof pattern:
-1. `normalizeExpr_if_implies_hasIfInHead` tells you sf.expr has `.if` at eval head position
-2. Use `HasIfInHead` to identify the Flat `.if` form
-3. Flat steps: evaluate condition to value, then step `.if (lit v) then_flat else_flat` to `then_flat` (since `toBoolean v = true`)
-4. Establish ANF_SimRel for the resulting state with `then_` and `then_flat`
+When the condition `c_flat` is compound (not lit/var/this), you need to:
+1. Show `c_flat` is a `isTrivialChain` (via normalizeExpr properties)
+2. Use `trivialChain_steps` (or similar) to reduce it to a value
+3. Then step the `.if (lit v) then_flat else_flat` to the appropriate branch
 
-Use `lean_goal` at L8925 to see exact goal shape. Use `lean_multi_attempt` to test tactics.
+Check if `trivialChain_throw_steps` pattern can be adapted. Use `lean_local_search "trivialChain"` to find existing helpers.
 
-Key pieces you'll need:
-- `Flat.step?_if_true`: Flat steps `.if (lit v) then else` to `then` when `toBoolean v = true`
-- `normalizeExpr_if_or_k`: your new disjunction theorem
-- The normalizeExpr equation for `.if cond then_ else_`
+Use `lean_goal` at L9116 to see exact goal shape. Use `lean_multi_attempt` to test tactics.
 
-### TASK 2: Close L8928 (if step sim, toBoolean = false → else_)
+### TASK 2: Close L9117 and L9236 — compound HasIfInHead (depth induction)
 
-Same pattern as L8925 but with `toBoolean v = false` → `else_flat`.
+These handle cases where `.if` is nested inside seq/let/etc. The approach:
+1. The compound expression takes one Flat step (reducing the outer compound)
+2. The resulting expression still has HasIfInHead (one level deeper)
+3. By depth induction, the proof follows
 
-### TASK 3: If blocked, try L8846 (let step sim)
+This needs the depth-induction framework from `anfConvert_step_star`. Check if there's an IH available from the outer context.
 
-L8846 needs characterization of what produces `.let` from normalizeExpr. You may need a `HasLetInHead` infrastructure similar to HasIfInHead. But try simpler approaches first — `lean_goal` at L8846 to see if the proof follows from existing normalizeExpr equations.
+Use `lean_goal` at L9117 to see what hypotheses are in scope (especially any depth-related IH).
 
-### TASK 4: If still blocked, try L8894 (while step sim)
+### TASK 3 (IF BLOCKED): Try L8850 (let step sim)
 
-L8894 is marked as needing multi-step simulation for while loops. Only attempt if T1-T3 are done or blocked.
+L8850 needs characterization of what produces `.let` from normalizeExpr. Try simpler approaches first — `lean_goal` at L8850 to see if the proof follows from existing normalizeExpr equations without new infrastructure.
 
 ### COORDINATE WITH PROOF AGENT
-proof agent is working on L8204/L8339 (NoNestedAbrupt exfalso for throw) and L8489/8492 (return compound). DO NOT touch those areas. Your work on L8925/L8928 is separate and should not conflict.
+Proof agent is working on L9409 (NoNestedAbrupt propagation) and L8343 (compound throw dispatch). DO NOT touch those areas.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

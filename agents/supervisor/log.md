@@ -1,3 +1,61 @@
+## Run: 2026-04-04T09:00:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 + CC 14 = **38** (LowerCorrect 0)
+- **Delta from last run**: 36 → 38 = **+2**. EXPLAINED BELOW.
+
+### Why sorry count went UP (+2)
+All +2 are from decomposition, NOT regression:
+- proof agent CLOSED L8204 (NESTED_THROW exfalso): **-1**
+- wasmspec decomposed if step sim from 2 sorries to 4 (lit/var/this cases proved, compound+HasIfInHead split out): **+2**
+- proof agent added L9409 (NoNestedAbrupt propagation sorry — converted content-sorry to hypothesis-sorry): **+1**
+- Net: -1 +2 +1 = +2
+
+The decomposition is GOOD — the sub-sorries are more tractable than the originals.
+
+### What happened since last run
+
+1. **proof** (finished 08:42): Closed L8204 NESTED_THROW via `exfalso` + `noNestedAbrupt_hasThrowInHead_absurd_throw`. Added `hna : NoNestedAbrupt (.throw e)` to `normalizeExpr_throw_compound_case`. Propagated through `normalizeExpr_throw_step_sim`. Added sorry-ed `hna_sf` at caller (L9409). Net: 0 (1 closed, 1 added).
+
+2. **jsspec** (started 09:00): Running. Working on L1507/L1508 elimination (switch to `convertExpr_not_value_supported`). Expected -2 sorries.
+
+3. **wasmspec** (started 08:15, still running): Building on lake. Proved lit/var/this cases of if_direct condition for both true/false branches. Split remaining compound cases into 4 separate sorries (L9116/L9117/L9235/L9236). Currently building.
+
+### Actions Taken
+1. Counted sorries: ANF 24 + CC 14 = 38. Up 2 (decomposition).
+2. **REWROTE proof prompt**: Task 1 = close L9409 by adding `NoNestedAbrupt` to `anfConvert_step_star` + `NoNestedAbrupt_step_preserved` lemma. Task 2 = close L8343 (compound throw dispatch). Task 3 = return/yield/await compound.
+3. **REWROTE wasmspec prompt**: Close L9116/L9117/L9235/L9236 — compound condition needs trivialChain, compound HasIfInHead needs depth induction. If blocked, try L8850 (let step sim).
+4. **Updated jsspec prompt**: Same strategy (L1507/L1508 elimination), agent is mid-run.
+5. Logged to time_estimate.csv: 38.
+
+### Sorry Breakdown
+
+**ANF (24 sorry tokens):**
+- Group A (7): L7516, L7549, L7560, L7641, L7674, L7685, L7702 — eval context lifting, PARKED
+- Throw dispatch compound (L8343): TARGET — proof agent Task 2
+- Return compound (L8493, L8496): DEFERRED — same pattern as throw
+- Await compound (L8666, L8669): DEFERRED — same pattern
+- Yield compound (L8820, L8823): DEFERRED — same pattern
+- Let step sim (L8850): wasmspec Task 3 if blocked
+- While step sim (L8898): PARKED — needs multi-step sim
+- If step sim compound condition (L9116, L9235): TARGET — wasmspec Task 1
+- If step sim compound HasIfInHead (L9117, L9236): TARGET — wasmspec Task 2
+- TryCatch step sim (L9280): DEFERRED
+- NoNestedAbrupt propagation (L9409): TARGET — proof agent Task 1
+- Break compound (L9660): PARKED — needs Flat.step? error propagation
+- Continue compound (L9713): PARKED — needs Flat.step? error propagation
+
+**CC (14 sorry tokens):**
+- False theorem fixable (2): L1507, L1508 — jsspec TARGET (switch to _supported version)
+- Unprovable (1): L5148 — jsspec investigating
+- Semantic mismatch (2): L4502, L4510
+- CCStateAgree blocked (6): L3719, L3742, L6543, L6544, L6616, L6724
+- HeapInj blocked (1): L6386
+- FuncsCorr blocked (1): L4296
+- Multi-step blocked (1): L3391
+
+---
+
 ## Run: 2026-04-04T08:30:02+00:00
 
 ### Metrics
@@ -10345,3 +10403,10 @@ proof agent has the infrastructure but hasn't actually CLOSED any sorries with i
 ## Run: 2026-04-04T08:30:02+00:00
 
 2026-04-04T08:35:44+00:00 DONE
+
+## Run: 2026-04-04T09:00:02+00:00
+
+2026-04-04T09:04:01+00:00 DONE
+
+## Run: 2026-04-04T09:05:01+00:00
+

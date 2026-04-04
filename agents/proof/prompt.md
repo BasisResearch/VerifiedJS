@@ -1,4 +1,4 @@
-# proof — Close NESTED_THROW (L8204) via NoNestedAbrupt exfalso
+# proof — Propagate NoNestedAbrupt invariant + close L8343
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -17,72 +17,75 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 - If build OOMs: add `set_option maxHeartbeats 200000` above the theorem
 - Do NOT attempt to build the entire file if it's failing
 
-## GREAT JOB closing TRIVIAL_CHAIN_IN_THROW last run. Now: NoNestedAbrupt.
+## GREAT JOB closing L8204 (NESTED_THROW) via NoNestedAbrupt exfalso. Now propagate hna.
 
-## STATE: ANF has 22 sorry lines. Your job: close L8204 + L8339 via NoNestedAbrupt.
+## STATE: ANF has 24 sorry lines. Your targets: L9409 (hna propagation) then L8343.
 
-## YOUR ONE PRIORITY: Close NESTED_THROW sorry at L8204
+## TASK 1 (HIGHEST PRIORITY): Close L9409 — propagate NoNestedAbrupt invariant
 
-L8204 is the `HasThrowInHead e` branch of `normalizeExpr_throw_compound_case`. The `¬HasThrowInHead` branch is DONE (you proved it via trivialChain_throw_steps). Now close the `HasThrowInHead e` branch.
-
-### The plan: add NoNestedAbrupt hypothesis, derive contradiction
-
-`NoNestedAbrupt` is fully grounded — all bridge theorems are proved (L4472/4478/4484 closed by wasmspec). The key insight: if `HasThrowInHead e` is true AND `NoNestedAbrupt (.throw e)` is true, that's a contradiction because NoNestedAbrupt says `.throw e` has no abrupt completions nested in its argument `e`.
-
-### Step 1: Check what lemmas exist
-
-Use `lean_local_search` for:
-- `NoNestedAbrupt`
-- `hasThrowInHead_implies_hasAbruptCompletion`
-- `throw_arg_abruptFree` or similar
-- `AbruptFree`
-
-The pattern should be:
+L9409 is:
 ```lean
-exfalso
-have h1 := hasThrowInHead_implies_hasAbruptCompletion hth
--- h1 : HasAbruptCompletion e
-have h2 : AbruptFree e := NoNestedAbrupt.throw_inv hna  -- or similar destructor
-exact absurd h1 h2  -- or use simp/contradiction
+all_goals have hna_sf : NoNestedAbrupt sf.expr := sorry -- TODO: propagate NoNestedAbrupt invariant
 ```
 
-Use `lean_hover_info` on `NoNestedAbrupt` to see its constructors and what inversion lemma gives you `AbruptFree e` from `NoNestedAbrupt (.throw e)`.
+This is inside `anfConvert_step_star` (the main step simulation). You need to:
 
-### Step 2: Add `(hna : NoNestedAbrupt sf.expr)` to the theorem
+1. Add `(hna : NoNestedAbrupt sf.expr)` to the signature of `anfConvert_step_star`
+2. Replace the sorry with `hna`
+3. Update `anfConvert_steps_star` (the caller that calls `anfConvert_step_star` inductively) to:
+   - Take `hna` as a parameter
+   - Prove that after each step, NoNestedAbrupt is preserved for the new state sf'
 
-Add `hna` to `normalizeExpr_throw_compound_case` (around L8170). Then at L8204:
+The key insight: `NoNestedAbrupt` should be preserved by Flat steps. If `NoNestedAbrupt e` and `Flat.step? ⟨e, ...⟩ = some (ev, ⟨e', ...⟩)`, then `NoNestedAbrupt e'`.
+
+You may need a lemma `NoNestedAbrupt_step_preserved`:
 ```lean
-  · -- NESTED_THROW: e itself contains a throw in head position
-    exfalso
-    have h_abrupt := hasThrowInHead_implies_hasAbruptCompletion hth
-    have h_free := ... -- get AbruptFree e from hna
-    exact absurd h_abrupt h_free
+theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.TraceEvent)
+    (hna : NoNestedAbrupt sf.expr) (hstep : Flat.step? sf = some (ev, sf')) :
+    NoNestedAbrupt sf'.expr
 ```
 
-Use `lean_multi_attempt` at L8204 to test tactics BEFORE editing.
+This should follow by cases on the step. Most Flat steps reduce to sub-expressions (which are NoNestedAbrupt by inversion) or produce literals (which are trivially NoNestedAbrupt).
 
-### Step 3: Propagate hna to callers
+Use `lean_local_search` for `NoNestedAbrupt` to see what inversions are available.
 
-`normalizeExpr_throw_compound_case` is called from `normalizeExpr_throw_step_sim` (L8336). Add `hna` there too, and pass it through. Then `normalizeExpr_throw_step_sim` is called from `anfConvert_step_star` — add `hna` to the main theorem signature.
+### Step-by-step:
+1. `lean_local_search "NoNestedAbrupt"` to see constructors/inversions
+2. Write `NoNestedAbrupt_step_preserved` (~30-50 lines, cases on Flat.step?)
+3. Add `(hna : NoNestedAbrupt sf.expr)` to `anfConvert_step_star`
+4. Replace `sorry` at L9409 with `hna`
+5. Add `hna` to `anfConvert_steps_star` and prove preservation via `NoNestedAbrupt_step_preserved`
+6. Verify build passes
 
-### Step 4: Close L8339 (compound throw dispatch)
+## TASK 2: Close L8343 — compound throw dispatch
 
-L8339 is in the `| _ =>` branch of `normalizeExpr_throw_step_sim`. After Step 2, this should dispatch to the updated `normalizeExpr_throw_compound_case` with `hna`. If L8339 is a different sorry pattern, use `lean_goal` to understand it.
+L8343 is the `| _ =>` case in `normalizeExpr_throw_step_sim` at L8341-8343:
+```lean
+  | _ =>
+    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
+    sorry
+```
 
-### Step 5: Apply same pattern to return (L8489/8492), yield (L8816/8819)
+This handles compound expressions (seq, let, if, call, etc.) that have `HasThrowInHead` somewhere inside. Unlike the L8204 exfalso case, this is NOT contradictory — it's a real proof case.
 
-Same exfalso pattern with `HasReturnInHead`, `HasYieldInHead` etc. Each needs `NoNestedAbrupt` → `AbruptFree` → contradiction.
+Use `lean_goal` at L8343 to see the exact goal. The expression `e` is compound with `HasThrowInHead e`, and `NoNestedAbrupt (.throw e)` gives `AbruptFree e`, but wait — `e` here is the `_` match so it's the Flat expression, not the throw argument.
 
-### VALIDATE with lean_multi_attempt BEFORE editing
+Actually, re-read the code: `normalizeExpr_throw_step_sim` matches on `sf.expr` cases. The `| .throw arg => ...` case is handled above. The `| _ =>` at L8341 catches expressions that are NOT `.throw arg`. So `sf.expr` is some compound expression, and the goal is to show that `normalizeExpr sf.expr k = .ok (.throw ...)` implies Flat can step.
 
-Test each tactic at the sorry position. If names don't match, use `lean_hover_info` and `lean_local_search` to find correct names.
+This is a **step simulation for non-throw expressions that normalize to throw**. The expression must have a HasThrowInHead sub-expression. With `hna : NoNestedAbrupt sf.expr`, you know the throw arguments are simple.
+
+Use `lean_goal` and `lean_multi_attempt` to explore this before editing.
+
+## TASK 3 (IF TIME): Apply NoNestedAbrupt pattern to return/yield/await
+
+L8493/8496 (return), L8666/8669 (await), L8820/8823 (yield) follow the exact same pattern as throw. Once Task 1 is done, these should be approachable with the same exfalso + trivialChain pattern.
 
 ## DO NOT:
-- Work on trivialChain — DONE
 - Work on Group A (L7516-7702) eval context lifting — PARKED
-- Work on L8846 (let step sim), L8894 (while step sim), L8925/8928 (if step sim) — wasmspec handles these
-- Work on L8972 (tryCatch), L9351/9404 (break/continue) — DEFERRED
-- Add new infrastructure > 20 lines (the framework exists, just USE it)
+- Work on L8850 (let step sim), L8898 (while step sim) — wasmspec handles
+- Work on L9116/L9117/L9235/L9236 (if step sim compound) — wasmspec handles
+- Work on L9280 (tryCatch) — DEFERRED
+- Work on L9660/L9713 (break/continue compound) — needs Flat.step? semantics change, PARKED
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`
