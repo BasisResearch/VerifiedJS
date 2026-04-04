@@ -6092,3 +6092,4 @@ observable events and breaking ANF_SimRel correspondence.
 - Compound HasIfInHead cases (when .if is nested inside seq/binary/etc. — needs depth-induction like normalizeExpr_labeled_step_sim)
 
 **Sorry count:** 24 total in file
+2026-04-04T10:15:23+00:00 SKIP: already running
