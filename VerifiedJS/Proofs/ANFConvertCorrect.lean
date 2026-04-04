@@ -9420,7 +9420,42 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
           split at hstep
           next ev' si hsi => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.getIndex NoNestedAbrupt.lit (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hidx hsi)
           next => simp at hstep
-    | setIndex obj idx val => sorry -- complex 3-sub-expression case
+    | setIndex obj idx val =>
+      cases hna with | setIndex hobj hidx hval =>
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- obj not value → step obj
+        split at hstep
+        next ev' so hso => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.setIndex (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hobj hso) hidx hval
+        next => simp at hstep
+      next addr =>  -- obj = .object addr
+        split at hstep
+        next =>  -- idx not value → step idx
+          split at hstep
+          next ev' si hsi => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.setIndex NoNestedAbrupt.lit (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hidx hsi) hval
+          next => simp at hstep
+        next idxVal =>  -- idx is value
+          split at hstep
+          next v =>  -- val is value → done
+            simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+          next =>  -- val not value → step val
+            split at hstep
+            next ev' sv hsv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.setIndex NoNestedAbrupt.lit NoNestedAbrupt.lit (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hval hsv)
+            next => simp at hstep
+      next =>  -- obj = some other value (non-object)
+        split at hstep
+        next =>  -- idx not value → step idx
+          split at hstep
+          next ev' si hsi => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.setIndex NoNestedAbrupt.lit (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hidx hsi) hval
+          next => simp at hstep
+        next =>  -- idx is value
+          split at hstep
+          next v =>  -- val is value → done
+            simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+          next =>  -- val not value → step val
+            split at hstep
+            next ev' sv hsv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.setIndex NoNestedAbrupt.lit NoNestedAbrupt.lit (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hval hsv)
+            next => simp at hstep
     | deleteProp obj prop =>
       cases hna with | deleteProp hobj =>
       unfold Flat.step? at hstep

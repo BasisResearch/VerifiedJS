@@ -48,6 +48,7 @@ theorem flat_to_wasm_correct
         (∀ b o f, sc.expr ≠ .forIn b o f) ∧ (∀ b i f, sc.expr ≠ .forOf b i f))
     (h_wf : noCallFrameReturn core.body = true)
     (h_addr_wf : ExprAddrWF core.body 1)
+    (h_supp_core : core.body.supported = true)
     (hwf_flat : ExprWellFormed flat.main (Flat.initialState flat).env)
     (hna_flat : NoNestedAbrupt flat.main)
     (hmem_pos : 0 < ir.memories.size)
@@ -67,7 +68,7 @@ theorem flat_to_wasm_correct
         ((optimize_correct anf anfTrace).mpr hanfb))
   · -- Backward: ANF → Flat → Core
     obtain ⟨flatTrace, hflatb, hobs⟩ := anfConvert_correct flat anf hanf hwf_flat hna_flat anfTrace hanfb
-    obtain ⟨coreTrace, hcoreb, heq⟩ := closureConvert_correct core flat hcc h_wf h_addr_wf hnofor flatTrace hflatb
+    obtain ⟨coreTrace, hcoreb, heq⟩ := closureConvert_correct core flat hcc h_wf h_addr_wf h_supp_core hnofor flatTrace hflatb
     exact ⟨coreTrace, hcoreb, by rw [hobs, heq]⟩
 
 end VerifiedJS.Proofs

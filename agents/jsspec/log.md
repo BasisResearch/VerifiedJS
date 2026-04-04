@@ -3191,3 +3191,5 @@ Before converting while body, save and restore `nextId` to a known base. Require
 
 ## Run: 2026-04-04T15:00:01+00:00
 
+2026-04-04T15:00:04+00:00 EXIT: code 1
+2026-04-04T15:00:04+00:00 DONE

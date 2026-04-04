@@ -7784,11 +7784,11 @@ theorem closureConvert_correct (s : Core.Program) (t : Flat.Program)
     (h : Flat.closureConvert s = .ok t)
     (h_wf : noCallFrameReturn s.body = true)
     (h_addr_wf : ExprAddrWF s.body 1)
+    (h_supp : s.body.supported = true)
     (hnofor : ∀ sc tr, Core.Steps (Core.initialState s) tr sc →
         (∀ b o f, sc.expr ≠ .forIn b o f) ∧ (∀ b i f, sc.expr ≠ .forOf b i f)) :
     ∀ b, Flat.Behaves t b → ∃ b', Core.Behaves s b' ∧ b = b' :=
 by
-  have h_supp : s.body.supported = true := sorry /- TODO: add h_supp param when EndToEnd.lean is updated -/
   intro b hb
   refine ⟨b, ?_, rfl⟩
   exact closureConvert_trace_reflection s t h h_wf h_addr_wf h_supp hnofor b hb
