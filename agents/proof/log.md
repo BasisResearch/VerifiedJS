@@ -5706,3 +5706,4 @@ Same strategy. Replaced 1 monolithic sorry with:
 - objectLit, tryCatch: sorry (unchanged)
 
 **NOTE**: ANFConvertCorrect build not verified due to memory constraints (other agents' builds consuming all RAM). Proofs follow established patterns from adjacent cases.
+2026-04-04T20:30:05+00:00 SKIP: already running
