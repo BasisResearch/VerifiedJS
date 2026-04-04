@@ -5407,3 +5407,34 @@ The compound sorry sites (L6937, L7090, L7263, L7417) need an IH for sub-express
 ## Run: 2026-04-04T02:30:01+00:00
 
 ### 2026-04-04T02:30:22+00:00 Starting run
+
+### 2026-04-04T02:30:01+00:00 Progress
+
+#### Built `no_throw_head_implies_trivial_chain` — key characterization theorem
+
+**~230 lines of new proof** added before `normalizeExpr_throw_step_sim`.
+
+**Theorem**: If `normalizeExpr e k` produces `.throw arg` and `¬HasThrowInHead e`, then `isTrivialChain e = true`.
+
+This is a critical infrastructure theorem that characterizes the structure of expressions whose normalization produces `.throw` without having throw in CPS-head position. The only way this can happen is if `e` is a trivial chain (seq of lit/var/this) and the continuation `k` produced the `.throw`.
+
+**Proof technique**: Depth induction mirroring `normalizeExpr_throw_or_k_aux`. For each compound constructor:
+- Expressions that replace k (throw/return/yield/await): Either HasThrowInHead (contradiction) or result type mismatch (contradiction)
+- Expressions with bindComplex (assign/getProp/binary/call/etc.): HasThrowInHead (contradiction) or `bindComplex_never_throw_general` (contradiction)
+- Special forms (labeled/while/tryCatch): Dedicated not-throw lemmas
+- .seq: Recursive via IH on both components + `normalizeExpr_trivialChain_passthrough`
+
+**What this enables for Group D sorries**: The compound flat_arg sorry can be split into:
+1. `HasThrowInHead flat_arg`: Nested throw case — theorem statement may be FALSE (double errors in flat semantics)
+2. `¬HasThrowInHead flat_arg`: flat_arg is a trivial chain, evaluable to a value. Needs:
+   - `trivialChain_eval_to_lit` helper (extends `trivialChain_consume_ctx` with funcs/cs preservation)
+   - `Steps_throw_ctx` to lift through .throw context
+   - Final throw step
+
+**Remaining blockers for closing Group D**:
+- `trivialChain_consume_ctx` doesn't preserve `funcs`/`callStack` in its conclusion
+- Need either: extend `trivialChain_consume_ctx` output, or prove preservation separately
+- `trivialChain_eval_to_lit` helper needs .lit base case (trivialOfValue/evalTrivial roundtrip)
+
+Sorry count: 22 → 22 (unchanged — infrastructure only)
+Build: PASSING

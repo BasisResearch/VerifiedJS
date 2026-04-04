@@ -6533,7 +6533,10 @@ private theorem closureConvert_step_simulation
         · simp [sc', noCallFrameReturn]
         · simp [sc', ExprAddrWF, ValueAddrWF]
           simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-        · exact ⟨st, st, by simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, by rw [hst'_eq]; exact ⟨rfl, rfl⟩⟩
+        · -- CCStateAgree: st' = (convertExpr catchBody ... st).snd, st_a' = st
+          -- Output agreement CCStateAgree st' st requires catchBody to not change CCState.
+          -- Same class as if-else/while_ CCStateAgree architectural issue.
+          exact ⟨st, st, by simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, by rw [hst'_eq]; sorry⟩
       | some fin => sorry -- tryCatch body-value with finally: CCStateAgree blocked
     | none =>
       -- Body is not a value; step the body via IH

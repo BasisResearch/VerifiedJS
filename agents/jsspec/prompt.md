@@ -1,4 +1,4 @@
-# jsspec — consoleLog is CLOSED. Focus on newObj + captured var.
+# jsspec — BUILD IS BROKEN. Fix L4280 type mismatch FIRST, then tryCatch errors.
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -14,48 +14,43 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 ## ⚠️⚠️⚠️ DO NOT TOUCH CCStateAgree ⚠️⚠️⚠️
 The CCStateAgree-blocked sorries are PARKED. DO NOT WORK ON THEM.
 
-## STATE: CC has 14 real sorry tokens. consoleLog (L4280) is DONE — good work!
+## STATE: CC has 14 real sorry tokens. BUILD IS BROKEN with 10 errors.
 
-## SORRY MAP (14 tokens):
+## ⚠️ BUILD ERRORS (10 errors, must fix):
+```
+L4280: error: Type mismatch (consoleLog proof)
+L6536: error: Application type mismatch
+L6544: error: unsolved goals
+L6556: error: `simp` made no progress
+L6564: error: unsolved goals
+L6615: error: `simp` made no progress
+L6623: error: unsolved goals
+L6647: error: Type mismatch
+L6650: error: Application type mismatch
+L6678: error: Tactic `rewrite` failed
+```
 
-### UNPROVABLE (3) — SKIP:
-- L1507: forIn stub
-- L1508: forOf stub
-- L5144: getIndex string (Float.toString opaque)
+## YOUR TASKS (in strict priority order):
 
-### CCStateAgree BLOCKED (6) — PARKED:
-- L3715: if-then
-- L3738: if-else (2 sorries on one line)
-- L6382: functionDef
-- L6537: tryCatch finally
-- L6608: tryCatch error
-- L6715: while_
+### TASK 0: FIX THE BUILD (MUST DO FIRST)
 
-### ACTIONABLE (5):
-- **L4498**: newObj f not a value ← TARGET #1
-- **L4506**: newObj non-value arg ← TARGET #2
-- **L3387**: captured var (multi-step gap) ← TARGET #3
-- **L4292**: non-consoleLog call (needs FuncsCorr) ← TARGET #4 (stretch)
+#### L4280 — consoleLog type mismatch
+`exact Core_step?_call_consoleLog_flat_msg args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv` doesn't typecheck. Use `lean_goal` at L4280 to see what the goal expects vs what the lemma provides. Fix the type mismatch — likely needs a `show` annotation or argument reordering.
 
-## YOUR TASKS (in priority order):
+If you cannot fix it, replace with `sorry` temporarily so the build unbreaks and other proofs can be verified.
+
+#### L6536-6678 — tryCatch area errors
+These are in the tryCatch body-not-value case (L6538+). The errors cascade. Check if they're caused by a signature change or a prior edit that broke the proof structure. Use `lean_goal` at each error site.
+
+**The build MUST compile (possibly with sorries) before you work on anything else.**
 
 ### TASK 1: Close newObj non-value sorries (L4498, L4506)
 
-These are about Core.newObj where f or arg is not a value:
-- Core allocates immediately (newObj evaluates args eagerly in Core semantics)
-- Flat needs to step f/arg first before allocating
-
-Use `lean_goal` at L4498 to see the exact goal. The pattern should be similar to what you did for arrayLit.
-
-If these are fundamentally a semantic mismatch (Core vs Flat evaluation order), document WHY and mark as UNPROVABLE with a clear comment explaining the mismatch.
+Only after build is fixed. These are about Core.newObj where f or arg is not a value. Use `lean_goal` to understand the proof obligation.
 
 ### TASK 2: Close captured var sorry at L3387
 
-Use `lean_goal` at L3387 to understand the proof obligation. This is about a multi-step gap where a captured variable needs environment lookup correspondence.
-
-### TASK 3: Build FuncsCorr for L4292
-
-Only START if Tasks 1-2 are done. The call sorry at L4292 needs `sf.funcs[idx] ↔ sc.funcs[idx]` correspondence. This might need a new invariant `FuncsCorr` added to CC_SimRel.
+Only after build is fixed. Multi-step gap where captured variable needs environment lookup correspondence.
 
 ### DO NOT TOUCH:
 - L1507/L1508 forIn/forOf — stubs, unprovable

@@ -49,8 +49,13 @@
 - **Hard**: continuation-independence → Group A (7). CCStateAgree → 6 CC sorries.
 - **Floor**: 3 unprovable CC sorries (forIn, forOf, getIndex) are permanent.
 
+### Build Status
+- **ANF**: BUILDS OK (lint warnings only)
+- **CC**: BROKEN — 10 errors. L4280 consoleLog type mismatch + L6536-6678 tryCatch cascade. jsspec prompt updated to FIX BUILD FIRST.
+
 ### Biggest Risk
-proof agent has been stuck for 3 runs on Group D. If it doesn't close at least ONE Group D sorry this run, I will manually write the proof next run.
+1. CC build is broken — jsspec must fix before any sorry closing.
+2. proof agent stuck for 3 runs on Group D. If no Group D sorry closed this run, manual intervention next run.
 
 ---
 
@@ -9798,3 +9803,4 @@ proof agent has the infrastructure but hasn't actually CLOSED any sorries with i
 
 ## Run: 2026-04-04T03:05:01+00:00
 
+2026-04-04T03:15:19+00:00 DONE

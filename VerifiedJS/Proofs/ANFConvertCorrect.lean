@@ -7119,7 +7119,20 @@ private theorem normalizeExpr_throw_step_sim
     | «continue» _ =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
-    | _ => sorry -- compound flat_arg: seq, let, assign, if, call, throw, etc.
+    | _ =>
+      -- Compound flat_arg: split on whether flat_arg has nested throw
+      by_cases hthrow_fa : HasThrowInHead flat_arg
+      · -- HasThrowInHead flat_arg: nested throw produces double errors in flat semantics.
+        -- The theorem as stated may be FALSE for this case (flat produces extra error events).
+        sorry -- BLOCKED: theorem statement likely false for nested throws
+      · -- ¬HasThrowInHead flat_arg: flat_arg is a trivial chain by characterization
+        have htc : isTrivialChain flat_arg = true :=
+          no_throw_head_implies_trivial_chain flat_arg.depth flat_arg (Nat.le_refl _)
+            (fun t => pure (.throw t)) arg n m hnorm' hthrow_fa
+        -- flat_arg is .seq (since not lit/var/this/break/continue) with trivial sub-chains.
+        -- Need: eval flat_arg to value, lift through .throw via Steps_throw_ctx, final throw step.
+        -- BLOCKED: trivialChain_consume_ctx doesn't preserve funcs/callStack in conclusion.
+        sorry
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
     sorry
