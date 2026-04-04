@@ -1731,48 +1731,60 @@ private theorem step?_if_lit_branch (s : Flat.State) (v : Flat.Value)
   simp only [Flat.step?, Flat.exprValue?]
   exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
-/-- Multi-step lifting through .seq [·] b context: if the inner expression takes
-    non-error steps while preserving funcs/callStack/trace, the wrapped expression
-    takes corresponding steps. -/
-private theorem Steps_seq_ctx
-    (b : Flat.Expr) {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+/-- Helper: lift Steps induction through a one-hole context.
+    Given inner Steps s1 →* s3 with funcs/callStack/trace preservation,
+    wrapping each intermediate expression with `wrap` gives wrapped Steps. -/
+private theorem Steps_ctx_lift
+    (wrap : Flat.Expr → Flat.Expr)
+    (single_step : ∀ (s : Flat.State) (inner : Flat.Expr)
+      (hnotval : Flat.exprValue? inner = none)
+      (t : Core.TraceEvent) (si : Flat.State)
+      (hstep : Flat.step? { s with expr := inner } = some (t, si))
+      (hnoerr : ∀ msg, t ≠ .error msg),
+      ∃ s', Flat.step? { s with expr := wrap inner } = some (t, s') ∧
+        s'.expr = wrap si.expr ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+        s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+        s'.trace = s.trace ++ [t])
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
     (hsteps : Flat.Steps s1 evs s3)
     (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
     (hpres : ∀ (smid : Flat.State) (evs1 : List Core.TraceEvent),
        Flat.Steps s1 evs1 smid →
        smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :
     ∃ ws3 : Flat.State,
-      Flat.Steps ⟨.seq s1.expr b, s1.env, s1.heap, s1.trace, s1.funcs, s1.callStack⟩ evs ws3 ∧
-      ws3.expr = .seq s3.expr b ∧
+      Flat.Steps ⟨wrap s1.expr, s1.env, s1.heap, s1.trace, s1.funcs, s1.callStack⟩ evs ws3 ∧
+      ws3.expr = wrap s3.expr ∧
       ws3.env = s3.env ∧ ws3.heap = s3.heap ∧
       ws3.funcs = s1.funcs ∧ ws3.callStack = s1.callStack ∧
       ws3.trace = s3.trace := by
   induction hsteps with
   | refl => exact ⟨_, .refl _, rfl, rfl, rfl, rfl, rfl, rfl⟩
   | @tail s1 s2 s3 t ts hstep hrest ih =>
-    obtain ⟨hstep_eq⟩ := hstep
+    have hstep_eq := hstep.1
     have hnotval := step?_some_implies_not_value hstep_eq
-    have hnoerr_t : ∀ msg, t ≠ .error msg := fun msg => hnoerr t (List.mem_cons_self _ _) msg
-    -- s2 preserves funcs/callStack/trace from s1
+    have hnoerr_t : ∀ msg, t ≠ .error msg := by
+      intro msg; exact hnoerr t (List.mem_cons_self t ts) msg
     have hs2_pres := hpres s2 [t] (.tail hstep (.refl _))
     obtain ⟨hs2f, hs2c, hs2t⟩ := hs2_pres
-    -- Lift first step through .seq context
     obtain ⟨ws2, hwstep, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-      step?_seq_ctx s1 s1.expr b hnotval t s2 hstep_eq hnoerr_t
-    -- ws2 = wrapped s2 (funcs/cs from s1 = s2, trace matches)
-    have hws2_eq : ws2 = ⟨.seq s2.expr b, s2.env, s2.heap, s2.trace, s2.funcs, s2.callStack⟩ := by
-      cases ws2 with | mk we wenv wheap wtrace wfuncs wcs =>
-      simp only [Flat.State.mk.injEq]
-      exact ⟨hwexpr, hwenv, hwheap, by rw [hwtrace, hs2t], by rw [hwfuncs, hs2f], by rw [hwcs, hs2c]⟩
-    -- Apply IH for remaining steps
+      single_step s1 s1.expr hnotval t s2 hstep_eq hnoerr_t
     have hnoerr_ts : ∀ ev ∈ ts, ∀ msg, ev ≠ .error msg :=
       fun ev hev msg => hnoerr ev (List.mem_cons_of_mem t hev) msg
     have hpres_s2 : ∀ smid evs1, Flat.Steps s2 evs1 smid →
         smid.funcs = s2.funcs ∧ smid.callStack = s2.callStack ∧ smid.trace = s2.trace ++ evs1 := by
       intro smid evs1 hsteps_s2
-      have := hpres smid (t :: evs1) (.tail hstep hsteps_s2)
-      exact ⟨this.1.trans hs2f.symm, this.2.1.trans hs2c.symm,
-             by rw [this.2.2, hs2t, List.append_assoc]; rfl⟩
+      have h := hpres smid (t :: evs1) (.tail hstep hsteps_s2)
+      exact ⟨h.1.trans hs2f.symm, h.2.1.trans hs2c.symm,
+             by rw [h.2.2, hs2t, List.append_assoc]; rfl⟩
+    obtain ⟨ws3, hwsteps3, hwexpr3, hwenv3, hwheap3, hwfuncs3, hwcs3, hwtrace3⟩ :=
+      ih hnoerr_ts hpres_s2
+    -- Show ws2 = wrapped s2 state
+    have hws2 : ws2 = ⟨wrap s2.expr, s2.env, s2.heap, s2.trace, s2.funcs, s2.callStack⟩ := by
+      have h : ws2 = ⟨ws2.expr, ws2.env, ws2.heap, ws2.trace, ws2.funcs, ws2.callStack⟩ := by
+        cases ws2; rfl
+      rw [h, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace, hs2f, hs2c, hs2t]
+    refine ⟨ws3, .tail ⟨hwstep⟩ (hws2 ▸ hwsteps3), hwexpr3, hwenv3, hwheap3,
+      hwfuncs3.trans hs2f, hwcs3.trans hs2c, hwtrace3⟩
     obtain ⟨ws3, hwsteps3, hwexpr3, hwenv3, hwheap3, hwfuncs3, hwcs3, hwtrace3�� :=
       ih hnoerr_ts hpres_s2
     -- Combine: Step (wrap s1) t ws2 then Steps ws2 ts ws3

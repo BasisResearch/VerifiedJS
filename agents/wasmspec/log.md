@@ -5777,3 +5777,109 @@ This is a non-trivial architectural change to the proof.
 2. Proved `continue_direct` case in `hasContinueInHead_flat_error_steps` (was sorry)
 3. Added detailed annotations to remaining sorry'd cases
 4. Separated compound cases in both theorems (seq_left, seq_right, let_init, wildcard)
+
+## CCStateAgree Alternative Analysis (Task 2)
+
+### Current situation
+
+`CCStateAgree st1 st2 := st1.nextId = st2.nextId ∧ st1.funcs.size = st2.funcs.size`
+
+Used in `closureConvert_step_simulation` (L3326) suffices clause (L3355-3357):
+```lean
+∃ (st_a st_a' : Flat.CCState),
+    (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
+    CCStateAgree st st_a ∧ CCStateAgree st' st_a'
+```
+
+6 sorries blocked by CCStateAgree: if-true/false branches, while_ duplication, objectLit concatenation.
+
+### Root cause analysis
+
+For `.if cond then_ else_`, convertExpr converts both branches sequentially:
+- st → st1 (cond), st1 → st2 (then_), st2 → st3 (else_)
+- Output state: st' = st3
+
+At runtime, only ONE branch executes. After if-true:
+- Actual: st_a = st1, st_a' = st2
+- Need: CCStateAgree(st, st1) — requires delta(cond) = 0 ✓ (usually)
+- Need: CCStateAgree(st3, st2) — requires delta(else_) = 0 ✗ (fails if else has functionDef)
+
+The "gap" = delta(else_) = number of functionDef nodes in the dead branch.
+
+### Option 1: Monotone state agreement
+
+`st_a.nextId ≤ st.nextId` (actual ≤ original)
+
+For if-true: need st_a'.nextId ≤ st'.nextId, i.e., st2.nextId ≤ st3.nextId. TRUE (since st3 = st2 + delta(else) ≥ st2).
+
+**Problem**: `convertExpr_state_determined` (L566) requires EQUALITY of nextId to prove expression equality. With monotone (≤), the output expressions may DIFFER (different fresh names, different funcIdx). So chaining sub-stepping lemmas breaks — can't prove the Flat expression after stepping matches the converted expression.
+
+jsspec confirmed: monotone breaks ~10 existing cases that depend on expression equality.
+
+**Verdict: NOT viable** without major proof restructuring.
+
+### Option 2: Expression-level state independence
+
+Claim: `(convertExpr e scope envVar envMap st1).fst = (convertExpr e scope envVar envMap st2).fst` when both states are "sufficiently large" (nextId ≥ N).
+
+**FALSE.** convertExpr uses `st.freshVar "__env"` producing `"__env_{st.nextId}"`, and `st.addFunc` producing `funcIdx = st.funcs.size`. Different states → different names and indices → different expressions.
+
+Concrete example: `convertExpr (.functionDef "f" ["x"] body false false) ... st1` produces `innerEnvVar = "__env_{st1.nextId}"` and `funcIdx = st2.funcs.size`. With different `st2`, these are different.
+
+**Verdict: FALSE as stated.** The expressions genuinely differ.
+
+### Option 3: Alpha-equivalence
+
+`convertExpr` with different states produces alpha-equivalent expressions — same structure, different fresh names and function indices.
+
+**TRUE in principle.** The structure of the output depends only on the input expression, scope, envVar, envMap. The state only affects:
+- Fresh variable names (via freshVar): `"__env_{nextId}"`
+- Function indices (via addFunc): `funcIdx = funcs.size`
+- Anonymous function names: `"__anon_{nextId}"`
+
+If we define alpha-equivalence as "same tree structure modulo renaming of fresh variables and function indices", then convertExpr with different states IS alpha-equivalent.
+
+**Problems**:
+1. Defining alpha-equivalence for Flat.Expr is non-trivial (must handle variable binding, function references)
+2. Proving the simulation is alpha-equivalence-preserving is expensive
+3. All 30+ stepping lemmas would need to be generalized
+4. Function indices are not just names — they index into `sf.funcs` array. Alpha-equivalence of indices requires the funcs arrays to also be "equivalent"
+
+**Verdict: CORRECT but IMPRACTICAL** — estimated at weeks of proof engineering.
+
+### Recommended approach: Change convertExpr to branch-parallel conversion
+
+Instead of converting branches sequentially (st1 → st2 → st3), convert both from the SAME state:
+
+```
+| .«if» cond then_ else_ =>
+    let (cond', st1) := convertExpr cond scope envVar envMap st
+    let (then', st_then) := convertExpr then_ scope envVar envMap st1
+    let (else', st_else) := convertExpr else_ scope envVar envMap st1  -- SAME st1
+    let st_out := { nextId := max st_then.nextId st_else.nextId,
+                    funcs := st_then.funcs ++ (st_else.funcs.toList.drop st1.funcs.size).toArray }
+    (.«if» cond' then' else', st_out)
+```
+
+**Benefits**:
+- After if-true: st_a = st1, st_a' = st_then. CCStateAgree with monotone (st_out.nextId ≥ st_then.nextId) ✓
+- After if-false: st_a = st1, st_a' = st_else. CCStateAgree with monotone ✓
+- `convertExpr_state_determined` still works for the live branch (same input state st1)
+- The dead branch's functions are still in funcs but at different offsets — this needs careful handling
+
+**Costs**:
+- Changes the conversion function (ClosureConvert.lean)
+- Needs a merge-state operation
+- Function index offsets from the dead branch need padding
+- Some existing proofs break (but the CCStateAgree sorries get resolved)
+
+This is the most architecturally sound fix. Same approach used in real compilers (e.g., LLVM IR generation).
+
+### Alternative: Weaker SimRel for branches
+
+Don't require CCStateAgree for the output state when inside a branch. Instead:
+1. Track "state offset" = delta from dead branches
+2. Prove: state offset doesn't affect observable behavior
+3. When resuming after the if, advance the actual state by the offset
+
+This is essentially the monotone approach but with explicit offset tracking, which avoids the expression-equality problem by showing the offset only affects unreachable code.
