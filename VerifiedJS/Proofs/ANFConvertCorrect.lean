@@ -9140,10 +9140,10 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     | this => unfold Flat.step? at hstep; split at hstep <;> simp at hstep <;> obtain ⟨_, rfl⟩ := hstep <;> exact NoNestedAbrupt.lit
     | «break» _ => unfold Flat.step? at hstep; simp at hstep; obtain ⟨_, rfl⟩ := hstep; exact NoNestedAbrupt.lit
     | «continue» _ => unfold Flat.step? at hstep; simp at hstep; obtain ⟨_, rfl⟩ := hstep; exact NoNestedAbrupt.lit
-    | unary op arg => cases hna
-    | binary op l r => cases hna
-    | while_ cond body => cases hna
-    | labeled label body => cases hna
+    | unary op arg => sorry
+    | binary op l r => sorry
+    | while_ cond body => sorry
+    | labeled label body => sorry
     | seq a b => sorry
     | «let» name init body => sorry
     | assign name rhs => sorry
