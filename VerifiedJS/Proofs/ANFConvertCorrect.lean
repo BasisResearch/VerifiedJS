@@ -9761,7 +9761,20 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         split at hstep
         next ev' se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion]; exact ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hac hse
         next => simp at hstep
-    | objectLit props => sorry
+    | objectLit props =>
+      simp only [hasAbruptCompletion] at hac
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- all values → allocate object
+        simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
+      next =>  -- firstNonValueProp
+        split at hstep
+        next done name target remaining hfnv =>
+          have ⟨htarget, hrem, hrecon⟩ := hasAbruptCompletionProps_firstNonValueProp_preserved hfnv hac
+          split at hstep
+          next t se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion]; exact hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueProp_depth hfnv; omega) _ _ _ _ _ _ _ htarget hse)
+          next => simp at hstep
+        next => simp at hstep
     | arrayLit elems =>
       simp only [hasAbruptCompletion] at hac
       unfold Flat.step? at hstep

@@ -1165,6 +1165,46 @@ theorem step?_call_consoleLog (s : State)
         some (t, pushTrace { s with expr := .getEnv se.expr idx, env := se.env, heap := se.heap } t) := by
   rw [step?.eq_1]; simp only [he]; cases step? { s with expr := envE } <;> rfl
 
+/-- Stepping getProp when obj is not a value: recurse into obj. -/
+@[simp] theorem step?_getProp_step_obj (s : State) (obj : Expr) (prop : PropName)
+    (ho : exprValue? obj = none) :
+    step? { s with expr := .getProp obj prop } =
+      (step? { s with expr := obj }).bind fun (t, so) =>
+        some (t, pushTrace { s with expr := .getProp so.expr prop, env := so.env, heap := so.heap } t) := by
+  rw [step?.eq_1]; simp only [ho]; cases step? { s with expr := obj } <;> rfl
+
+/-- Stepping setProp when obj is not a value: recurse into obj. -/
+@[simp] theorem step?_setProp_step_obj (s : State) (obj : Expr) (prop : PropName) (val : Expr)
+    (ho : exprValue? obj = none) :
+    step? { s with expr := .setProp obj prop val } =
+      (step? { s with expr := obj }).bind fun (t, so) =>
+        some (t, pushTrace { s with expr := .setProp so.expr prop val, env := so.env, heap := so.heap } t) := by
+  rw [step?.eq_1]; simp only [ho]; cases step? { s with expr := obj } <;> rfl
+
+/-- Stepping getIndex when obj is not a value: recurse into obj. -/
+@[simp] theorem step?_getIndex_step_obj (s : State) (obj idx : Expr)
+    (ho : exprValue? obj = none) :
+    step? { s with expr := .getIndex obj idx } =
+      (step? { s with expr := obj }).bind fun (t, so) =>
+        some (t, pushTrace { s with expr := .getIndex so.expr idx, env := so.env, heap := so.heap } t) := by
+  rw [step?.eq_1]; simp only [ho]; cases step? { s with expr := obj } <;> rfl
+
+/-- Stepping setIndex when obj is not a value: recurse into obj. -/
+@[simp] theorem step?_setIndex_step_obj (s : State) (obj idx val : Expr)
+    (ho : exprValue? obj = none) :
+    step? { s with expr := .setIndex obj idx val } =
+      (step? { s with expr := obj }).bind fun (t, so) =>
+        some (t, pushTrace { s with expr := .setIndex so.expr idx val, env := so.env, heap := so.heap } t) := by
+  rw [step?.eq_1]; simp only [ho]; cases step? { s with expr := obj } <;> rfl
+
+/-- Stepping deleteProp when obj is not a value: recurse into obj. -/
+@[simp] theorem step?_deleteProp_step_obj (s : State) (obj : Expr) (prop : PropName)
+    (ho : exprValue? obj = none) :
+    step? { s with expr := .deleteProp obj prop } =
+      (step? { s with expr := obj }).bind fun (t, so) =>
+        some (t, pushTrace { s with expr := .deleteProp so.expr prop, env := so.env, heap := so.heap } t) := by
+  rw [step?.eq_1]; simp only [ho]; cases step? { s with expr := obj } <;> rfl
+
 /-- Step relation is equivalent to step? returning some. -/
 theorem Step_iff (s : State) (t : Core.TraceEvent) (s' : State) :
     Step s t s' ↔ step? s = some (t, s') :=
