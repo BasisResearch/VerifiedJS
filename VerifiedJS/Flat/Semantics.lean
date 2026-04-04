@@ -1157,6 +1157,14 @@ theorem step?_call_consoleLog (s : State)
         some (t, pushTrace { s with expr := .newObj sf.expr envE args, env := sf.env, heap := sf.heap } t) := by
   rw [step?.eq_1]; simp only [hf]; cases step? { s with expr := f } <;> rfl
 
+/-- Stepping a newObj when funcExpr is a value but envExpr is not: recurse into envExpr. -/
+@[simp] theorem step?_newObj_step_env (s : State) (f envE : Expr) (args : List Expr)
+    (fv : Value) (hf : exprValue? f = some fv) (he : exprValue? envE = none) :
+    step? { s with expr := .newObj f envE args } =
+      (step? { s with expr := envE }).bind fun (t, se) =>
+        some (t, pushTrace { s with expr := .newObj f se.expr args, env := se.env, heap := se.heap } t) := by
+  rw [step?.eq_1]; simp only [hf, he]; cases step? { s with expr := envE } <;> rfl
+
 /-- Stepping a getEnv when envExpr is not a value: recurse into envExpr. -/
 @[simp] theorem step?_getEnv_step_env (s : State) (envE : Expr) (idx : Nat)
     (he : exprValue? envE = none) :
