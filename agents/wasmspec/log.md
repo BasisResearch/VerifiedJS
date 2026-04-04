@@ -6297,3 +6297,21 @@ Need characterization of what normalizeExpr produces for these forms and Flat si
 ## Run: 2026-04-04T23:00:03+00:00
 
 ### 2026-04-04T23:00:17+00:00 Starting run
+
+**Fixed**: 4 `simp made no progress` errors in `normalizeExpr_if_step_sim` (L9303, L9326, L9375, L9399)
+- Root cause: `simp [Flat.step?_pushTrace_expand] at this` flattened `(trace ++ [.silent]) ++ [.silent]` to `trace ++ [.silent, .silent]`, creating a mismatch with the goal's `(trace ++ [.silent]) ++ [.silent]` form
+- Fix: Changed `simp` to `simp only` to prevent List.append_assoc normalization
+- Also removed redundant first `simp at this` calls that had no effect
+
+**Not fixed** (too complex for this run):
+- L9050: let step_sim sorry — needs `HasLetInHead` decomposition lemma (doesn't exist)
+- L9140, L9152: while step_sim sorries — needs multi-step simulation or SimRel generalization
+- L9451: tryCatch step_sim sorry — needs characterization of what produces .tryCatch
+- L9453-9750: `hasAbruptCompletion_step_preserved` — structural errors: getProp/deleteProp/call cases need more branches for current Flat.step?, and `pushTrace` causes `simp`/`split` failures
+- L10100-10400: `NoNestedAbrupt_step_preserved` — similar structural issues plus `ih` calls missing `sf'` argument
+- L9720, 10199: funcDef.body sorries — fundamental: can't prove hasAbruptCompletion/NoNestedAbrupt for arbitrary function bodies
+### 2026-04-04T23:14:38+00:00 Run complete — fixed 4 if_step_sim simp errors, 0 errors remain in L9275-9410
+2026-04-04T23:14:44+00:00 DONE
+
+## Run: 2026-04-04T23:15:01+00:00
+
