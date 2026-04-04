@@ -1,4 +1,4 @@
-# proof — Propagate NoNestedAbrupt invariant + close L8343
+# proof — NoNestedAbrupt propagation (L9409) is THE blocker
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -17,75 +17,57 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 - If build OOMs: add `set_option maxHeartbeats 200000` above the theorem
 - Do NOT attempt to build the entire file if it's failing
 
-## GREAT JOB closing L8204 (NESTED_THROW) via NoNestedAbrupt exfalso. Now propagate hna.
+## PROGRESS: You closed NESTED_THROW (L8204) via NoNestedAbrupt exfalso. Well done. But you generated a replacement sorry at L9409. NET ZERO. Close L9409 NOW.
 
-## STATE: ANF has 24 sorry lines. Your targets: L9409 (hna propagation) then L8343.
+## STATE: ANF has 24 sorry lines. Your ONE target this run: L9409.
 
-## TASK 1 (HIGHEST PRIORITY): Close L9409 — propagate NoNestedAbrupt invariant
+## TASK 1 (DO THIS FIRST, DO NOT SKIP): Close L9409
 
 L9409 is:
 ```lean
 all_goals have hna_sf : NoNestedAbrupt sf.expr := sorry -- TODO: propagate NoNestedAbrupt invariant
 ```
 
-This is inside `anfConvert_step_star` (the main step simulation). You need to:
+Inside `anfConvert_step_star`. You need:
 
-1. Add `(hna : NoNestedAbrupt sf.expr)` to the signature of `anfConvert_step_star`
-2. Replace the sorry with `hna`
-3. Update `anfConvert_steps_star` (the caller that calls `anfConvert_step_star` inductively) to:
-   - Take `hna` as a parameter
-   - Prove that after each step, NoNestedAbrupt is preserved for the new state sf'
-
-The key insight: `NoNestedAbrupt` should be preserved by Flat steps. If `NoNestedAbrupt e` and `Flat.step? ⟨e, ...⟩ = some (ev, ⟨e', ...⟩)`, then `NoNestedAbrupt e'`.
-
-You may need a lemma `NoNestedAbrupt_step_preserved`:
+### Step 1: Write NoNestedAbrupt_step_preserved
 ```lean
 theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.TraceEvent)
     (hna : NoNestedAbrupt sf.expr) (hstep : Flat.step? sf = some (ev, sf')) :
-    NoNestedAbrupt sf'.expr
+    NoNestedAbrupt sf'.expr := by
+  -- unfold Flat.step? at hstep, cases on sf.expr
+  -- Each case: sub-expressions are NoNestedAbrupt by inversion of hna
+  -- Produced expressions: either sub-expressions (NoNestedAbrupt by IH) or .lit (trivially NoNestedAbrupt)
+  sorry
 ```
 
-This should follow by cases on the step. Most Flat steps reduce to sub-expressions (which are NoNestedAbrupt by inversion) or produce literals (which are trivially NoNestedAbrupt).
+This is ~30-80 lines: `cases` on the Flat.step? definition, then for each case use `NoNestedAbrupt` inversions. Key patterns:
+- `.seq (lit v) b` steps to `b` → `hna` gives `NoNestedAbrupt b` by inversion
+- `.var name` steps to `.lit v` → `NoNestedAbrupt.lit`
+- `.throw e` steps to error → produced expr is `.lit .undefined`, trivially NoNestedAbrupt
+- etc.
 
-Use `lean_local_search` for `NoNestedAbrupt` to see what inversions are available.
+Use `lean_hover_info` on `Flat.step?` to see all cases. Use `lean_multi_attempt` to test each case.
 
-### Step-by-step:
-1. `lean_local_search "NoNestedAbrupt"` to see constructors/inversions
-2. Write `NoNestedAbrupt_step_preserved` (~30-50 lines, cases on Flat.step?)
-3. Add `(hna : NoNestedAbrupt sf.expr)` to `anfConvert_step_star`
-4. Replace `sorry` at L9409 with `hna`
-5. Add `hna` to `anfConvert_steps_star` and prove preservation via `NoNestedAbrupt_step_preserved`
-6. Verify build passes
+### Step 2: Add hna to anfConvert_step_star signature
+Add `(hna : NoNestedAbrupt sf.expr)` parameter. Replace `sorry` at L9409 with `hna`.
 
-## TASK 2: Close L8343 — compound throw dispatch
+### Step 3: Update anfConvert_steps_star
+The caller that invokes `anfConvert_step_star` in a loop. Add `hna` parameter. After each step, use `NoNestedAbrupt_step_preserved` to get `hna'` for the next state.
 
-L8343 is the `| _ =>` case in `normalizeExpr_throw_step_sim` at L8341-8343:
-```lean
-  | _ =>
-    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
-    sorry
-```
+### Step 4: Update compiler_correct (top-level)
+The top-level theorem needs to provide initial `hna`. If normalizeExpr produces NoNestedAbrupt output, this should follow from the compiler pipeline. If it's hard, use sorry here temporarily — it's a MUCH better sorry than L9409 because it's at the top level where we know the input is well-formed.
 
-This handles compound expressions (seq, let, if, call, etc.) that have `HasThrowInHead` somewhere inside. Unlike the L8204 exfalso case, this is NOT contradictory — it's a real proof case.
+## TASK 2 (ONLY IF TASK 1 IS DONE): Apply trivialChain pattern to return/await/yield
 
-Use `lean_goal` at L8343 to see the exact goal. The expression `e` is compound with `HasThrowInHead e`, and `NoNestedAbrupt (.throw e)` gives `AbruptFree e`, but wait — `e` here is the `_` match so it's the Flat expression, not the throw argument.
-
-Actually, re-read the code: `normalizeExpr_throw_step_sim` matches on `sf.expr` cases. The `| .throw arg => ...` case is handled above. The `| _ =>` at L8341 catches expressions that are NOT `.throw arg`. So `sf.expr` is some compound expression, and the goal is to show that `normalizeExpr sf.expr k = .ok (.throw ...)` implies Flat can step.
-
-This is a **step simulation for non-throw expressions that normalize to throw**. The expression must have a HasThrowInHead sub-expression. With `hna : NoNestedAbrupt sf.expr`, you know the throw arguments are simple.
-
-Use `lean_goal` and `lean_multi_attempt` to explore this before editing.
-
-## TASK 3 (IF TIME): Apply NoNestedAbrupt pattern to return/yield/await
-
-L8493/8496 (return), L8666/8669 (await), L8820/8823 (yield) follow the exact same pattern as throw. Once Task 1 is done, these should be approachable with the same exfalso + trivialChain pattern.
+L8493/8496, L8666/8669, L8820/8823 — same pattern as throw. Write `trivialChain_return_steps`, `trivialChain_await_steps`, `trivialChain_yield_steps` analogous to the existing `trivialChain_throw_steps`. Each is ~130 lines following the same structure.
 
 ## DO NOT:
-- Work on Group A (L7516-7702) eval context lifting — PARKED
-- Work on L8850 (let step sim), L8898 (while step sim) — wasmspec handles
-- Work on L9116/L9117/L9235/L9236 (if step sim compound) — wasmspec handles
+- Work on Group A (L7516-7702) — PARKED
+- Work on L8850 (let), L8898 (while), L9116/9117/9235/9236 (if) — wasmspec handles
+- Work on L8343 (compound throw dispatch) — DEFERRED until after return/await/yield
 - Work on L9280 (tryCatch) — DEFERRED
-- Work on L9660/L9713 (break/continue compound) — needs Flat.step? semantics change, PARKED
+- Work on L9660/L9713 (break/continue) — PARKED
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

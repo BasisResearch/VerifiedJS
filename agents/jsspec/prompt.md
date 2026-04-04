@@ -1,4 +1,4 @@
-# jsspec — Eliminate false sorries, then CCStateAgree architecture
+# jsspec — TASK 1 IS NOT DONE. DO IT NOW.
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,51 +11,42 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC has 14 sorry tokens.
+## STATE: CC has 14 sorry tokens. You closed L6673 last run, good. But you STILL have not done Task 1.
 
-### Sorry classification:
-- **False theorem (2)**: L1507, L1508 (forIn/forOf in `convertExpr_not_value`) — FIXABLE, see Task 1
-- **Unprovable (1)**: L5148 (getIndex string) — investigate
-- **Semantic mismatch (2)**: L4502, L4510 (newObj non-value) — DO NOT TOUCH
-- **CCStateAgree blocked (6)**: L3719, L3742, L6543, L6544, L6616, L6724
-- **HeapInj blocked (1)**: L6386 (functionDef)
-- **FuncsCorr blocked (1)**: L4296 (non-consoleLog call)
-- **Multi-step blocked (1)**: L3391 (captured var)
+## TASK 1 — HIGHEST PRIORITY — DO THIS FIRST — NO EXCUSES
 
-## YOUR TASKS (priority order)
+**Switch ALL callers of `convertExpr_not_value` to `convertExpr_not_value_supported`.**
 
-### TASK 1: Eliminate L1507 + L1508 by switching to `convertExpr_not_value_supported`
+This eliminates L1507 + L1508 (forIn/forOf) for **-2 sorries** with MECHANICAL changes.
 
-The sorry'd theorem `convertExpr_not_value` (L1502) does NOT have a `supported` hypothesis, so forIn/forOf cases are unprovable. But there's already a proved version `convertExpr_not_value_supported` (around L1515) that takes `hsupp : e.supported = true` and handles forIn/forOf via contradiction.
+### Why this works
+`convertExpr_not_value` (around L1502) has no `supported` hypothesis, so forIn/forOf are unprovable sorry.
+`convertExpr_not_value_supported` (around L1515) takes `hsupp : e.supported = true` and handles forIn/forOf via contradiction (they're not supported).
 
-**Plan**: Switch all callers of `convertExpr_not_value` to `convertExpr_not_value_supported`. Each caller is inside the main simulation theorem which has `h_supported` in scope. You need to:
+### Exact steps:
+1. Run `lean_local_search "convertExpr_not_value"` to find ALL call sites
+2. At each call site, change `convertExpr_not_value X Y ...` to `convertExpr_not_value_supported X Y hsupp_sub ...`
+3. For `hsupp_sub`, derive from the parent's `h_supported` or `hsupp`:
+   - If parent has `(.if c t e).supported = true`, get `c.supported = true` via simp
+   - If parent has `(.binary op l r).supported = true`, get sub-expression supported via simp
+   - Use `Core.Expr.supported` simp lemmas
+4. After ALL callers are switched: delete or deprecate the sorry'd `convertExpr_not_value`
+5. Verify build passes: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
 
-1. `lean_local_search "convertExpr_not_value"` to find all call sites
-2. At each site like `convertExpr_not_value cond hcev scope envVar envMap st`, change to `convertExpr_not_value_supported cond hcev hsupp_cond scope envVar envMap st` where `hsupp_cond` derives from the parent's `supported` hypothesis.
-3. For sub-expressions, use `Core.Expr.supported` simp lemmas: if `(.if c t e).supported = true` then `c.supported = true ∧ t.supported = true ∧ e.supported = true`.
+This is 100% mechanical. No architecture changes. No investigation needed. Just find-and-replace with supported hypotheses.
 
-Once ALL callers are switched, delete the sorry'd `convertExpr_not_value` or mark it deprecated.
+## TASK 2 (ONLY AFTER TASK 1): Investigate L5148 getIndex string
 
-This gives **-2 sorries** with purely mechanical changes.
+Use `lean_goal` at L5148. Check if `supported` can exclude string indexing.
 
-### TASK 2: Investigate L5148 (getIndex string unprovable)
+## TASK 3 (ONLY AFTER TASK 2): L3719/L3742 CCStateAgree
 
-Use `lean_goal` at L5148 to understand the exact goal. The comment says "getIndex string both-values: UNPROVABLE." Check if `supported` can exclude this case. If the getIndex operation on strings depends on `Float.toString` being opaque, this may need `supported` to exclude string indexing.
-
-### TASK 3: If time, attempt L6616 (tryCatch body-error CCStateAgree)
-
-Use `lean_goal` at L6616. Check if `convertExpr_state_determined` can close it (you used this for L6673). If the CCStateAgree input is the issue, this is architecturally blocked.
-
-### TASK 4: CCStateAgree architecture analysis (ANALYSIS ONLY)
-
-Write a concrete proposal (< 30 lines) to agents/jsspec/log.md:
-1. Can we make CCState's nextId deterministic by using expression-path-based naming?
-2. Alternative: can we prove that both branches of if/while produce the same nextId delta?
-3. How many theorems would break with each approach?
+These may be closable now that you understand CCStateAgree better from the L6673 fix.
 
 ## DO NOT:
 - Touch L4502, L4510 (semantic mismatch — compiler needs changing)
-- Make architectural changes without supervisor approval
+- Touch L6386 (HeapInj blocked)
+- Do architecture analysis instead of Task 1
 - Edit ANFConvertCorrect.lean
 
 ## CRITICAL: LOG YOUR WORK

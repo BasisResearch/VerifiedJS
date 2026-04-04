@@ -8920,7 +8920,7 @@ private theorem normalizeExpr_if_lit_decomp
       obtain ⟨else_anf, n2⟩ := val_else
       simp [helse, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
       obtain ⟨⟨hc, ht, he⟩, hm⟩ := hnorm
-      exact ⟨hc, n1, by subst ht; exact hthen, by subst he; subst hm; exact helse⟩
+      subst ht he hm; exact ⟨hc.symm, n1, hthen, helse⟩
 
 /-- Same decomposition for var condition. -/
 private theorem normalizeExpr_if_var_decomp
@@ -8944,7 +8944,7 @@ private theorem normalizeExpr_if_var_decomp
       obtain ⟨else_anf, n2⟩ := val_else
       simp [helse, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
       obtain ⟨⟨hc, ht, he⟩, hm⟩ := hnorm
-      exact ⟨hc, n1, by subst ht; exact hthen, by subst he; subst hm; exact helse⟩
+      subst ht he hm; exact ⟨hc.symm, n1, hthen, helse⟩
 
 /-- Same decomposition for .this condition. -/
 private theorem normalizeExpr_if_this_decomp
@@ -8968,7 +8968,7 @@ private theorem normalizeExpr_if_this_decomp
       obtain ⟨else_anf, n2⟩ := val_else
       simp [helse, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
       obtain ⟨⟨hc, ht, he⟩, hm⟩ := hnorm
-      exact ⟨hc, n1, by subst ht; exact hthen, by subst he; subst hm; exact helse⟩
+      subst ht he hm; exact ⟨hc.symm, n1, hthen, helse⟩
 
 /-- If normalizeExpr sf.expr k produces .if cond then_ else_ (with trivial-preserving k),
     then one ANF step on the if can be simulated by Flat steps. -/
