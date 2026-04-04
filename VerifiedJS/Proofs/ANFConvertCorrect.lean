@@ -10137,7 +10137,20 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
         split at hstep
         next ev' se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.makeClosure (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ henv hse)
         next => simp at hstep
-    | objectLit props => sorry
+    | objectLit props =>
+      cases hna with | objectLit hprops =>
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- all values → allocate object
+        simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+      next =>  -- firstNonValueProp
+        split at hstep
+        next done name target remaining hfnv =>
+          have ⟨htarget, hrem, hrecon⟩ := firstNonValueProp_noNestedAbrupt_preserved hfnv hprops
+          split at hstep
+          next t se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.objectLit (hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueProp_depth hfnv; omega) _ _ _ _ _ _ htarget hse))
+          next => simp at hstep
+        next => simp at hstep
     | arrayLit elems =>
       cases hna with | arrayLit helems =>
       unfold Flat.step? at hstep
