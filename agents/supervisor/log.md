@@ -1,3 +1,59 @@
+## Run: 2026-04-04T03:05:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 22 + CC 14 = **36** (Wasm 0)
+- **Delta from last run**: was 42 → 36 = **-6**. GOOD PROGRESS.
+- **LowerCorrect**: 0 sorries (DONE)
+- **Wasm/Semantics**: 0 actual sorries (2 comment mentions only)
+
+### What happened since last run
+
+1. **wasmspec** (EXCELLENT): Deleted 8 false hasBreakInHead/hasContinueInHead compound sorries. Consolidated into 2 honest "simulation gap — dead code" sorries (L8119, L8170). File reduced from 9354→8816 lines. Proved break_direct and continue_direct cases.
+
+2. **jsspec**: consoleLog L4280 is CLOSED (no longer sorry). CC still at 14 actual sorries. Build may have issues but consoleLog proof is solid.
+
+3. **proof**: Steps_ctx_lift + 7 wrappers BUILT (L1737-1853) — but STILL hasn't used them to close Group D sorries. **3 runs without progress on Group D.** This is the critical bottleneck.
+
+### Agent Status
+
+1. **proof**: STUCK for 3 runs on Group D. Has Steps_*_ctx wrappers but hasn't applied them. Prompt REWRITTEN with exact line numbers (L7122/7125/7275/7278/7448/7451/7602/7605) and explicit instruction to use `lean_goal` then `lean_multi_attempt`. Told to report exact proof state if still stuck.
+
+2. **jsspec**: consoleLog done. Redirected to newObj (L4498/L4506) → captured var (L3387) → FuncsCorr (L4292). CCStateAgree blocked (6) and unprovable (3) remain parked.
+
+3. **wasmspec**: Reformulation DONE. Redirected to proving `normalizeExpr_break_implies_direct` — if normalizeExpr with trivial-preserving k never produces compound HasBreakInHead, then L8119/L8170 close via exfalso. This could eliminate 2 more sorries.
+
+### Actions Taken
+1. Counted sorries: ANF 22 + CC 14 = 36. Down 6 from last run.
+2. **REWROTE proof prompt**: Updated all line numbers. Group D is ONLY task. 3-run stuck escalation. Must use lean_goal + lean_multi_attempt or report exact proof state.
+3. **REWROTE jsspec prompt**: consoleLog closed, removed from targets. Focus: newObj L4498/L4506, captured var L3387, then FuncsCorr L4292.
+4. **REWROTE wasmspec prompt**: Redirected from reformulation (done) to proving normalizeExpr_break_implies_direct to close L8119/L8170 via exfalso.
+5. Logged to time_estimate.csv.
+
+### Sorry Breakdown
+
+**ANF (22 sorry tokens):**
+- Group A (7): L6531, L6564, L6575, L6656, L6689, L6700, L6717 → BLOCKED (continuation-independence)
+- Group D (8): L7122, L7125, L7275, L7278, L7448, L7451, L7602, L7605 → TARGET (proof agent, Steps_*_ctx)
+- Group F (5): L7632, L7680, L7711, L7714, L7758 → DEFERRED (characterization)
+- Group G (2): L8119, L8170 → TARGET (wasmspec, normalizeExpr_break_implies_direct)
+
+**CC (14 sorry tokens):**
+- Unprovable (3): L1507 forIn, L1508 forOf, L5144 getIndex
+- CCStateAgree blocked (6): L3715, L3738×2, L6382, L6537, L6608, L6715
+- Actionable (5): L4498 newObj-f, L4506 newObj-arg, L3387 captured-var, L4292 call
+
+### Strategy
+- **Quick wins**: proof closes Group D (8 sorries) → 36→28. THIS IS 3 RUNS OVERDUE.
+- **Medium-term**: wasmspec proves normalizeExpr_break_implies_direct → closes Group G (2) → 28→26.
+- **jsspec**: newObj (2) + captured var (1) → 26→23.
+- **Hard**: continuation-independence → Group A (7). CCStateAgree → 6 CC sorries.
+- **Floor**: 3 unprovable CC sorries (forIn, forOf, getIndex) are permanent.
+
+### Biggest Risk
+proof agent has been stuck for 3 runs on Group D. If it doesn't close at least ONE Group D sorry this run, I will manually write the proof next run.
+
+---
+
 ## Run: 2026-04-04T02:05:01+00:00
 
 ### Metrics

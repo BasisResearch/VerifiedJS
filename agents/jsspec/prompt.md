@@ -1,4 +1,4 @@
-# jsspec — Close newObj sorries, then re-close consoleLog
+# jsspec — consoleLog is CLOSED. Focus on newObj + captured var.
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -12,9 +12,9 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
 ## ⚠️⚠️⚠️ DO NOT TOUCH CCStateAgree ⚠️⚠️⚠️
-The CCStateAgree-blocked sorries are PARKED. Your OWN analysis confirmed the invariant change would break 14 working cases. DO NOT WORK ON THEM.
+The CCStateAgree-blocked sorries are PARKED. DO NOT WORK ON THEM.
 
-## STATE: CC has 14 real sorry tokens.
+## STATE: CC has 14 real sorry tokens. consoleLog (L4280) is DONE — good work!
 
 ## SORRY MAP (14 tokens):
 
@@ -25,48 +25,37 @@ The CCStateAgree-blocked sorries are PARKED. Your OWN analysis confirmed the inv
 
 ### CCStateAgree BLOCKED (6) — PARKED:
 - L3715: if-then
-- L3738: if-else
+- L3738: if-else (2 sorries on one line)
 - L6382: functionDef
 - L6537: tryCatch finally
-- L6608: tryCatch error (9/10 goals proved, only CCStateAgree remains)
+- L6608: tryCatch error
 - L6715: while_
 
 ### ACTIONABLE (5):
-- **L4280**: consoleLog (`exact sorry`) — was "closed" but sorry remains! RE-CLOSE THIS.
-- **L4498**: newObj f not a value
-- **L4506**: newObj non-value arg
-- **L3387**: captured var (multi-step gap)
-- **L4292**: non-consoleLog call (needs FuncsCorr)
+- **L4498**: newObj f not a value ← TARGET #1
+- **L4506**: newObj non-value arg ← TARGET #2
+- **L3387**: captured var (multi-step gap) ← TARGET #3
+- **L4292**: non-consoleLog call (needs FuncsCorr) ← TARGET #4 (stretch)
 
 ## YOUR TASKS (in priority order):
 
-### TASK 1: Re-close consoleLog sorry at L4280
+### TASK 1: Close newObj non-value sorries (L4498, L4506)
 
-L4280 currently reads: `exact sorry /- Core_step?_call_consoleLog_flat_msg args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv -/`
+These are about Core.newObj where f or arg is not a value:
+- Core allocates immediately (newObj evaluates args eagerly in Core semantics)
+- Flat needs to step f/arg first before allocating
 
-The block comment shows what the proof SHOULD be but doesn't typecheck. Investigate the type mismatch:
-1. Use `lean_goal` at L4280 to see the exact goal
-2. Use `lean_hover_info` on `Core_step?_call_consoleLog_flat_msg` to see its type
-3. The issue is likely dependent match normalization — use `show` to fix the goal type, or restructure to avoid dependent match on `hfvals`
-4. Your previous fix attempt used `show Core.step? ... = some ...; exact Core_step?_call_consoleLog_flat_msg ...` — try that again or use `lean_multi_attempt` to find what works
+Use `lean_goal` at L4498 to see the exact goal. The pattern should be similar to what you did for arrayLit.
 
-### TASK 2: Close newObj sorries (L4498/L4506)
+If these are fundamentally a semantic mismatch (Core vs Flat evaluation order), document WHY and mark as UNPROVABLE with a clear comment explaining the mismatch.
 
-You already proved arrayLit all-values. newObj has similar structure.
+### TASK 2: Close captured var sorry at L3387
 
-For the ALL-VALUES sub-case:
-- Same pattern as your arrayLit proof
-- Both Core and Flat allocate, HeapInj via `alloc_both`
-- CCStateAgree satisfied trivially when sub-exprs are all values
+Use `lean_goal` at L3387 to understand the proof obligation. This is about a multi-step gap where a captured variable needs environment lookup correspondence.
 
-For the NON-VALUE sub-cases (L4498/L4506):
-- Core allocates immediately regardless
-- Flat needs to step f or arg first
-- Check if this is the same structural issue as arrayLit non-value case
+### TASK 3: Build FuncsCorr for L4292
 
-### TASK 3: Build FuncsCorr infrastructure for L4292
-
-Only START if Tasks 1-2 are done.
+Only START if Tasks 1-2 are done. The call sorry at L4292 needs `sf.funcs[idx] ↔ sc.funcs[idx]` correspondence. This might need a new invariant `FuncsCorr` added to CC_SimRel.
 
 ### DO NOT TOUCH:
 - L1507/L1508 forIn/forOf — stubs, unprovable

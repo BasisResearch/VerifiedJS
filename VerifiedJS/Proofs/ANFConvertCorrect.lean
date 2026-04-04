@@ -6828,7 +6828,7 @@ private theorem no_throw_head_implies_trivial_chain :
         exfalso; simp only [ANF.normalizeExpr] at h
         rcases ANF.normalizeExpr_throw_or_k v _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
         · exact hno (HasThrowInHead.return_some_arg hleft)
-        · simp [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at hkt
+        · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
     | yield arg_y dlg =>
       cases arg_y with
       | none =>
@@ -6838,12 +6838,12 @@ private theorem no_throw_head_implies_trivial_chain :
         exfalso; simp only [ANF.normalizeExpr] at h
         rcases ANF.normalizeExpr_throw_or_k v _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
         · exact hno (HasThrowInHead.yield_some_arg hleft)
-        · simp [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at hkt
+        · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
     | await v =>
       exfalso; simp only [ANF.normalizeExpr] at h
       rcases ANF.normalizeExpr_throw_or_k v _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
       · exact hno (HasThrowInHead.await_arg hleft)
-      · simp [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at hkt
+      · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
     | labeled l body => exfalso; exact absurd h (ANF.normalizeExpr_labeled_not_throw l body k arg n m)
     | while_ c b => exfalso; exact absurd h (ANF.normalizeExpr_while_not_throw c b k arg n m)
     | tryCatch body cp cb fin =>

@@ -1,92 +1,82 @@
-# wasmspec — Reformulate hasBreakInHead/hasContinueInHead theorems
+# wasmspec — Break/continue consolidated to 2 sorries. Now prove normalizeExpr_break_only_via_while.
 
-## Your analysis was EXCELLENT. break_direct/continue_direct proofs are solid.
+## Your consolidation work was EXCELLENT. 8 false sorries → 2 honest ones.
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
 - **DO NOT** run `lake build` anything large
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
 - MEMORY: 7.7GB total, NO swap. ~4GB available.
-- You CAN edit ANFConvertCorrect.lean (coordinate with proof agent on L6700-6800)
+- You CAN edit ANFConvertCorrect.lean
 
-## STATE: 8 ANF sorries in hasBreak/hasContinue compound cases (L6751-6784). All FALSE as stated.
+## STATE: ANF has 22 sorries. The 2 break/continue compound sorries (L8119, L8170) are yours.
 
-## YOUR ANALYSIS RECAP:
-- break_direct/continue_direct: PROVED ✓
-- Compound cases (seq_left, seq_right, let_init, wildcard): FALSE because:
-  1. `.seq (.break l) b` → b still evaluates → final expr ≠ `.lit .undefined`
-  2. `.assign "x" (.break l)` → env modified
-  3. `.let "y" (.break l) body` → body evaluates with modified env
-- While loops with break in body ARE reachable from normalizeExpr output
-- So the compound cases CANNOT be eliminated by contradiction
+## YOUR TASK: Prove normalizeExpr output only has break/continue via while loops
 
-## YOUR TASK: Reformulate the theorems
+The 2 remaining sorries (L8119 break compound, L8170 continue compound) are inside `anfConvert_step_star_aux`. They handle the case where `ANF.normalizeExpr sf.expr k` produces `.break label` or `.continue label` and `HasBreakInHead`/`HasContinueInHead` is compound (not direct break/continue).
 
-The current theorems promise too much for compound cases. The fix is to WEAKEN the conclusion for compound HasBreakInHead.
+**Key insight**: If we can prove that normalizeExpr with a trivial-preserving k NEVER produces compound HasBreakInHead (i.e., break only appears directly, not nested inside seq/let/etc.), then these 2 compound cases are UNREACHABLE and can be closed with `exfalso`.
 
-### Option A: Split into two theorems (RECOMMENDED)
+### Step 1: Investigate normalizeExpr output shapes
 
-Replace the current monolithic theorem with:
+What forms can `(ANF.normalizeExpr e k).run n` produce that have HasBreakInHead?
 
-1. **Direct case** (already proved): keep as-is
-2. **Compound case**: weaker conclusion — only promise the error event appears in the trace, NOT that the final expression is `.lit .undefined`
+Read the normalizeExpr definition. For each case of `e`:
+- `.break l`: k is NOT called (break short-circuits), result is `.break l` → HasBreakInHead.break_direct
+- `.seq a b`: normalizeExpr produces `normalizeExpr a (fun _ => normalizeExpr b k)` → if `a` has break, does the result have HasBreakInHead?
+- `.while_ c b`: normalizeExpr produces a loop structure with break inside
+
+The critical question: does normalizeExpr EVER produce `.seq (.break l) something`? If the ANF normalization short-circuits on break (doesn't wrap it in seq/let), then compound HasBreakInHead is impossible.
+
+### Step 2: Prove the theorem
 
 ```lean
-/-- For compound HasBreakInHead, the break error event eventually appears in the trace,
-    but the final expression state depends on the surrounding context. -/
-private theorem hasBreakInHead_flat_error_trace
-    (hbreak : HasBreakInHead e label)
-    (hbreak_compound : ¬∃ l, e = .break l) :
-    ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
-      Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs sf' ∧
-      .error ("break:" ++ label.getD "") ∈ evs.join ∧
-      sf'.env = env ∨ True  -- weaken env/heap preservation claims
-```
-
-Wait — check what the DOWNSTREAM code actually NEEDS from this theorem. Read:
-- `grep -n "hasBreakInHead_flat_error_steps" VerifiedJS/Proofs/ANFConvertCorrect.lean`
-- Look at all call sites (should be in anfConvert_step_star around L7757-8015)
-- Determine what properties the callers actually USE from the result
-
-### Step 1: Find all callers
-```
-grep -n "hasBreakInHead_flat_error_steps\|hasContinueInHead_flat_error_steps" VerifiedJS/Proofs/ANFConvertCorrect.lean
-```
-
-### Step 2: For each caller, determine what it needs:
-- Does it use `sf'.expr = .lit .undefined`?
-- Does it use `sf'.env = sf.env`?
-- Does it use `sf'.heap = sf.heap`?
-- Does it only use the error trace event?
-
-### Step 3: Reformulate to provide EXACTLY what callers need
-
-If callers only need the error trace event + multi-step relationship, reformulate accordingly. If callers need expression equality, the caller needs to be restructured too.
-
-### Step 4: Implement the reformulated theorem
-- Prove it by induction on HasBreakInHead
-- break_direct: use existing proof
-- Compound cases: use eval context stepping (step?_seq_ctx etc.) + IH
-
-### Step 5: Update callers to use the new theorem
-
-### Alternative: normalizeExpr_break_only_direct
-
-If investigation shows normalizeExpr output (with trivial-preserving k) ONLY produces HasBreakInHead via while loops, and while loops with break are handled separately in the proof, then maybe the compound cases in hasBreakInHead_flat_error_steps are UNREACHABLE from anfConvert_step_star.
-
-Check: does anfConvert_step_star call hasBreakInHead_flat_error_steps on normalizeExpr output? If so, can we prove that normalizeExpr output only has break_direct (excluding .seq (.while_ ...) patterns)?
-
-This would be:
-```lean
-theorem normalizeExpr_break_only_via_while
+private theorem normalizeExpr_break_implies_direct
+    (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (hk : ∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m'))
+    (n m : Nat) (label : Option String) (e' : ANF.Expr)
     (hnorm : (ANF.normalizeExpr e k).run n = .ok (e', m))
-    (hk : trivial_preserving k)
     (hbreak : HasBreakInHead e' label) :
-    (∃ l, e' = .break l) ∨
-    (∃ c d b, e' = .seq (.while_ c d) b ∧ HasBreakInHead (.while_ c d) label)
+    ∃ l, e' = .break l := by
+  -- Induction on e, showing normalizeExpr never nests break inside compound forms
+  sorry
 ```
 
-If this is provable, then anfConvert_step_star only needs break_direct + while-break, both of which can be handled separately.
+If this is provable, add it to ANFConvertCorrect.lean and use it to close L8119:
+```lean
+    | seq_left _ | seq_right _ | ... =>
+      exfalso
+      have ⟨l, hl⟩ := normalizeExpr_break_implies_direct sf.expr k hk_triv n m label _ hnorm_simp hbreak_head
+      -- hl says e' = .break l, but we matched on a compound HasBreakInHead constructor → contradiction
+      sorry -- should be disprovable from hl and the constructor
+```
+
+### Step 3: Same for continue
+
+```lean
+private theorem normalizeExpr_continue_implies_direct
+    (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (hk : ∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m'))
+    (n m : Nat) (label : Option String) (e' : ANF.Expr)
+    (hnorm : (ANF.normalizeExpr e k).run n = .ok (e', m))
+    (hcont : HasContinueInHead e' label) :
+    ∃ l, e' = .continue l := by
+  sorry
+```
+
+### Alternative: If normalizeExpr CAN produce compound break/continue
+
+If while loops cause normalizeExpr to produce `.seq (.while_ ...) rest` where the while body has break, then compound HasBreakInHead IS reachable. In that case:
+
+1. Read the `normalizeExpr` case for `.while_` carefully
+2. Determine EXACTLY what output shape it produces
+3. Prove a restricted version: break only appears in while-related positions
+4. Use that to construct the correct simulation for those specific compound cases
+
+### Useful commands:
+- `lean_hover_info` on `ANF.normalizeExpr` to find its definition file
+- `lean_local_search` for "normalizeExpr" to find related lemmas
+- `lean_goal` at L8119/L8170 to see proof state
 
 ## Build command
 `lake build VerifiedJS.Proofs.ANFConvertCorrect`
