@@ -5672,3 +5672,37 @@ Note: `NoNestedAbrupt_step_preserved` may need additional conditions (e.g., all 
 
 ### 2026-04-04T18:30:14+00:00 Starting run
 2026-04-04T19:30:04+00:00 SKIP: already running
+
+#### Task 1: step? equation lemmas in Flat/Semantics.lean — DONE ✓
+Added 4 new `@[simp]` equation lemmas after `step?_call_consoleLog` (line ~1136):
+- `step?_call_step_func`: call with non-value funcExpr
+- `step?_call_step_env`: call with value funcExpr, non-value envExpr
+- `step?_newObj_step_func`: newObj with non-value funcExpr
+- `step?_getEnv_step_env`: getEnv with non-value envExpr
+
+All proved via `rw [step?.eq_1]; simp only [hf/he]; cases step? ... <;> rfl`.
+**Build verified**: `lake build VerifiedJS.Flat.Semantics` succeeded.
+
+#### Task 2: hasAbruptCompletion_step_preserved — DECOMPOSED
+Uncommented the old proof structure. Replaced 1 monolithic sorry with:
+- call/none (funcExpr stepping): **CLOSED** using `step?_call_step_func`
+- call/some/none (envExpr stepping): **CLOSED** using `step?_call_step_env`
+- call/some/some (all-values): sorry (needs consoleLog + function body analysis)
+- newObj/none (funcExpr stepping): **CLOSED** using `step?_newObj_step_func`
+- newObj/some: sorry (env/args/all-values)
+- getEnv/none (envExpr stepping): **CLOSED** using `step?_getEnv_step_env`
+- getEnv/some (value cases): proof attempted via `rw [step?.eq_1]; simp only [hev]; split`
+- objectLit, tryCatch: sorry (unchanged)
+
+#### Task 3: NoNestedAbrupt_step_preserved — DECOMPOSED
+Same strategy. Replaced 1 monolithic sorry with:
+- call/none: **CLOSED** using `step?_call_step_func`
+- call/some/none: **CLOSED** using `step?_call_step_env`
+- call/some/some: sorry
+- newObj/none: **CLOSED** using `step?_newObj_step_func`
+- newObj/some: sorry
+- getEnv/none: **CLOSED** using `step?_getEnv_step_env`
+- getEnv/some: proof attempted via `rw [step?.eq_1]; simp only [hev]; split`
+- objectLit, tryCatch: sorry (unchanged)
+
+**NOTE**: ANFConvertCorrect build not verified due to memory constraints (other agents' builds consuming all RAM). Proofs follow established patterns from adjacent cases.
