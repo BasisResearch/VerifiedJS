@@ -10410,3 +10410,71 @@ proof agent has the infrastructure but hasn't actually CLOSED any sorries with i
 
 ## Run: 2026-04-04T09:05:01+00:00
 
+### Sorry Count: 38 (ANF 24 + CC 14)
+- Previous run: 38 (ANF ~24 + CC 15→14 after jsspec closed L6673)
+- Change: **FLAT** — jsspec closed 1 (L6673 tryCatch non-error), proof agent restructured (net zero: closed L8204 + added L9409)
+
+### Agent Assessment
+
+1. **proof**: Closed NESTED_THROW (L8204) via NoNestedAbrupt exfalso — good technique. But generated replacement sorry at L9409 (NoNestedAbrupt propagation). Net zero. Needs to close L9409 NOW — it's a straightforward step-preservation lemma. Prompt REWRITTEN: laser focus on L9409 only, then return/await/yield trivialChain.
+
+2. **jsspec**: Closed L6673 (15→14) — good. But has NOT done Task 1 (switch forIn/forOf to supported version, -2 sorries) for 3+ runs. Prompt REWRITTEN: ALL CAPS emphasis on Task 1. This is the easiest sorry reduction available and it keeps getting ignored.
+
+3. **wasmspec**: Built excellent HasIfInHead infrastructure (~430 lines) and closed 3 mutual induction sorries. But hasn't closed any of the 4 target if-step-sim sorries (L9116/9117/9235/9236) yet. Prompt REWRITTEN: USE the infrastructure to actually close sorries.
+
+### Actions Taken
+1. Counted sorries: ANF 24 + CC 14 = 38 total
+2. **REWROTE proof prompt**: Focus exclusively on L9409 (NoNestedAbrupt_step_preserved), then return/await/yield trivialChain
+3. **REWROTE jsspec prompt**: EMPHATIC redirect to Task 1 (forIn/forOf → -2 sorries). Mechanical change, no excuses.
+4. **REWROTE wasmspec prompt**: Shift from infrastructure building to sorry closing. Write trivialChain_if_condition_steps.
+5. Logged to time_estimate.csv: 38
+
+### Sorry Breakdown
+
+**ANF (24 sorry lines):**
+- Group A (7): L7516-7702 — PARKED (eval context lifting)
+- L8343: compound throw dispatch — DEFERRED
+- L8493/8496 (2): return compound — proof agent after L9409
+- L8666/8669 (2): await compound — proof agent after L9409
+- L8820/8823 (2): yield compound — proof agent after L9409
+- L8850: let step sim — wasmspec fallback
+- L8898: while step sim — wasmspec fallback
+- L9116/9117/9235/9236 (4): if step sim compound — wasmspec TARGET
+- L9280: tryCatch — DEFERRED
+- L9409: NoNestedAbrupt propagation — proof agent TARGET
+- L9660/9713 (2): break/continue — PARKED
+
+**CC (14 sorry lines):**
+- L1507/1508 (2): forIn/forOf — jsspec TARGET (Task 1, -2 sorries)
+- L3391: captured var — multi-step blocked
+- L3719/3742 (2): CCStateAgree — architecturally blocked
+- L4296: non-consoleLog call — FuncsCorr blocked
+- L4502/4510 (2): semantic mismatch — compiler needs changing
+- L5148: getIndex string — investigate
+- L6386: functionDef — HeapInj blocked
+- L6543/6544/6616/6724 (4): CCStateAgree — architecturally blocked
+
+### Expected Next Run
+- proof: L9409 closed → 38→37 (or 38→37 with hna at top-level)
+- jsspec: L1507+L1508 closed → 37→35
+- wasmspec: L9116+L9235 closed → 35→33
+- **Optimistic target: 33 sorries**
+
+### Build Status
+- Verifying ANF and CC builds (running in background)
+
+### Biggest Risks
+1. proof agent has been redirected 4+ times — L9409 MUST close this run
+2. jsspec keeps ignoring Task 1 — if it ignores again, will write exact code
+3. wasmspec infrastructure is built but using it may reveal new blockers
+
+### Floor Analysis (long-term blockers)
+- 7 Group A (eval context lifting) — needs new technique
+- 2 break/continue — needs Flat.step? semantics change
+- 2 semantic mismatch (L4502/4510) — compiler change needed
+- 6 CCStateAgree (L3719/3742/6543/6544/6616/6724) — architecture change needed
+- 1 HeapInj (L6386) — staging
+- 1 FuncsCorr (L4296) — missing invariant
+- 1 multi-step (L3391) — lock-step limitation
+- **Floor: ~20 long-term blockers** out of 38
+

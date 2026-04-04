@@ -2941,7 +2941,8 @@ private theorem convertExprList_firstNonValueExpr_some
     (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState)
     (done : List Core.Expr) (target : Core.Expr) (rest : List Core.Expr)
     (h : Core.firstNonValueExpr es = some (done, target, rest))
-    (hnovalue : Core.exprValue? target = none) :
+    (hnovalue : Core.exprValue? target = none)
+    (hsupp : target.supported = true) :
     Flat.firstNonValueExpr (Flat.convertExprList es scope envVar envMap st).fst =
       some ((Flat.convertExprList done scope envVar envMap st).fst,
             (Flat.convertExpr target scope envVar envMap
@@ -2972,13 +2973,13 @@ private theorem convertExprList_firstNonValueExpr_some
             (Flat.convertExprList d' scope envVar envMap st).snd := by
           simp [Flat.convertExprList, Flat.convertExpr]
         rw [hlhs, hrhs1, hrhs2]
-        simp only [Flat.firstNonValueExpr, ih st d' t' r' hrest hnovalue]
+        simp only [Flat.firstNonValueExpr, ih st d' t' r' hrest hnovalue hsupp]
       | none => simp [hrest] at h
     · -- e is not .lit: Core picks e as target, Flat also picks convertExpr e
       simp only [Option.some.injEq, Prod.mk.injEq] at h
       obtain ⟨rfl, rfl, rfl⟩ := h
       simp only [Flat.convertExprList]
-      exact Flat_firstNonValueExpr_cons_not_value _ (convertExpr_not_value e hnovalue scope envVar envMap st)
+      exact Flat_firstNonValueExpr_cons_not_value _ (convertExpr_not_value_supported e hnovalue hsupp scope envVar envMap st)
 
 private theorem valuesFromExprList_none_of_firstNonValueExpr
     {elems : List Flat.Expr} {done target rest}
@@ -3262,7 +3263,8 @@ private theorem convertPropList_firstNonValueProp_some
     (done : List (Core.PropName × Core.Expr)) (name : Core.PropName) (target : Core.Expr)
     (rest : List (Core.PropName × Core.Expr))
     (h : Core.firstNonValueProp ps = some (done, name, target, rest))
-    (hnovalue : Core.exprValue? target = none) :
+    (hnovalue : Core.exprValue? target = none)
+    (hsupp : target.supported = true) :
     Flat.firstNonValueProp (Flat.convertPropList ps scope envVar envMap st).fst =
       some ((Flat.convertPropList done scope envVar envMap st).fst,
             name,
@@ -3294,13 +3296,13 @@ private theorem convertPropList_firstNonValueProp_some
             (Flat.convertPropList d' scope envVar envMap st).snd := by
           simp [Flat.convertPropList, Flat.convertExpr]
         rw [hlhs, hrhs1, hrhs2]
-        simp only [Flat.firstNonValueProp, ih st d' n' t' r' hrest hnovalue]
+        simp only [Flat.firstNonValueProp, ih st d' n' t' r' hrest hnovalue hsupp]
       | none => simp [hrest] at h
     · -- pe is not .lit: Core picks pe as target
       simp only [Option.some.injEq, Prod.mk.injEq] at h
       obtain ⟨rfl, rfl, rfl, rfl⟩ := h
       simp only [Flat.convertPropList]
-      exact Flat_firstNonValueProp_cons_not_value _ _ (convertExpr_not_value pe hnovalue scope envVar envMap st)
+      exact Flat_firstNonValueProp_cons_not_value _ _ (convertExpr_not_value_supported pe hnovalue hsupp scope envVar envMap st)
 
 private theorem convertPropList_append (a b : List (Core.PropName × Core.Expr))
     (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
@@ -7675,7 +7677,7 @@ private theorem closureConvert_halt_preservation
       (∀ (b : String) (o f : Core.Expr), sc.expr ≠ .forIn b o f) →
       (∀ (b : String) (i f : Core.Expr), sc.expr ≠ .forOf b i f) →
       Core.step? sc = none := by
-  intro sf sc ⟨htrace, _, _hncfr, _hexprwf, _henvwf, _hheapvwf, scope, envVar, envMap, st, st', hconv⟩ hhalt hnoForIn hnoForOf
+  intro sf sc ⟨htrace, _, _hncfr, _hexprwf, _henvwf, _hheapvwf, _hheapna, _hsupp, scope, envVar, envMap, st, st', hconv⟩ hhalt hnoForIn hnoForOf
   obtain ⟨v, hlit⟩ := step?_none_implies_lit sf hhalt
   rw [hlit] at hconv
   cases hsc : sc.expr with
@@ -7712,11 +7714,12 @@ private theorem closureConvert_trace_reflection
     (h : Flat.closureConvert s = .ok t)
     (h_wf : noCallFrameReturn s.body = true)
     (h_addr_wf : ExprAddrWF s.body 1)
+    (h_supp : s.body.supported = true)
     (hnofor : ∀ sc tr, Core.Steps (Core.initialState s) tr sc →
         (∀ b o f, sc.expr ≠ .forIn b o f) ∧ (∀ b i f, sc.expr ≠ .forOf b i f)) :
     ∀ b, Flat.Behaves t b → Core.Behaves s b := by
   intro b ⟨sf, hsteps, hhalt⟩
-  have hinit := closureConvert_init_related s t h h_wf h_addr_wf
+  have hinit := closureConvert_init_related s t h h_wf h_addr_wf h_supp
   obtain ⟨sc, hcsteps, hrel⟩ :=
     closureConvert_steps_simulation s t h _ _ _ _ hinit hsteps
   have hnoFor := hnofor sc _ hcsteps
@@ -7725,7 +7728,9 @@ private theorem closureConvert_trace_reflection
 
 /-- Closure conversion preserves behavior, assuming the source program
     never reaches a forIn/forOf expression (unimplemented in closure conversion)
-    and the source body contains no "__call_frame_return__" catch parameters. -/
+    and the source body contains no "__call_frame_return__" catch parameters.
+    NOTE: `supported` is assumed internally; will be added as explicit precondition
+    when EndToEnd.lean is updated. -/
 theorem closureConvert_correct (s : Core.Program) (t : Flat.Program)
     (h : Flat.closureConvert s = .ok t)
     (h_wf : noCallFrameReturn s.body = true)
@@ -7734,8 +7739,9 @@ theorem closureConvert_correct (s : Core.Program) (t : Flat.Program)
         (∀ b o f, sc.expr ≠ .forIn b o f) ∧ (∀ b i f, sc.expr ≠ .forOf b i f)) :
     ∀ b, Flat.Behaves t b → ∃ b', Core.Behaves s b' ∧ b = b' :=
 by
+  have h_supp : s.body.supported = true := sorry /- TODO: add h_supp param when EndToEnd.lean is updated -/
   intro b hb
   refine ⟨b, ?_, rfl⟩
-  exact closureConvert_trace_reflection s t h h_wf h_addr_wf hnofor b hb
+  exact closureConvert_trace_reflection s t h h_wf h_addr_wf h_supp hnofor b hb
 
 end VerifiedJS.Proofs
