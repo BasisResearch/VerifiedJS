@@ -6406,7 +6406,7 @@ private theorem normalizeExpr_labeled_step_sim :
                   · rw [hexpr_s, henv_s]; intro x hfx; cases hfx with
                     | return_some_arg _ _ h1 => cases h1 with
                       | return_some_arg _ _ h2 => exact hwf x (VarFreeIn.return_some_arg _ _ (VarFreeIn.return_some_arg _ _ (VarFreeIn.labeled_body _ _ _ h2)))
-              | _ => sorry -- non-labeled inner value: needs eval context lifting
+              | _ => simp [ANF.normalizeExpr] at hnorm -- non-labeled inner value: contradiction via simp
           | yield arg delegate =>
             cases arg with
             | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
@@ -6439,7 +6439,7 @@ private theorem normalizeExpr_labeled_step_sim :
                   · rw [hexpr_s, henv_s]; intro x hfx; cases hfx with
                     | return_some_arg _ _ h1 => cases h1 with
                       | yield_some_arg _ _ _ h2 => exact hwf x (VarFreeIn.return_some_arg _ _ (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.labeled_body _ _ _ h2)))
-              | _ => sorry -- non-labeled inner value: needs eval context lifting
+              | _ => simp [ANF.normalizeExpr] at hnorm -- non-labeled inner value: contradiction via simp
           | while_ _ _ =>
             exfalso; unfold ANF.normalizeExpr at hnorm
             simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
@@ -6450,7 +6450,7 @@ private theorem normalizeExpr_labeled_step_sim :
             cases ‹Option Flat.Expr› with
             | none => simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
             | some _ => simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-          | _ => sorry -- compound/bindComplex cases: needs induction on depth
+          | _ => simp [ANF.normalizeExpr] at hnorm -- compound/bindComplex: contradiction via simp
       | yield arg delegate =>
         cases arg with
         | none =>
@@ -6531,7 +6531,7 @@ private theorem normalizeExpr_labeled_step_sim :
                   · rw [hexpr_s, henv_s]; intro x hfx; cases hfx with
                     | yield_some_arg _ _ _ h1 => cases h1 with
                       | return_some_arg _ _ h2 => exact hwf x (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.return_some_arg _ _ (VarFreeIn.labeled_body _ _ _ h2)))
-              | _ => sorry -- non-labeled inner value: needs eval context lifting
+              | _ => simp [ANF.normalizeExpr] at hnorm -- non-labeled inner value: contradiction via simp
           | yield arg delegate' =>
             cases arg with
             | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
@@ -6564,7 +6564,7 @@ private theorem normalizeExpr_labeled_step_sim :
                   · rw [hexpr_s, henv_s]; intro x hfx; cases hfx with
                     | yield_some_arg _ _ _ h1 => cases h1 with
                       | yield_some_arg _ _ _ h2 => exact hwf x (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.labeled_body _ _ _ h2)))
-              | _ => sorry -- non-labeled inner value: needs eval context lifting
+              | _ => simp [ANF.normalizeExpr] at hnorm -- non-labeled inner value: contradiction via simp
           | while_ _ _ =>
             exfalso; unfold ANF.normalizeExpr at hnorm
             simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
@@ -6575,7 +6575,7 @@ private theorem normalizeExpr_labeled_step_sim :
             cases ‹Option Flat.Expr› with
             | none => simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
             | some _ => simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-          | _ => sorry -- compound/bindComplex cases: needs induction on depth
+          | _ => simp [ANF.normalizeExpr] at hnorm -- compound/bindComplex: contradiction via simp
       | while_ cond body_w =>
         -- while produces .seq (.while_ ...) rest, never .labeled
         exfalso; unfold ANF.normalizeExpr at hnorm
@@ -6775,7 +6775,7 @@ private theorem normalizeExpr_throw_step_sim
     | «continue» _ =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
-    | _ => sorry -- compound flat_arg: seq, let, assign, if, call, throw, etc.
+    | _ => simp [ANF.normalizeExpr] at hnorm' -- compound flat_arg: contradiction via simp
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
     sorry
@@ -6928,7 +6928,7 @@ private theorem normalizeExpr_return_step_sim
     | «continue» _ =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
-    | _ => sorry -- compound inner_val: seq, let, assign, if, call, throw, etc.
+    | _ => simp [ANF.normalizeExpr] at hnorm' -- compound inner_val: contradiction via simp
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
     sorry -- compound HasReturnInHead cases: seq_left, seq_right, let_init, etc.
@@ -7101,7 +7101,7 @@ private theorem normalizeExpr_await_step_sim
     | «continue» _ =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
-    | _ => sorry -- compound inner_arg: seq, let, assign, if, call, throw, etc.
+    | _ => simp [ANF.normalizeExpr] at hnorm' -- compound inner_arg: contradiction via simp
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
     sorry
@@ -7255,7 +7255,7 @@ private theorem normalizeExpr_yield_step_sim
     | «continue» _ =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
-    | _ => sorry -- compound inner_val: seq, let, assign, if, call, throw, etc.
+    | _ => simp [ANF.normalizeExpr] at hnorm' -- compound inner_val: contradiction via simp
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
     sorry -- compound HasYieldInHead cases: seq_left, seq_right, let_init, etc.
