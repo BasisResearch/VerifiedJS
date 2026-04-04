@@ -19,7 +19,7 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## STATE: ANF has 24 sorry lines. L9180 (NoNestedAbrupt_step_preserved) is your ONE target.
 
-## TASK 1 (DO THIS): Prove NoNestedAbrupt_step_preserved at L9180
+## TASK 1 (DO THIS NOW): Prove NoNestedAbrupt_step_preserved at L9180
 
 L9176-9180 is:
 ```lean
@@ -29,19 +29,11 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
   sorry
 ```
 
-### KEY INSIGHT: You need WELL-FOUNDED INDUCTION on `sf.expr.depth`, not just `cases`.
-
-`Flat.step?` is defined by WF recursion on `s.expr.depth`. For context-stepping cases (e.g., `.seq a b` where `a` is non-value), it calls `step? { s with expr := a }` recursively, producing `sa` with `sa.expr.depth < a.depth ≤ (.seq a b).depth`. The output is `.seq sa.expr b`. To show `NoNestedAbrupt (.seq sa.expr b)`, you need the **IH**: `NoNestedAbrupt a → step? ... = some (..., sa) → NoNestedAbrupt sa.expr`.
-
-### PROOF STRUCTURE:
+### APPROACH: Strong Nat induction on expr.depth
 
 ```lean
-  -- Destruct sf to get named fields
   obtain ⟨expr, env, heap, trace, funcs, cs⟩ := sf
   simp only [Flat.State.expr] at hna
-  -- WF induction on expr depth
-  induction expr using (Flat.Expr.recOn (motive := fun e => ...)) with  -- OR use:
-  -- Alternative: strong induction on Nat
   suffices ∀ n e, e.depth ≤ n → ∀ env heap trace funcs cs ev sf',
     NoNestedAbrupt e →
     Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf') →
@@ -52,48 +44,63 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
   | succ n ih =>
     intro e hd env heap trace funcs cs ev sf' hna hstep
     cases e with
-    ...
+    | lit v => simp [Flat.step?] at hstep
+    | var name => simp [Flat.step?] at hstep; split at hstep <;> simp_all; exact NoNestedAbrupt.lit
+    | this => simp [Flat.step?] at hstep; simp_all; exact NoNestedAbrupt.lit
+    | break label => simp [Flat.step?] at hstep; simp_all; exact NoNestedAbrupt.lit
+    | continue label => simp [Flat.step?] at hstep; simp_all; exact NoNestedAbrupt.lit
+    -- VACUOUSLY TRUE: NoNestedAbrupt has no constructor → `cases hna` closes
+    | unary op e => cases hna
+    | binary op l r => cases hna
+    | while_ cond body => cases hna
+    | labeled label body => cases hna
+    | makeClosure params body isAsync isGen => cases hna
+    | getEnv => cases hna
+    | makeEnv bindings => cases hna
+    | objectLit props => cases hna
+    | arrayLit elems => cases hna
+    | tryCatch body catchVar catchBody finally_ => cases hna
+    -- MEDIUM: seq, let, assign, if
+    | seq a b =>
+      cases hna with | seq ha hb =>
+      simp [Flat.step?] at hstep
+      -- case split on exprValue? a
+      sorry -- USE: if value → exact hb; if non-value → IH on a (depth a < depth .seq)
+    | «let» name init body =>
+      sorry
+    | assign name rhs =>
+      sorry
+    | «if» cond then_ else_ =>
+      sorry
+    -- THROW/RETURN/AWAIT/YIELD: value → lit, non-value → IH + hasAbruptCompletion preservation
+    | throw arg =>
+      sorry
+    | «return» arg =>
+      sorry
+    | await arg =>
+      sorry
+    | yield arg d =>
+      sorry
+    -- COMPLEX: call, newObj, prop access, etc.
+    | call f fenv args => sorry
+    | newObj f fenv args => sorry
+    | getProp obj prop => sorry
+    | setProp obj prop val => sorry
+    | getIndex obj idx => sorry
+    | setIndex obj idx val => sorry
+    | deleteProp obj prop => sorry
+    | typeof e => sorry
 ```
 
-### CASE-BY-CASE ANALYSIS (from reading Flat.step? at Flat/Semantics.lean:336-1002):
+### STRATEGY: CLOSE AS MANY CASES AS YOU CAN. Even 10 sub-case sorries is better than 1 monolithic sorry.
 
-**VACUOUSLY TRUE cases** (NoNestedAbrupt has no constructor for these — `cases hna` closes them immediately):
-- `.unary`, `.binary`, `.while_`, `.labeled`, `.makeClosure`, `.getEnv`, `.makeEnv`, `.objectLit`, `.arrayLit`, `.tryCatch`
-- Just do `cases hna` — Lean will close the goal since no constructor matches.
+1. **Vacuously true** (10 cases): `cases hna` closes instantly. DO THESE FIRST.
+2. **Simple** (5 cases): lit/var/this/break/continue. `simp [Flat.step?]` then `exact NoNestedAbrupt.lit`.
+3. **seq**: The most important medium case. `exprValue? a` split. Value → `exact hb`. Non-value → IH via `ih _ a (by simp [Flat.Expr.depth]; omega) ... ha ...`.
+4. **Others**: Use `sorry` for any sub-case that takes >10 min.
 
-**SIMPLE cases** (step produces `.lit`):
-- `.lit` → `simp [Flat.step?] at hstep` — contradiction (step? returns none)
-- `.var name` → steps to `.lit v` → `exact NoNestedAbrupt.lit`
-- `.this` → steps to `.lit v` → `exact NoNestedAbrupt.lit`
-- `.break label` → steps to `.lit .undefined` → `exact NoNestedAbrupt.lit`
-- `.continue label` → steps to `.lit .undefined` → `exact NoNestedAbrupt.lit`
-
-**MEDIUM cases** (value sub-case produces value, non-value needs IH):
-- `.seq a b`:
-  - `cases hna with | seq ha hb => ...`
-  - `simp [Flat.step?] at hstep`
-  - Case split on `exprValue? a`:
-    - `some v`: steps to `b` → `exact hb`
-    - `none`: steps to `.seq sa.expr b` where `step? {expr := a, ...} = some (_, sa)`.
-      Need: `NoNestedAbrupt sa.expr` from IH (a.depth < n), then `exact NoNestedAbrupt.seq (ih ... ha ...) hb`
-- `.let name init body`: Same pattern. Value: steps to `body` → `exact hbody`. Non-value: `.let name init'.expr body` → IH on init.
-- `.assign name rhs`: Value: `.lit v` → `NoNestedAbrupt.lit`. Non-value: `.assign name rhs'.expr` → IH.
-- `.if cond then_ else_`: Value: steps to `then_` or `else_` → `exact hthen` or `exact helse`. Non-value: `.if cond'.expr then_ else_` → IH.
-- `.throw arg`: Value: `.lit .undefined` → `NoNestedAbrupt.lit`. Non-value: `.throw arg'.expr` → need `hasAbruptCompletion arg'.expr = false`. But `hna` gives `hasAbruptCompletion arg = false`. **Problem**: does stepping preserve `hasAbruptCompletion = false`? You may need a helper lemma or `sorry` this sub-case.
-- `.return arg`: `none` case: `.lit .undefined` → `NoNestedAbrupt.lit`. `some e`: value case: `.lit v` → `NoNestedAbrupt.lit`. Non-value: `.return (some e'.expr)` → same issue as throw with `hasAbruptCompletion`.
-- `.await arg`: Value: `.lit v` → `NoNestedAbrupt.lit`. Non-value: `.await arg'.expr` → `hasAbruptCompletion` preservation needed.
-- `.yield arg d`: `none`: `.lit .undefined` → `NoNestedAbrupt.lit`. `some e`: value → `.lit v` → lit. Non-value: `.yield (some e'.expr) d` → `hasAbruptCompletion` preservation.
-
-**COMPLEX cases** (multiple sub-expressions, step order depends):
-- `.call f env args`, `.newObj f env args`: Need IH for whichever sub-expression is being evaluated. The constructor `NoNestedAbrupt.call hf henv hargs` gives hypotheses for all sub-expressions. Use IH on the stepped sub-expression, reconstruct with the other hypotheses.
-- `.getProp obj prop`, `.setProp`, `.getIndex`, `.setIndex`, `.deleteProp`, `.typeof`: Similar pattern — one or two sub-expressions, IH on the stepped one.
-
-### STRATEGY: Start with vacuously-true + simple cases. Get them done first. Then medium cases one by one. For complex cases or `hasAbruptCompletion` preservation issues, use `sorry` and move on.
-
-Even getting the easy ~20 cases done and leaving ~5 sorry sub-cases is HUGE progress.
-
-### hasAbruptCompletion PRESERVATION HINT:
-If you need it, write a helper:
+### hasAbruptCompletion preservation helper
+For throw/return/await/yield, write this FIRST:
 ```lean
 private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr) (env heap trace funcs cs ev sf')
     (hac : hasAbruptCompletion e = false)
@@ -101,10 +108,10 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr) (env heap tra
     hasAbruptCompletion sf'.expr = false := by
   sorry -- separate theorem, prove later
 ```
-Use it to close the throw/return/await/yield sub-cases. -1 sorry (L9180) → maybe +1 sorry for this helper = net zero but better structure.
+Use it to close the throw/return/await/yield non-value sub-cases.
 
 ## TASK 2 (ONLY IF TASK 1 IS DONE): trivialChain_return_steps
-Same as before — copy trivialChain_throw_steps pattern.
+Copy trivialChain_throw_steps pattern for return.
 
 ## DO NOT:
 - Work on Group A (L7516-7702) — PARKED

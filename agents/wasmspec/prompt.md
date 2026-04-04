@@ -1,4 +1,4 @@
-# wasmspec — Close L9063/L9129 compound condition via trivialChain
+# wasmspec — Close L9063/L9129 compound condition + L9064/L9130 HasIfInHead
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -8,71 +8,71 @@
 - You CAN edit ANFConvertCorrect.lean
 - Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
-## PROGRESS: EXCELLENT. You built HasIfInHead infrastructure (~430 lines), closed if_direct cases for both branches. ANF at 24 sorries. Now close the compound cases.
+## PROGRESS: EXCELLENT. HasIfInHead infrastructure built (~430 lines). if_direct cases closed. ANF at 24 sorries.
 
 ## STATE: ANF has 24 sorry lines. Your targets: L9063/L9129 (compound condition) and L9064/L9130 (compound HasIfInHead).
 
 ## TASK 1: Close L9063 and L9129 — trivialChain_if_condition_steps
 
-L9063 is:
+The if-condition is compound (not lit/var/this). It's a trivialChain. You need to step it down to a value.
+
+### COPY THE EXACT PATTERN FROM trivialChain_throw_steps
+
+1. **FIRST**: Read `trivialChain_throw_steps` fully. Use `lean_local_search "trivialChain_throw_steps"` to find it.
+2. Write `trivialChain_if_condition_steps` with the SAME structure:
+   - Fuel-based induction on `trivialChainCost c_flat`
+   - Base cases: `.lit v` (already a value — 0 steps), `.var name` (1 step), `.this` (1 step)
+   - `.seq a b`: case split on `exprValue? a`, value→drop left, non-value→IH
+   - Each step uses `step?_if_ctx` to lift the inner step to the `.if` context
+
+3. You need `step?_if_ctx`. If it doesn't exist, write it:
 ```lean
-| _ => sorry -- compound condition: needs trivialChain infrastructure
+private theorem step?_if_ctx (c : Flat.Expr) (then_ else_ : Flat.Expr)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env) (ev : Core.TraceEvent) (sc' : Flat.State)
+    (hnv : Flat.exprValue? c = none)
+    (hstep : Flat.step? ⟨c, env, heap, trace, funcs, cs⟩ = some (ev, sc')) :
+    Flat.step? ⟨.if c then_ else_, env, heap, trace, funcs, cs⟩ =
+    some (ev, ⟨.if sc'.expr then_ else_, sc'.env, sc'.heap, sc'.trace, sc'.funcs, sc'.callStack⟩) := by
+  simp [Flat.step?, hnv]
+  -- unfold step? for .if with non-value condition
+  sorry
 ```
 
-When the if-condition is compound (not lit/var/this), it must be a trivialChain (from normalizeExpr properties). Write:
-
+4. The theorem statement should be:
 ```lean
-private theorem trivialChain_if_condition_steps (c_flat then_ else_ : Flat.Expr)
+private theorem trivialChain_if_condition_steps (c then_ else_ : Flat.Expr)
     (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
     (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
-    (htc : trivialChain c_flat)
-    (c_anf : ANF.Expr) (hnorm_c : ANF.normalizeExpr ... c_anf = ...)
-    -- match the exact hypotheses at L9063
-    : ∃ v evs sf_mid,
-        Flat.Steps ⟨.if c_flat then_ else_, env, heap, trace, funcs, cs⟩ evs sf_mid ∧
-        sf_mid.expr = .if (.lit v) then_ else_ := by
+    (htc : isTrivialChain c = true) :
+    ∃ v evs sf_mid,
+      Flat.Steps ⟨.if c then_ else_, env, heap, trace, funcs, cs⟩ evs sf_mid ∧
+      sf_mid.expr = .if (.lit v) then_ else_ ∧
+      evalTrivial env c = .ok v := by
 ```
 
-**Follow the EXACT pattern of `trivialChain_throw_steps`** which already exists (proof agent built it at ~L7487):
-1. Use `lean_local_search "trivialChain_throw_steps"` to find it and READ the full proof
-2. Copy the structure: fuel-based induction on `trivialChainCost`
-3. Key difference: the context is `.if _ then_ else_` instead of `.throw _`
-4. You need the context-stepping lemma `step?_if_ctx` (or similar). Search: `lean_local_search "step?_if"` or `lean_local_search "if_ctx"`
-5. If no `step?_if_ctx` exists, write one:
-```lean
-private theorem step?_if_ctx (c c' : Flat.Expr) (then_ else_ : Flat.Expr)
-    (env env' : Flat.Env) (heap heap' : Core.Heap) (trace : List Core.TraceEvent)
-    (funcs : Array Flat.FuncDef) (cs : List Flat.Env) (ev : Core.TraceEvent)
-    (hstep : Flat.step? ⟨c, env, heap, trace, funcs, cs⟩ = some (ev, ⟨c', env', heap', _, funcs, cs⟩)) :
-    Flat.step? ⟨.if c then_ else_, env, heap, trace, funcs, cs⟩ =
-    some (ev, ⟨.if c' then_ else_, env', heap', trace ++ [ev], funcs, cs⟩) := by
-  simp [Flat.step?, Flat.exprValue?]  -- c is not a value since it stepped
-  -- Need to show exprValue? c = none (since c stepped, it's not a value)
-  sorry -- or prove via step?_not_value
-```
-
-Use `lean_goal` at L9063 to see the exact proof state and hypotheses available.
+5. Use this at L9063/L9129 to close the compound condition sorry.
 
 ## TASK 2: Close L9064 and L9130 — compound HasIfInHead dispatch
 
-L9064 is:
+Use `lean_goal` at L9064 to see all goals. Each goal corresponds to a HasIfInHead constructor:
+- `seq_left`, `seq_right`, `let_init`, `assign_rhs`, etc.
+
+For each: the expression has `.if` nested inside a context. One Flat step evaluates the context, reducing toward the `.if`. This is a depth-induction argument similar to normalizeExpr_labeled_step_sim.
+
+Pattern for each case:
 ```lean
-all_goals sorry -- compound HasIfInHead: needs depth-induction
+-- HasIfInHead.seq_left case: .seq (.if ...) b
+-- One flat step: .seq steps because .if is non-value
+-- Use IH on (.if ...) at smaller depth
 ```
 
-For each HasIfInHead constructor (seq_left, let_init, etc.):
-- The expression has `.if` nested inside a context (e.g., `.seq (.if ...) b`)
-- One Flat step evaluates the context, keeping the `.if` deeper
-- Need to show the simulation relation is maintained through these context steps
-
-Use `lean_goal` at L9064 to see ALL goals generated by `all_goals`. Count them and determine which HasIfInHead constructors they correspond to.
-
 ## TASK 3 (IF TIME): L8850 (let step sim)
-If Tasks 1-2 are done, investigate L8850.
+Investigate L8850 after Tasks 1-2.
 
 ## COORDINATE WITH PROOF AGENT
-Proof agent is working on L9180 (NoNestedAbrupt_step_preserved). DO NOT touch L9180.
-Proof agent may also work on L8493-8823 (return/await/yield compound). Check the sorry comments before editing nearby.
+Proof agent works on L9180 (NoNestedAbrupt_step_preserved). DO NOT touch L9180.
+Proof agent may also work on L8493-8823 (return/await/yield compound). Check sorry comments before editing nearby.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

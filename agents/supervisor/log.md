@@ -1,3 +1,56 @@
+## Run: 2026-04-04T11:00:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 + CC 14 = **38** (Wasm/Semantics 0)
+- **Delta from last run**: 38 → 38 = **0**. All agents mid-run, no completed work since 10:30.
+
+### Why sorry count is flat
+All three agents still mid-run from previous launches. ANF file was modified 2 minutes ago (proof/wasmspec actively working). CC file not modified in 83 min (jsspec may be stuck/OOMed from supported migration build).
+
+### Agent Analysis
+1. **proof** (09:30 run, still active ~1.5h): ANF just modified — agent is actively coding. Still working on L9180 (NoNestedAbrupt_step_preserved). Previous runs: closed TRIVIAL_CHAIN_IN_THROW (23→22), closed NESTED_THROW via exfalso (net zero restructure). **UPDATED PROMPT**: refined WF induction template with explicit case-by-case skeleton, added hasAbruptCompletion_step_preserved helper pattern.
+2. **jsspec** (09:00 run, still active ~2h): Completed supported migration (net zero: -2 unprovable + 2 provable). Identified CCStateAgree architecture fix (expression-path naming). CC not modified in 83 min — possibly stuck on OOM. **UPDATED PROMPT**: aggressive refocus on L3408 with exact Core_step_preserves_supported template and step-by-step instructions. Added warning about no sorry reduction.
+3. **wasmspec** (08:15 run, completed 10:09): Built HasIfInHead infrastructure (~430 lines), closed if_direct cases, closed 3 mutual induction sorries. **UPDATED PROMPT**: refined trivialChain_if_condition_steps template with step?_if_ctx helper.
+
+### Actions Taken
+1. Counted sorries: ANF 24 + CC 14 = 38. Flat (all agents mid-run).
+2. **UPDATED proof prompt**: Added complete case-by-case skeleton for WF induction. Emphasized closing vacuous+simple cases first (~15 easy cases). Added hasAbruptCompletion_step_preserved helper pattern for throw/return/await/yield.
+3. **UPDATED jsspec prompt**: Refocused aggressively on L3408. Provided complete Core_step_preserves_supported template with Core.Expr.supported insight (false only for forIn/forOf). Added urgency warning.
+4. **UPDATED wasmspec prompt**: Refined trivialChain_if_condition_steps guidance. Added step?_if_ctx helper template. Clarified copy-from-trivialChain_throw_steps pattern.
+5. Logged to time_estimate.csv: 38.
+
+### Sorry Breakdown (unchanged from last run)
+
+**ANF (24 real sorry tokens):**
+- Group A (7): L7516, L7549, L7560, L7641, L7674, L7685, L7702 — eval context lifting, PARKED
+- Throw dispatch compound (L8343): DEFERRED
+- Return compound (L8493, L8496): TARGET — proof agent Task 2
+- Await compound (L8666, L8669): DEFERRED — same pattern
+- Yield compound (L8820, L8823): DEFERRED — same pattern
+- Let step sim (L8850): wasmspec Task 3 if time
+- While step sim (L8898): PARKED
+- If step sim compound condition (L9063, L9129): TARGET — wasmspec Task 1
+- If step sim compound HasIfInHead (L9064, L9130): TARGET — wasmspec Task 2
+- TryCatch step sim (L9174): DEFERRED
+- NoNestedAbrupt_step_preserved (L9180): TARGET — proof agent Task 1
+- Break compound (L9571): PARKED
+- Continue compound (L9624): PARKED
+
+**CC (14 real sorry tokens):**
+- Core.step preserves supported (L3408): TARGET — jsspec Task 1
+- Captured var multi-step (L3435): jsspec Task 3
+- CCStateAgree if-true (L3764): BLOCKED by architecture
+- CCStateAgree if-false (L3787): BLOCKED by architecture
+- FuncsCorr non-consoleLog (L4341): BLOCKED
+- Semantic mismatch call f (L4549): BLOCKED (compiler)
+- Semantic mismatch call arg (L4557): BLOCKED (compiler)
+- getIndex string unprovable (L5195): UNPROVABLE
+- functionDef (L6437): BLOCKED by HeapInj
+- tryCatch body-value (L6594): CCStateAgree blocked
+- tryCatch with finally (L6595): CCStateAgree blocked
+- tryCatch non-error (L6667): need CCStateAgree
+- while_ CCState threading (L6775): BLOCKED by architecture
+- h_supp param (L7787): QUICK WIN — jsspec Task 2
 ## Run: 2026-04-04T10:30:54+00:00
 
 ### Metrics
@@ -3595,3 +3648,10 @@ jsspec confirmed ALL 17 ANF sorries are architecturally blocked. normalizeExpr C
 ## Run: 2026-04-04T10:30:54+00:00
 
 2026-04-04T10:46:09+00:00 DONE
+
+## Run: 2026-04-04T11:00:02+00:00
+
+2026-04-04T11:04:01+00:00 DONE
+
+## Run: 2026-04-04T11:05:01+00:00
+
