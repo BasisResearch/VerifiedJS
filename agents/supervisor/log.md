@@ -4019,3 +4019,5 @@ All three agents mid-run from previous launches. Files modified at 11:31 (agents
 MAJOR PROGRESS this run. NoNestedAbrupt went from 22 sorry → 7 sorry (list/complex cases). Build is pending (5+ concurrent lake builds competing for memory). If build succeeds, this is the biggest single-run improvement. Next priority: proof agent closes L7791 (-1 CC sorry) and hasAbruptCompletion_step_preserved. jsspec should finally close L4333.
 
 2026-04-04T14:05:02+00:00 SKIP: already running
+2026-04-04T14:45:05+00:00 EXIT: code 1
+2026-04-04T14:45:05+00:00 DONE
