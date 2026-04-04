@@ -5477,3 +5477,220 @@ All 8 compound sorries + all 4 non-labeled sorries (12 total) share the same inf
 ## Run: 2026-04-04T00:15:01+00:00
 
 ### 2026-04-04T00:15:09+00:00 Starting run
+
+---
+
+## INVESTIGATION 1: hasBreakInHead/hasContinueInHead Fix Plan
+
+### Executive Summary
+
+`hasBreakInHead_flat_error_steps` (L6600) and `hasContinueInHead_flat_error_steps` (L6617) are **NOT PROVABLE** as stated for compound HasBreakInHead cases. The issue is fundamental to Flat semantics design, not just a proof gap.
+
+### The Problem
+
+**What the theorems claim**: Any Flat expression with `HasBreakInHead e label` steps to `.lit .undefined` producing exactly one observable error event.
+
+**Why `break_direct` works** (L7735-7756): `e = .break label` → one Flat step → `.lit .undefined` + `[.error msg]`. Done.
+
+**Why compound cases FAIL**: Consider `seq_left h` where `e = .seq (.break label) b`:
+1. Step 1: `.seq (.break label) b` → `.seq (.lit .undefined) b` + event `.error msg`
+2. Step 2: `.seq (.lit .undefined) b` → `b` + event `.silent`
+3. Steps 3+: `b` continues evaluating, potentially producing MORE observable events
+
+**Result**: observable trace = `[.error msg] ++ events_from_b` ≠ `[.error msg]`. Also sf'.expr ≠ `.lit .undefined`.
+
+### Compound cases ARE reachable at call sites
+
+L7732: `have hbreak_head := ANF.normalizeExpr_break_implies_hasBreakInHead sf.expr k hk_triv label n m hnorm_simp`
+
+For `.seq (.break l) b`: `normalizeExpr (.seq (.break l) b) k = normalizeExpr (.break l) (fun _ => normalizeExpr b k) = pure (.break l)` (break ignores continuation). So `normalizeExpr_break_implies_hasBreakInHead` produces `seq_left (break_direct)`.
+
+This arises from dead code after break: `while (true) { break; console.log("dead"); }` → `.seq (.break none) (.call ...)`.
+
+### SimRel constraint
+
+SimRel (L59-66) requires `normalizeExpr sf'.expr k' = sa'.expr`. After ANF break step: `sa'.expr = .trivial .litUndefined`. With trivial-preserving k: need `sf'.expr = .lit .undefined`. But compound cases end with dead code result, not `.lit .undefined`.
+
+### Root Cause
+
+Flat semantics treats break as an **error event**, not a control flow exception. After `.break` fires inside `.seq`, the seq continues normally. While loop desugaring (L424-427) has no break-catching.
+
+### Proposed Fixes
+
+#### Fix A: ControlFlowTailForm invariant (RECOMMENDED)
+
+Add a predicate ensuring break/continue/return/throw only appear in tail position:
+
+```lean
+inductive ControlFlowTailForm : Flat.Expr → Prop where
+  | lit : ControlFlowTailForm (.lit v)
+  | break : ControlFlowTailForm (.break l)
+  | continue : ControlFlowTailForm (.continue l)
+  | seq_normal : ¬IsControlFlow a → ControlFlowTailForm b → ControlFlowTailForm (.seq a b)
+  ...
+```
+
+Then prove: `HasBreakInHead e label ∧ ControlFlowTailForm e → e = .break label`.
+
+**Steps**:
+1. Define ControlFlowTailForm (~100 lines)
+2. Prove flattener produces it (~200 lines)
+3. Add to simulation invariant (~50 lines)
+4. Replace compound case handling with contradiction (~net -300 lines)
+
+#### Fix B: Bypass HasBreakInHead entirely
+
+Replace L7720-7906 with direct proof by strong induction on e.depth. **Same fundamental problem** with dead code unless combined with Fix A.
+
+#### Fix C: Quick unblock
+
+Add `sorry` only to compound cases with clear TODO, or use an axiom for ControlFlowTailForm temporarily.
+
+### HasContinueInHead: Same analysis applies symmetrically to L6617-6625 and L8060+.
+
+---
+
+## INVESTIGATION 2: if_step_sim Plan
+
+### Current State (L7339-7390)
+
+`normalizeExpr_if_step_sim` has **2 sorry statements** at L7367 and L7370:
+
+```lean
+-- L7367: toBoolean v = true case (step to then_)
+sorry -- Need: sf.expr has .if at eval head, flat steps to then_flat, SimRel for then_
+-- L7370: toBoolean v = false case (step to else_)
+sorry -- Need: sf.expr has .if at eval head, flat steps to else_flat, SimRel for else_
+```
+
+The error case (L7371-7390) is **fully proved** using `normalizeExpr_if_cond_var_free`.
+
+### What the proof needs
+
+After unfolding ANF.step? on `.if cond then_ else_`:
+1. `evalTrivial env cond = .ok v` (condition evaluates successfully)
+2. `toBoolean v = true` → ANF steps to `then_` (or `else_` if false)
+3. Event is `.silent`
+
+Need to show: Flat expression `sf.expr` can step to produce matching `.silent` events and reach a new SimRel state.
+
+### Key challenge: What Flat expression produces `.if` in ANF?
+
+From ANF/Convert.lean L346-350:
+```lean
+normalizeExpr (.«if» cond then_ else_) k = normalizeExpr cond (fun condTriv => do
+    let thenExpr ← normalizeExpr then_ k
+    let elseExpr ← normalizeExpr else_ k
+    pure (.«if» condTriv thenExpr elseExpr))
+```
+
+So `.if condTriv thenExpr elseExpr` comes from normalizing a **Flat `.if`**. But via CPS:
+- `.seq (.if c t e) b` → normalizeExpr processes `.if` with continuation that processes b
+- `.let x (.if c t e) body` → normalizeExpr processes `.if` with let-wrapping continuation
+
+So the Flat source isn't necessarily a plain `.if` — it could be `.if` nested inside `.seq`, `.let`, etc.
+
+### Proof approach: Strong induction on e.depth
+
+```lean
+-- By induction on sf.expr.depth:
+-- normalizeExpr sf.expr k = .if cond then_ else_ (k trivial-preserving)
+-- Case split on sf.expr:
+```
+
+**Case sf.expr = .if c t e** (direct):
+- normalizeExpr(.if c t e) k = normalizeExpr c (fun condTriv => ...)
+- The condTriv becomes the ANF cond
+- evalTrivial env condTriv = .ok v means the condition evaluates
+- Flat.step?(.if c t e):
+  - If c is a value: Flat evaluates `toBoolean c` and steps to t or e
+  - If c is not a value: Flat steps c first
+- Need to show Flat reaches a state where SimRel holds with either then_ or else_
+
+**Key lemma needed**: `normalizeExpr_if_cond_source` (L2001-2024) — characterizes how `.if` conditions arise from normalization.
+
+**Sub-case c is .lit v or .var x** (c is a Flat value/variable):
+- Flat can step the `.if` directly (condition is ready)
+- condTriv = trivialOfFlatValue v or .var x
+- evalTrivial env condTriv = .ok v' (matching Flat's evaluation)
+- Flat steps to t or e based on toBoolean
+- Then normalizeExpr t k = then_ or normalizeExpr e k = else_
+- SimRel maintained ✓
+
+**Sub-case c is compound** (e.g., `.seq a b` as condition):
+- Flat steps c first (multiple steps)
+- Eventually c becomes a value
+- Then .if (value) t e can step
+
+This requires showing:
+1. Flat can step c to a value (progress)
+2. The intermediate states maintain some invariant
+3. When c becomes a value, the `.if` step matches ANF
+
+### Proposed proof structure
+
+```lean
+private theorem normalizeExpr_if_step_sim ... := by
+  subst hheap henv
+  unfold ANF.step? at hstep_eq
+  simp only [ANF.pushTrace] at hstep_eq
+  split at hstep_eq
+  · -- evalTrivial env cond = .ok v
+    rename_i v heval
+    split at hstep_eq
+    · -- toBoolean v = true
+      obtain ⟨rfl, rfl⟩ := hstep_eq
+      -- KEY: Need normalizeExpr_if_source to characterize sf.expr
+      -- Then show Flat steps sf.expr to reach .if with evaluated condition
+      -- Then one more Flat step to reach then branch
+      -- Then establish SimRel with then_
+      -- Use normalizeExpr_if_then_branch to get normalizeExpr t_flat k = then_
+      sorry
+    · -- toBoolean v = false (symmetric)
+      sorry
+  · -- error case (ALREADY PROVED)
+    ...
+```
+
+### Required helper lemmas
+
+1. **normalizeExpr_if_source_inversion** (may exist as L2001-2024):
+   If normalizeExpr e k = .if cond then_ else_ with trivial-preserving k, characterize what e looks like.
+
+2. **normalizeExpr_if_branch_correspondence**:
+   If normalizeExpr (.if c t e) k = .if condTriv then_ else_, then:
+   - normalizeExpr t k = then_  (approximately — might involve different counter state)
+   - normalizeExpr e k = else_
+
+3. **Flat_if_value_step**: If Flat has `.if (.lit v) t e`, it steps to t or e based on toBoolean v.
+
+4. **evalTrivial_matches_flat_eval**: If condTriv comes from normalizing c, and evalTrivial env condTriv = .ok v, then Flat evaluating c also reaches v.
+
+### Can strong induction on depth avoid full characterization?
+
+**Partially**. For the direct `.if` case, induction isn't needed — it's a direct simulation. The complication is when sf.expr is NOT `.if` but some wrapper (`.seq (.if ...) b`).
+
+For wrapper cases:
+- `.seq (.if c t e) b` normalizes to: normalizeExpr (.if c t e) (fun _ => normalizeExpr b k)
+  - This produces `.if condTriv (normalizeExpr t (fun _ => normalizeExpr b k)) (normalizeExpr e (fun _ => normalizeExpr b k))`
+  - The continuation wraps both branches with b
+  - Flat: `.seq (.if c t e) b` steps to `.seq (.if c' t e) b` (stepping c)
+  - Eventually: `.seq (.if (.lit v) t e) b` → `.seq t b` or `.seq e b` + silent
+  - Then SimRel: normalizeExpr (.seq t b) k vs then_ where then_ = normalizeExpr t (fun _ => normalizeExpr b k)
+  - These should match! normalizeExpr (.seq t b) k = normalizeExpr t (fun _ => normalizeExpr b k) ✓
+
+So the wrapper case DOES work — it just requires more Flat steps (stepping through the condition evaluation and the seq/if unwinding).
+
+### Bottom line for if_step_sim
+
+The two sorry cases are **provable** via:
+1. Inversion on normalizeExpr output to characterize sf.expr
+2. Show Flat steps through condition evaluation
+3. Show Flat .if step matches ANF .if step (same boolean test)
+4. Show branch correspondence via normalizeExpr_if_branch_correspondence
+5. Establish SimRel for the new state
+
+The key difficulty is step 1 (characterization), but the existing `normalizeExpr_if_cond_source` (L2001-2024) likely provides the needed foundation. The proof should proceed by strong induction on sf.expr.depth, with the direct `.if` case handled first and wrapper cases (`.seq`, `.let`) handled by reducing to the direct case via Flat evaluation steps.
+
+**Estimated complexity**: ~200-300 lines per sorry case, mostly case analysis and SimRel bookkeeping.
+### 2026-04-04T00:44:58+00:00 Run complete — Both investigations written to log.md (break_fix_plan + if_step_sim_plan). Could not create separate .md files due to directory permissions.
