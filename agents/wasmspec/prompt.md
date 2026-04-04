@@ -1,4 +1,4 @@
-# wasmspec — Close L9027/9028/9052/9053 (if compound + HasIfInHead)
+# wasmspec — Close L9083/9084/9156/9157 (if compound + HasIfInHead)
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -8,79 +8,48 @@
 - You CAN edit ANFConvertCorrect.lean
 - Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
-## ⚠️ IDLE FOR 5 DAYS. GET TO WORK. ⚠️
+## MEMORY WARNING
+**WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
 
-## STATE
+## STATE — MAJOR PROGRESS ON NoNestedAbrupt
 
-Your targets are 4 sorries in if_step_sim at L9027, L9028, L9052, L9053.
+Proof agent + supervisor closed 23 of 30 NoNestedAbrupt cases. ANF sorry count dropped from 50 to 31. Your if compound targets are now at different line numbers due to edits. Use `grep -n "compound condition: multi-step\|compound HasIfInHead" VerifiedJS/Proofs/ANFConvertCorrect.lean` to find them.
 
-Code at L9027-9028 (true branch):
-```lean
-        | var _ | this | _ => sorry -- var/this/compound condition
-      all_goals sorry -- compound HasIfInHead
-```
+## TASK 1: Close compound condition sorries (var/this cases)
 
-Code at L9052-9053 (false branch, identical pattern):
-```lean
-        | var _ | this | _ => sorry -- var/this/compound condition
-      all_goals sorry -- compound HasIfInHead
-```
+Find the lines with `sorry -- compound condition: multi-step` (2 occurrences: true branch and false branch of normalizeExpr_if_step_sim).
 
-Context: We're inside `if_direct` case of `hasIfInHead`. The condition `c_flat` is being case-split. The `lit` case is already proved (L8992-9026 for true, L9037-9051 for false). The remaining cases are `var`, `this`, and compound (anything else).
-
-## TASK 1: Close L9027 and L9052 — var/this/compound condition
-
-### Understanding the goal
-
-At L9027, after `| var _ | this | _ =>`, the goal should be:
-- We have `c_flat = .var name` (or `.this` or compound)
-- We need to show the Flat if-expression can step to match the ANF step
-- The ANF step evaluated `evalTrivial env cond` where cond came from normalizeExpr
-
-### Strategy for var case
-
-When `c_flat = .var name`:
-1. `Flat.step?` on `.if (.var name) then_ else_` will first step the condition: `.var name` → `.lit v` (via env lookup)
-2. Then a second step evaluates `.if (.lit v) then_ else_` → branch
+For var/this cases when the condition is `.var name` or `.this`:
+1. Flat.step? on `.if (.var name) then_ else_` first steps condition: `.var name` → `.lit v`
+2. Then `.if (.lit v) then_ else_` → branch
 3. This is a 2-step simulation
 
-Use `lean_goal` at L9027 to see exactly what's needed. The key insight: `normalizeExpr_if_lit_decomp` won't work here since the condition is `.var`, not `.lit`. You need a different decomposition lemma or need to construct the 2-step simulation manually.
-
-### For the `_` (compound) case
-
-This is harder — compound conditions may take many steps. Consider using `sorry` with a comment for now.
-
-### Concrete approach
-
-1. First use `lean_goal` at L9027 to understand the exact proof state
-2. Try splitting into `var`/`this`/other:
+Split the sorry into explicit subcases:
 ```lean
         | var vname =>
-          -- .var steps to .lit in one step, then .if (.lit v) steps to branch
-          sorry -- 2-step: var→lit, then if→branch
+          -- 2-step: var→lit, then if→branch
+          sorry
         | this =>
-          -- .this steps to .lit in one step, then .if (.lit v) steps to branch
-          sorry -- 2-step: this→lit, then if→branch
+          -- 2-step: this→lit, then if→branch
+          sorry
         | _ => sorry -- compound condition: multi-step
 ```
-3. Then try to close the var/this cases using explicit Flat.Steps construction
 
-## TASK 2: Close L9028 and L9053 — compound HasIfInHead
+Even splitting var/this out separately (still sorry) makes progress by narrowing what remains.
 
-These handle cases where `.if` is nested in a compound expression via `HasIfInHead`:
-- `HasIfInHead.seq_left`, `.let_init`, `.assign_val`, etc.
-- Each one means the .if is inside an evaluation context
+## TASK 2: Close compound HasIfInHead sorries
 
-For each case, the outer expression (e.g., `.seq (.if ...) b`) steps by stepping the inner `.if`. Use the IH from the outer induction.
+Find `all_goals sorry -- compound HasIfInHead` (2 occurrences).
 
-1. Use `lean_goal` at L9028 to see the HasIfInHead cases
-2. For each case, construct the step explicitly
+These handle HasIfInHead cases where .if is nested in an evaluation context. Each case (seq_left, let_init, assign_val, etc.) steps the outer expression by stepping the inner .if.
+
+Use `lean_goal` to see what cases remain and try to close them individually.
 
 ## TASK 3 (IF TIME): Close L8856 (let_step_sim)
 
 ## COORDINATE WITH PROOF AGENT
-- proof agent works on L9147-9168 (NoNestedAbrupt cases). DO NOT touch L9107-9170.
-- You work on L9027-9053. These are DIFFERENT.
+- proof agent works on L7791 (EndToEnd param addition) and hasAbruptCompletion_step_preserved
+- DO NOT touch EndToEnd.lean or the hasAbruptCompletion theorem
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

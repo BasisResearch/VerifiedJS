@@ -1,42 +1,22 @@
-# jsspec — CLOSE L7791 FIRST (5 min), THEN L4333, THEN L3408
+# jsspec — Close L4333 FIRST, THEN L3408
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build CC: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
-- **DO NOT** edit ANFConvertCorrect.lean or LowerCorrect.lean (proof agent owns them).
+- **DO NOT** edit ANFConvertCorrect.lean or EndToEnd.lean (proof agent owns them).
 
 ## !! DO NOT USE WHILE/UNTIL LOOPS !!
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
+**WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
 
-## ⚠️ AGENTS HAVE BEEN IDLE FOR 4+ DAYS. ZERO SORRIES CLOSED. ⚠️
-## ⚠️ STOP ANALYZING. START CLOSING. ⚠️
+## ⚠️ L7791 IS NOW HANDLED BY PROOF AGENT. DO NOT TOUCH IT. ⚠️
 
-CC has 15 real sorries. Your 3 targets are below. Do them IN ORDER.
+CC has 18 sorry tokens (grep count). Your 2 targets:
 
-## TASK 1 — Close L7791 (TRIVIAL — 5 MINUTES MAX)
-
-L7791 is:
-```lean
-  have h_supp : s.body.supported = true := sorry /- TODO: add h_supp param when EndToEnd.lean is updated -/
-```
-
-This is inside `closureConvert_correct` (search for it near L7783). Fix:
-
-1. Find the theorem signature: `grep -n "theorem closureConvert_correct" VerifiedJS/Proofs/ClosureConvertCorrect.lean`
-2. Add `(h_supp : s.body.supported = true)` as a new parameter
-3. DELETE the sorry line at L7791 entirely (the `have h_supp` line)
-4. Find caller: `grep -n "closureConvert_correct" VerifiedJS/Proofs/EndToEnd.lean`
-5. Pass `h_supported` (from EndToEnd theorem) at the call site
-6. Build BOTH:
-   - `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
-   - `lake build VerifiedJS.Proofs.EndToEnd`
-
-This is a PARAMETER ADDITION. No proof work. 5 minutes.
-
-## TASK 2 — Fix L4333 REGRESSION
+## TASK 1 — Fix L4333 REGRESSION
 
 L4333: `· sorry /- was: convert hcore using 2 — tactic unavailable -/`
 
@@ -49,13 +29,14 @@ L4333: `· sorry /- was: convert hcore using 2 — tactic unavailable -/`
    - `exact hcore.1`
    - `cases hcore; assumption`
    - `rw [show sc'.expr = _ from rfl] at hcore; exact hcore`
-3. If none work, read the goal and craft the right tactic
+   - `congr 1`
+3. If none work, read the goal carefully and craft the right tactic
 
-## TASK 3 — Close L3408 (Core_step_preserves_supported)
+## TASK 2 — Close L3408 (Core_step_preserves_supported)
 
 L3408: `have hsupp' : sc'.expr.supported = true := sorry`
 
-Write a helper lemma (even with inner sorries) and use it:
+Write a helper lemma and use it:
 
 ```lean
 private theorem Core_step_preserves_supported (s s' : Core.State) (t : Core.TraceEvent)
@@ -77,7 +58,7 @@ Place above L3405 and replace L3408 with:
     have hsupp' : sc'.expr.supported = true := Core_step_preserves_supported _ _ _ hsupp hstep
 ```
 
-This converts 1 sorry into 1 sorry inside a helper — same count but better structure.
+This converts 1 sorry into 1 sorry inside a helper — same count but better structure for future work.
 
 ## DO NOT ANALYZE ARCHITECTURE. CLOSE SORRIES.
 

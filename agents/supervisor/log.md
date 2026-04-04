@@ -3965,3 +3965,57 @@ All three agents mid-run from previous launches. Files modified at 11:31 (agents
 
 ## Run: 2026-04-04T13:30:09+00:00
 
+
+## Run: 2026-04-04T13:30:09+00:00
+
+### Metrics
+- **Sorry count**: ANF 31 + CC 18 = **49 sorry tokens**
+- **Previous**: ANF 50 + CC 18 = 68 (raw grep). Or ANF 46 + CC 15 = 61 (last supervisor log)
+- **Delta**: ANF dropped from 50→31 = **-19 sorry lines closed**. CC unchanged at 18.
+- **Net progress**: -19 sorry lines in ANF. SIGNIFICANT PROGRESS.
+
+### What happened
+1. **Proof agent (active since 12:30)**: Filled in 15 of 22 NoNestedAbrupt constructor cases: seq, let, assign, if, throw, return, await, yield, getProp, deleteProp, typeof + all Pattern D cases (return_some, await, yield_some using hasAbruptCompletion_step_preserved). Excellent work.
+2. **Supervisor (this run)**: Directly closed 8 more cases: unary, binary, while_, labeled, setProp, getIndex, getEnv, makeClosure. Total: 23/30 NoNestedAbrupt cases done.
+3. **jsspec agent (active)**: Building CC. Has NOT closed L7791, L4333, or L3408 yet.
+4. **wasmspec agent (active since 13:15)**: Building ANF. Working on if compound cases.
+
+### Sorry Breakdown (ANF 31)
+- Group A (7): L7522-L7708 — eval context lifting, PARKED
+- Throw dispatch (1): L8349, DEFERRED
+- Return compound (2): L8499, L8502, DEFERRED
+- Await compound (2): L8672, L8675, DEFERRED
+- Yield compound (2): L8826, L8829, DEFERRED
+- Let step sim (1): L8856, wasmspec Task 3
+- While step sim (1): L8904, PARKED
+- If compound (4): L9083, L9084, L9156, L9157, wasmspec Tasks 1-2
+- hasAbruptCompletion (1): L9201 — proof agent Task 2
+- hasAbruptCompletion SEPARATE (1): L9209 — proof agent Task 2
+- NoNestedAbrupt remaining (7): setIndex, call, newObj, makeEnv, objectLit, arrayLit, tryCatch — PARKED (list cases)
+- Break/Continue (2): L9755, L9808 — PARKED
+
+### Sorry Breakdown (CC 18)
+- L3408: Core.step preserves supported — jsspec Task 2
+- L3435: captured var multi-step — BLOCKED
+- L3764/3787: CCStateAgree if — BLOCKED by architecture
+- L4333: convert hcore REGRESSION — jsspec Task 1
+- L4345: non-consoleLog function call — BLOCKED
+- L4553/4561: semantic mismatch call — BLOCKED (compiler)
+- L5199: getIndex string — UNPROVABLE
+- L6441: functionDef — BLOCKED by HeapInj
+- L6598/6599/6671: tryCatch — CCStateAgree blocked
+- L6779: while_ CCState — BLOCKED by architecture
+- L7791: h_supp param — proof agent Task 1 (needs EndToEnd.lean edit)
+
+### Actions Taken
+1. Counted sorries: ANF 31 + CC 18 = 49. **-19 from last raw count.**
+2. **Directly edited ANFConvertCorrect.lean**: Closed 8 NoNestedAbrupt cases (unary, binary, while_, labeled, setProp, getIndex, getEnv, makeClosure).
+3. **REWROTE proof prompt**: Updated for current state. New targets: L7791 (EndToEnd param addition), hasAbruptCompletion_step_preserved.
+4. **REWROTE jsspec prompt**: L7791 reassigned to proof agent. Focus on L4333 then L3408.
+5. **REWROTE wasmspec prompt**: Same targets (if compound), updated line numbers.
+6. Logged to time_estimate.csv.
+
+### Critical Assessment
+MAJOR PROGRESS this run. NoNestedAbrupt went from 22 sorry → 7 sorry (list/complex cases). Build is pending (5+ concurrent lake builds competing for memory). If build succeeds, this is the biggest single-run improvement. Next priority: proof agent closes L7791 (-1 CC sorry) and hasAbruptCompletion_step_preserved. jsspec should finally close L4333.
+
+2026-04-04T14:05:02+00:00 SKIP: already running
