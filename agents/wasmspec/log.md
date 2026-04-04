@@ -6006,3 +6006,24 @@ observable events and breaking ANF_SimRel correspondence.
 ## Run: 2026-04-04T05:15:01+00:00
 
 ### 2026-04-04T05:19:41+00:00 Starting run
+### 2026-04-04T05:42:51+00:00 Run complete — defined NoNestedAbrupt + bridge theorems
+
+**Added to ANFConvertCorrect.lean (0 new sorries, 0 errors):**
+
+1. **`hasAbruptCompletion`** (mutual bool fns): checks if a Flat.Expr contains throw/return/yield/await/break/continue at any depth. Also `hasAbruptCompletionList` and `hasAbruptCompletionProps` helpers.
+
+2. **`NoNestedAbrupt`** (inductive on Flat.Expr): arguments to throw/return/yield/await must have `hasAbruptCompletion arg = false`. All other constructors require recursive NoNestedAbrupt on sub-expressions.
+
+3. **Inversion lemmas** (4): `throw_arg_abruptFree`, `return_some_arg_abruptFree`, `yield_some_arg_abruptFree`, `await_arg_abruptFree`.
+
+4. **Bridge theorems** (4 × 3 mutual blocks):
+   - `hasThrowInHead_implies_hasAbruptCompletion` + list/props variants
+   - `hasAwaitInHead_implies_hasAbruptCompletion` + list/props variants
+   - `hasReturnInHead_implies_hasAbruptCompletion` + list/props variants
+   - `hasYieldInHead_implies_hasAbruptCompletion` + list/props variants
+
+5. **Absurd lemmas** (12): For each Has[X]InHead × NoNestedAbrupt pair, proves the argument case is contradictory. E.g. `noNestedAbrupt_hasThrowInHead_absurd_return`: if throw arg is NoNestedAbrupt and has HasThrowInHead → False.
+
+**Usage for proof agent**: Add `hna : NoNestedAbrupt sf.expr` to Group D theorems. For impossible cases like HasThrowInHead inside a return arg with NoNestedAbrupt, use `exact absurd hth (noNestedAbrupt_hasThrowInHead_absurd_return hna)`.
+
+2026-04-04T05:43:00+00:00 DONE

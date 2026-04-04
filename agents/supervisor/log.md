@@ -1,3 +1,60 @@
+## Run: 2026-04-04T05:30:44+00:00
+
+### Metrics
+- **Sorry count**: ANF 23 + CC 15 = **38** (LowerCorrect 0)
+- **Delta from last run**: was 39 → 38 = **-1**. jsspec proved L3742 second sorry (if-else output).
+- **LowerCorrect**: 0 sorries (DONE)
+
+### What happened since last run
+
+1. **proof**: STILL STUCK. Added ~100 lines of infrastructure (file grew 9411→9506) but 0 sorries closed. 7+ runs without progress. Last completed run (04:05) re-analyzed the nested abrupt problem and concluded "CANNOT CLOSE" — but was told to ADD NoNestedAbrupt, not just analyze. Prompt REWRITTEN to be maximally directive: close ONE specific sorry (TRIVIAL_CHAIN_CONNECT) via case split on e.
+
+2. **jsspec**: GOOD PROGRESS. Proved 1 sorry (L3742 if-else output CCStateAgree). Fixed build breakage from proof agent (tryCatch parse errors, push_neg→simp, depth lemma). Had to re-sorry L4280/L6536/L6673 during fix but these were already sorry. Net: -1 sorry. Prompt updated with fresh line numbers and same 3 priority targets.
+
+3. **wasmspec**: Documented Group G gap (compound break/continue). Confirmed 5 strategies all fail. Created flat_error_propagation.md plan. 0 sorries closed. REDIRECTED to helping proof agent with TRIVIAL_CHAIN_CONNECT lemma instead of NoNestedAbrupt (simpler, more immediately useful).
+
+### Agent Status
+
+1. **proof**: CRITICAL. 7 runs stuck. Prompt completely rewritten to demand ONE sorry closure (TRIVIAL_CHAIN_CONNECT). No new infrastructure allowed. If no sorry closed this run: manual code intervention required next run.
+
+2. **jsspec**: HEALTHY. Proving sorries, fixing build. Continue with functionDef (~L6385), captured var (~L3391), call (~L4295). Target: 15→12.
+
+3. **wasmspec**: REDIRECTED from NoNestedAbrupt to TRIVIAL_CHAIN_CONNECT helper lemma. Both agents target same sorry from different angles (proof: close it, wasmspec: write helper lemma for it).
+
+### Actions Taken
+1. Counted sorries: ANF 23 + CC 15 = 38. Down 1 (jsspec).
+2. **REWROTE proof prompt**: Maximally directive. ONE task: close TRIVIAL_CHAIN_CONNECT. No infrastructure. Case-split approach spelled out.
+3. **REWROTE jsspec prompt**: Updated line numbers. Same targets (functionDef, captured var, call).
+4. **REWROTE wasmspec prompt**: Redirected from NoNestedAbrupt to TRIVIAL_CHAIN_CONNECT helper. Both agents converge on the key blocker.
+5. Logged to time_estimate.csv.
+
+### Sorry Breakdown
+
+**ANF (23 sorry tokens):**
+- Group A (7): ~L6966-7152 — eval context lifting, PARKED
+- Group D (9): ~L7641, L7656, L7785, L7935, L7938, L8108, L8111, L8262, L8265 — TARGET (proof+wasmspec on L7656)
+- Group F (5): ~L8292, L8340, L8371, L8374, L8418 — DEFERRED
+- Group G (2): ~L8797, L8850 — PARKED (dead code)
+
+**CC (15 sorry tokens):**
+- Unprovable (3): L1507, L1508, ~L5147
+- CCStateAgree blocked (5): ~L3719, ~L6542, ~L6543, ~L6615, ~L6708
+- Semantic mismatch (2): ~L4501, ~L4509
+- Actionable (5): ~L3391, ~L4295, ~L6385, ~L6672, L3742-first-sorry
+
+### Strategy
+- proof+wasmspec: Close L7656 → 38→37
+- jsspec: Close functionDef+captured-var+call → 37→34
+- After L7656: proof uses same pattern for return/await/yield → 34→30
+- Floor: 3 CC unprovable + 5 CC CCStateAgree + 2 CC semantic = 10 permanent
+
+### Biggest Risks
+1. proof agent 7 runs stuck — if no progress again, need to write code directly
+2. proof+wasmspec both editing ANFConvertCorrect.lean — merge conflict risk
+3. ANF file growing rapidly (9506 lines) — build may OOM eventually
+
+---
+
 ## Run: 2026-04-04T05:05:01+00:00
 
 ### Metrics
@@ -9983,3 +10040,4 @@ proof agent has the infrastructure but hasn't actually CLOSED any sorries with i
 
 ## Run: 2026-04-04T05:30:44+00:00
 
+2026-04-04T05:42:48+00:00 DONE

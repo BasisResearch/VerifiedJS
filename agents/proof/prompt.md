@@ -1,4 +1,4 @@
-# proof — ADD NoNestedAbrupt PRECONDITION TO GROUP D THEOREMS
+# proof — CLOSE SORRIES. STOP ADDING INFRASTRUCTURE.
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -17,90 +17,52 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 - If build OOMs: add `set_option maxHeartbeats 200000` above the theorem
 - Do NOT attempt to build the entire file if it's failing
 
-## STATE: ANF has 23 sorry lines. You correctly identified that Group D theorems are FALSE for nested abrupt completions. NOW FIX THEM.
+## ‼️ YOU HAVE BEEN STUCK FOR 7+ RUNS ‼️
+You keep adding infrastructure (650+ lines) and analyzing but NOT CLOSING SORRIES.
+STOP ADDING CODE. START CLOSING SORRIES. Every run must close at least 1 sorry.
 
-## THE PROBLEM (you discovered this)
-`normalizeExpr_throw_step_sim` etc. claim that Flat.Steps produce observable events matching one ANF error event. But for `throw(throw(x))`, Flat produces TWO error events while ANF short-circuits to one. The theorem is FALSE without restricting the input.
+## STATE: ANF has 23 sorry lines. 0 closed in 7 runs.
 
-## YOUR TASK: Define NoNestedAbrupt and restructure Group D
+## YOUR ONE TASK THIS RUN: Close the TRIVIAL_CHAIN_CONNECT sorry
 
-### Step 1: Define NoNestedAbrupt (DO THIS FIRST)
+Find the sorry with comment `TRIVIAL_CHAIN_CONNECT` (search for it with grep). It's in `normalizeExpr_throw_compound_case`, in the `¬HasThrowInHead e` branch.
 
-Add this near the top of the file (before the step_sim theorems, around L6500):
+### What you have in context:
+- `htc : isTrivialChain e = true` (from no_throw_head_implies_trivial_chain)
+- `hnorm' : (ANF.normalizeExpr e (fun t => pure (.throw t))).run n = .ok (.throw arg, m)`
+- `v, evs, sf', hsteps, hexpr, henv, hheap, htrace, hobs` from trivialChain_throw_steps
+- `hewf' : ∀ x, VarFreeIn x e → Flat.Env.lookup env x ≠ none`
 
-```lean
-/-- An expression has no nested abrupt completions:
-    throw/return/yield/await sub-expressions don't themselves contain
-    throw/return/yield/await in head position. This is a natural invariant
-    of JavaScript programs where these are statements, not expressions. -/
-inductive NoNestedAbrupt : Flat.Expr → Prop where
-  | lit : NoNestedAbrupt (.lit v)
-  | var : NoNestedAbrupt (.var x)
-  | this : NoNestedAbrupt .this
-  | throw (arg : Flat.Expr) (harg : isTrivialChain arg = true ∨ arg.isValue) :
-      NoNestedAbrupt (.throw arg)
-  | return_ (arg : Flat.Expr) (harg : isTrivialChain arg = true ∨ arg.isValue) :
-      NoNestedAbrupt (.return_ arg)
-  | yield (arg : Flat.Expr) (harg : isTrivialChain arg = true ∨ arg.isValue) :
-      NoNestedAbrupt (.yield arg)
-  | await (arg : Flat.Expr) (harg : isTrivialChain arg = true ∨ arg.isValue) :
-      NoNestedAbrupt (.await arg)
-  | seq (a b : Flat.Expr) (ha : NoNestedAbrupt a) (hb : NoNestedAbrupt b) :
-      NoNestedAbrupt (.seq a b)
-  -- Add cases for ALL other Flat.Expr constructors, each requiring NoNestedAbrupt on sub-exprs
-```
+### What you need to prove:
+The two conjuncts: (1) evalTrivial ok case → Flat.Steps exist, (2) evalTrivial error case → Flat.Steps exist.
 
-Build to verify it compiles.
+### CONCRETE APPROACH:
+1. `lean_goal` at the TRIVIAL_CHAIN_CONNECT sorry to see exact proof state
+2. Case split on `e` using `cases e` — since `isTrivialChain e = true`, only `lit`, `var`, `this`, `seq` survive
+3. For each surviving case, `simp [ANF.normalizeExpr]` at `hnorm'` to determine what `arg` is
+4. Then show `evalTrivial env arg` matches the flat value `v`
 
-### Step 2: Add NoNestedAbrupt as hypothesis to Group D theorems
+### For lit case:
+- `normalizeExpr (.lit val) (fun t => pure (.throw t))` = `pure (.throw (.lit val))` or similar
+- `arg` = the trivial of val
+- `evalTrivial env arg = .ok val`
+- Already have flat steps from trivialChain_throw_steps producing val
 
-For each of `normalizeExpr_throw_step_sim`, `normalizeExpr_return_step_sim`, `normalizeExpr_await_step_sim`, `normalizeExpr_yield_step_sim`, add:
-```lean
-(hna : NoNestedAbrupt sf.expr)
-```
+### For var case:
+- `normalizeExpr (.var x) (fun t => pure (.throw t))` = `pure (.throw (.var x))`
+- `arg = .var x`
+- `evalTrivial env (.var x)` = lookup x in env
+- Well-formedness gives lookup succeeds
 
-### Step 3: Close the HasXInHead compound sorries via exfalso
+### DO NOT:
+- Add new inductive types
+- Add infrastructure lemmas > 30 lines
+- Work on any other sorry until this one is closed
+- Spend more than 5 minutes analyzing before writing proof code
 
-With `NoNestedAbrupt (.throw flat_arg)`, we know `flat_arg` is a trivial chain or value.
-
-For the `HasXInHead compound` sorries (~L7054, L7336, L7509, L7663):
-- `NoNestedAbrupt (.throw compound_expr)` gives `isTrivialChain compound_expr ∨ isValue compound_expr`
-- If trivial chain: `HasThrowInHead (trivialChain)` is false (lit/var/this don't have abrupt in head)
-- If value: `HasThrowInHead value` is false
-- Both cases: `exfalso`
-
-These 4 sorries should close EASILY with NoNestedAbrupt. Do them FIRST.
-
-### Step 4: Close the trivial-chain/value direct sorries
-
-For the `*_direct compound` sorries (~L7050, L7183, L7333, L7506):
-- If trivial chain: use existing `trivialChain_consume_ctx` + `Steps_throw_ctx`
-- If value: `.throw val` steps directly in one step
-
-### IMPORTANT: Update callers
-After adding NoNestedAbrupt, `anfConvert_step_star` needs to supply the proof. Add `sorry` at call sites — we'll prove those later. Better to have honest small sorries.
-
-### Group line numbers (VERIFY WITH lean_goal — lines may have shifted):
-- Group D: ~L7050, L7054, L7183, L7333, L7336, L7506, L7509, L7660, L7663
-- Group A (PARKED): L6531, L6564, L6575, L6656, L6689, L6700, L6717
-- Group F (DEFERRED): L7690, L7738, L7769, L7772, L7816
-- Group G (PARKED): L8195, L8248
-
-### DO NOT TOUCH: Groups A, F, G
-
-### Target: 23 → 15 (close 8 Group D sorries, may add 1-2 at caller sites)
-
-## ACCOUNTABILITY: You have been stuck for 5+ runs. You correctly diagnosed the problem (false theorems). Now FIX IT by adding the precondition and closing sorries.
-
-## WORKFLOW:
-1. `lean_goal` at ~L7050 to verify current proof state
-2. Define `NoNestedAbrupt` inductive type (build to verify)
-3. Add `hna : NoNestedAbrupt sf.expr` to `normalizeExpr_throw_step_sim`
-4. Close HasThrowInHead compound sorry via exfalso (EASY — 1 sorry)
-5. Close trivial-chain direct sorry using existing infra (1 sorry)
-6. Build to verify
-7. Repeat for return (~L7183/L7336), await (~L7333/L7509), yield (~L7506/L7663)
-8. Build full file
+### AFTER closing TRIVIAL_CHAIN_CONNECT, IF time remains:
+- Look at the HasThrowInHead sorry just above it (~10 lines earlier)
+- Try: `cases e <;> simp [HasThrowInHead, isTrivialChain] at *`
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`
