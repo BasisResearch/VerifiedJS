@@ -9427,3 +9427,64 @@ hasBreakInHead_flat_error_steps may be UNPROVABLE as currently stated. Error eve
 
 ## Run: 2026-04-04T00:05:02+00:00
 
+
+### Metrics
+- **Sorry count**: ANF 22 + CC 15 = **37** (stable from last run)
+- **Delta from last run (23:05)**: 0. No change.
+- **LowerCorrect**: 0 sorries
+- **Wasm/Semantics**: 0 actual sorries (comments only)
+
+### Agent Status
+1. **proof** (started 23:30, RUNNING): Working on ANF sorries. Last progress: closed L7135, sorry count 24→22.
+   - **Prompt REWRITTEN**: Redirected AWAY from hasBreakInHead (NOT PROVABLE per wasmspec). New priority: build multi-step context lifting lemmas (Steps_seq_ctx, Steps_throw_ctx, etc.) which unblock 12 of 22 ANF sorries. These are mechanical induction proofs on Flat.Steps using existing single-step lemmas.
+
+2. **jsspec** (started 23:00, RUNNING): Implementing CCStateAgree invariant fix. This is highest-impact CC task — unblocks 6 of 15 CC sorries. Been running 1h, no log update yet.
+   - **Prompt KEPT**: Already well-configured with wasmspec's analysis.
+
+3. **wasmspec** (completed 23:39): Delivered CRITICAL finding — hasBreakInHead_flat_error_steps NOT PROVABLE as stated. Error events don't short-circuit eval contexts.
+   - **Prompt REWRITTEN**: Two new tasks:
+     1. Fix hasBreakInHead by proving compound constructors are UNREACHABLE for normalizeExpr output (using normalizeExpr_seq_while_first_family + similar lemmas)
+     2. Investigate if_step_sim approach (L7336/7367/7370)
+
+### Actions Taken
+1. Counted sorries: ANF 22 + CC 15 = 37 (stable).
+2. Rewrote proof prompt: redirected from hasBreakInHead (dead end) to building Steps_*_ctx multi-step context lifting lemmas — the common blocker for 12/22 ANF sorries.
+3. Kept jsspec prompt: CCStateAgree fix already in progress.
+4. Rewrote wasmspec prompt: two investigations — (1) fix hasBreakInHead by proving compound cases unreachable for ANF output, (2) if_step_sim approach.
+5. Logged to time_estimate.csv.
+
+### Sorry Breakdown (unchanged from last run)
+
+**ANF (22 sorries):**
+- L6409, L6442, L6534, L6567: non-labeled inner value (need multi-step ctx lifting) — 4
+- L6453, L6578, L6595: compound/bindComplex — 3
+- L6612: hasBreakInHead (NOT PROVABLE as stated) — 1
+- L6625: hasContinueInHead (NOT PROVABLE as stated) — 1
+- L6778, L6781, L6931, L6934, L7104, L7107, L7258, L7261: compound flat_arg/inner_val — 8
+- L7288: .let characterization (SKIP — bindComplex produces .let) — 1
+- L7336, L7367, L7370: if simulation — 3
+- L7414: final sorry — 1
+
+**CC (15 sorries):**
+- L1507/1508: forIn/forOf stubs (UNPROVABLE) — 2
+- L3387: captured var — 1
+- L3715, L3738×2: if CCStateAgree (BLOCKED → jsspec fixing) — 3
+- L4293: non-consoleLog call (BLOCKED no FuncsCorr) — 1
+- L4499, L4507: newObj (secondary target) — 2
+- L5145: getIndex string (UNPROVABLE) — 1
+- L6383: functionDef (BLOCKED CCStateAgree) — 1
+- L6538: tryCatch finally (BLOCKED CCStateAgree) — 1
+- L6609: tryCatch error (BLOCKED CCStateAgree) — 1
+- L6716: while_ (BLOCKED CCStateAgree) — 1
+
+### Key Strategy
+1. **proof agent**: Build Steps_*_ctx lemmas → close 4-8 compound sorries → biggest ANF progress possible
+2. **jsspec**: Complete CCStateAgree fix → close 6 CC sorries → drop CC from 15 to 9
+3. **wasmspec**: Fix hasBreakInHead approach → unblock 2 ANF sorries + downstream Type B sorries
+
+### Risk
+- jsspec has been running 1h on CCStateAgree with no log. Large refactor touching 27 cases. If it fails/crashes, will need to break into smaller chunks next run.
+- hasBreakInHead fix depends on proving normalizeExpr outputs don't have compound break constructors. Need to verify this holds for ALL normalizeExpr paths.
+
+2026-04-04T00:05:02+00:00 DONE
+2026-04-04T00:08:27+00:00 DONE

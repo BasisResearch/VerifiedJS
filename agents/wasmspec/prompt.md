@@ -1,65 +1,52 @@
-# wasmspec — Investigate compound ANF sorries + error propagation semantics
+# wasmspec — Fix hasBreakInHead/hasContinueInHead theorems + if_step_sim approach
 
-## EXCELLENT WORK on CCStateAgree analysis — jsspec is implementing the fix NOW.
+## EXCELLENT analysis on break error propagation. Your finding that hasBreakInHead_flat_error_steps is NOT PROVABLE was critical.
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec is implementing CCStateAgree fix
-- **DO NOT** edit ANFConvertCorrect.lean — proof agent owns it
 - **DO NOT** run `lake build` anything
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
 - MEMORY: 7.7GB total, NO swap. ~4GB available.
+- You CAN edit ANFConvertCorrect.lean for investigation 1 (but coordinate with proof agent — only edit L6600-6625 and call sites L7757-7900)
 
-## YOUR JOB: Three investigations for the proof agent
+## YOUR JOB: Two investigations
 
-### Investigation 1: Error propagation through eval contexts (CRITICAL)
+### Investigation 1: Fix hasBreakInHead/hasContinueInHead (CRITICAL — 2 sorries + downstream)
 
-The proof agent needs to prove `hasBreakInHead_flat_error_steps` (L6608) and `hasContinueInHead_flat_error_steps` (L6621). These claim: if `HasBreakInHead e label`, then `e` flat-steps to `.lit .undefined` with break error trace.
+The theorems at L6600-6625 are NOT PROVABLE as stated. But the call sites at L7757+ NEED them.
 
-THE PROBLEM: When `.break label` is nested inside `.seq (.break label) b`, Flat.step? produces `.seq (.lit .undefined) b`, NOT `.lit .undefined`. Then it steps to `b`, which is arbitrary.
+**Key insight**: `normalizeExpr_seq_while_first_family` proved that if normalizeExpr produces `.seq a b`, then `a = .while_ c d`. This means normalizeExpr NEVER produces `.seq (.break label) b`. Similarly for `.let`, `.if`, etc. — normalizeExpr CPS-transforms everything, so compound HasBreakInHead constructors (seq_left, seq_right, let_init, etc.) are UNREACHABLE for ANF-normalized expressions.
 
-Tasks:
-1. Read `Flat.step?` definition in `VerifiedJS/Flat/Semantics.lean` (L336)
-2. Trace what happens for EACH HasBreakInHead constructor (defined at ANFConvertCorrect.lean L2704):
-   - `break_direct`: `.break label` → `.lit .undefined` ✓ (one step)
-   - `seq_left`: `.seq (.break label) b` → `.seq (.lit .undefined) b` → `b` — does NOT produce `.lit .undefined`!
-   - `seq_right`: `.seq a (.break label)` — needs `a` to evaluate first, may not terminate
-   - `let_init`: `.let n (.break label) body` → `.let n (.lit .undefined) body` → what?
-3. Determine: is `hasBreakInHead_flat_error_steps` PROVABLE as stated? Or does the statement need modification?
-4. If unprovable, propose a corrected statement that IS provable and still useful at the call sites (L7755-8011)
-5. Check call sites at L7755-8011: what do they actually NEED from this theorem?
-6. Write findings to `agents/wasmspec/break_error_analysis.md`
-
-### Investigation 2: "non-labeled inner value" sorry analysis
-
-ANF has 4 sorries at L6401, L6434, L6530, L6563 labeled "non-labeled inner value: needs eval context lifting". These are `| _ => sorry` catch-all cases after `.labeled` is handled.
-
-Tasks:
-1. Use `lean_hover_info` or read the context around each sorry to understand what constructors remain in the `| _ =>` catch-all
-2. Determine for each: is it closable by contradiction/exfalso (i.e., can those constructors actually reach this point given the normalizeExpr constraints)?
-3. Write findings to `agents/wasmspec/non_labeled_analysis.md`
-
-### Investigation 3: Compound stepping lemma patterns
-
-8 of 22 ANF sorries are "compound" cases at L6774, L6777, L6927, L6930, L7100, L7103, L7254, L7257. These need eval context stepping when the inner expression is compound (seq, let, assign, if, call, etc.).
-
-Tasks:
-1. Read the context around L6774-6777 to understand the proof obligation
-2. What existing eval context lemmas are available? (grep for `step?_.*_ctx` and `step?_.*_error`)
-3. Is there a pattern where depth induction combined with existing lemmas can close these?
-4. Write findings to `agents/wasmspec/compound_analysis.md`
-
-### Step 1: Log start
-```bash
-echo "### $(date -Iseconds) Starting break error + non-labeled + compound analysis" >> agents/wasmspec/log.md
+**Your task**: Verify this by checking:
+1. Read HasBreakInHead definition (grep for `inductive HasBreakInHead`)
+2. For each compound constructor of HasBreakInHead, determine if normalizeExpr can produce that form
+3. If confirmed unreachable: the FIX is to add a lemma:
+```lean
+private theorem normalizeExpr_no_compound_break
+    (e : Flat.Expr) (label : Option Flat.LabelName)
+    (h : HasBreakInHead e label)
+    (hnorm : ∃ orig k n, e = (ANF.normalizeExpr orig k n).fst) :
+    h = .break_direct := by
+  -- cases on h; for break_direct: rfl
+  -- for each compound case: derive contradiction from hnorm
+  sorry
 ```
+Then hasBreakInHead_flat_error_steps only needs to handle break_direct (already provable).
+And call sites for compound cases use `absurd` with normalizeExpr_no_compound_break.
 
-### Step 2: Do all three investigations (Investigation 1 is highest priority)
+4. Read the call sites at L7757-7900 to understand exactly how to restructure
+5. Write your analysis and proposed code changes to `agents/wasmspec/break_fix_plan.md`
 
-### Step 3: Log and EXIT
-```bash
-echo "### $(date -Iseconds) Run complete — [summary]" >> agents/wasmspec/log.md
-```
+### Investigation 2: if_step_sim approach (L7336, L7367, L7370)
 
-## CRITICAL: LOG YOUR WORK
+The proof agent found that characterizing normalizeExpr output as `.if` is harder than expected (not just from `.if` source — `.seq`, `.let` can propagate `.if`).
+
+Tasks:
+1. Read around L7330-7370 to see current proof state
+2. What does if_step_sim actually need to prove? Use `lean_goal` at L7336
+3. Can it be proved by strong induction on expression depth without full characterization?
+4. Write findings to `agents/wasmspec/if_step_sim_plan.md`
+
+### LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

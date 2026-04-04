@@ -1,4 +1,4 @@
-# proof — Close hasBreakInHead/hasContinueInHead, then non-labeled inner value sorries
+# proof — Build multi-step context lifting lemmas, then close compound sorries
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -19,56 +19,69 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## ⚠️ CRITICAL: bindComplex PRODUCES .let ⚠️
 `bindComplex rhs k` returns `.let freshName rhs (k (.var freshName))`.
-Therefore `bindComplex_not_let` is FALSE — DO NOT attempt it.
 SKIP `let_step_sim` entirely.
 
-## STATE: ANF has 22 sorries, ALL in L6400-7410 (step simulation cases).
-normalizeExpr_if_cond_source is DONE ✓ (L2025-2468).
+## STATE: ANF has 22 sorries, ALL in L6400-7414.
 
-## YOUR IMMEDIATE TASKS (in order):
+## ⚠️⚠️⚠️ KEY FINDING FROM WASMSPEC ⚠️⚠️⚠️
 
-### TASK 1: hasBreakInHead_flat_error_steps (L6608) — HIGH PRIORITY
-This theorem says: if `HasBreakInHead e label`, then `e` flat-steps to `.lit .undefined` with break error trace.
+**hasBreakInHead_flat_error_steps (L6612) is NOT PROVABLE as stated.**
+Error events do NOT short-circuit eval contexts in Flat semantics. When `.break label` is inside `.seq (.break label) b`, Flat.step? produces `.seq (.lit .undefined) b`, then steps to `b` — NOT to `.lit .undefined`.
 
-⚠️ KEY DIFFICULTY: Error propagation through eval contexts does NOT immediately produce `.lit .undefined` for compound expressions. When `.break label` is inside `.seq (.break label) b`, the Flat.step? on `.seq` produces `.seq (.lit .undefined) b` with the error event, NOT `.lit .undefined` directly. Then `.seq (.lit .undefined) b` steps silently to `b`.
+**DO NOT waste time on L6612 or L6625 (hasContinueInHead).**
 
-APPROACH — You need multi-step reasoning:
-- Base case `break_direct`: `Flat.step?_break_eq` (L3539) gives single step to `.lit .undefined`. Done.
-- For eval context cases (seq_left, let_init, etc.):
-  1. Use `step?_seq_error` (L1616), `step?_let_init_error` (L1628), etc. to propagate the error through the context
-  2. After error step, you have e.g. `.seq (.lit .undefined) b` — still need to step to `.lit .undefined`
-  3. This means you may need additional stepping after error propagation
-  4. CHECK: does the theorem even hold for `seq_right`? If `HasBreakInHead b label` for `.seq a b`, you'd need to first evaluate `a` to a value, THEN step `b`. But `a` might not terminate!
+**Instead**: All 12 compound sorries + 4 non-labeled sorries share ONE common blocker: missing multi-step context lifting lemmas.
 
-FIRST: Use `lean_goal` at L6608 to see exact proof state. Then try `lean_multi_attempt` with:
+## YOUR TASKS (in order):
+
+### TASK 1: Build Steps_*_ctx multi-step context lifting lemmas (HIGHEST PRIORITY)
+
+These are MECHANICAL — just induction on `Flat.Steps` using existing single-step lemmas.
+
+Build these lemmas (add them near the existing single-step versions around L1450-1650):
+
+```lean
+-- Multi-step seq context: if e steps to e' in multiple steps, then .seq e b steps to .seq e' b
+private theorem Steps_seq_ctx
+    (sf : Flat.State) (evs : List Core.TraceEvent) (sf' : Flat.State)
+    (b : Flat.Expr)
+    (hsteps : Flat.Steps sf evs sf')
+    (hsf : sf.expr = .seq e₁ b → False) -- maybe not needed
+    : Flat.Steps
+        ⟨.seq sf.expr b, sf.env, sf.heap, sf.trace, sf.funcs, sf.callStack⟩
+        evs
+        ⟨.seq sf'.expr b, sf'.env, sf'.heap, sf'.trace, sf'.funcs, sf'.callStack⟩ := by
+  induction hsteps with
+  | refl _ => exact Flat.Steps.refl _
+  | tail hsteps hstep ih =>
+    exact Flat.Steps.tail ih (by -- use step?_seq_ctx here)
 ```
-["induction h", "cases h"]
-```
-to see what constructor cases appear. Verify the base case works before tackling compound cases.
 
-Existing eval context error lemmas:
-- `step?_seq_error` (L1616): `.seq a b` error propagation
-- `step?_let_init_error` (L1628): `.let` error propagation
-- `step?_unary_error` (L1640): `.unary` error propagation
-- `step?_seq_ctx` (L1452): `.seq a b` non-error context stepping
+You need multi-step versions for:
+1. `Steps_seq_ctx` — `.seq [·] b` (use `step?_seq_ctx` at L1452)
+2. `Steps_let_init_ctx` — `.let name [·] body` (use `step?_let_init_ctx`)
+3. `Steps_throw_ctx` — `.throw [·]` (use `step?_throw_ctx`)
+4. `Steps_return_some_ctx` — `.return (some [·])` (use `step?_return_some_ctx`)
+5. `Steps_await_ctx` — `.await [·]` (use `step?_await_ctx`)
+6. `Steps_yield_some_ctx` — `.yield (some [·]) d` (use `step?_yield_some_ctx`)
 
-IF this theorem is harder than expected, SKIP to Task 2.
+First `grep -n "step?_seq_ctx\|step?_let_init_ctx\|step?_throw_ctx\|step?_return_some_ctx\|step?_await_ctx\|step?_yield_some_ctx"` to find exact locations of single-step versions. Read them. Then build multi-step versions by induction on Flat.Steps.
 
-### TASK 2: "non-labeled inner value" sorries (L6401, L6434, L6530, L6563)
-These are `| _ => sorry` catch-all cases after `.labeled` is handled.
-The remaining constructors after labeled are: `.var`, `.lit`, `.this`, `.seq`, `.let`, `.assign`, `.if`, `.call`, `.binary`, `.unary`, `.typeof`, `.getProp`, `.setProp`, `.getIndex`, `.setIndex`, `.deleteProp`, `.return`, `.yield`, `.while_`, `.tryCatch`, `.break`, `.continue`, `.throw`, `.await`, etc.
+### TASK 2: Use Steps_*_ctx to close compound Type A sorries (L6778, L6931, L7104, L7258)
 
-Use `lean_goal` at each sorry to see what constructors remain. Many might be closable by:
-- `contradiction` (if the outer normalizeExpr output can't come from these)
-- `exfalso` + simp reasoning
-- Direct cases on the remaining constructors
+Pattern for each: the sub-expression is compound (not a value). Apply IH to get multi-step reduction to value. Lift through context with Steps_*_ctx. Then apply the final single-step rule.
 
-### TASK 3: hasContinueInHead_flat_error_steps (L6621) — SAME PATTERN as Task 1
+### TASK 3: Close non-labeled inner value sorries (L6409, L6442, L6534, L6567)
+
+These need TWO-LAYER context lifting (e.g., `.return (some (.return (some [·])))`). Build by composing two Steps_*_ctx calls.
 
 ### SKIP THESE:
-- L7284 (.let characterization) — bindComplex PRODUCES .let, approach wrong
-- L6774-7257 (compound flat_arg/inner_val) — need depth induction, deprioritize
-- ClosureConvertCorrect.lean — other agents own it
+- L6612 (hasBreakInHead) — NOT PROVABLE as stated
+- L6625 (hasContinueInHead) — NOT PROVABLE as stated
+- L7288 (.let characterization) — bindComplex PRODUCES .let
+- L6781, L6934, L7107, L7261 (Type B compound — HasXInHead cases) — depend on fixing HasBreakInHead first
+- L7336, L7367, L7370 (if simulation) — separate approach needed
+- L7414 (final sorry) — depends on everything else
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`
