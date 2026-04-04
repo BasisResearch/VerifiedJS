@@ -4329,15 +4329,22 @@ private theorem closureConvert_step_simulation
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
             have hcore := Core_step?_call_consoleLog_flat_msg args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
             rw [← hsc_eta] at hcore
-            -- Both steps produce the same (event, state') pair: use simp to normalize dependent match
-            simp only [] at hflat
-            let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap, sc.trace ++ [ev], sc.funcs, sc.callStack⟩
+            -- Both steps produce the same (event, state') pair
             have hpair := hstep.symm.trans hflat
             simp only [Option.some.injEq, Prod.mk.injEq] at hpair
             obtain ⟨hev_eq, hsf'_eq⟩ := hpair
-            subst hev_eq; subst hsf'_eq
-            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · exact hcore
+            subst hsf'_eq
+            -- Define sc' using the core event (avoids dependent match on hfvals)
+            let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
+              sc.trace ++ [Core.TraceEvent.log (match argVals.map Flat.convertValue with
+                | [v] => Flat.valueToString v
+                | vs => " ".intercalate (vs.map Flat.valueToString))],
+              sc.funcs, sc.callStack⟩
+            have hev_core : ev = Core.TraceEvent.log (match argVals.map Flat.convertValue with
+                | [v] => Flat.valueToString v
+                | vs => " ".intercalate (vs.map Flat.valueToString)) := hev_eq
+            subst hev_core
+            refine ⟨injMap, sc', ⟨hcore⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
             · simp [sc', htrace]
             · exact hinj
             · exact henvCorr
