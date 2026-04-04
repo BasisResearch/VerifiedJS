@@ -4450,3 +4450,6 @@ MAJOR PROGRESS this run. NoNestedAbrupt went from 22 sorry → 7 sorry (list/com
 Previous sorry counts were under-counting by grouping. Real count is 56 lines. Progress IS happening (agent logs show closures), but the architectural blockers (CCState threading for ~5 CC sorries, multi-step sim for captured var, newObj semantic mismatch) cannot be closed with tactic work alone — they need code changes to ClosureConvert.lean or Flat/Semantics.lean.
 
 2026-04-04T18:40:53+00:00 DONE
+
+## Run: 2026-04-04T19:05:01+00:00
+
