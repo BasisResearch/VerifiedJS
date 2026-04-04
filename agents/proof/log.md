@@ -5616,3 +5616,4 @@ Changes made:
 Result: sorry count stays at 24 (old sorry replaced with `hna`, new sorry at standalone `NoNestedAbrupt_step_preserved`). The sorry moved from deep inside `anfConvert_step_star` (complex simulation proof) to a standalone, well-scoped lemma. Build passes (no new errors — pre-existing errors at L8923-9062 unchanged).
 
 Note: `NoNestedAbrupt_step_preserved` may need additional conditions (e.g., all function bodies are NoNestedAbrupt) to be fully provable, since Flat.step? on function calls introduces function bodies from the global table. However, in the simulation context, function call steps don't occur.
+2026-04-04T11:30:02+00:00 SKIP: already running

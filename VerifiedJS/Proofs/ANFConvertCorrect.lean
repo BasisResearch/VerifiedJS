@@ -5595,6 +5595,12 @@ private theorem noNestedAbrupt_hasReturnInHead_absurd_await {arg : Flat.Expr}
   exact absurd (hasReturnInHead_implies_hasAbruptCompletion hth)
     (by rw [NoNestedAbrupt.await_arg_abruptFree hna]; decide)
 
+private theorem noNestedAbrupt_hasReturnInHead_absurd_return {arg : Flat.Expr}
+    (hna : NoNestedAbrupt (.return (some arg)))
+    (hth : HasReturnInHead arg) : False := by
+  exact absurd (hasReturnInHead_implies_hasAbruptCompletion hth)
+    (by rw [NoNestedAbrupt.return_some_arg_abruptFree hna]; decide)
+
 /-- HasReturnInHead expressions are never values. -/
 private theorem HasReturnInHead_not_value (e : Flat.Expr)
     (h : HasReturnInHead e) : Flat.exprValue? e = none := by
@@ -9009,7 +9015,7 @@ private theorem normalizeExpr_if_step_sim
           obtain ⟨hcond_eq, n1, hthen_r, _⟩ := normalizeExpr_if_lit_decomp fv then_flat else_flat k n cond then_ else_ m hnorm
           rw [hcond_eq, evalTrivial_trivialOfValue] at heval
           obtain rfl := Except.ok.inj heval
-          have hfbool : Flat.toBoolean fv = true := by cases fv <;> simp_all [Flat.toBoolean]
+          have hfbool : Flat.toBoolean fv = true := by cases fv <;> (simp [Flat.toBoolean]; first | rfl | exact absurd ‹_› (by decide))
           refine ⟨⟨then_flat, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent],
             .tail ⟨?_⟩ (.refl _), ?_, ?_, ?_⟩
           · simp [Flat.step?, Flat.exprValue?, hfbool, Flat.step?_pushTrace_expand]
@@ -9023,7 +9029,7 @@ private theorem normalizeExpr_if_step_sim
           split at heval
           · rename_i v' hlookup
             simp at heval; subst heval
-            have hfbool : Flat.toBoolean v' = true := by cases v' <;> simp_all [Flat.toBoolean]
+            have hfbool : Flat.toBoolean v' = true := by cases v' <;> (simp [Flat.toBoolean]; first | rfl | exact absurd ‹_› (by decide))
             have hstep1 : Flat.step? ⟨.if (.var name_c) then_flat else_flat, env, heap, trace, funcs, cs⟩ =
                 some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
               simp [Flat.step?, Flat.exprValue?, hlookup, Flat.step?_pushTrace_expand]
@@ -9043,7 +9049,7 @@ private theorem normalizeExpr_if_step_sim
           split at heval
           · rename_i v' hlookup
             simp at heval; subst heval
-            have hfbool : Flat.toBoolean v' = true := by cases v' <;> simp_all [Flat.toBoolean]
+            have hfbool : Flat.toBoolean v' = true := by cases v' <;> (simp [Flat.toBoolean]; first | rfl | exact absurd ‹_› (by decide))
             have hstep1 : Flat.step? ⟨.if .this then_flat else_flat, env, heap, trace, funcs, cs⟩ =
                 some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
               simp [Flat.step?, Flat.exprValue?, hlookup, Flat.step?_pushTrace_expand]
@@ -9071,7 +9077,7 @@ private theorem normalizeExpr_if_step_sim
           obtain ⟨hcond_eq, n1, _, helse_r⟩ := normalizeExpr_if_lit_decomp fv then_flat else_flat k n cond then_ else_ m hnorm
           rw [hcond_eq, evalTrivial_trivialOfValue] at heval
           obtain rfl := Except.ok.inj heval
-          have hfbool : Flat.toBoolean fv = false := by cases fv <;> simp_all [Flat.toBoolean]
+          have hfbool : Flat.toBoolean fv = false := by cases fv <;> (simp [Flat.toBoolean]; first | rfl | exact absurd ‹_› (by decide))
           refine ⟨⟨else_flat, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent],
             .tail ⟨?_⟩ (.refl _), ?_, ?_, ?_⟩
           · simp [Flat.step?, Flat.exprValue?, hfbool, Flat.step?_pushTrace_expand]
@@ -9085,7 +9091,7 @@ private theorem normalizeExpr_if_step_sim
           split at heval
           · rename_i v' hlookup
             simp at heval; subst heval
-            have hfbool : Flat.toBoolean v' = false := by cases v' <;> simp_all [Flat.toBoolean]
+            have hfbool : Flat.toBoolean v' = false := by cases v' <;> (simp [Flat.toBoolean]; first | rfl | exact absurd ‹_› (by decide))
             have hstep1 : Flat.step? ⟨.if (.var name_c) then_flat else_flat, env, heap, trace, funcs, cs⟩ =
                 some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
               simp [Flat.step?, Flat.exprValue?, hlookup, Flat.step?_pushTrace_expand]
@@ -9105,7 +9111,7 @@ private theorem normalizeExpr_if_step_sim
           split at heval
           · rename_i v' hlookup
             simp at heval; subst heval
-            have hfbool : Flat.toBoolean v' = false := by cases v' <;> simp_all [Flat.toBoolean]
+            have hfbool : Flat.toBoolean v' = false := by cases v' <;> (simp [Flat.toBoolean]; first | rfl | exact absurd ‹_› (by decide))
             have hstep1 : Flat.step? ⟨.if .this then_flat else_flat, env, heap, trace, funcs, cs⟩ =
                 some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
               simp [Flat.step?, Flat.exprValue?, hlookup, Flat.step?_pushTrace_expand]
