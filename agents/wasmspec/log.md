@@ -6048,3 +6048,27 @@ observable events and breaking ANF_SimRel correspondence.
 ## Run: 2026-04-04T07:30:02+00:00
 
 ### 2026-04-04T07:30:12+00:00 Starting run
+### 2026-04-04T08:05:29+00:00 Built HasIfInHead infrastructure
+- Added HasIfInHead/HasIfInHeadList/HasIfInHeadProps inductive types
+- Added bindComplex_never_if_general, normalizeExpr_labeled_not_if, normalizeExpr_while_not_if, normalizeExpr_tryCatch_not_if
+- Added normalizeExprList_if_or_k, normalizeProps_if_or_k
+- Added normalizeExpr_if_or_k (main disjunction theorem)
+- Added normalizeExpr_if_implies_hasIfInHead (master inversion)
+- Build succeeds. ~430 lines of new infrastructure.
+- L8925/L8928 (if step sim) still need flat stepping proof by induction on depth
+
+### 2026-04-04T08:09:54+00:00 Run complete — added HasIfInHead infrastructure (~430 lines)
+#### Summary
+- Tasks 1 & 2 from prompt already closed (L7711/L7762 passthrough lemma exists)
+- Built HasIfInHead/HasIfInHeadList/HasIfInHeadProps inductive types
+- Built helper lemmas: bindComplex_never_if_general, normalizeExpr_labeled_not_if, normalizeExpr_while_not_if, normalizeExpr_tryCatch_not_if
+- Built normalizeExprList_if_or_k, normalizeProps_if_or_k list/prop disjunction helpers
+- Built ANF.normalizeExpr_if_or_k: main disjunction theorem (if from e OR from k)
+- Built ANF.normalizeExpr_if_implies_hasIfInHead: master inversion for .if
+- Added HasIfInHead structural knowledge at if step sim sorry sites (L8930/L8935)
+- Build succeeds, 22 sorries (unchanged)
+#### Blocking analysis
+- L8930/L8935 (if step sim): need normalizeExpr_if_flat_step lemma by depth induction (~350 lines)
+- L8846 (let step sim): needs HasLetInHead + flat stepping (more complex, many bindComplex sources)
+- L8204/L8339 (NESTED_THROW): observable trace mismatch for nested throws - may need theorem redesign
+- L9358/L9411 (break/continue compound): needs Flat.step? error propagation (semantics change)

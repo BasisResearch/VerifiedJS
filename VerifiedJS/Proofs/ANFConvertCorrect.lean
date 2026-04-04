@@ -8922,10 +8922,17 @@ private theorem normalizeExpr_if_step_sim
     split at hstep_eq
     · -- toBoolean v = true: step to then_
       obtain ⟨rfl, rfl⟩ := hstep_eq
-      sorry -- Need: sf.expr has .if at eval head, flat steps to then_flat, SimRel for then_
+      have hif_head := ANF.normalizeExpr_if_implies_hasIfInHead sf.expr k hk cond then_ else_ n m hnorm
+      -- hif_head : HasIfInHead sf.expr tells us where the .if lives in sf.expr.
+      -- Need: flat steps through sf.expr's evaluation context to reach the .if,
+      -- branch on toBoolean v = true, and establish ANF_SimRel for the then_ branch.
+      -- This requires induction on sf.expr.depth (analogous to normalizeExpr_labeled_step_sim).
+      sorry
     · -- toBoolean v = false: step to else_
       obtain ⟨rfl, rfl⟩ := hstep_eq
-      sorry -- Need: sf.expr has .if at eval head, flat steps to else_flat, SimRel for else_
+      have hif_head := ANF.normalizeExpr_if_implies_hasIfInHead sf.expr k hk cond then_ else_ n m hnorm
+      -- Same approach as true branch but for else_.
+      sorry
   · -- evalTrivial env cond = .error msg
     rename_i msg herr
     obtain ⟨rfl, rfl⟩ := hstep_eq

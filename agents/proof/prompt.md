@@ -1,4 +1,4 @@
-# proof — STOP WORKING ON TRIVIALCHAIN. DO P1: NoNestedAbrupt exfalso closures.
+# proof — Close NESTED_THROW (L8204) via NoNestedAbrupt exfalso
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -17,62 +17,72 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 - If build OOMs: add `set_option maxHeartbeats 200000` above the theorem
 - Do NOT attempt to build the entire file if it's failing
 
-## YOU HAVE BEEN WORKING ON TRIVIALCHAIN FOR 2+ RUNS. STOP.
+## GREAT JOB closing TRIVIAL_CHAIN_IN_THROW last run. Now: NoNestedAbrupt.
 
-The trivialChain seq case (L7711) is blocked on a normalizeExpr passthrough lemma. This is hard. **DO NOT continue working on it.** wasmspec will handle trivialChain.
+## STATE: ANF has 22 sorry lines. Your job: close L8204 + L8339 via NoNestedAbrupt.
 
-## STATE: ANF has ~24 sorry lines. Your job: close 5 via NoNestedAbrupt exfalso.
+## YOUR ONE PRIORITY: Close NESTED_THROW sorry at L8204
 
-## YOUR ONE PRIORITY: Add NoNestedAbrupt hypothesis and close HasXInHead sorries
+L8204 is the `HasThrowInHead e` branch of `normalizeExpr_throw_compound_case`. The `¬HasThrowInHead` branch is DONE (you proved it via trivialChain_throw_steps). Now close the `HasThrowInHead e` branch.
 
-The NoNestedAbrupt framework is FULLY GROUNDED (wasmspec proved all bridge theorems). You can now use it.
+### The plan: add NoNestedAbrupt hypothesis, derive contradiction
 
-### Step 1: Add `(hna : NoNestedAbrupt sf.expr)` to `normalizeExpr_throw_step_sim`
+`NoNestedAbrupt` is fully grounded — all bridge theorems are proved (L4472/4478/4484 closed by wasmspec). The key insight: if `HasThrowInHead e` is true AND `NoNestedAbrupt (.throw e)` is true, that's a contradiction because NoNestedAbrupt says `.throw e` has no abrupt completions nested in its argument `e`.
 
-Find the theorem (around L7770). Change its signature to include `(hna : NoNestedAbrupt sf.expr)`.
+### Step 1: Check what lemmas exist
 
-Then find the `| _ =>` case that dispatches to `normalizeExpr_throw_compound_case`. That compound case helper also needs `(hna : NoNestedAbrupt (.throw e))`. Add it.
+Use `lean_local_search` for:
+- `NoNestedAbrupt`
+- `hasThrowInHead_implies_hasAbruptCompletion`
+- `throw_arg_abruptFree` or similar
+- `AbruptFree`
 
-### Step 2: Close the NESTED_THROW sorry (L7756)
-
-In `normalizeExpr_throw_compound_case`, after `rcases Classical.em (HasThrowInHead e)`, the `hth` branch (L7756) should be:
+The pattern should be:
 ```lean
-    exfalso
-    have h1 := hasThrowInHead_implies_hasAbruptCompletion hth
-    have h2 := throw_arg_abruptFree hna  -- or NoNestedAbrupt.throw_arg_abruptFree
-    simp [h2] at h1
+exfalso
+have h1 := hasThrowInHead_implies_hasAbruptCompletion hth
+-- h1 : HasAbruptCompletion e
+have h2 : AbruptFree e := NoNestedAbrupt.throw_inv hna  -- or similar destructor
+exact absurd h1 h2  -- or use simp/contradiction
 ```
 
-Use `lean_hover_info` on `NoNestedAbrupt` and `throw_arg_abruptFree` to confirm exact names. Use `lean_multi_attempt` at L7756 to test before editing.
+Use `lean_hover_info` on `NoNestedAbrupt` to see its constructors and what inversion lemma gives you `AbruptFree e` from `NoNestedAbrupt (.throw e)`.
 
-### Step 3: Similarly close L8044 (HasReturnInHead), L8217 (HasAwaitInHead), L8371 (HasYieldInHead)
+### Step 2: Add `(hna : NoNestedAbrupt sf.expr)` to the theorem
 
-Add `(hna : NoNestedAbrupt sf.expr)` to:
-- `normalizeExpr_return_step_sim` → close HasReturnInHead sorry
-- `normalizeExpr_await_step_sim` → close HasAwaitInHead sorry
-- `normalizeExpr_yield_step_sim` → close HasYieldInHead sorry
-
-For each, the pattern is:
+Add `hna` to `normalizeExpr_throw_compound_case` (around L8170). Then at L8204:
 ```lean
+  · -- NESTED_THROW: e itself contains a throw in head position
     exfalso
-    have h1 := hasXInHead_implies_hasAbruptCompletion hth
-    have h2 := X_arg_abruptFree hna
-    simp [h2] at h1
+    have h_abrupt := hasThrowInHead_implies_hasAbruptCompletion hth
+    have h_free := ... -- get AbruptFree e from hna
+    exact absurd h_abrupt h_free
 ```
 
-### Step 4: Update callers in anfConvert_step_star to pass hna
+Use `lean_multi_attempt` at L8204 to test tactics BEFORE editing.
 
-Add `(hna : NoNestedAbrupt sf.expr)` to `anfConvert_step_star`'s signature. Pass it through to the step sim calls.
+### Step 3: Propagate hna to callers
+
+`normalizeExpr_throw_compound_case` is called from `normalizeExpr_throw_step_sim` (L8336). Add `hna` there too, and pass it through. Then `normalizeExpr_throw_step_sim` is called from `anfConvert_step_star` — add `hna` to the main theorem signature.
+
+### Step 4: Close L8339 (compound throw dispatch)
+
+L8339 is in the `| _ =>` branch of `normalizeExpr_throw_step_sim`. After Step 2, this should dispatch to the updated `normalizeExpr_throw_compound_case` with `hna`. If L8339 is a different sorry pattern, use `lean_goal` to understand it.
+
+### Step 5: Apply same pattern to return (L8489/8492), yield (L8816/8819)
+
+Same exfalso pattern with `HasReturnInHead`, `HasYieldInHead` etc. Each needs `NoNestedAbrupt` → `AbruptFree` → contradiction.
 
 ### VALIDATE with lean_multi_attempt BEFORE editing
 
-Test each tactic at the sorry position first. If it doesn't work, use `lean_goal` + `lean_hover_info` to debug.
+Test each tactic at the sorry position. If names don't match, use `lean_hover_info` and `lean_local_search` to find correct names.
 
 ## DO NOT:
-- Work on trivialChain (L7711, L7762) — wasmspec handles this
-- Work on Group A (L7077-7263), L8903/8956 (break/continue), L8398/L8446/L8477/L8480/L8524
-- Add new infrastructure > 20 lines
-- Analyze without writing proof code
+- Work on trivialChain — DONE
+- Work on Group A (L7516-7702) eval context lifting — PARKED
+- Work on L8846 (let step sim), L8894 (while step sim), L8925/8928 (if step sim) — wasmspec handles these
+- Work on L8972 (tryCatch), L9351/9404 (break/continue) — DEFERRED
+- Add new infrastructure > 20 lines (the framework exists, just USE it)
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

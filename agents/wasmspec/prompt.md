@@ -1,4 +1,4 @@
-# wasmspec — Close trivialChain + let/if step sim sorries in ANF
+# wasmspec — Close L8925/L8928 (if step sim) using HasIfInHead you just built
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -8,36 +8,45 @@
 - You CAN edit ANFConvertCorrect.lean
 - Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
+## GREAT JOB building HasIfInHead infrastructure. Now USE it.
+
+## STATE: ANF has 22 sorry lines. Your targets: L8925 + L8928.
+
 ## YOUR TASKS (in priority order)
 
-### TASK 1: Close L7711 (trivialChain seq case normalizeExpr passthrough)
+### TASK 1: Close L8925 (if step sim, toBoolean = true → then_)
 
-The proof agent started the trivialChain_throw_steps proof and got stuck at L7711 in the `.seq a b` case. The issue: after stepping `.seq a b` to `e'`, we need to show `normalizeExpr e' k = normalizeExpr b k` (i.e., normalizeExpr is a "passthrough" for trivial chains that discards the left side of seq).
+You built `normalizeExpr_if_or_k` and `normalizeExpr_if_implies_hasIfInHead`. Now use them.
 
-Read the context around L7700-7712 carefully with `lean_goal` at L7711. You likely need a helper lemma:
-```lean
-private theorem normalizeExpr_trivialChain_seq_passthrough
-    (a b : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n : Nat)
-    (htc : isTrivialChain (.seq a b) = true) :
-    (ANF.normalizeExpr (.seq a b) k).run n = (ANF.normalizeExpr b k).run n := by
-  simp [ANF.normalizeExpr]  -- normalizeExpr of seq recurses on a, then b
-  sorry -- may need induction on a if non-trivial
-```
+At L8925, the goal is: given `ANF.step?` on `.if cond then_ else_` with `toBoolean v = true`, show Flat steps from sf to some sf' matching the then_ branch.
 
-Or the approach might be simpler: `normalizeExpr (.seq a b) k` = `do let _ ← normalizeExpr a (fun _ => pure (.trivial _)); normalizeExpr b k`. For trivial `a`, normalizeExpr a just returns a trivial, so the seq becomes `normalizeExpr b k`.
+The proof pattern:
+1. `normalizeExpr_if_implies_hasIfInHead` tells you sf.expr has `.if` at eval head position
+2. Use `HasIfInHead` to identify the Flat `.if` form
+3. Flat steps: evaluate condition to value, then step `.if (lit v) then_flat else_flat` to `then_flat` (since `toBoolean v = true`)
+4. Establish ANF_SimRel for the resulting state with `then_` and `then_flat`
 
-Use `lean_hover_info` on `ANF.normalizeExpr` and `lean_goal` at L7711 to understand the exact goal.
+Use `lean_goal` at L8925 to see exact goal shape. Use `lean_multi_attempt` to test tactics.
 
-### TASK 2: Close L7762 (TRIVIAL_CHAIN_IN_THROW)
+Key pieces you'll need:
+- `Flat.step?_if_true`: Flat steps `.if (lit v) then else` to `then` when `toBoolean v = true`
+- `normalizeExpr_if_or_k`: your new disjunction theorem
+- The normalizeExpr equation for `.if cond then_ else_`
 
-After L7711 is closed, the trivialChain proof at L7762 should become provable. The `¬HasThrowInHead e` + `isTrivialChain e = true` branch needs to show `.throw e` steps to a terminal state matching `ANF.evalTrivial env arg`.
+### TASK 2: Close L8928 (if step sim, toBoolean = false → else_)
 
-### TASK 3: If blocked on T1/T2, work on L8398 (let step sim) or L8477/L8480 (if step sim)
+Same pattern as L8925 but with `toBoolean v = false` → `else_flat`.
 
-These are independent sorries that don't need NoNestedAbrupt or trivialChain. Use `lean_goal` to understand what's needed.
+### TASK 3: If blocked, try L8846 (let step sim)
+
+L8846 needs characterization of what produces `.let` from normalizeExpr. You may need a `HasLetInHead` infrastructure similar to HasIfInHead. But try simpler approaches first — `lean_goal` at L8846 to see if the proof follows from existing normalizeExpr equations.
+
+### TASK 4: If still blocked, try L8894 (while step sim)
+
+L8894 is marked as needing multi-step simulation for while loops. Only attempt if T1-T3 are done or blocked.
 
 ### COORDINATE WITH PROOF AGENT
-proof agent is working on NoNestedAbrupt exfalso closures (L7756, L8044, L8217, L8371). DO NOT touch those areas. Your work on L7711/L7762 is below their work and should not conflict. If you see merge conflicts, check the area proof agent is editing and work around it.
+proof agent is working on L8204/L8339 (NoNestedAbrupt exfalso for throw) and L8489/8492 (return compound). DO NOT touch those areas. Your work on L8925/L8928 is separate and should not conflict.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

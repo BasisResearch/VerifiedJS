@@ -1,4 +1,4 @@
-# jsspec — FIX CC BUILD BREAKAGE FIRST, then close sorries
+# jsspec — CC is mostly blocked. Close L6616, then explore architecture fixes.
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,47 +11,45 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## ⚠️ CRITICAL: CC BUILD IS BROKEN ⚠️
+## GREAT JOB closing L6673 last run. CC is now at 14 sorries.
 
-Build errors (as of 07:00):
-1. **L4251:6** — `Alternative 'none' has not been provided` for `cases hallv : Core.allValues args with`
-   - The `| none =>` case IS at L4326 but Lean can't see it — likely a type/tactic error inside the `| some argVals =>` branch (L4252-L4325) that breaks parsing
-   - Look for type mismatches or incomplete tactic blocks between L4252 and L4325
-   - This is the ROOT CAUSE — the 20+ "Alternative not provided" errors at L3372 are CASCADING from this
+## STATE: CC has 14 sorry tokens. Most are architecturally blocked.
 
-2. **L3372:2** — Many missing alternatives (newObj, getProp, etc.) — these EXIST later in the file. Fixing L4251 should fix ALL of them.
+### Sorry classification:
+- **Unprovable (2)**: L1507, L1508 (forIn/forOf stubs) — DO NOT TOUCH
+- **Unprovable (1)**: L5148 (getIndex string) — DO NOT TOUCH
+- **Semantic mismatch (2)**: L4502, L4510 (newObj non-value) — DO NOT TOUCH
+- **CCStateAgree blocked (5)**: L3719, L3742, L6543, L6544, L6724 — cannot close without architecture change
+- **HeapInj blocked (1)**: L6386 (functionDef) — cannot close without HeapInj extension
+- **FuncsCorr blocked (1)**: L4296 (non-consoleLog call) — cannot close without FuncsCorr invariant
+- **Multi-step blocked (1)**: L3391 (captured var) — 2 vs 1 step mismatch
+- **Potentially actionable (1)**: L6616 (tryCatch body-error with finally)
 
-FIX THE BUILD BEFORE ANYTHING ELSE. Do NOT attempt any sorry closures until the build compiles.
+## YOUR TASKS
 
-## STATE: CC has 15 sorry tokens. Target: 15 → 11.
+### TASK 1: Close L6616 (tryCatch body-error CCStateAgree)
 
-## YOUR TASKS (after build is fixed, strict priority order):
+L6616 is similar to L6673 which you just closed. Use `lean_goal` at L6616 to see the exact goal. The pattern from L6673: thread IH's CCStateAgree through tryCatch sub-conversions using `convertExpr_state_determined`.
 
-### TASK 1: Close functionDef sorry at ~L6386
-`| functionDef fname params body isAsync isGen => sorry`
-Use `lean_goal` to see what's needed. Core and Flat both allocate a closure — the proof should show that the conversion of a functionDef in both Core and Flat produce equivalent results. Try `simp` + constructor matching first.
+### TASK 2: If L6616 is blocked, investigate FuncsCorr for L4296
 
-### TASK 2: Close captured var sorry at ~L3391
-Multi-step gap: Core takes 1 step, Flat takes 2 steps for captured variable lookup.
-Use `lean_goal` to understand what's needed, then construct the witness explicitly.
+L4296 (non-consoleLog call) needs `sf.funcs[idx] ↔ sc.funcs[idx]` correspondence. Check if any existing invariant (HeapInj, EnvCorr, etc.) covers function table correspondence. If not, see if adding a `FuncsCorr` field to the simulation relation is feasible. Use `lean_local_search` for `FuncsCorr`, `funcs`, `FuncDef`.
 
-### TASK 3: Close non-consoleLog call sorry at ~L4296
-Needs `sf.funcs[idx] ↔ sc.funcs[idx]` correspondence. Check if `FuncsCorr` or similar is in the proof context with `lean_goal`.
+### TASK 3: If T1-T2 are blocked, investigate multi-step sim for L3391
 
-### TASK 4: Close if-else input CCStateAgree sorry at ~L3742
-The first sorry on that line. Use `lean_goal`. This may be similar to the second sorry you already proved.
+L3391 (captured var) needs Flat to take 2 steps (getEnv var lookup + value) where Core takes 1 step (direct var lookup). Consider adding a `Flat.Steps` witness with 2 steps. Use `lean_goal` at L3391 to see what's needed.
 
-### TASK 5: If you close any of the above, try tryCatch sorries at ~L6543, L6616, L6673
+### TASK 4: Architecture analysis for CCStateAgree
 
-## DO NOT TOUCH (unprovable):
-- L1507, L1508 — forIn/forOf stubs (theorem false)
-- ~L5148 — getIndex string (Float.toString opaque)
+5 sorries are blocked by CCStateAgree. The root cause: converting both branches of if/while allocates fresh IDs, but only one branch executes. Write a short analysis (< 20 lines) in agents/jsspec/log.md about whether:
+1. Making variable naming position-based (instead of counter-based) is feasible
+2. Or adding a "both-branch-deterministic" lemma is feasible
+This is ANALYSIS ONLY — do not change architecture without supervisor approval.
 
-## DO NOT TOUCH (semantic mismatch):
-- ~L4502, ~L4510 — newObj non-value
-
-## DO NOT TOUCH (CCStateAgree blocked):
-- ~L3719, ~L6544, ~L6709
+## DO NOT:
+- Touch L1507, L1508, L5148, L4502, L4510
+- Make architectural changes without clear plan
+- Edit ANFConvertCorrect.lean
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`
