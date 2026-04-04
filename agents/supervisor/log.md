@@ -1,3 +1,55 @@
+## Run: 2026-04-04T08:30:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 22 + CC 14 = **36** (LowerCorrect 0)
+- **Delta from last run**: 36 → 36 = **0**. Agents mid-run, no closures yet.
+
+### Why sorry count is flat
+All 3 agents are mid-run (proof started 08:30, wasmspec started 08:15, jsspec finished 08:00). No sorries closed this cycle. Expected closures next cycle:
+- proof: L8204 (NoNestedAbrupt exfalso) → potentially cascades to L8339, L8489/8492, L8662/8665, L8816/8819 = up to -8
+- wasmspec: L8930/L8935 (if step sim via HasIfInHead) = -2
+
+### What happened since last run
+
+1. **proof**: Just started (08:30). Working on L8204 NoNestedAbrupt exfalso. Infrastructure is in place (wasmspec built NoNestedAbrupt + bridge theorems + absurd lemmas last cycle). Agent has correct approach.
+
+2. **jsspec**: Finished 08:00. Closed L6673 (tryCatch non-error). Investigated all remaining 13 sorries — ALL blocked by architecture (CCStateAgree×6, HeapInj×1, FuncsCorr×1, multi-step×1, unprovable×3, semantic-mismatch×2). Only L6616 might be actionable.
+
+3. **wasmspec**: Started 08:15. Built HasIfInHead infrastructure last cycle (~430 lines). Now needs flat stepping proof for L8930/L8935. Also closed all 3 mutual induction sorries (L4472/4478/4484) earlier.
+
+### Actions Taken
+1. Counted sorries: ANF 22 + CC 14 = 36. Flat (agents mid-run).
+2. **REWROTE jsspec prompt**: NEW STRATEGY — eliminate L1507/L1508 (forIn/forOf) by switching 18 callers from `convertExpr_not_value` to already-proved `convertExpr_not_value_supported`. Mechanical -2 sorries. Then investigate L5148, attempt L6616, and do CCStateAgree architecture analysis.
+3. **Kept proof prompt**: Agent just started with correct NoNestedAbrupt approach. Infrastructure ready.
+4. **Kept wasmspec prompt**: Agent running with correct HasIfInHead flat stepping approach.
+5. Logged to time_estimate.csv: 36.
+
+### Sorry Breakdown
+
+**ANF (22 sorry tokens):**
+- Group A (7): L7516, L7549, L7560, L7641, L7674, L7685, L7702 — eval context lifting, PARKED
+- NESTED_THROW (L8204): TARGET — proof agent, NoNestedAbrupt exfalso (RUNNING)
+- Throw dispatch (L8339): TARGET — proof agent, flows from L8204
+- Return compound (L8489, L8492): TARGET — proof agent, same NoNestedAbrupt pattern
+- Await compound (L8662, L8665): DEFERRED — same pattern after throw/return
+- Yield compound (L8816, L8819): DEFERRED — same pattern
+- Let step sim (L8846): DEFERRED
+- While step sim (L8894): PARKED — needs multi-step sim
+- If step sim (L8930, L8935): TARGET — wasmspec, HasIfInHead flat stepping (RUNNING)
+- TryCatch step sim (L8979): DEFERRED
+- Break/Continue (L9358, L9411): PARKED
+
+**CC (14 sorry tokens):**
+- False theorem fixable (2): L1507, L1508 — jsspec TARGET (switch to _supported version)
+- Unprovable (1): L5148 — jsspec investigating
+- Semantic mismatch (2): L4502, L4510
+- CCStateAgree blocked (6): L3719, L3742, L6543, L6544, L6616, L6724
+- HeapInj blocked (1): L6386
+- FuncsCorr blocked (1): L4296
+- Multi-step blocked (1): L3391
+
+---
+
 ## Run: 2026-04-04T08:05:01+00:00
 
 ### Metrics
@@ -10289,3 +10341,6 @@ proof agent has the infrastructure but hasn't actually CLOSED any sorries with i
 ## Run: 2026-04-04T08:05:01+00:00
 
 2026-04-04T08:10:14+00:00 DONE
+
+## Run: 2026-04-04T08:30:02+00:00
+

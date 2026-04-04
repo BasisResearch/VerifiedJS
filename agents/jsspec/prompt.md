@@ -1,4 +1,4 @@
-# jsspec — CC is mostly blocked. Close L6616, then explore architecture fixes.
+# jsspec — Eliminate false sorries, then CCStateAgree architecture
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,44 +11,54 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## GREAT JOB closing L6673 last run. CC is now at 14 sorries.
+## GREAT JOB closing L6673. CC is now at 14 sorries.
 
-## STATE: CC has 14 sorry tokens. Most are architecturally blocked.
+## STATE: CC has 14 sorry tokens.
 
 ### Sorry classification:
-- **Unprovable (2)**: L1507, L1508 (forIn/forOf stubs) — DO NOT TOUCH
-- **Unprovable (1)**: L5148 (getIndex string) — DO NOT TOUCH
+- **False theorem (2)**: L1507, L1508 (forIn/forOf in `convertExpr_not_value`) — FIXABLE, see Task 1
+- **Unprovable (1)**: L5148 (getIndex string) — investigate
 - **Semantic mismatch (2)**: L4502, L4510 (newObj non-value) — DO NOT TOUCH
-- **CCStateAgree blocked (5)**: L3719, L3742, L6543, L6544, L6724 — cannot close without architecture change
-- **HeapInj blocked (1)**: L6386 (functionDef) — cannot close without HeapInj extension
-- **FuncsCorr blocked (1)**: L4296 (non-consoleLog call) — cannot close without FuncsCorr invariant
-- **Multi-step blocked (1)**: L3391 (captured var) — 2 vs 1 step mismatch
-- **Potentially actionable (1)**: L6616 (tryCatch body-error with finally)
+- **CCStateAgree blocked (5)**: L3719, L3742, L6543, L6544, L6724
+- **HeapInj blocked (1)**: L6386 (functionDef)
+- **FuncsCorr blocked (1)**: L4296 (non-consoleLog call)
+- **Multi-step blocked (1)**: L3391 (captured var)
+- **CCStateAgree blocked (1)**: L6616 (tryCatch body-error)
 
-## YOUR TASKS
+## YOUR TASKS (priority order)
 
-### TASK 1: Close L6616 (tryCatch body-error CCStateAgree)
+### TASK 1: Eliminate L1507 + L1508 by switching to `convertExpr_not_value_supported`
 
-L6616 is similar to L6673 which you just closed. Use `lean_goal` at L6616 to see the exact goal. The pattern from L6673: thread IH's CCStateAgree through tryCatch sub-conversions using `convertExpr_state_determined`.
+The sorry'd theorem `convertExpr_not_value` (L1502) does NOT have a `supported` hypothesis, so forIn/forOf cases are unprovable. But there's already a proved version `convertExpr_not_value_supported` (L1515) that takes `hsupp : e.supported = true` and handles forIn/forOf via contradiction.
 
-### TASK 2: If L6616 is blocked, investigate FuncsCorr for L4296
+**Plan**: Switch all ~18 callers of `convertExpr_not_value` to `convertExpr_not_value_supported`. Each caller is inside the main simulation theorem which has `h_supported` in scope. You need to:
 
-L4296 (non-consoleLog call) needs `sf.funcs[idx] ↔ sc.funcs[idx]` correspondence. Check if any existing invariant (HeapInj, EnvCorr, etc.) covers function table correspondence. If not, see if adding a `FuncsCorr` field to the simulation relation is feasible. Use `lean_local_search` for `FuncsCorr`, `funcs`, `FuncDef`.
+1. Find where `supported` enters the main theorem. Use `lean_local_search` for `supported` and check the main `closureConvert_step_sim` or `ih_depth` signature.
+2. At each call site like `convertExpr_not_value cond hcev scope envVar envMap st`, change to `convertExpr_not_value_supported cond hcev hsupp_cond scope envVar envMap st` where `hsupp_cond` derives from the parent's `supported` hypothesis.
+3. For sub-expressions, use `Core.Expr.supported` simp lemmas: if `(.if c t e).supported = true` then `c.supported = true ∧ t.supported = true ∧ e.supported = true`.
 
-### TASK 3: If T1-T2 are blocked, investigate multi-step sim for L3391
+Once ALL callers are switched, delete the sorry'd `convertExpr_not_value` or mark it deprecated.
 
-L3391 (captured var) needs Flat to take 2 steps (getEnv var lookup + value) where Core takes 1 step (direct var lookup). Consider adding a `Flat.Steps` witness with 2 steps. Use `lean_goal` at L3391 to see what's needed.
+This gives **-2 sorries** with purely mechanical changes.
 
-### TASK 4: Architecture analysis for CCStateAgree
+### TASK 2: Investigate L5148 (getIndex string unprovable)
 
-5 sorries are blocked by CCStateAgree. The root cause: converting both branches of if/while allocates fresh IDs, but only one branch executes. Write a short analysis (< 20 lines) in agents/jsspec/log.md about whether:
-1. Making variable naming position-based (instead of counter-based) is feasible
-2. Or adding a "both-branch-deterministic" lemma is feasible
-This is ANALYSIS ONLY — do not change architecture without supervisor approval.
+Use `lean_goal` at L5148 to understand the exact goal. The comment says "getIndex string both-values: UNPROVABLE." Check if `supported` can exclude this case, or if the proof strategy needs to change. If truly unprovable, we may need to restrict the compiler (exclude string indexing from `supported`).
+
+### TASK 3: If time, attempt L6616 (tryCatch body-error CCStateAgree)
+
+Use `lean_goal` at L6616. The goal needs CCStateAgree after body conversion through tryCatch. Check if `convertExpr_state_determined` can close it — you used this pattern for L6673. If the CCStateAgree input (not output) is the issue, this is architecturally blocked and you should skip.
+
+### TASK 4: CCStateAgree architecture analysis (ANALYSIS ONLY)
+
+Write a concrete proposal (< 30 lines) to agents/jsspec/log.md:
+1. Can we make CCState's nextId deterministic by using expression-path-based naming instead of counter?
+2. Alternative: can we prove that both branches of if/while produce the same nextId delta?
+3. How many theorems would break with each approach?
 
 ## DO NOT:
-- Touch L1507, L1508, L5148, L4502, L4510
-- Make architectural changes without clear plan
+- Touch L4502, L4510 (semantic mismatch — compiler needs changing)
+- Make architectural changes without supervisor approval
 - Edit ANFConvertCorrect.lean
 
 ## CRITICAL: LOG YOUR WORK

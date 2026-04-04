@@ -5569,3 +5569,4 @@ For `HasXInHead compound` sorries (L7154, L7307, L7480, L7634):
 
 ## Run: 2026-04-04T08:30:01+00:00
 
+### 2026-04-04T08:30:14+00:00 Starting run — closing NESTED_THROW L8204 via NoNestedAbrupt exfalso
