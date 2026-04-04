@@ -6600,7 +6600,7 @@ private theorem closureConvert_step_simulation
     | none =>
       -- Body is not a value; step the body via IH
       have hfnv : Flat.exprValue? fbody = none :=
-        convertExpr_not_value_supported body hbv (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> exact h.1.1) scope envVar envMap st
+        convertExpr_not_value_supported body hbv (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> (first | exact h.1.1 | exact h.1)) scope envVar envMap st
       have hexprwf_body : ExprAddrWF body sc.heap.objects.size := by
         cases finally_ <;> simp [ExprAddrWF] at hexprwf <;> exact hexprwf.1
       have hsf_eta : sf = { sf with expr := .tryCatch fbody catchParam fcatch ffin } := by
@@ -6623,7 +6623,7 @@ private theorem closureConvert_step_simulation
               { sf with expr := fbody }
               { sc with expr := body }
               (.error msg) sb scope st st1
-              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> exact h.1.1)
+              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> (first | exact h.1.1 | exact h.1))
               (by simp [fbody, st1])
               ⟨hm⟩
           let handler := match finally_ with | some fin => Core.Expr.seq catchBody fin | none => catchBody
@@ -6683,7 +6683,7 @@ private theorem closureConvert_step_simulation
               { sf with expr := fbody }
               { sc with expr := body }
               t sb scope st st1
-              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> exact h.1.1)
+              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> (first | exact h.1.1 | exact h.1))
               (by simp [fbody, st1])
               ⟨hm⟩
           let sc' : Core.State :=
