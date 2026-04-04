@@ -4453,3 +4453,51 @@ Previous sorry counts were under-counting by grouping. Real count is 56 lines. P
 
 ## Run: 2026-04-04T19:05:01+00:00
 
+
+## Run: 2026-04-04T19:05:01+00:00
+
+### Metrics
+- **Sorry count (raw lines)**: ANF 32 + CC 30 + Lower 0 = **62 sorry lines**
+- **Delta from last run (18:05)**: ANF 11→32 (+21), CC 6→30 (+24)
+- **EXPLANATION**: Previous runs counted "grouped" sorries. The agents CORRECTLY decomposed monolithic sorry blocks into per-case sorries:
+  - Proof agent expanded hasAbruptCompletion_step_preserved and NoNestedAbrupt_step_preserved into individual case sorries (most non-value branches PROVED, value/objectLit/tryCatch still sorry)
+  - Jsspec agent decomposed Core_step_preserves_supported into 19 per-case sorries
+  - This is EXPECTED and GOOD — decomposed sorries are closeable individually
+
+### Structural Sorry Breakdown
+
+**ANF (32 lines, ~18 independent proof obligations):**
+- Group A eval context (7): L7696-L7882 — PARKED
+- Compound HasXInHead (4): L8526, L8683, L8860, L9018 — PARKED
+- Inner compound (3): L8677, L8854, L9012 — wasmspec/deferred
+- Let/while step sim (3): L9045, L9133, L9145 — wasmspec target
+- If compound (4): L9326, L9327, L9399, L9400 — wasmspec target
+- tryCatch step sim (1): L9444
+- hasAbruptCompletion all-values/objectLit/tryCatch (5): L9704, L9719, L9761, L9776 — proof agent
+- NoNestedAbrupt all-values/objectLit/tryCatch (4): L10067, L10081, L10123, L10138 — proof agent
+- break/continue (2): L10529, L10582 — blocked
+
+**CC (30 lines, ~12 independent proof obligations):**
+- Core_step_preserves_supported (19): L3412, L3431-L3447 — jsspec primary target
+- Other (11): L3513, L3842, L3865, L4429, L4637, L4645, L5283, L6525, L6682, L6683, L6755, L6863
+
+### Agent Status
+1. **proof** (RUNNING since 18:30): Working on equation lemmas. REWROTE prompt: explicit getProp/setProp/getIndex/setIndex/deleteProp equation lemma code + objectLit/tryCatch case closure + all-values cases.
+2. **jsspec** (RUNNING since 18:00): Working on CC. REWROTE prompt: same focus on depth induction for Core_step_preserves_supported.
+3. **wasmspec** (RUNNING since 18:15): Working on ANF. REWROTE prompt: objectLit equation lemma + if-compound + let/while step sim.
+
+### Actions Taken
+1. Counted sorries: ANF 32 + CC 30 = 62 raw lines. Explained inflation from decomposition.
+2. Killed supervisor lake build to free memory (93MB available).
+3. REWROTE proof prompt: Specific equation lemma code for getProp/setProp/getIndex/setIndex/deleteProp. Plus objectLit/tryCatch closure strategy using existing helper lemmas.
+4. REWROTE wasmspec prompt: objectLit step? equation lemma + if-compound sorries + let/while.
+5. REWROTE jsspec prompt: Same depth induction strategy (agents running, prompt ready for next cycle).
+
+### Critical Path
+1. **Equation lemmas** (proof agent NOW): Unblocks 4 objectLit sorries + enables getProp/setProp/etc if needed later
+2. **All-values cases** (proof agent): L9704, L9719, L10067, L10081 may close with unfold + simp
+3. **Core_step_preserves_supported** (jsspec): -19 sorries if depth induction works
+4. **If/while/let step sim** (wasmspec): -7 sorries if closeable
+
+---
+2026-04-04T19:16:46+00:00 DONE

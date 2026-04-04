@@ -9054,29 +9054,31 @@ private theorem normalizeExpr_while_decomp
       (ANF.normalizeExpr cond (fun t => pure (.trivial t))).run n = .ok (c, n1) ∧
       (ANF.normalizeExpr body (fun _ => pure (.trivial .litUndefined))).run n1 = .ok (d, n2) ∧
       (k .litUndefined).run n2 = .ok (b, m) := by
-  simp only [ANF.normalizeExpr, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at h
-  cases hcond : (ANF.normalizeExpr cond (fun t => pure (ANF.Expr.trivial t))).run n with
-  | error msg => simp [hcond] at h
-  | ok vc =>
+  unfold ANF.normalizeExpr at h
+  simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at h
+  -- h is now a nested match on the three monadic computations
+  split at h
+  · -- normalizeExpr cond ... = error: contradicts h = .ok
+    simp at h
+  · -- normalizeExpr cond ... = ok (c', n1)
+    rename_i vc hcond
     obtain ⟨c', n1⟩ := vc
-    simp [hcond] at h
-    cases hbody : (ANF.normalizeExpr body (fun _ => pure (ANF.Expr.trivial ANF.Trivial.litUndefined))).run n1 with
-    | error msg => simp [hbody] at h
-    | ok vb =>
+    split at h
+    · -- normalizeExpr body ... = error
+      simp at h
+    · -- normalizeExpr body ... = ok (d', n2)
+      rename_i vb hbody
       obtain ⟨d', n2⟩ := vb
-      simp [hbody] at h
-      cases hk : (k ANF.Trivial.litUndefined).run n2 with
-      | error msg => simp [hk] at h
-      | ok vk =>
+      split at h
+      · -- k .litUndefined = error
+        simp at h
+      · -- k .litUndefined = ok (b', n3)
+        rename_i vk hk
         obtain ⟨b', n3⟩ := vk
         simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h
-        obtain ⟨⟨hseq, hcde⟩, hm⟩ := h
-        have hc_eq : c = c' := by
-          have := ANF.Expr.seq.inj hseq
-          exact (ANF.Expr.while_.inj this.1).1
-        have hd_eq : d = d' := by
-          have := ANF.Expr.seq.inj hseq
-          exact (ANF.Expr.while_.inj this.1).2
+        obtain ⟨hseq, hm⟩ := h
+        have hc_eq : c = c' := (ANF.Expr.while_.inj (ANF.Expr.seq.inj hseq).1).1
+        have hd_eq : d = d' := (ANF.Expr.while_.inj (ANF.Expr.seq.inj hseq).1).2
         have hb_eq : b = b' := (ANF.Expr.seq.inj hseq).2
         subst hc_eq hd_eq hb_eq hm
         exact ⟨n1, n2, hcond, hbody, hk⟩

@@ -1,59 +1,58 @@
-# wasmspec — Close L9045 (let) and L9100/9123 (while) + inner compound sorries
+# wasmspec — Close objectLit equation lemma + if-compound sorries in ANF
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
 - **DO NOT** run `lake build` anything large
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
-- MEMORY: 7.7GB total, NO swap. ~2.1GB available right now.
+- MEMORY: 7.7GB total, NO swap. ~100MB available right now.
 - You CAN edit ANFConvertCorrect.lean AND Flat/Semantics.lean
 - Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
 ## MEMORY WARNING
 **WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
 
-## STATUS: 26 ANF sorry lines. Proof agent is working on equation lemmas + hasAbruptCompletion/NoNestedAbrupt. You focus on step-sim sorries.
+## STATUS: 32 ANF sorry lines. Proof agent is working on equation lemmas for getProp/setProp/etc + objectLit/tryCatch cases. You focus on DIFFERENT sorries.
 
-## TARGET 1: Inner compound sorries L8677, L8854, L9012
+## TARGET 1: objectLit step? equation lemma (for proof agent)
 
-These are `| _ => sorry` wildcards inside throw_step_sim, return_step_sim, await_step_sim where `inner_val` is a compound expression. With the `hna : NoNestedAbrupt sf.expr` parameter now available:
+Write this in Flat/Semantics.lean, AFTER the objectLit_allValues theorem (~L1960). This enables objectLit cases in hasAbruptCompletion/NoNestedAbrupt.
 
-Approach for L8677 (inside normalizeExpr_throw_step_sim):
-1. `lean_goal` at L8677 to see the goal
-2. The inner_val is compound with `hasAbruptCompletion inner_val = false` (from NoNestedAbrupt)
-3. Use `normalizeExpr_throw_or_k` to get: HasThrowInHead inner_val ∨ continuation case
-4. HasThrowInHead inner_val → contradiction with hna
-5. Continuation case → inner_val is trivial chain → use `trivialChain_throw_steps` (~170 lines, analog of existing throw version)
+```lean
+/-- Stepping objectLit when there's a non-value prop: step the first non-value. -/
+@[simp] theorem step?_objectLit_step_prop (s : State) (props : List (PropName × Expr))
+    (done : List (PropName × Expr)) (name : PropName) (target : Expr) (remaining : List (PropName × Expr))
+    (hfnv : firstNonValueProp props = some (done, name, target, remaining)) :
+    step? { s with expr := .objectLit props } =
+      match step? { s with expr := target } with
+      | some (t, sa) =>
+          some (t, pushTrace { s with expr := .objectLit (done ++ [(name, sa.expr)] ++ remaining), env := sa.env, heap := sa.heap } t)
+      | none => none := by
+  rw [step?.eq_1]
+  -- valuesFromPropList? fails since firstNonValueProp found a non-value
+  have hvnone := valuesFromPropList?_none_of_firstNonValueProp hfnv
+  simp only [hvnone, hfnv]
+  cases step? { s with expr := target } <;> rfl
+```
 
-If full proof is too large, at minimum prove: HasThrowInHead case → exfalso. Leave trivial chain sorry.
+NOTE: You may need to prove the helper `valuesFromPropList?_none_of_firstNonValueProp` first. Check if it exists with `lean_local_search`. If not, prove it: if firstNonValueProp returns Some, then valuesFromPropList? returns none.
 
-## TARGET 2: L9045 (normalizeExpr_let_step_sim)
+## TARGET 2: if-compound sorries (L9326-9327, L9399-9400)
 
-Use `lean_goal` at L9045. The let step simulation sorry.
+These are inside `normalizeExpr_if_step_sim` and `normalizeExpr_if_compound_step_sim`. They're about `.if` where the condition is compound (not a value). L9326/9399 are "compound condition: multi-step" and L9327/9400 are "compound HasIfInHead".
 
-Key: `normalizeExpr` on `.let name init body` either:
-- Produces `.let name (normalizeExpr init id) (normalizeExpr body k)` when init is trivial
-- Produces `bindComplex` form when init is complex
+Use `lean_goal` at these positions to understand what's needed. The pattern may be:
+- Condition is compound → normalizeExpr steps it → Flat also steps it → simulation matches
 
-For the Flat step: `step?` on `.let name init body`:
-- If `exprValue? init = some v`: substitution step → one flat step
-- If `exprValue? init = none`: step init → one flat step
+## TARGET 3: Let step sim (L9045) and while step sim (L9133, L9145)
 
-Use `lean_local_search` for "normalizeExpr_let" to find decomposition lemmas.
+L9045: `normalizeExpr_let_step_sim` — sorry. Need characterization of what normalizeExpr produces for `.let`.
+L9133: While condition value case
+L9145: Condition-steps case
 
-## TARGET 3: L9100/L9123 (while step sim)
-
-L9100: "While condition value case: transient state breaks single-step SimRel"
-L9123: "Condition-steps case: needs flat while-condition simulation"
-
-For L9123 (condition steps):
-- When `exprValue? c = none` and `step? c = some (t, sc)`: the while condition steps
+For L9145 specifically, when `exprValue? c = none` and `step? c = some (t, sc)`:
+- The while condition steps
 - After step: `sa'.expr = .while_ sc.expr d` — this preserves SimRel
-- This sub-case should be closeable
-
-For L9100 (condition is value):
-- Creates transient `.seq (.seq d (.while_ c d)) b` — may need sorry (multi-step)
-
-Even closing L9123 alone is progress.
+- This should be closeable
 
 ## DO NOT just analyze. WRITE CODE. Close at least 1 sorry line.
 
