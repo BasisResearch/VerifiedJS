@@ -4418,3 +4418,35 @@ MAJOR PROGRESS this run. NoNestedAbrupt went from 22 sorry → 7 sorry (list/com
 
 ## Run: 2026-04-04T18:30:03+00:00
 
+
+## Run: 2026-04-04T18:30:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 26 + CC 30 + Lower 0 = **56 sorry LINES** (previous runs used "logical groups" ~17; this is raw sorry line count for accuracy)
+- **ANF sorry lines**: L7696,7729,7740,7821,7854,7865,7882 (Group A), L8526,8677,8683,8854,8860,9012,9018 (compound HasXInHead), L9045 (let), L9100,9123 (while), L9302,9303,9375,9376 (if), L9420 (tryCatch), L9428 (hasAbrupt), L9707 (NoNestedAbrupt), L10405,10458 (break/continue)
+- **CC sorry lines**: L3412+L3431-3447 (19 in Core_step_preserves_supported), L3513 (captured var), L3842,3865 (if CCState), L4429 (call), L4637,4645 (newObj), L5283 (getIndex UNPROVABLE), L6525 (funcDef), L6682,6683 (tryCatch), L6755 (tryCatch inner), L6863 (while CCState)
+
+### Agent Status
+1. **proof** (running since 18:30): Just started. Last run (16:30-17:34) added helper lemmas for objectLit, found `have` bindings blocker in split at hstep. Equation lemmas (call/newObj/getEnv) EXIST and are PROVED in Flat/Semantics.lean L1137-1166. **REWROTE prompt**: Write MISSING equation lemmas (getProp/setProp/getIndex/setIndex/deleteProp), then prove hasAbruptCompletion_step_preserved using equation lemma + depth induction pattern.
+2. **jsspec** (running since 18:00): Last run (15:30-17:58) closed L4333, restructured L3408. **REWROTE prompt**: Core_step_preserves_supported has 19 of 30 CC sorry lines — convert to depth induction to unlock compound cases.
+3. **wasmspec** (running since 18:15, currently building ANF): Last run (17:15-18:00) closed 12 vacuous sub-cases via NoNestedAbrupt exfalso. **REWROTE prompt**: Close L8677/L8854/L9012 inner compound sorries + L9045/L9100/L9123 step sims.
+
+### Actions Taken
+1. Recounted sorries accurately: 26 ANF + 30 CC = 56 sorry LINES. Previous "17" was counting logical theorem groups, not sorry lines.
+2. Killed supervisor's accidental lake build to free memory.
+3. **REWROTE proof prompt**: Added 5 missing equation lemma templates (getProp/setProp/getIndex/setIndex/deleteProp) with exact Lean code. Showed depth-induction proof pattern for hasAbruptCompletion with call case skeleton.
+4. **REWROTE jsspec prompt**: Identified Core_step_preserves_supported (19 of 30 sorries) as highest-impact target. Gave depth induction skeleton code.
+5. **REWROTE wasmspec prompt**: Refocused on inner compound sorries (L8677/8854/9012) and step sim sorries (L9045/9100/9123).
+6. Logged to time_estimate.csv: 56 sorry lines.
+
+### Critical Path Analysis
+1. **hasAbruptCompletion_step_preserved** (ANF L9428): Needs equation lemmas for all constructors → proof agent
+2. **NoNestedAbrupt_step_preserved** (ANF L9707): Same approach → proof agent
+3. **Core_step_preserves_supported** (CC, 19 lines): Needs depth induction → jsspec
+4. **L9045 let step sim** + **L9100/9123 while step sim**: → wasmspec
+5. Architectural blockers (CCState threading, captured var multi-step, newObj mismatch): Need design changes, not tactic work
+
+### Honest Assessment
+Previous sorry counts were under-counting by grouping. Real count is 56 lines. Progress IS happening (agent logs show closures), but the architectural blockers (CCState threading for ~5 CC sorries, multi-step sim for captured var, newObj semantic mismatch) cannot be closed with tactic work alone — they need code changes to ClosureConvert.lean or Flat/Semantics.lean.
+
+2026-04-04T18:40:53+00:00 DONE

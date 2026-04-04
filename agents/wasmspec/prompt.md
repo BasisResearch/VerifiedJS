@@ -1,52 +1,59 @@
-# wasmspec — Close L9045 (let step sim) and L9093 (while/seq step sim)
+# wasmspec — Close L9045 (let) and L9100/9123 (while) + inner compound sorries
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
 - **DO NOT** run `lake build` anything large
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
 - MEMORY: 7.7GB total, NO swap. ~2.1GB available right now.
-- You CAN edit ANFConvertCorrect.lean
+- You CAN edit ANFConvertCorrect.lean AND Flat/Semantics.lean
 - Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
 ## MEMORY WARNING
 **WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
 
-## STATUS: ANF has 11 sorries. Proof agent is working on equation lemmas + L9398/L9677. You focus on the step-sim sorries.
+## STATUS: 26 ANF sorry lines. Proof agent is working on equation lemmas + hasAbruptCompletion/NoNestedAbrupt. You focus on step-sim sorries.
 
-## YOUR TARGETS
+## TARGET 1: Inner compound sorries L8677, L8854, L9012
 
-### TARGET 1: L9045 (normalizeExpr_let_step_sim)
+These are `| _ => sorry` wildcards inside throw_step_sim, return_step_sim, await_step_sim where `inner_val` is a compound expression. With the `hna : NoNestedAbrupt sf.expr` parameter now available:
 
-This is the `let` step simulation sorry. Use `lean_goal` at L9045 to see the exact goal state.
+Approach for L8677 (inside normalizeExpr_throw_step_sim):
+1. `lean_goal` at L8677 to see the goal
+2. The inner_val is compound with `hasAbruptCompletion inner_val = false` (from NoNestedAbrupt)
+3. Use `normalizeExpr_throw_or_k` to get: HasThrowInHead inner_val ∨ continuation case
+4. HasThrowInHead inner_val → contradiction with hna
+5. Continuation case → inner_val is trivial chain → use `trivialChain_throw_steps` (~170 lines, analog of existing throw version)
 
-The key insight: `normalizeExpr` on a `.let name init body` produces either:
-- Direct `.let` when init is trivial
-- A bindComplex form when init is complex
+If full proof is too large, at minimum prove: HasThrowInHead case → exfalso. Leave trivial chain sorry.
 
-ANF.step? on `.let` either evaluates init (if value) or steps init. We need to show Flat can match this.
+## TARGET 2: L9045 (normalizeExpr_let_step_sim)
 
-Approach:
-1. Use `lean_goal` at L9045
-2. Check what `hnorm` gives us about the Flat expression structure
-3. The Flat `.let` case of `step?` (Flat/Semantics.lean L348-358) either substitutes (value init) or steps init
-4. Try: `obtain ⟨...⟩ := normalizeExpr_let_decomp ...` if such a lemma exists
-5. Use `lean_local_search` for "normalizeExpr_let" to find available lemmas
+Use `lean_goal` at L9045. The let step simulation sorry.
 
-### TARGET 2: L9093 (seq/while step sim)
+Key: `normalizeExpr` on `.let name init body` either:
+- Produces `.let name (normalizeExpr init id) (normalizeExpr body k)` when init is trivial
+- Produces `bindComplex` form when init is complex
 
-The comment says: "When exprValue? c = none and step? c = some (t, sc): sa_inner.expr = .while_ sc.expr d, giving sa'.expr = .seq (.while_ sc.expr d) b — this IS handleable."
+For the Flat step: `step?` on `.let name init body`:
+- If `exprValue? init = some v`: substitution step → one flat step
+- If `exprValue? init = none`: step init → one flat step
 
-So the sub-case where the while condition steps (not evaluates to a value) should be closeable. Approach:
-1. `lean_goal` at L9093
-2. Split on `exprValue? c` in the inner while step
-3. The case where c is a value creates transient `.seq (.seq d (.while_ c d)) b` which breaks SimRel (this case may need sorry)
-4. The case where c steps to sc gives `.seq (.while_ sc.expr d) b` which preserves SimRel
+Use `lean_local_search` for "normalizeExpr_let" to find decomposition lemmas.
 
-Even closing ONE sub-case of L9093 and leaving a sorry on the other is progress.
+## TARGET 3: L9100/L9123 (while step sim)
 
-### TARGET 3 (if 1-2 blocked): L10375/L10428 (break/continue compound)
+L9100: "While condition value case: transient state breaks single-step SimRel"
+L9123: "Condition-steps case: needs flat while-condition simulation"
 
-These need: when break/continue is nested in a compound expression (call, seq, etc.), Flat.step? steps the outer expression. This requires showing that compound expressions with break/continue inside must step (since they're not values).
+For L9123 (condition steps):
+- When `exprValue? c = none` and `step? c = some (t, sc)`: the while condition steps
+- After step: `sa'.expr = .while_ sc.expr d` — this preserves SimRel
+- This sub-case should be closeable
+
+For L9100 (condition is value):
+- Creates transient `.seq (.seq d (.while_ c d)) b` — may need sorry (multi-step)
+
+Even closing L9123 alone is progress.
 
 ## DO NOT just analyze. WRITE CODE. Close at least 1 sorry line.
 

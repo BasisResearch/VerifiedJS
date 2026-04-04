@@ -1,4 +1,4 @@
-# jsspec — Close CC sorries: down to 6! Push for 2 more.
+# jsspec — Close CC sorries. 30 active sorry lines. Focus on Core_step_preserves_supported (19 of them).
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -12,32 +12,63 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 ## MEMORY: 7.7GB total, NO swap. ~2.1GB available right now.
 **WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
 
-## STATUS: CC down to 6 actual sorry lines. GREAT progress. Keep pushing.
+## SORRY BREAKDOWN (30 total)
 
-## CC SORRY BREAKDOWN (6):
-1. **L3375**: Core_step_preserves_supported — PRIMARY TARGET
-2. **L3441**: captured var multi-step
-3. **L3793**: if-false CCStateAgree — `sorry` embedded in tuple
-4. **L6453**: functionDef conversion
-5. **L6610**: tryCatch body-value — `sorry` embedded in exact term
-6. **L6683**: tryCatch inner sorry
+### GROUP 1: Core_step_preserves_supported (19 sorry lines: L3412 + L3431-3447)
+This is your PRIMARY target. 19 of 30 CC sorries are in this one theorem.
 
-## TASK 1 — L3375 Core_step_preserves_supported
-Use `lean_goal` at L3375. This needs induction on the step relation. Split on expression constructors. Close easy cases first (lit, var, assign, unary, binary should be straightforward — supported is structural). Leave sorry on hard cases. Even closing 8/15 constructors is great.
+**Problem**: The theorem at L3375 does case analysis but NO induction. The proved cases (var, this, break, continue, etc.) work because Core.step? produces a `.lit v` or similar atomic result. The sorry'd cases (let, assign, if, seq, call, etc.) are compound: Core.step? steps a sub-expression, producing a new expression that also needs `supported = true`.
 
-## TASK 2 — L6453 (functionDef)
-`lean_goal` at L6453. functionDef allocates a closure in the converted program. The proof needs to show the closure conversion of the function body preserves the simulation relation.
+**Fix**: Convert to depth induction. Replace the current proof with:
 
-## TASK 3 — L3793 (if-false CCStateAgree)
-The sorry is inline: `simp [sc', Flat.convertExpr], sorry, by rw [hconv.2]; exact ⟨rfl, rfl⟩⟩`. Need to close just the middle sorry in the tuple.
-
-## TASK 4 — Low-hanging fruit sweep
-Use `lean_multi_attempt` on EACH sorry to check if simple tactics close it:
+```lean
+private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.TraceEvent)
+    (hsupp : s.expr.supported = true) (hstep : Core.step? s = some (ev, s')) :
+    s'.expr.supported = true := by
+  suffices ∀ n e, e.depth ≤ n → ∀ env heap trace funcs cs ev s',
+    e.supported = true →
+    Core.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, s') →
+    s'.expr.supported = true from
+    this _ _ (Nat.le_refl _) _ _ _ _ _ _ _ hsupp (by rwa [show s = ⟨s.expr, s.env, s.heap, s.trace, s.funcs, s.callStack⟩ from by cases s; rfl])
+  intro n
+  induction n with
+  | zero => intro e hd; omega  -- depth is always ≥ 1 for steppable exprs... or handle base case
+  | succ n ih =>
+    intro e hd env heap trace funcs cs ev s' hsupp hstep
+    cases e with
+    -- ... same cases as before, but now with `ih` available for recursive calls
 ```
-["simp_all", "omega", "trivial", "exact absurd h1 h2", "contradiction", "rfl", "assumption"]
+
+For compound cases with IH available, the pattern is:
+```lean
+    | «let» name init body =>
+      simp [Core.Expr.supported] at hsupp
+      obtain ⟨hinit_supp, hbody_supp⟩ := hsupp
+      rw [state_with_expr_eq rfl] at hstep
+      simp [Core.step?, Core.pushTrace] at hstep
+      -- Core.step? on let: if init is value, substitute; if not, step init
+      -- Case split on whether init is a value
+      sorry -- fill in: use ih on sub-expression step
 ```
 
-## YOU CLOSED 6 SINCE MORNING. Close 2 more this run.
+Use `lean_multi_attempt` on each sorry case to check if `simp_all [Core.Expr.supported]` closes it after the induction rewrite. Many cases may close with just the IH + simp.
+
+### GROUP 2: Other sorry groups (11 lines)
+- **L3513**: captured var (multi-step) — SKIP (architectural)
+- **L3842, L3865**: if CCStateAgree — SKIP (architectural)
+- **L4429**: non-consoleLog call — needs funcs correspondence
+- **L4637, L4645**: newObj semantic mismatch — SKIP (architectural)
+- **L5283**: getIndex string — marked UNPROVABLE
+- **L6525**: functionDef — needs closure allocation proof
+- **L6682**: tryCatch inline sorry
+- **L6683**: tryCatch with finally — SKIP (CCStateAgree)
+- **L6755**: tryCatch inner
+- **L6863**: while_ CCState — SKIP (architectural)
+
+## PRIORITY ORDER
+1. Convert Core_step_preserves_supported to depth induction
+2. Close as many of the 19 compound cases as possible (each is -1 sorry)
+3. Try L6525 (functionDef) and L4429 (non-consoleLog call) if time permits
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

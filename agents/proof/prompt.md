@@ -1,4 +1,4 @@
-# proof — Write step? equation lemmas in Flat/Semantics.lean, then close L9398 + L9677
+# proof — Write MISSING equation lemmas, then prove hasAbruptCompletion + NoNestedAbrupt
 
 ## RULES
 - Edit: ANFConvertCorrect.lean, Flat/Semantics.lean, AND EndToEnd.lean
@@ -14,83 +14,123 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 ## MEMORY: 7.7GB total, NO swap. ~2.1GB available right now.
 **WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
 
-## STATUS: ANF has 11 sorries. The #1 blocker is `have` bindings in step? preventing `split at hstep`.
+## STATUS
 
-## YOUR #1 TASK: Write step? equation lemmas in VerifiedJS/Flat/Semantics.lean
+Equation lemmas for call/newObj/getEnv/step_func/step_env exist at L1137-1166 of Flat/Semantics.lean (PROVED, @[simp]). But hasAbruptCompletion_step_preserved (L9428) and NoNestedAbrupt_step_preserved (L9707) are STILL monolithic sorry. The 16:30 run found that getProp/setProp/getIndex/setIndex/deleteProp/objectLit/arrayLit cases need ADDITIONAL equation lemmas.
 
-Insert these AFTER the existing `step?_call_consoleLog` at line 1134. The `call` case in `step?` (L428-436) recurses when funcExpr is not a value. We need equation lemmas that package this cleanly.
+## TASK 1: Write MISSING equation lemmas in Flat/Semantics.lean
 
-**IMPORTANT**: Build Flat/Semantics.lean FIRST (`lake build VerifiedJS.Flat.Semantics`) to verify these lemmas. They should be straightforward since `simp [step?]` reduces `have` (which is syntactic `let`) bindings.
+Insert these AFTER the existing step?_getEnv_step_env (L1166). All are `simp [step?, h]` one-liners.
 
-### Lemma 1: call stepping funcExpr
 ```lean
-@[simp] theorem step?_call_step_func (s : State) (f envE : Expr) (args : List Expr)
-    (hf : exprValue? f = none) :
-    step? { s with expr := .call f envE args } =
-      (step? { s with expr := f }).bind fun (t, sf) =>
-        some (t, pushTrace { s with expr := .call sf.expr envE args, env := sf.env, heap := sf.heap } t) := by
-  simp [step?, hf]
+/-- Stepping getProp when obj is not a value. -/
+@[simp] theorem step?_getProp_step_obj (s : State) (obj : Expr) (prop : PropName)
+    (ho : exprValue? obj = none) :
+    step? { s with expr := .getProp obj prop } =
+      (step? { s with expr := obj }).bind fun (t, so) =>
+        some (t, pushTrace { s with expr := .getProp so.expr prop, env := so.env, heap := so.heap } t) := by
+  simp [step?, ho]
+
+/-- Stepping setProp when obj is not a value. -/
+@[simp] theorem step?_setProp_step_obj (s : State) (obj : Expr) (prop : PropName) (val : Expr)
+    (ho : exprValue? obj = none) :
+    step? { s with expr := .setProp obj prop val } =
+      (step? { s with expr := obj }).bind fun (t, so) =>
+        some (t, pushTrace { s with expr := .setProp so.expr prop val, env := so.env, heap := so.heap } t) := by
+  simp [step?, ho]
+
+/-- Stepping getIndex when obj is not a value. -/
+@[simp] theorem step?_getIndex_step_obj (s : State) (obj idx : Expr)
+    (ho : exprValue? obj = none) :
+    step? { s with expr := .getIndex obj idx } =
+      (step? { s with expr := obj }).bind fun (t, so) =>
+        some (t, pushTrace { s with expr := .getIndex so.expr idx, env := so.env, heap := so.heap } t) := by
+  simp [step?, ho]
+
+/-- Stepping setIndex when obj is not a value. -/
+@[simp] theorem step?_setIndex_step_obj (s : State) (obj idx val : Expr)
+    (ho : exprValue? obj = none) :
+    step? { s with expr := .setIndex obj idx val } =
+      (step? { s with expr := obj }).bind fun (t, so) =>
+        some (t, pushTrace { s with expr := .setIndex so.expr idx val, env := so.env, heap := so.heap } t) := by
+  simp [step?, ho]
+
+/-- Stepping deleteProp when obj is not a value. -/
+@[simp] theorem step?_deleteProp_step_obj (s : State) (obj : Expr) (prop : PropName)
+    (ho : exprValue? obj = none) :
+    step? { s with expr := .deleteProp obj prop } =
+      (step? { s with expr := obj }).bind fun (t, so) =>
+        some (t, pushTrace { s with expr := .deleteProp so.expr prop, env := so.env, heap := so.heap } t) := by
+  simp [step?, ho]
 ```
 
-### Lemma 2: call stepping envExpr
+If any of these fail with `simp [step?, ho]`, try `unfold step?; simp [ho]` or `unfold step?; dsimp; rw [ho]; rfl`.
+
+**BUILD Flat/Semantics.lean first** to verify: `lake build VerifiedJS.Flat.Semantics`
+
+## TASK 2: Prove hasAbruptCompletion_step_preserved (L9428)
+
+Replace the monolithic `sorry` at L9428 with depth-induction proof. The KEY insight: for every constructor, either:
+- `exprValue? sub = some v` → step produces `.lit v'` → `hasAbruptCompletion (.lit v') = false` ✓
+- `exprValue? sub = none` → use equation lemma → `simp [Option.bind] at hstep` → get inner step → IH gives `hasAbruptCompletion sf'.sub = false` → reconstruct
+
+Here's the proof skeleton for the call case:
+
 ```lean
-@[simp] theorem step?_call_step_env (s : State) (f envE : Expr) (args : List Expr)
-    (hf : exprValue? f = some fv) (he : exprValue? envE = none) :
-    step? { s with expr := .call f envE args } =
-      (step? { s with expr := envE }).bind fun (t, se) =>
-        some (t, pushTrace { s with expr := .call f se.expr args, env := se.env, heap := se.heap } t) := by
-  simp [step?, hf, he]
-```
-
-### Lemma 3: newObj stepping funcExpr
-```lean
-@[simp] theorem step?_newObj_step_func (s : State) (f envE : Expr) (args : List Expr)
-    (hf : exprValue? f = none) :
-    step? { s with expr := .newObj f envE args } =
-      (step? { s with expr := f }).bind fun (t, sf) =>
-        some (t, pushTrace { s with expr := .newObj sf.expr envE args, env := sf.env, heap := sf.heap } t) := by
-  simp [step?, hf]
-```
-
-### Lemma 4: getEnv stepping envExpr
-```lean
-@[simp] theorem step?_getEnv_step_env (s : State) (envE : Expr) (idx : Nat)
-    (he : exprValue? envE = none) :
-    step? { s with expr := .getEnv envE idx } =
-      (step? { s with expr := envE }).bind fun (t, se) =>
-        some (t, pushTrace { s with expr := .getEnv se.expr idx, env := se.env, heap := se.heap } t) := by
-  simp [step?, he]
-```
-
-**TEST**: Use `lean_multi_attempt` on Lemma 1 first. If `simp [step?]` doesn't close it, try:
-- `unfold step?; simp [hf]`
-- `unfold step?; dsimp; split <;> simp_all`
-- `unfold step?; rfl` (unlikely but try)
-
-## TASK 2: Once equation lemmas build, close L9398 (hasAbruptCompletion_step_preserved)
-
-With the equation lemmas, rewrite the `call` case:
-```lean
-| call f fenv args =>
+| .call f envE args =>
   simp [hasAbruptCompletion] at hac
-  cases hf : exprValue? f with
+  obtain ⟨hf_nac, henv_nac, hargs_nac⟩ := hac  -- from the Bool.or = false
+  cases hfv : exprValue? f with
   | none =>
-    rw [step?_call_step_func _ _ _ _ hf] at hstep
+    rw [step?_call_step_func ⟨_, env, heap, trace, funcs, cs⟩ f envE args hfv] at hstep
     simp [Option.bind] at hstep
-    obtain ⟨t', sf', hinner, heq⟩ := hstep
-    -- Use the IH: call sub-expression preserves non-abruptness
-    sorry -- structured sub-sorry
-  | some fv => sorry -- step env or args
+    obtain ⟨t', sf_inner, hinner, hev_eq, hsf'_eq⟩ := hstep
+    subst hev_eq hsf'_eq
+    simp [hasAbruptCompletion, Flat.pushTrace, Flat.State.expr]
+    exact ⟨ih _ (by omega) _ _ _ _ _ _ _ hf_nac hinner, henv_nac, hargs_nac⟩
+  | some fv =>
+    cases hev : exprValue? envE with
+    | none =>
+      rw [step?_call_step_env ⟨_, env, heap, trace, funcs, cs⟩ f envE args fv hfv hev] at hstep
+      simp [Option.bind] at hstep
+      obtain ⟨t', se_inner, hinner, hev_eq, hsf'_eq⟩ := hstep
+      subst hev_eq hsf'_eq
+      simp [hasAbruptCompletion, Flat.pushTrace, Flat.State.expr]
+      exact ⟨by simp [exprValue?] at hfv; sorry, ih _ (by omega) _ _ _ _ _ _ _ henv_nac hinner, hargs_nac⟩
+    | some ev =>
+      -- Both values: step args or execute call. Result is .lit v → hasAbruptCompletion = false
+      sorry -- value case: produces .lit, trivially non-abrupt
 ```
 
-Even if the inner IH sorry remains, decomposing the monolithic sorry into per-branch sub-sorries is progress.
+For simpler cases like `.getProp obj prop`:
+```lean
+| .getProp obj prop =>
+  simp [hasAbruptCompletion] at hac
+  cases ho : exprValue? obj with
+  | none =>
+    rw [step?_getProp_step_obj ⟨_, env, heap, trace, funcs, cs⟩ obj prop ho] at hstep
+    simp [Option.bind] at hstep
+    obtain ⟨t', so, hinner, hev_eq, hsf'_eq⟩ := hstep
+    subst hev_eq hsf'_eq
+    simp [hasAbruptCompletion, Flat.pushTrace, Flat.State.expr]
+    exact ih _ (by omega) _ _ _ _ _ _ _ hac hinner
+  | some v =>
+    -- obj is a value: getProp produces .lit v, which has hasAbruptCompletion = false
+    simp [step?, ho] at hstep
+    -- All branches produce .lit something via pushTrace
+    sorry -- should be: simp [hasAbruptCompletion, Flat.pushTrace, Flat.State.expr] after decomposition
+```
 
-## TASK 3: Close L9677 (NoNestedAbrupt_step_preserved) using same strategy
+Even if you leave `sorry` on value-case branches, closing the `none` (stepping) branches is HUGE progress. Get as many as you can.
+
+## TASK 3: Same approach for NoNestedAbrupt_step_preserved (L9707)
+
+Identical structure. NoNestedAbrupt is structural like hasAbruptCompletion.
 
 ## What NOT to work on:
 - Group A (L7696-7882): PARKED
 - Compound HasXInHead (L8526, L8683, L8860, L9018): needs eval context lemmas
-- break/continue (L10375, L10428): needs step? error propagation
+- break/continue (L10405, L10458): needs step? error propagation
 - CC anything
 
 ## LOG YOUR WORK
