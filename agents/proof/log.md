@@ -5311,3 +5311,60 @@ All remaining sorries require "eval context lifting" — stepping compound Flat 
 
 ### 2026-04-03T23:30:12+00:00 Starting run
 2026-04-04T00:30:01+00:00 SKIP: already running
+
+### 2026-04-04T00:30:00+00:00 Analysis complete — no sorries closed
+
+#### Detailed analysis of all 22 remaining sorries:
+
+**Category 1: hasBreakInHead/hasContinueInHead (L6612, L6625) — FALSE AS STATED**
+- `hasBreakInHead_flat_error_steps` claims that if `HasBreakInHead e label`, then `e` multi-steps to `.lit .undefined` with break error trace
+- This is FALSE for `seq_left`: `.seq (.break label) (.lit 42)` → steps to `.seq (.lit .undefined) (.lit 42)` → steps to `.lit 42`, NOT `.lit .undefined`
+- Error events in Flat do NOT short-circuit — they propagate through eval contexts but the seq still evaluates `b`
+- Same issue for `hasContinueInHead_flat_error_steps`
+- These theorems need reformulation (weaker conclusion or restricted HasBreakInHead)
+- BOTH are used extensively downstream (L7757-8015) — fixing requires restructuring downstream proofs
+
+**Category 2: Non-labeled inner value (L6409, L6442, L6534, L6567) — NEED EVAL CONTEXT LIFTING**
+- Inside `normalizeExpr_labeled_step_sim`, succ case, return/yield sub-cases
+- `normalizeExpr inner_val returnK` produces `.labeled` ↔ `HasLabeledInHead inner_val label`
+- Proof requires stepping through outer return/yield contexts to reach inner labeled
+- Key blocker: IH requires trivial-preserving k, but intermediate continuations (returnK, seqK) are NOT trivial-preserving
+- Approach: need "continuation-independent" normalizeExpr equivalence for `.return`/`.yield` (which discard outer k)
+
+**Category 3: Compound/bindComplex (L6453, L6578, L6595) — SAME AS Category 2**
+- Top-level compound cases in `normalizeExpr_labeled_step_sim`
+- Same eval context lifting needed
+
+**Category 4: Compound HasXInHead (L6781, L6934, L7107, L7261) — EVAL CONTEXT LIFTING**
+- Inside throw/return/await/yield step sim theorems
+- After the "direct" case is handled, remaining HasXInHead constructors need multi-step lifting through compound expression contexts
+
+**Category 5: Compound flat_arg/inner_val/inner_arg (L6778, L6931, L7104, L7258) — PARTIALLY CLOSABLE**
+- `multi_attempt` with `simp [ANF.normalizeExpr] at hnorm'` appears to close SOME sub-cases
+- But `multi_attempt` is unreliable for catch-all patterns (only tests first constructor)
+- Many sub-cases ARE contradictions (normalizeExpr produces wrong top-level constructor)
+- But `.seq` and `.throw` CAN produce the right constructor → NOT exfalso
+
+**Category 6: While loop (L7336) — NEEDS ANF_SimRel GENERALIZATION**
+- After while step, transient states (.seq (.seq d (.while_ c d)) b) don't match normalizeExpr output
+- Needs either multi-step simulation or generalized SimRel
+
+**Category 7: If step sim (L7367, L7370) — NEEDS EVAL CONTEXT CHARACTERIZATION**
+- Need to show what Flat expression produces `.if cond then_ else_` via normalizeExpr
+- Then step through to resolve condition and branch
+
+**Category 8: Let/TryCatch (L7288, L7414) — NEED CHARACTERIZATION + STEP SIM**
+
+#### Key insight for future runs:
+The fundamental blocker for Categories 2-5 is that `normalizeExpr_labeled_step_sim` uses induction on depth with trivial-preserving k, but intermediate continuations in normalizeExpr recursion are NOT trivial-preserving. A potential fix:
+
+1. **Write a general "Steps lift through eval context" lemma**: Given silent Flat.Steps from `{expr := e}` to `{expr := e'}`, derive Steps from `{expr := C[e]}` to `{expr := C[e']}` for eval context C.
+
+2. **Use continuation-independence**: `.return (some _)`, `.yield (some _)`, `.throw _`, `.await _` all DISCARD the outer continuation in normalizeExpr. So `normalizeExpr (.return (some X)) k = normalizeExpr X returnK` regardless of k. This means k' = trivialK satisfies the trivial-preserving requirement for these wrappers.
+
+3. **For Category 1**: The theorems are genuinely FALSE. Need to reformulate, e.g., remove `sf'.expr = .lit .undefined` from conclusion, or restrict to `break_direct` only and handle compound cases differently in the downstream proof.
+
+Sorry count: 22 → 22 (no change)
+Build: PASSING
+### 2026-04-04T00:53:36+00:00 Run complete — 22 sorries analyzed, 0 closed, detailed analysis logged
+2026-04-04T00:53:46+00:00 DONE
