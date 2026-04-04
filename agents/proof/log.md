@@ -5617,3 +5617,12 @@ Result: sorry count stays at 24 (old sorry replaced with `hna`, new sorry at sta
 
 Note: `NoNestedAbrupt_step_preserved` may need additional conditions (e.g., all function bodies are NoNestedAbrupt) to be fully provable, since Flat.step? on function calls introduces function bodies from the global table. However, in the simulation context, function call steps don't occur.
 2026-04-04T11:30:02+00:00 SKIP: already running
+
+**Build verification:**
+- `lake build VerifiedJS.Proofs.ANFConvertCorrect`: 7 sorry warnings (all pre-existing), errors only at L9018-9062 (pre-existing). No new errors from my changes.
+- `lake build VerifiedJS.Proofs.EndToEnd`: No EndToEnd.lean errors. Fails only due to pre-existing ANFConvertCorrect errors.
+- Added `noNestedAbrupt_hasReturnInHead_absurd_return` helper lemma for future trivialChain_return work.
+
+**Task 2 (return/await/yield trivialChain): NOT attempted** — requires ~200+ lines per case (trivialChain_*_steps, no_*_head_implies_trivial_chain, normalizeExpr_*_compound_case), plus adding hna to normalizeExpr_*_step_sim. Infrastructure too large for remaining time/memory.
+### 2026-04-04T11:48:48+00:00 Run complete — Task 1 done (L9303 sorry→hna), sorry count net zero (24→24), no build breakage
+2026-04-04T11:49:12+00:00 DONE
