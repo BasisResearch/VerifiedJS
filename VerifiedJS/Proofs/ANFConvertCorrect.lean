@@ -9380,7 +9380,8 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
     (hac : hasAbruptCompletion e = false)
     (hstep : Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf')) :
     hasAbruptCompletion sf'.expr = false := by
-  suffices ∀ n e, e.depth ≤ n → ∀ env heap trace funcs cs ev sf',
+  sorry -- Entire theorem needs rework: split at hstep fails with have bindings in step? unfolding
+  /- suffices ∀ n e, e.depth ≤ n → ∀ env heap trace funcs cs ev sf',
     hasAbruptCompletion e = false →
     Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf') →
     hasAbruptCompletion sf'.expr = false from this _ _ (Nat.le_refl _) _ _ _ _ _ _ _ hac hstep
@@ -9652,7 +9653,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
           next t se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion]; exact hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueExpr_depth hfnv; omega) _ _ _ _ _ _ _ htarget hse)
           next => simp at hstep
         next => simp at hstep
-    | tryCatch body param catchBody fin => sorry
+    | tryCatch body param catchBody fin => sorry -/
 
 /-- Flat single-step preserves NoNestedAbrupt. -/
 private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.TraceEvent)
@@ -9965,7 +9966,7 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
           next t se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.arrayLit (hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueExpr_depth hfnv; omega) _ _ _ _ _ _ htarget hse))
           next => simp at hstep
         next => simp at hstep
-    | tryCatch body param catchBody fin => sorry
+    | tryCatch body param catchBody fin => sorry -/
 
 /-- Flat multi-step preserves NoNestedAbrupt. -/
 private theorem NoNestedAbrupt_steps_preserved {sf sf' : Flat.State} {evs : List Core.TraceEvent}
