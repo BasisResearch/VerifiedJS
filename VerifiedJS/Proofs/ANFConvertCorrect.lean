@@ -9512,7 +9512,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         split at hstep
         next =>  -- rhs not value → step rhs
           split at hstep
-          next ev' sr hsr => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hr hfuncs_ac hsr⟩
+          next ev' sr hsr => simp [Flat.step?_pushTrace_expand] at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨hl, ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hr hfuncs_ac hsr⟩
           next => simp at hstep
         next rv =>  -- both values
           simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
@@ -9694,7 +9694,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       obtain ⟨⟨hf_ac, hfe_ac⟩, hargs_ac⟩ := hac
       cases hfv : Flat.exprValue? f with
       | none =>
-        rw [Flat.step?_call_step_func _ _ _ _ hfv] at hstep
+        simp only [Flat.step?_call_step_func, hfv] at hstep
         simp only [Option.bind_eq_some, Prod.exists] at hstep
         obtain ⟨t', sf'', hinner, heq⟩ := hstep
         simp only [Option.some.injEq, Prod.mk.injEq] at heq
@@ -9704,13 +9704,13 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       | some fv =>
         cases hev : Flat.exprValue? fenv with
         | none =>
-          rw [Flat.step?_call_step_env _ _ _ _ fv hfv hev] at hstep
+          simp only [Flat.step?_call_step_env, hfv, hev] at hstep
           simp only [Option.bind_eq_some, Prod.exists] at hstep
           obtain ⟨t', se', hinner, heq⟩ := hstep
           simp only [Option.some.injEq, Prod.mk.injEq] at heq
           obtain ⟨rfl, rfl⟩ := heq
           simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]
-          exact ⟨⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hfe_ac hfuncs_ac hinner⟩, hargs_ac⟩
+          exact ⟨⟨hf_ac, ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hfe_ac hfuncs_ac hinner⟩, hargs_ac⟩
         | some envVal =>
           rw [Flat.step?.eq_1] at hstep
           simp only [hfv, hev] at hstep
@@ -9737,7 +9737,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
               · next t se hse =>
                 simp at hstep; obtain ⟨_, rfl⟩ := hstep
                 simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]
-                exact ⟨⟨by simp [hasAbruptCompletion], by simp [hasAbruptCompletion]⟩, hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueExpr_depth hfnv; omega) _ _ _ _ _ _ _ htarget hfuncs_ac hse)⟩
+                exact ⟨⟨hf_ac, hfe_ac⟩, hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueExpr_depth hfnv; omega) _ _ _ _ _ _ _ htarget hfuncs_ac hse)⟩
               · simp at hstep
             · simp at hstep
     | newObj f fenv args =>
@@ -9745,7 +9745,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       obtain ⟨⟨hf_ac, hfe_ac⟩, hargs_ac⟩ := hac
       cases hfv : Flat.exprValue? f with
       | none =>
-        rw [Flat.step?_newObj_step_func _ _ _ _ hfv] at hstep
+        simp only [Flat.step?_newObj_step_func, hfv] at hstep
         simp only [Option.bind_eq_some, Prod.exists] at hstep
         obtain ⟨t', sf'', hinner, heq⟩ := hstep
         simp only [Option.some.injEq, Prod.mk.injEq] at heq
@@ -9755,13 +9755,13 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       | some fv =>
         cases hev : Flat.exprValue? fenv with
         | none =>
-          rw [Flat.step?_newObj_step_env _ _ _ _ fv hfv hev] at hstep
+          simp only [Flat.step?_newObj_step_env, hfv, hev] at hstep
           simp only [Option.bind_eq_some, Prod.exists] at hstep
           obtain ⟨t', se', hinner, heq⟩ := hstep
           simp only [Option.some.injEq, Prod.mk.injEq] at heq
           obtain ⟨rfl, rfl⟩ := heq
           simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]
-          exact ⟨⟨by simp [hasAbruptCompletion], ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hfe_ac hfuncs_ac hinner⟩, hargs_ac⟩
+          exact ⟨⟨hf_ac, ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hfe_ac hfuncs_ac hinner⟩, hargs_ac⟩
         | some envVal =>
           rw [Flat.step?.eq_1] at hstep
           simp only [hfv, hev] at hstep
@@ -9776,7 +9776,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
               · next t se hse =>
                 simp at hstep; obtain ⟨_, rfl⟩ := hstep
                 simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]
-                exact ⟨⟨by simp [hasAbruptCompletion], by simp [hasAbruptCompletion]⟩, hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueExpr_depth hfnv; omega) _ _ _ _ _ _ _ htarget hfuncs_ac hse)⟩
+                exact ⟨⟨hf_ac, hfe_ac⟩, hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueExpr_depth hfnv; omega) _ _ _ _ _ _ _ htarget hfuncs_ac hse)⟩
               · simp at hstep
             · simp at hstep
     | getEnv envExpr idx =>
