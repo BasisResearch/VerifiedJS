@@ -6097,3 +6097,6 @@ observable events and breaking ANF_SimRel correspondence.
 2026-04-04T12:15:01+00:00 SKIP: already running
 ### 2026-04-04T12:34:07+00:00 Build confirmed — 0 errors, 39 sorry lines (was 24 before, increase from sorry markers for var/this/compound subcases + helper decomp lemmas using simp_all)
 2026-04-04T12:35:04+00:00 DONE
+
+## Run: 2026-04-04T13:15:01+00:00
+

@@ -1,3 +1,67 @@
+## Run: 2026-04-04T13:00:11+00:00
+
+### Metrics
+- **Sorry count**: ANF 46 + CC 15 + Lower 0 = **61 total sorry tokens**
+- **Normalized count** (NoNestedAbrupt as 1): ANF 25 + CC 15 = **40** (was 39 last run)
+- **Delta**: +1 from last run baseline. **FLAT — NO PROGRESS.**
+
+### Why sorry count is flat
+- **ALL 3 agents have been idle for days.** Proof agent last ran April 1 (3 days ago). jsspec last ran March 31 (4 days). wasmspec last ran March 30 (5 days).
+- NoNestedAbrupt skeleton was set up but ALL 22 constructor cases remain sorry — proof agent never executed the closure work.
+- L7791 (trivial param addition) STILL not closed after being assigned 3+ runs ago.
+- L4333 regression STILL not fixed.
+- L9027/9028/9052/9053 STILL open.
+
+### Agent Analysis
+1. **proof** (IDLE since April 1): NoNestedAbrupt_step_preserved skeleton at L9107-9168 has 22 sorry constructor cases. Zero proved in the `succ` branch. **REWROTE prompt** with exact copy-paste Lean code for seq, let, assign, if, getProp, deleteProp, typeof (7 cases). Grouped by pattern with explicit split structures matching Flat.step?.
+2. **jsspec** (IDLE since March 31): 3 assigned targets unchanged: L7791 (trivial), L4333 (regression), L3408 (helper). **REWROTE prompt** — same 3 tasks, stronger urgency, same specific code.
+3. **wasmspec** (IDLE since March 30): 4 targets: L9027/9028/9052/9053. **REWROTE prompt** with clearer analysis of var/this cases and HasIfInHead strategy.
+
+### Actions Taken
+1. Counted sorries: 46 ANF + 15 CC = 61 tokens (40 normalized). +1 from baseline. FLAT.
+2. **REWROTE proof prompt**: Complete Lean code for 7 NoNestedAbrupt cases (seq, let, assign, if, getProp, deleteProp, typeof) with exact split structures from Flat.step? analysis.
+3. **REWROTE jsspec prompt**: Same 3 targets with updated urgency.
+4. **REWROTE wasmspec prompt**: Same 4 targets with updated analysis.
+5. Logged to time_estimate.csv: 61.
+
+### Sorry Breakdown
+
+**ANF (46 sorry tokens, 25 normalized):**
+- Group A (7): L7522-L7708 — eval context lifting, PARKED
+- Throw dispatch (1): L8349, DEFERRED
+- Return compound (2): L8499, L8502, DEFERRED
+- Await compound (2): L8672, L8675, DEFERRED
+- Yield compound (2): L8826, L8829, DEFERRED
+- Let step sim (1): L8856, wasmspec Task 3
+- While step sim (1): L8904, PARKED
+- If compound (4): L9027, L9028, L9052, L9053, wasmspec Tasks 1-2
+- TryCatch (1): L9097, DEFERRED
+- hasAbruptCompletion (1): L9105, separate theorem
+- NoNestedAbrupt (22): L9147-9168, proof agent target
+- Break/Continue compound (2): L9559, L9612, PARKED (need Flat.step? error propagation)
+
+**CC (15 sorry tokens):**
+- L3408: Core.step preserves supported — jsspec Task 3
+- L3435: captured var multi-step — BLOCKED
+- L3764: CCStateAgree if-true — BLOCKED by architecture
+- L3787: CCStateAgree if-false — BLOCKED by architecture
+- L4333: convert hcore REGRESSION — jsspec Task 2
+- L4345: non-consoleLog function call — BLOCKED
+- L4553: semantic mismatch call f — BLOCKED (compiler)
+- L4561: semantic mismatch call arg — BLOCKED (compiler)
+- L5199: getIndex string — UNPROVABLE
+- L6441: functionDef — BLOCKED by HeapInj
+- L6598: tryCatch body-value — CCStateAgree blocked
+- L6599: tryCatch with finally — CCStateAgree blocked
+- L6671: tryCatch non-error — CCStateAgree blocked
+- L6779: while_ CCState threading — BLOCKED by architecture
+- L7791: h_supp param — jsspec Task 1 (TRIVIAL)
+
+### Critical Assessment
+Zero progress in 30 minutes since last supervisor run, and agents idle for days. The proof agent prompt now has EXACT copy-paste code for 7 cases. If the proof agent executes, we should see sorry count drop by at least 5-7 (seq, let, assign, if, typeof, deleteProp, and partially getProp). jsspec should trivially close L7791 (-1 sorry). Net target: -6 to -8 next run.
+
+---
+
 ## Run: 2026-04-04T12:30:03+00:00
 
 ### Metrics
@@ -3897,3 +3961,4 @@ All three agents mid-run from previous launches. Files modified at 11:31 (agents
 ## Run: 2026-04-04T13:00:11+00:00
 
 2026-04-04T13:05:06+00:00 SKIP: already running
+2026-04-04T13:13:09+00:00 DONE
