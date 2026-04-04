@@ -6507,8 +6507,8 @@ private theorem closureConvert_step_simulation
       | none =>
         simp [Flat.convertOptExpr] at hconv
         obtain ⟨hsf_expr, hst'_eq⟩ := hconv
-        have hsf_eta : sf = { sf with expr := .tryCatch (.lit (Flat.convertValue v)) catchParam
-            (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst none } := by
+        have hsf_eta : sf = { sf with expr := Flat.Expr.tryCatch (Flat.Expr.lit (Flat.convertValue v)) catchParam
+            (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst Option.none } := by
           cases sf; simp_all
         rw [hsf_eta] at hstep
         have hstep_rw := Flat_step?_tryCatch_body_value sf (Flat.convertValue v) catchParam
