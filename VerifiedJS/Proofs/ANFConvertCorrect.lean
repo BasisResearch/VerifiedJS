@@ -8920,7 +8920,7 @@ private theorem normalizeExpr_if_lit_decomp
       obtain ⟨else_anf, n2⟩ := val_else
       simp [helse, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
       obtain ⟨⟨hc, ht, he⟩, hm⟩ := hnorm
-      subst ht he hm; exact ⟨hc.symm, n1, hthen, helse⟩
+      exact ⟨hc.symm, n1, by rw [← ht]; exact hthen, by rw [← he, ← hm]; exact helse⟩
 
 /-- Same decomposition for var condition. -/
 private theorem normalizeExpr_if_var_decomp
@@ -8944,7 +8944,7 @@ private theorem normalizeExpr_if_var_decomp
       obtain ⟨else_anf, n2⟩ := val_else
       simp [helse, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
       obtain ⟨⟨hc, ht, he⟩, hm⟩ := hnorm
-      subst ht he hm; exact ⟨hc.symm, n1, hthen, helse⟩
+      exact ⟨hc.symm, n1, by rw [← ht]; exact hthen, by rw [← he, ← hm]; exact helse⟩
 
 /-- Same decomposition for .this condition. -/
 private theorem normalizeExpr_if_this_decomp
@@ -8968,7 +8968,7 @@ private theorem normalizeExpr_if_this_decomp
       obtain ⟨else_anf, n2⟩ := val_else
       simp [helse, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
       obtain ⟨⟨hc, ht, he⟩, hm⟩ := hnorm
-      subst ht he hm; exact ⟨hc.symm, n1, hthen, helse⟩
+      exact ⟨hc.symm, n1, by rw [← ht]; exact hthen, by rw [← he, ← hm]; exact helse⟩
 
 /-- If normalizeExpr sf.expr k produces .if cond then_ else_ (with trivial-preserving k),
     then one ANF step on the if can be simulated by Flat steps. -/
@@ -9006,113 +9006,60 @@ private theorem normalizeExpr_if_step_sim
       case if_direct c_flat then_flat else_flat =>
         cases c_flat with
         | lit fv =>
-          rw [ANF.normalizeExpr_if'] at hnorm
-          simp only [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue] at hnorm
-          cases hthen_r : (ANF.normalizeExpr then_flat k).run n with
-          | error msg =>
-            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
-          | ok val_then =>
-            obtain ⟨then_anf, n1⟩ := val_then
-            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
-            cases helse_r : (ANF.normalizeExpr else_flat k).run n1 with
-            | error msg =>
-              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r] at hnorm
-            | ok val_else =>
-              obtain ⟨else_anf, n2⟩ := val_else
-              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r,
-                          pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
-              obtain ⟨hcond_eq, hthen_eq, helse_eq, hm_eq⟩ := hnorm
-              subst hthen_eq helse_eq hm_eq
-              rw [hcond_eq, evalTrivial_trivialOfValue] at heval
-              obtain rfl := Except.ok.inj heval
-              have hfbool : Flat.toBoolean fv = true := by cases fv <;> simp_all [Flat.toBoolean]
-              refine ⟨⟨then_flat, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent],
-                .tail ⟨?_⟩ (.refl _), ?_, ?_, ?_⟩
-              · show Flat.step? ⟨.if (.lit fv) then_flat else_flat, env, heap, trace, funcs, cs⟩ =
-                  some (.silent, ⟨then_flat, env, heap, trace ++ [.silent], funcs, cs⟩)
-                simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
-              · rfl
-              · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace,
-                  k, n, n1, by simp [StateT.run] at hthen_r; exact hthen_r, hk⟩
-              · intro x hfx; exact hewf x (VarFreeIn.if_then _ _ _ _ hfx)
+          obtain ⟨hcond_eq, n1, hthen_r, _⟩ := normalizeExpr_if_lit_decomp fv then_flat else_flat k n cond then_ else_ m hnorm
+          rw [hcond_eq, evalTrivial_trivialOfValue] at heval
+          obtain rfl := Except.ok.inj heval
+          have hfbool : Flat.toBoolean fv = true := by cases fv <;> simp_all [Flat.toBoolean]
+          refine ⟨⟨then_flat, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent],
+            .tail ⟨?_⟩ (.refl _), ?_, ?_, ?_⟩
+          · simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
+          · rfl
+          · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace, k, n, n1, hthen_r, hk⟩
+          · intro x hfx; exact hewf x (VarFreeIn.if_then _ _ _ _ hfx)
         | var name_c =>
-          rw [ANF.normalizeExpr_if', ANF.normalizeExpr_var'] at hnorm
-          cases hthen_r : (ANF.normalizeExpr then_flat k).run n with
-          | error msg =>
-            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
-          | ok val_then =>
-            obtain ⟨then_anf, n1⟩ := val_then
-            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
-            cases helse_r : (ANF.normalizeExpr else_flat k).run n1 with
-            | error msg =>
-              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r] at hnorm
-            | ok val_else =>
-              obtain ⟨else_anf, n2⟩ := val_else
-              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r,
-                          pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
-              obtain ⟨hcond_eq, hthen_eq, helse_eq, hm_eq⟩ := hnorm
-              rw [← hcond_eq] at heval
-              subst hthen_eq helse_eq hm_eq
-              simp only [ANF.evalTrivial] at heval
-              split at heval
-              · rename_i v' hlookup
-                simp at heval; subst heval
-                have hfbool : Flat.toBoolean v' = true := by cases v' <;> simp_all [Flat.toBoolean]
-                have hstep1 : Flat.step? ⟨.if (.var name_c) then_flat else_flat, env, heap, trace, funcs, cs⟩ =
-                    some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
-                  simp [Flat.step?, Flat.exprValue?]; constructor
-                  · simp [Flat.step?, hlookup, Flat.pushTrace]
-                  · rfl
-                have hstep2 : Flat.step? ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
-                    some (.silent, ⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
-                  simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
-                refine ⟨⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩,
-                  [.silent, .silent], .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)), ?_, ?_, ?_⟩
-                · simp [observableTrace]
-                · refine ⟨rfl, rfl, ?_, k, n, n1, ?_, hk⟩
-                  · simp [observableTrace_append, observableTrace]; exact htrace
-                  · simp [StateT.run] at hthen_r; exact hthen_r
-                · intro x hfx; exact hewf x (VarFreeIn.if_then _ _ _ _ hfx)
-              · simp at heval
+          obtain ⟨hcond_eq, n1, hthen_r, _⟩ := normalizeExpr_if_var_decomp name_c then_flat else_flat k n cond then_ else_ m hnorm
+          rw [hcond_eq] at heval
+          simp only [ANF.evalTrivial] at heval
+          split at heval
+          · rename_i v' hlookup
+            simp at heval; subst heval
+            have hfbool : Flat.toBoolean v' = true := by cases v' <;> simp_all [Flat.toBoolean]
+            have hstep1 : Flat.step? ⟨.if (.var name_c) then_flat else_flat, env, heap, trace, funcs, cs⟩ =
+                some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
+              simp [Flat.step?, Flat.exprValue?]; constructor
+              · simp [Flat.step?, hlookup, Flat.pushTrace]
+              · rfl
+            have hstep2 : Flat.step? ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
+                some (.silent, ⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
+              simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
+            refine ⟨⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩,
+              [.silent, .silent], .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)), ?_, ?_, ?_⟩
+            · simp [observableTrace]
+            · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace, k, n, n1, hthen_r, hk⟩
+            · intro x hfx; exact hewf x (VarFreeIn.if_then _ _ _ _ hfx)
+          · simp at heval
         | this =>
-          rw [ANF.normalizeExpr_if', ANF.normalizeExpr_this'] at hnorm
-          cases hthen_r : (ANF.normalizeExpr then_flat k).run n with
-          | error msg =>
-            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
-          | ok val_then =>
-            obtain ⟨then_anf, n1⟩ := val_then
-            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
-            cases helse_r : (ANF.normalizeExpr else_flat k).run n1 with
-            | error msg =>
-              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r] at hnorm
-            | ok val_else =>
-              obtain ⟨else_anf, n2⟩ := val_else
-              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r,
-                          pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
-              obtain ⟨hcond_eq, hthen_eq, helse_eq, hm_eq⟩ := hnorm
-              rw [← hcond_eq] at heval
-              subst hthen_eq helse_eq hm_eq
-              simp only [ANF.evalTrivial] at heval
-              split at heval
-              · rename_i v' hlookup
-                simp at heval; subst heval
-                have hfbool : Flat.toBoolean v' = true := by cases v' <;> simp_all [Flat.toBoolean]
-                have hstep1 : Flat.step? ⟨.if .this then_flat else_flat, env, heap, trace, funcs, cs⟩ =
-                    some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
-                  simp [Flat.step?, Flat.exprValue?]; constructor
-                  · simp [Flat.step?, hlookup, Flat.pushTrace]
-                  · rfl
-                have hstep2 : Flat.step? ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
-                    some (.silent, ⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
-                  simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
-                refine ⟨⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩,
-                  [.silent, .silent], .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)), ?_, ?_, ?_⟩
-                · simp [observableTrace]
-                · refine ⟨rfl, rfl, ?_, k, n, n1, ?_, hk⟩
-                  · simp [observableTrace_append, observableTrace]; exact htrace
-                  · simp [StateT.run] at hthen_r; exact hthen_r
-                · intro x hfx; exact hewf x (VarFreeIn.if_then _ _ _ _ hfx)
-              · simp at heval
+          obtain ⟨hcond_eq, n1, hthen_r, _⟩ := normalizeExpr_if_this_decomp then_flat else_flat k n cond then_ else_ m hnorm
+          rw [hcond_eq] at heval
+          simp only [ANF.evalTrivial] at heval
+          split at heval
+          · rename_i v' hlookup
+            simp at heval; subst heval
+            have hfbool : Flat.toBoolean v' = true := by cases v' <;> simp_all [Flat.toBoolean]
+            have hstep1 : Flat.step? ⟨.if .this then_flat else_flat, env, heap, trace, funcs, cs⟩ =
+                some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
+              simp [Flat.step?, Flat.exprValue?]; constructor
+              · simp [Flat.step?, hlookup, Flat.pushTrace]
+              · rfl
+            have hstep2 : Flat.step? ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
+                some (.silent, ⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
+              simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
+            refine ⟨⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩,
+              [.silent, .silent], .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)), ?_, ?_, ?_⟩
+            · simp [observableTrace]
+            · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace, k, n, n1, hthen_r, hk⟩
+            · intro x hfx; exact hewf x (VarFreeIn.if_then _ _ _ _ hfx)
+          · simp at heval
         | _ => sorry -- compound condition: needs trivialChain infrastructure
       all_goals sorry -- compound HasIfInHead: needs depth-induction
     · -- toBoolean v = false: step to else_
@@ -9125,113 +9072,60 @@ private theorem normalizeExpr_if_step_sim
       case if_direct c_flat then_flat else_flat =>
         cases c_flat with
         | lit fv =>
-          rw [ANF.normalizeExpr_if'] at hnorm
-          simp only [ANF.normalizeExpr, ANF.trivialOfFlatValue, trivialOfFlatValue_eq_trivialOfValue] at hnorm
-          cases hthen_r : (ANF.normalizeExpr then_flat k).run n with
-          | error msg =>
-            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
-          | ok val_then =>
-            obtain ⟨then_anf, n1⟩ := val_then
-            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
-            cases helse_r : (ANF.normalizeExpr else_flat k).run n1 with
-            | error msg =>
-              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r] at hnorm
-            | ok val_else =>
-              obtain ⟨else_anf, n2⟩ := val_else
-              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r,
-                          pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
-              obtain ⟨hcond_eq, hthen_eq, helse_eq, hm_eq⟩ := hnorm
-              subst hthen_eq helse_eq hm_eq
-              rw [hcond_eq, evalTrivial_trivialOfValue] at heval
-              obtain rfl := Except.ok.inj heval
-              have hfbool : Flat.toBoolean fv = false := by cases fv <;> simp_all [Flat.toBoolean]
-              refine ⟨⟨else_flat, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent],
-                .tail ⟨?_⟩ (.refl _), ?_, ?_, ?_⟩
-              · show Flat.step? ⟨.if (.lit fv) then_flat else_flat, env, heap, trace, funcs, cs⟩ =
-                  some (.silent, ⟨else_flat, env, heap, trace ++ [.silent], funcs, cs⟩)
-                simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
-              · rfl
-              · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace,
-                  k, n1, n2, by simp [StateT.run] at helse_r; exact helse_r, hk⟩
-              · intro x hfx; exact hewf x (VarFreeIn.if_else _ _ _ _ hfx)
+          obtain ⟨hcond_eq, n1, _, helse_r⟩ := normalizeExpr_if_lit_decomp fv then_flat else_flat k n cond then_ else_ m hnorm
+          rw [hcond_eq, evalTrivial_trivialOfValue] at heval
+          obtain rfl := Except.ok.inj heval
+          have hfbool : Flat.toBoolean fv = false := by cases fv <;> simp_all [Flat.toBoolean]
+          refine ⟨⟨else_flat, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent],
+            .tail ⟨?_⟩ (.refl _), ?_, ?_, ?_⟩
+          · simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
+          · rfl
+          · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace, k, n1, _, helse_r, hk⟩
+          · intro x hfx; exact hewf x (VarFreeIn.if_else _ _ _ _ hfx)
         | var name_c =>
-          rw [ANF.normalizeExpr_if', ANF.normalizeExpr_var'] at hnorm
-          cases hthen_r : (ANF.normalizeExpr then_flat k).run n with
-          | error msg =>
-            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
-          | ok val_then =>
-            obtain ⟨then_anf, n1⟩ := val_then
-            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
-            cases helse_r : (ANF.normalizeExpr else_flat k).run n1 with
-            | error msg =>
-              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r] at hnorm
-            | ok val_else =>
-              obtain ⟨else_anf, n2⟩ := val_else
-              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r,
-                          pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
-              obtain ⟨hcond_eq, hthen_eq, helse_eq, hm_eq⟩ := hnorm
-              rw [← hcond_eq] at heval
-              subst hthen_eq helse_eq hm_eq
-              simp only [ANF.evalTrivial] at heval
-              split at heval
-              · rename_i v' hlookup
-                simp at heval; subst heval
-                have hfbool : Flat.toBoolean v' = false := by cases v' <;> simp_all [Flat.toBoolean]
-                have hstep1 : Flat.step? ⟨.if (.var name_c) then_flat else_flat, env, heap, trace, funcs, cs⟩ =
-                    some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
-                  simp [Flat.step?, Flat.exprValue?]; constructor
-                  · simp [Flat.step?, hlookup, Flat.pushTrace]
-                  · rfl
-                have hstep2 : Flat.step? ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
-                    some (.silent, ⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
-                  simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
-                refine ⟨⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩,
-                  [.silent, .silent], .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)), ?_, ?_, ?_⟩
-                · simp [observableTrace]
-                · refine ⟨rfl, rfl, ?_, k, n1, n2, ?_, hk⟩
-                  · simp [observableTrace_append, observableTrace]; exact htrace
-                  · simp [StateT.run] at helse_r; exact helse_r
-                · intro x hfx; exact hewf x (VarFreeIn.if_else _ _ _ _ hfx)
-              · simp at heval
+          obtain ⟨hcond_eq, n1, _, helse_r⟩ := normalizeExpr_if_var_decomp name_c then_flat else_flat k n cond then_ else_ m hnorm
+          rw [hcond_eq] at heval
+          simp only [ANF.evalTrivial] at heval
+          split at heval
+          · rename_i v' hlookup
+            simp at heval; subst heval
+            have hfbool : Flat.toBoolean v' = false := by cases v' <;> simp_all [Flat.toBoolean]
+            have hstep1 : Flat.step? ⟨.if (.var name_c) then_flat else_flat, env, heap, trace, funcs, cs⟩ =
+                some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
+              simp [Flat.step?, Flat.exprValue?]; constructor
+              · simp [Flat.step?, hlookup, Flat.pushTrace]
+              · rfl
+            have hstep2 : Flat.step? ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
+                some (.silent, ⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
+              simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
+            refine ⟨⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩,
+              [.silent, .silent], .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)), ?_, ?_, ?_⟩
+            · simp [observableTrace]
+            · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace, k, n1, _, helse_r, hk⟩
+            · intro x hfx; exact hewf x (VarFreeIn.if_else _ _ _ _ hfx)
+          · simp at heval
         | this =>
-          rw [ANF.normalizeExpr_if', ANF.normalizeExpr_this'] at hnorm
-          cases hthen_r : (ANF.normalizeExpr then_flat k).run n with
-          | error msg =>
-            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
-          | ok val_then =>
-            obtain ⟨then_anf, n1⟩ := val_then
-            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
-            cases helse_r : (ANF.normalizeExpr else_flat k).run n1 with
-            | error msg =>
-              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r] at hnorm
-            | ok val_else =>
-              obtain ⟨else_anf, n2⟩ := val_else
-              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r,
-                          pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
-              obtain ⟨hcond_eq, hthen_eq, helse_eq, hm_eq⟩ := hnorm
-              rw [← hcond_eq] at heval
-              subst hthen_eq helse_eq hm_eq
-              simp only [ANF.evalTrivial] at heval
-              split at heval
-              · rename_i v' hlookup
-                simp at heval; subst heval
-                have hfbool : Flat.toBoolean v' = false := by cases v' <;> simp_all [Flat.toBoolean]
-                have hstep1 : Flat.step? ⟨.if .this then_flat else_flat, env, heap, trace, funcs, cs⟩ =
-                    some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
-                  simp [Flat.step?, Flat.exprValue?]; constructor
-                  · simp [Flat.step?, hlookup, Flat.pushTrace]
-                  · rfl
-                have hstep2 : Flat.step? ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
-                    some (.silent, ⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
-                  simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
-                refine ⟨⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩,
-                  [.silent, .silent], .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)), ?_, ?_, ?_⟩
-                · simp [observableTrace]
-                · refine ⟨rfl, rfl, ?_, k, n1, n2, ?_, hk⟩
-                  · simp [observableTrace_append, observableTrace]; exact htrace
-                  · simp [StateT.run] at helse_r; exact helse_r
-                · intro x hfx; exact hewf x (VarFreeIn.if_else _ _ _ _ hfx)
-              · simp at heval
+          obtain ⟨hcond_eq, n1, _, helse_r⟩ := normalizeExpr_if_this_decomp then_flat else_flat k n cond then_ else_ m hnorm
+          rw [hcond_eq] at heval
+          simp only [ANF.evalTrivial] at heval
+          split at heval
+          · rename_i v' hlookup
+            simp at heval; subst heval
+            have hfbool : Flat.toBoolean v' = false := by cases v' <;> simp_all [Flat.toBoolean]
+            have hstep1 : Flat.step? ⟨.if .this then_flat else_flat, env, heap, trace, funcs, cs⟩ =
+                some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
+              simp [Flat.step?, Flat.exprValue?]; constructor
+              · simp [Flat.step?, hlookup, Flat.pushTrace]
+              · rfl
+            have hstep2 : Flat.step? ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
+                some (.silent, ⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
+              simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
+            refine ⟨⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩,
+              [.silent, .silent], .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)), ?_, ?_, ?_⟩
+            · simp [observableTrace]
+            · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace, k, n1, _, helse_r, hk⟩
+            · intro x hfx; exact hewf x (VarFreeIn.if_else _ _ _ _ hfx)
+          · simp at heval
         | _ => sorry -- compound condition
       all_goals sorry -- compound HasIfInHead
   · -- evalTrivial env cond = .error msg

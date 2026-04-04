@@ -3387,7 +3387,7 @@ private theorem closureConvert_step_simulation
     rw [Flat_step?_lit] at hstep
     exact absurd hstep (fun h => nomatch h)
   | var name =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     -- Case split on whether the variable is captured
     cases hlookupEnv : Flat.lookupEnv envMap name with
@@ -3449,7 +3449,7 @@ private theorem closureConvert_step_simulation
         · simp [sc', ExprAddrWF, ValueAddrWF]
         · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
   | «this» =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst_eq⟩ := hconv
     have hsf_eta : sf = { sf with expr := .this } := by cases sf; simp_all
@@ -3502,7 +3502,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', ExprAddrWF, ValueAddrWF]
       · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
   | «let» name init body =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     cases hcev : Core.exprValue? init with
     | some cv =>
@@ -3518,7 +3518,7 @@ private theorem closureConvert_step_simulation
       obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
       let sc' : Core.State :=
         ⟨body, Core.Env.extend sc.env name cv, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
       · show Core.step? sc = some (.silent, sc')
         have hsc' : sc = { sc with expr := .«let» name (.lit cv) body } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -3532,13 +3532,15 @@ private theorem closureConvert_step_simulation
       · simp [sc', hheapna]
       · simp [sc', noCallFrameReturn] at hncfr ⊢; exact hncfr
       · simp [sc', ExprAddrWF] at hexprwf ⊢; exact hexprwf.2
+      · simp [sc', Core.Expr.supported] at hsupp ⊢; exact hsupp.2
       · have hscope := convertExpr_scope_irrelevant body scope (name :: scope) envVar envMap st
         exact ⟨st, (Flat.convertExpr body scope envVar envMap st).snd, by
           simp only [sc']; rw [hscope], ⟨rfl, rfl⟩, by
           rw [hconv.2, convertExpr_scope_irrelevant body (name :: scope) scope]; exact ⟨rfl, rfl⟩⟩
     | none =>
+      have hsupp_init : init.supported = true := by simp [Core.Expr.supported] at hsupp; exact hsupp.1
       have hfnv : Flat.exprValue? (Flat.convertExpr init scope envVar envMap st).fst = none :=
-        convertExpr_not_value init hcev scope envVar envMap st
+        convertExpr_not_value_supported init hcev hsupp_init scope envVar envMap st
       have hsf_eta : sf = { sf with expr := (Flat.Expr.let name (Flat.convertExpr init scope envVar envMap st).fst
           (Flat.convertExpr body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd).fst) } := by
         cases sf; simp_all
@@ -3567,18 +3569,18 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr.1
       have hexprwf_init : ExprAddrWF init sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', hsupp_sub', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
         ih_depth init.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr init scope envVar envMap st).fst }
           { sc with expr := init }
           ev sa scope st (Flat.convertExpr init scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_init hexprwf_init
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_init hexprwf_init hsupp_init
           (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
         ⟨.«let» name sc_sub'.expr body, sc_sub'.env, sc_sub'.heap,
          sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
       · show Core.step? sc = some (ev, sc')
         have hsc' : sc = { sc with expr := .«let» name init body } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -3593,6 +3595,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
       · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf',
             ExprAddrWF_mono body (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2) (Core_step_heap_size_mono hcstep_sub)⟩
+      · simp [sc', Core.Expr.supported]; exact ⟨hsupp_sub', by simp [Core.Expr.supported] at hsupp; exact hsupp.2⟩
       · refine ⟨st_a, (Flat.convertExpr body (name :: scope) envVar envMap st_a').snd, ?_, hAgreeIn, ?_⟩
         · simp only [sc', Flat.convertExpr]
           have hbody := convertExpr_state_determined body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd st_a' hAgreeOut.1 hAgreeOut.2
@@ -3602,7 +3605,7 @@ private theorem closureConvert_step_simulation
         · rw [hconv.2]
           exact (convertExpr_state_determined body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd st_a' hAgreeOut.1 hAgreeOut.2).2
   | assign name rhs =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     cases hcev : Core.exprValue? rhs with
@@ -3686,7 +3689,7 @@ private theorem closureConvert_step_simulation
           simp [sc', Flat.convertExpr]
           exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
   | «if» cond then_ else_ =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     cases hcev : Core.exprValue? cond with
     | some cv =>
@@ -3824,7 +3827,7 @@ private theorem closureConvert_step_simulation
           rw [hthen.1, helse.1]
         · rw [hconv.2]; exact helse.2
   | seq a b =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     cases hcev : Core.exprValue? a with
     | some cv =>
@@ -3922,7 +3925,7 @@ private theorem closureConvert_step_simulation
           rw [hb.1]
         · rw [hconv.2]; exact hb.2
   | unary op arg =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     cases hcev : Core.exprValue? arg with
@@ -4008,7 +4011,7 @@ private theorem closureConvert_step_simulation
           simp [sc', Flat.convertExpr]
           exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
   | binary op lhs rhs =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     cases hlv : Core.exprValue? lhs with
     | some lv =>
@@ -4173,7 +4176,7 @@ private theorem closureConvert_step_simulation
           rw [hrhs.1]
         · rw [hconv.2]; exact hrhs.2
   | call f args =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     cases hcev : Core.exprValue? f with
@@ -4498,7 +4501,7 @@ private theorem closureConvert_step_simulation
             · rw [hst, hargs, hdecomp_snd target_c, hdecomp_snd sc_sub'.expr]
               exact hsd_rest.2
   | newObj f args =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     -- Core.newObj always allocates an empty object at heap.nextAddr, ignoring sub-expressions.
@@ -4563,7 +4566,7 @@ private theorem closureConvert_step_simulation
         case ccst_ => exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, caddr, hna_eq],
           ⟨rfl, rfl⟩, by rw [hst, hst_eq]; exact ⟨rfl, rfl⟩⟩
   | getProp obj prop =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     cases hcev : Core.exprValue? obj with
@@ -4763,7 +4766,7 @@ private theorem closureConvert_step_simulation
           simp [sc', Flat.convertExpr]
           exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
   | setProp obj prop value =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     cases hcev : Core.exprValue? obj with
@@ -5033,7 +5036,7 @@ private theorem closureConvert_step_simulation
           rw [hval.1]
         · rw [hst]; exact hval.2
   | getIndex obj idx =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     cases hcev : Core.exprValue? obj with
@@ -5327,7 +5330,7 @@ private theorem closureConvert_step_simulation
           rw [hidx.1]
         · rw [hst]; exact hidx.2
   | setIndex obj idx value =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     cases hcev : Core.exprValue? obj with
@@ -5719,7 +5722,7 @@ private theorem closureConvert_step_simulation
           rw [hidx.1, hval.1]
         · rw [hst]; exact hval.2
   | deleteProp obj prop =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     cases hcev : Core.exprValue? obj with
@@ -5873,7 +5876,7 @@ private theorem closureConvert_step_simulation
           simp [sc', Flat.convertExpr]
           exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
   | typeof arg =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     cases hcev : Core.exprValue? arg with
@@ -5964,7 +5967,7 @@ private theorem closureConvert_step_simulation
           simp [sc', Flat.convertExpr]
           exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
   | objectLit props =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     cases hcfnv : Core.firstNonValueProp props with
@@ -6176,7 +6179,7 @@ private theorem closureConvert_step_simulation
           simp only [h_lhs, h_lhs2, h_rhs, h_rhs2, Flat.convertPropList]
           exact ⟨hrest_det.2.1.symm, hrest_det.2.2.symm⟩
   | arrayLit elems =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     cases hcfnv : Core.firstNonValueExpr elems with
@@ -6391,7 +6394,7 @@ private theorem closureConvert_step_simulation
           exact ⟨hrest_det.2.1.symm, hrest_det.2.2.symm⟩
   | functionDef fname params body isAsync isGen => sorry
   | throw val =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     cases hcev : Core.exprValue? val with
@@ -6482,7 +6485,7 @@ private theorem closureConvert_step_simulation
           simp [sc', Flat.convertExpr]
           exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
   | tryCatch body catchParam catchBody finally_ =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     let fbody := (Flat.convertExpr body scope envVar envMap st).fst
     let st1 := (Flat.convertExpr body scope envVar envMap st).snd
@@ -6697,7 +6700,7 @@ private theorem closureConvert_step_simulation
           simp only [Flat.step?, hfnv, hm]
         rw [heq] at hstep; exact absurd hstep (by simp)
   | while_ cond body =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     let fcond := (Flat.convertExpr cond scope envVar envMap st).fst
     let st_c := (Flat.convertExpr cond scope envVar envMap st).snd
@@ -6743,7 +6746,7 @@ private theorem closureConvert_step_simulation
     rw [Flat_step?_lit] at hstep
     exact absurd hstep (fun h => nomatch h)
   | «break» label =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     have hsf_eta : sf = { sf with expr := .«break» label } := by cases sf; simp_all
@@ -6767,7 +6770,7 @@ private theorem closureConvert_step_simulation
     · simp [sc', ExprAddrWF, ValueAddrWF]
     · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
   | «continue» label =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     have hsf_eta : sf = { sf with expr := .«continue» label } := by cases sf; simp_all
@@ -6791,7 +6794,7 @@ private theorem closureConvert_step_simulation
     · simp [sc', ExprAddrWF, ValueAddrWF]
     · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
   | «return» val =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     cases val with
     | none =>
       simp [Flat.convertExpr, Flat.convertOptExpr] at hconv
@@ -6906,7 +6909,7 @@ private theorem closureConvert_step_simulation
             simp [sc', Flat.convertExpr, Flat.convertOptExpr]
             exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
   | labeled label body =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst'⟩ := hconv
     have hsf_eta : sf = { sf with expr := .labeled label (Flat.convertExpr body scope envVar envMap st).fst } := by
@@ -6933,7 +6936,7 @@ private theorem closureConvert_step_simulation
       simp [sc']; exact hexprwf
     · exact ⟨st, (Flat.convertExpr body scope envVar envMap st).snd, by simp [sc'], ⟨rfl, rfl⟩, by first | (rw [hst']; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr] at hst'; subst hst'; exact ⟨rfl, rfl⟩)⟩
   | yield arg delegate =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     cases arg with
     | none =>
       simp [Flat.convertExpr, Flat.convertOptExpr] at hconv
@@ -7048,7 +7051,7 @@ private theorem closureConvert_step_simulation
             simp [sc', Flat.convertExpr, Flat.convertOptExpr]
             exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
   | await arg =>
-    rw [hsc] at hconv hncfr hexprwf hd
+    rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
     obtain ⟨hfexpr, hst⟩ := hconv
     cases hcev : Core.exprValue? arg with
