@@ -4900,6 +4900,78 @@ inductive HasAwaitInHeadProps : List (Flat.PropName × Flat.Expr) → Prop where
   | tail : HasAwaitInHeadProps rest → HasAwaitInHeadProps (p :: rest)
 end
 
+/-! ## HasAwaitInHead implies hasAbruptCompletion -/
+
+set_option autoImplicit true in
+mutual
+private theorem hasAwaitInHead_implies_hasAbruptCompletion :
+    HasAwaitInHead e → hasAbruptCompletion e = true := by
+  intro h; cases h with
+  | await_direct => rfl
+  | seq_left h => simp [hasAbruptCompletion]; left; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | seq_right h => simp [hasAbruptCompletion]; right; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | let_init h => simp [hasAbruptCompletion]; left; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | getProp_obj h => simp [hasAbruptCompletion]; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | setProp_obj h => simp [hasAbruptCompletion]; left; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | setProp_val h => simp [hasAbruptCompletion]; right; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | binary_lhs h => simp [hasAbruptCompletion]; left; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | binary_rhs h => simp [hasAbruptCompletion]; right; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | unary_arg h => simp [hasAbruptCompletion]; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | typeof_arg h => simp [hasAbruptCompletion]; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | deleteProp_obj h => simp [hasAbruptCompletion]; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | assign_val h => simp [hasAbruptCompletion]; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | call_func h => simp [hasAbruptCompletion]; left; left; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | call_env h => simp [hasAbruptCompletion]; left; right; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | call_args h => simp [hasAbruptCompletion]; right; exact hasAwaitInHeadList_implies_hasAbruptCompletionList h
+  | newObj_func h => simp [hasAbruptCompletion]; left; left; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | newObj_env h => simp [hasAbruptCompletion]; left; right; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | newObj_args h => simp [hasAbruptCompletion]; right; exact hasAwaitInHeadList_implies_hasAbruptCompletionList h
+  | if_cond h => simp [hasAbruptCompletion]; left; left; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | return_some_arg _ => rfl
+  | yield_some_arg _ => rfl
+  | throw_arg _ => rfl
+  | getIndex_obj h => simp [hasAbruptCompletion]; left; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | getIndex_idx h => simp [hasAbruptCompletion]; right; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | setIndex_obj h => simp [hasAbruptCompletion]; left; left; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | setIndex_idx h => simp [hasAbruptCompletion]; left; right; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | setIndex_val h => simp [hasAbruptCompletion]; right; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | getEnv_env h => simp [hasAbruptCompletion]; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | makeClosure_env h => simp [hasAbruptCompletion]; exact hasAwaitInHead_implies_hasAbruptCompletion h
+  | makeEnv_values h => simp [hasAbruptCompletion]; exact hasAwaitInHeadList_implies_hasAbruptCompletionList h
+  | objectLit_props h => simp [hasAbruptCompletion]; exact hasAwaitInHeadProps_implies_hasAbruptCompletionProps h
+  | arrayLit_elems h => simp [hasAbruptCompletion]; exact hasAwaitInHeadList_implies_hasAbruptCompletionList h
+
+private theorem hasAwaitInHeadList_implies_hasAbruptCompletionList :
+    HasAwaitInHeadList es → hasAbruptCompletionList es = true := by
+  intro h; cases h with
+  | head hh => simp [hasAbruptCompletionList]; left; exact hasAwaitInHead_implies_hasAbruptCompletion hh
+  | tail _ ih => simp [hasAbruptCompletionList]; right; exact hasAwaitInHeadList_implies_hasAbruptCompletionList ih
+
+private theorem hasAwaitInHeadProps_implies_hasAbruptCompletionProps :
+    HasAwaitInHeadProps ps → hasAbruptCompletionProps ps = true := by
+  intro h; cases h with
+  | head hh => simp [hasAbruptCompletionProps]; left; exact hasAwaitInHead_implies_hasAbruptCompletion hh
+  | tail _ ih => simp [hasAbruptCompletionProps]; right; exact hasAwaitInHeadProps_implies_hasAbruptCompletionProps ih
+end
+
+private theorem noNestedAbrupt_hasAwaitInHead_absurd_throw {arg : Flat.Expr}
+    (hna : NoNestedAbrupt (.throw arg))
+    (hth : HasAwaitInHead arg) : False := by
+  exact absurd (hasAwaitInHead_implies_hasAbruptCompletion hth)
+    (by rw [NoNestedAbrupt.throw_arg_abruptFree hna]; decide)
+
+private theorem noNestedAbrupt_hasAwaitInHead_absurd_return {arg : Flat.Expr}
+    (hna : NoNestedAbrupt (.return (some arg)))
+    (hth : HasAwaitInHead arg) : False := by
+  exact absurd (hasAwaitInHead_implies_hasAbruptCompletion hth)
+    (by rw [NoNestedAbrupt.return_some_arg_abruptFree hna]; decide)
+
+private theorem noNestedAbrupt_hasAwaitInHead_absurd_yield {arg : Flat.Expr} {d : Bool}
+    (hna : NoNestedAbrupt (.yield (some arg) d))
+    (hth : HasAwaitInHead arg) : False := by
+  exact absurd (hasAwaitInHead_implies_hasAbruptCompletion hth)
+    (by rw [NoNestedAbrupt.yield_some_arg_abruptFree hna]; decide)
+
 /-- HasAwaitInHead expressions are never values. -/
 private theorem HasAwaitInHead_not_value (e : Flat.Expr)
     (h : HasAwaitInHead e) : Flat.exprValue? e = none := by
@@ -5344,6 +5416,79 @@ inductive HasReturnInHeadProps : List (Flat.PropName × Flat.Expr) → Prop wher
   | head : HasReturnInHead e → HasReturnInHeadProps ((name, e) :: rest)
   | tail : HasReturnInHeadProps rest → HasReturnInHeadProps (p :: rest)
 end
+
+/-! ## HasReturnInHead implies hasAbruptCompletion -/
+
+set_option autoImplicit true in
+mutual
+private theorem hasReturnInHead_implies_hasAbruptCompletion :
+    HasReturnInHead e → hasAbruptCompletion e = true := by
+  intro h; cases h with
+  | return_none_direct => rfl
+  | return_some_direct => rfl
+  | seq_left h => simp [hasAbruptCompletion]; left; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | seq_right h => simp [hasAbruptCompletion]; right; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | let_init h => simp [hasAbruptCompletion]; left; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | getProp_obj h => simp [hasAbruptCompletion]; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | setProp_obj h => simp [hasAbruptCompletion]; left; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | setProp_val h => simp [hasAbruptCompletion]; right; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | binary_lhs h => simp [hasAbruptCompletion]; left; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | binary_rhs h => simp [hasAbruptCompletion]; right; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | unary_arg h => simp [hasAbruptCompletion]; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | typeof_arg h => simp [hasAbruptCompletion]; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | deleteProp_obj h => simp [hasAbruptCompletion]; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | assign_val h => simp [hasAbruptCompletion]; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | call_func h => simp [hasAbruptCompletion]; left; left; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | call_env h => simp [hasAbruptCompletion]; left; right; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | call_args h => simp [hasAbruptCompletion]; right; exact hasReturnInHeadList_implies_hasAbruptCompletionList h
+  | newObj_func h => simp [hasAbruptCompletion]; left; left; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | newObj_env h => simp [hasAbruptCompletion]; left; right; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | newObj_args h => simp [hasAbruptCompletion]; right; exact hasReturnInHeadList_implies_hasAbruptCompletionList h
+  | if_cond h => simp [hasAbruptCompletion]; left; left; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | throw_arg _ => rfl
+  | yield_some_arg _ => rfl
+  | await_arg _ => rfl
+  | getIndex_obj h => simp [hasAbruptCompletion]; left; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | getIndex_idx h => simp [hasAbruptCompletion]; right; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | setIndex_obj h => simp [hasAbruptCompletion]; left; left; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | setIndex_idx h => simp [hasAbruptCompletion]; left; right; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | setIndex_val h => simp [hasAbruptCompletion]; right; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | getEnv_env h => simp [hasAbruptCompletion]; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | makeClosure_env h => simp [hasAbruptCompletion]; exact hasReturnInHead_implies_hasAbruptCompletion h
+  | makeEnv_values h => simp [hasAbruptCompletion]; exact hasReturnInHeadList_implies_hasAbruptCompletionList h
+  | objectLit_props h => simp [hasAbruptCompletion]; exact hasReturnInHeadProps_implies_hasAbruptCompletionProps h
+  | arrayLit_elems h => simp [hasAbruptCompletion]; exact hasReturnInHeadList_implies_hasAbruptCompletionList h
+
+private theorem hasReturnInHeadList_implies_hasAbruptCompletionList :
+    HasReturnInHeadList es → hasAbruptCompletionList es = true := by
+  intro h; cases h with
+  | head hh => simp [hasAbruptCompletionList]; left; exact hasReturnInHead_implies_hasAbruptCompletion hh
+  | tail _ ih => simp [hasAbruptCompletionList]; right; exact hasReturnInHeadList_implies_hasAbruptCompletionList ih
+
+private theorem hasReturnInHeadProps_implies_hasAbruptCompletionProps :
+    HasReturnInHeadProps ps → hasAbruptCompletionProps ps = true := by
+  intro h; cases h with
+  | head hh => simp [hasAbruptCompletionProps]; left; exact hasReturnInHead_implies_hasAbruptCompletion hh
+  | tail _ ih => simp [hasAbruptCompletionProps]; right; exact hasReturnInHeadProps_implies_hasAbruptCompletionProps ih
+end
+
+private theorem noNestedAbrupt_hasReturnInHead_absurd_throw {arg : Flat.Expr}
+    (hna : NoNestedAbrupt (.throw arg))
+    (hth : HasReturnInHead arg) : False := by
+  exact absurd (hasReturnInHead_implies_hasAbruptCompletion hth)
+    (by rw [NoNestedAbrupt.throw_arg_abruptFree hna]; decide)
+
+private theorem noNestedAbrupt_hasReturnInHead_absurd_yield {arg : Flat.Expr} {d : Bool}
+    (hna : NoNestedAbrupt (.yield (some arg) d))
+    (hth : HasReturnInHead arg) : False := by
+  exact absurd (hasReturnInHead_implies_hasAbruptCompletion hth)
+    (by rw [NoNestedAbrupt.yield_some_arg_abruptFree hna]; decide)
+
+private theorem noNestedAbrupt_hasReturnInHead_absurd_await {arg : Flat.Expr}
+    (hna : NoNestedAbrupt (.await arg))
+    (hth : HasReturnInHead arg) : False := by
+  exact absurd (hasReturnInHead_implies_hasAbruptCompletion hth)
+    (by rw [NoNestedAbrupt.await_arg_abruptFree hna]; decide)
 
 /-- HasReturnInHead expressions are never values. -/
 private theorem HasReturnInHead_not_value (e : Flat.Expr)
@@ -6158,6 +6303,79 @@ inductive HasYieldInHeadProps : List (Flat.PropName × Flat.Expr) → Prop where
   | head : HasYieldInHead e → HasYieldInHeadProps ((name, e) :: rest)
   | tail : HasYieldInHeadProps rest → HasYieldInHeadProps (p :: rest)
 end
+
+/-! ## HasYieldInHead implies hasAbruptCompletion -/
+
+set_option autoImplicit true in
+mutual
+private theorem hasYieldInHead_implies_hasAbruptCompletion :
+    HasYieldInHead e → hasAbruptCompletion e = true := by
+  intro h; cases h with
+  | yield_none_direct => rfl
+  | yield_some_direct => rfl
+  | seq_left h => simp [hasAbruptCompletion]; left; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | seq_right h => simp [hasAbruptCompletion]; right; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | let_init h => simp [hasAbruptCompletion]; left; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | getProp_obj h => simp [hasAbruptCompletion]; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | setProp_obj h => simp [hasAbruptCompletion]; left; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | setProp_val h => simp [hasAbruptCompletion]; right; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | binary_lhs h => simp [hasAbruptCompletion]; left; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | binary_rhs h => simp [hasAbruptCompletion]; right; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | unary_arg h => simp [hasAbruptCompletion]; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | typeof_arg h => simp [hasAbruptCompletion]; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | deleteProp_obj h => simp [hasAbruptCompletion]; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | assign_val h => simp [hasAbruptCompletion]; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | call_func h => simp [hasAbruptCompletion]; left; left; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | call_env h => simp [hasAbruptCompletion]; left; right; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | call_args h => simp [hasAbruptCompletion]; right; exact hasYieldInHeadList_implies_hasAbruptCompletionList h
+  | newObj_func h => simp [hasAbruptCompletion]; left; left; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | newObj_env h => simp [hasAbruptCompletion]; left; right; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | newObj_args h => simp [hasAbruptCompletion]; right; exact hasYieldInHeadList_implies_hasAbruptCompletionList h
+  | if_cond h => simp [hasAbruptCompletion]; left; left; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | throw_arg _ => rfl
+  | return_some_arg _ => rfl
+  | await_arg _ => rfl
+  | getIndex_obj h => simp [hasAbruptCompletion]; left; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | getIndex_idx h => simp [hasAbruptCompletion]; right; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | setIndex_obj h => simp [hasAbruptCompletion]; left; left; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | setIndex_idx h => simp [hasAbruptCompletion]; left; right; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | setIndex_val h => simp [hasAbruptCompletion]; right; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | getEnv_env h => simp [hasAbruptCompletion]; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | makeClosure_env h => simp [hasAbruptCompletion]; exact hasYieldInHead_implies_hasAbruptCompletion h
+  | makeEnv_values h => simp [hasAbruptCompletion]; exact hasYieldInHeadList_implies_hasAbruptCompletionList h
+  | objectLit_props h => simp [hasAbruptCompletion]; exact hasYieldInHeadProps_implies_hasAbruptCompletionProps h
+  | arrayLit_elems h => simp [hasAbruptCompletion]; exact hasYieldInHeadList_implies_hasAbruptCompletionList h
+
+private theorem hasYieldInHeadList_implies_hasAbruptCompletionList :
+    HasYieldInHeadList es → hasAbruptCompletionList es = true := by
+  intro h; cases h with
+  | head hh => simp [hasAbruptCompletionList]; left; exact hasYieldInHead_implies_hasAbruptCompletion hh
+  | tail _ ih => simp [hasAbruptCompletionList]; right; exact hasYieldInHeadList_implies_hasAbruptCompletionList ih
+
+private theorem hasYieldInHeadProps_implies_hasAbruptCompletionProps :
+    HasYieldInHeadProps ps → hasAbruptCompletionProps ps = true := by
+  intro h; cases h with
+  | head hh => simp [hasAbruptCompletionProps]; left; exact hasYieldInHead_implies_hasAbruptCompletion hh
+  | tail _ ih => simp [hasAbruptCompletionProps]; right; exact hasYieldInHeadProps_implies_hasAbruptCompletionProps ih
+end
+
+private theorem noNestedAbrupt_hasYieldInHead_absurd_throw {arg : Flat.Expr}
+    (hna : NoNestedAbrupt (.throw arg))
+    (hth : HasYieldInHead arg) : False := by
+  exact absurd (hasYieldInHead_implies_hasAbruptCompletion hth)
+    (by rw [NoNestedAbrupt.throw_arg_abruptFree hna]; decide)
+
+private theorem noNestedAbrupt_hasYieldInHead_absurd_return {arg : Flat.Expr}
+    (hna : NoNestedAbrupt (.return (some arg)))
+    (hth : HasYieldInHead arg) : False := by
+  exact absurd (hasYieldInHead_implies_hasAbruptCompletion hth)
+    (by rw [NoNestedAbrupt.return_some_arg_abruptFree hna]; decide)
+
+private theorem noNestedAbrupt_hasYieldInHead_absurd_await {arg : Flat.Expr}
+    (hna : NoNestedAbrupt (.await arg))
+    (hth : HasYieldInHead arg) : False := by
+  exact absurd (hasYieldInHead_implies_hasAbruptCompletion hth)
+    (by rw [NoNestedAbrupt.await_arg_abruptFree hna]; decide)
 
 /-- HasYieldInHead expressions are never values. -/
 private theorem HasYieldInHead_not_value (e : Flat.Expr)
