@@ -3161,3 +3161,4 @@ Before converting while body, save and restore `nextId` to a known base. Require
 - Cons: Fragile; doesn't generalize to nested while loops well
 
 **Recommendation**: Option 1 is the clean solution. It eliminates the entire class of bugs. Estimated effort: ~2 days of compiler + proof changes.
+2026-04-04T11:00:01+00:00 SKIP: already running
