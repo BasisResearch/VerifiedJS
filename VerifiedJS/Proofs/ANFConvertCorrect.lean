@@ -6596,7 +6596,13 @@ private theorem normalizeExpr_labeled_step_sim :
 
 /-- If an expression has break in its evaluation head, then Flat stepping produces the
     break error. The expression is evaluated through evaluation contexts until the
-    break statement is reached, at which point the error propagates via Fix D. -/
+    break statement is reached, at which point the error propagates via Fix D.
+    NOTE: This theorem is FALSE for compound cases. See analysis in
+    agents/wasmspec/break_analysis.md. The conclusion `sf'.env = sf.env ∧ sf'.heap = sf.heap`
+    fails when evaluation contexts contain env-modifying sub-expressions (assign, let),
+    and `sf'.expr = .lit .undefined` fails for seq_left (dead code after break evaluates
+    to an arbitrary value, not .lit .undefined).
+    The break_direct case IS proved; compound cases remain sorry. -/
 private theorem hasBreakInHead_flat_error_steps
     (e : Flat.Expr) (label : Option Flat.LabelName)
     (h : HasBreakInHead e label)
@@ -6609,7 +6615,26 @@ private theorem hasBreakInHead_flat_error_steps
       sf'.funcs = sf.funcs ∧ sf'.callStack = sf.callStack ∧
       sf'.trace = sf.trace ++ evs ∧
       observableTrace evs = observableTrace [.error ("break:" ++ label.getD "")] := by
-  sorry
+  cases h with
+  | break_direct =>
+    obtain ⟨e_, env_, heap_, trace_, funcs_, cs_⟩ := sf
+    subst hsf
+    exact ⟨⟨.lit .undefined, env_, heap_, trace_ ++ [.error ("break:" ++ label.getD "")], funcs_, cs_⟩,
+           [.error ("break:" ++ label.getD "")],
+           Flat.Steps.tail (Flat.Step.mk (by unfold Flat.step?; rfl)) (Flat.Steps.refl _),
+           rfl, rfl, rfl, rfl, rfl, rfl, by simp [observableTrace]⟩
+  -- All compound cases below are FALSE as stated — see break_analysis.md
+  -- seq_left: break fires in `a` of `.seq a b`, but dead code `b` evaluates to arbitrary value
+  | seq_left _ => sorry
+  -- seq_right: need to evaluate `a` first, which may change env/heap
+  | seq_right _ => sorry
+  -- let_init: break fires in init, then let binds → env changes (env.extend)
+  | let_init _ => sorry
+  -- All remaining: break fires in eval position, surrounding context wraps result
+  -- For many (getProp, unary, etc.), env/heap ARE preserved, but for nested
+  -- assign/let cases inside the sub-expression, env changes break the invariant
+  | _ => sorry
+/-- Symmetric version for continue. Same structural issues as break. -/
 private theorem hasContinueInHead_flat_error_steps
     (e : Flat.Expr) (label : Option Flat.LabelName)
     (h : HasContinueInHead e label)
@@ -6622,7 +6647,18 @@ private theorem hasContinueInHead_flat_error_steps
       sf'.funcs = sf.funcs ∧ sf'.callStack = sf.callStack ∧
       sf'.trace = sf.trace ++ evs ∧
       observableTrace evs = observableTrace [.error ("continue:" ++ label.getD "")] := by
-  sorry
+  cases h with
+  | continue_direct =>
+    obtain ⟨e_, env_, heap_, trace_, funcs_, cs_⟩ := sf
+    subst hsf
+    exact ⟨⟨.lit .undefined, env_, heap_, trace_ ++ [.error ("continue:" ++ label.getD "")], funcs_, cs_⟩,
+           [.error ("continue:" ++ label.getD "")],
+           Flat.Steps.tail (Flat.Step.mk (by unfold Flat.step?; rfl)) (Flat.Steps.refl _),
+           rfl, rfl, rfl, rfl, rfl, rfl, by simp [observableTrace]⟩
+  | seq_left _ => sorry
+  | seq_right _ => sorry
+  | let_init _ => sorry
+  | _ => sorry
 
 /-- step? on .throw (.lit v) produces an immediate error. -/
 private theorem Flat.step?_throw_lit_eq (v : Flat.Value)
