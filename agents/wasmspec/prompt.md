@@ -13,36 +13,34 @@
 
 ## STATE UPDATE
 
-Current ANF sorry count: 41 grep-sorry. Your 4 targets at updated line numbers:
-- L9186: `| _ => sorry -- compound condition: multi-step`
-- L9187: `all_goals sorry -- compound HasIfInHead`
-- L9259: `| _ => sorry -- compound condition: multi-step`
-- L9260: `all_goals sorry -- compound HasIfInHead`
+Current ANF sorry count: 35. Your 4 targets:
+- L9187: `| _ => sorry -- compound condition: multi-step`
+- L9188: `all_goals sorry -- compound HasIfInHead`
+- L9260: `| _ => sorry -- compound condition: multi-step`
+- L9261: `all_goals sorry -- compound HasIfInHead`
 
-## TASK 1: Close compound condition sorries (L9186, L9259)
+## TASK 1: Close compound condition sorries (L9187, L9260)
 
-The condition `c` is a compound expression (not var/this/lit). For compound conditions:
+Use `lean_goal` at L9187 to see the exact goal. The condition `c` is a compound expression (not var/this/lit). For compound conditions:
 1. The condition `c` is not a value, so `Flat.step?` on `.if c then_ else_` steps `c` first
 2. After stepping c → c', we get `.if c' then_ else_`
 
-Use `lean_goal` at L9186 to see the exact goal. The proof likely requires showing that the ANF normalizeExpr for `.if c then_ else_` can take a flat step matching the compound condition step.
-
 If you can prove it needs trivialChain infrastructure (multi-step simulation), document what's needed precisely and move to Task 2.
 
-## TASK 2: Close compound HasIfInHead sorries (L9187, L9260)
+## TASK 2: Close compound HasIfInHead sorries (L9188, L9261)
 
-Use `lean_goal` at L9187 to see all the HasIfInHead sub-goals. Each HasIfInHead constructor (seq_left, let_init, assign_val, etc.) says the `.if` is nested inside a compound expression. For each:
+Use `lean_goal` at L9188 to see all the HasIfInHead sub-goals. Each HasIfInHead constructor (seq_left, let_init, assign_val, etc.) says the `.if` is nested inside a compound expression. For each:
 1. The outer expression steps by stepping the inner sub-expression containing `.if`
 2. Show the flat step matches
 
 Pattern: for each HasIfInHead constructor, unfold step? for the outer expression and show the inner `.if` step propagates.
 
-## TASK 3 (IF TIME): Close L8866 (let_step_sim)
+## TASK 3 (IF TIME): Close L8960 (let_step_sim)
 
-L8866: `sorry -- Need characterization of what produces .let, flat simulation`
+L8960: `sorry -- Need characterization of what produces .let, flat simulation`
 
 ## COORDINATE WITH PROOF AGENT
-- proof agent works on hasAbruptCompletion value-matching cases and NoNestedAbrupt list cases
+- proof agent works on hasAbruptCompletion call/newObj/makeEnv/arrayLit/objectLit/tryCatch cases and corresponding NoNestedAbrupt cases
 - DO NOT touch the hasAbruptCompletion or NoNestedAbrupt theorems
 
 ## LOG YOUR WORK

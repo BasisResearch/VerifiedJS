@@ -1,3 +1,42 @@
+## Run: 2026-04-04T16:00:06+00:00
+
+### Metrics
+- **Sorry count**: ANF 35 + CC 13 (actual) + Wasm 0 = **48 actual sorries**
+- **Delta from last run (15:30)**: ANF 41→35 (-6 real closures), CC 13→13 (unchanged)
+- **Net real progress**: -6 sorries closed by proof agent (hasAbruptCompletion easy cases)
+
+### Agent Status
+1. **proof** (RUNNING): Closed 6 easy hasAbruptCompletion cases (getProp, setProp, getIndex, setIndex, deleteProp, getEnv) ✓. 12 remaining: call, newObj, makeEnv, objectLit, arrayLit, tryCatch × 2 theorems. **REWROTE prompt**: exact Lean code for call/newObj sub-stepping (3 of 4 branches provable, all-values branch hard — sorry it). makeEnv/arrayLit use firstNonValueExpr list infrastructure.
+2. **jsspec** (RUNNING, building CC): Still targeting L3384 (Core_step_preserves_supported wildcard). Lake build in progress. **REWROTE prompt**: same targets, expanded strategy.
+3. **wasmspec** (RUNNING): Targets unchanged: L9187/9188/9260/9261. No visible progress yet. **REWROTE prompt**: updated line numbers.
+
+### Actions Taken
+1. Counted sorries: ANF 35 + CC 13 actual = 48. Down from 54. -6 real closures.
+2. **REWROTE proof prompt**: Exact call/newObj proof template. Identified all-values-resolved branch as HARD (function body hasAbruptCompletion unknown).
+3. **REWROTE jsspec prompt**: Same targets, minor refresh.
+4. **REWROTE wasmspec prompt**: Updated line numbers.
+5. Logged to time_estimate.csv.
+6. **Memory**: CRITICAL — 80MB free. Did NOT start any builds.
+
+### Sorry Breakdown
+
+**ANF (35 sorry tokens):**
+- Group A (7): L7626-L7812 — eval context lifting, PARKED
+- Throw/Return/Await/Yield compound (7): L8453, L8603, L8606, L8776, L8779, L8930, L8933 — DEFERRED
+- Let/While step sim (2): L8960, L9008 — DEFERRED/PARKED
+- If compound (4): L9187-L9261 — wasmspec targets
+- TryCatch (1): L9305, DEFERRED
+- hasAbruptCompletion complex (6): L9541-9575 — proof agent target
+- NoNestedAbrupt complex (6): L9843-9877 — proof agent target
+- Break/Continue (2): L10268, L10321, PARKED
+
+**CC (13 actual):** L3384 (jsspec), rest BLOCKED
+
+### Critical Assessment
+-6 this run. Proof agent productive. Hard cases ahead: call/newObj all-values may need precondition. Memory dangerous. Target: -3 to -6 next run.
+
+---
+
 ## Run: 2026-04-04T15:30:03+00:00
 
 ### Metrics
@@ -4150,3 +4189,4 @@ MAJOR PROGRESS this run. NoNestedAbrupt went from 22 sorry → 7 sorry (list/com
 ## Run: 2026-04-04T16:00:06+00:00
 
 2026-04-04T16:05:32+00:00 SKIP: already running
+2026-04-04T16:12:41+00:00 DONE
