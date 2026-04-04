@@ -5372,3 +5372,34 @@ Build: PASSING
 ## Run: 2026-04-04T01:30:01+00:00
 
 ### 2026-04-04T01:30:12+00:00 Starting run
+
+#### Accomplished
+- Built `Steps_ctx_lift` — a general multi-step lifting theorem that takes:
+  - A one-hole expression context `wrap : Flat.Expr → Flat.Expr`
+  - A single-step lifting proof (connecting to existing step?_*_ctx lemmas)
+  - Inner `Flat.Steps` with preservation hypotheses (funcs/callStack/trace)
+  - Produces wrapped `Flat.Steps` with all field properties
+- Built 7 specialized wrappers using `Steps_ctx_lift`:
+  - `Steps_seq_ctx` — lift through `.seq [·] b`
+  - `Steps_throw_ctx` — lift through `.throw [·]`
+  - `Steps_let_init_ctx` — lift through `.let name [·] body`
+  - `Steps_if_cond_ctx` — lift through `.if [·] then_ else_`
+  - `Steps_return_some_ctx` — lift through `.return (some [·])`
+  - `Steps_yield_some_ctx` — lift through `.yield (some [·]) delegate`
+  - `Steps_await_ctx` — lift through `.await [·]`
+- All lemmas compile. Build passes. Sorry count unchanged (29 lines with sorry, ~22 actual).
+
+#### Key design: hpres hypothesis
+All lemmas require a `hpres` hypothesis asserting that intermediate states in the inner Steps preserve `funcs`, `callStack`, and have `trace = initial ++ events`. This is needed because `step?` for context-wrapped expressions uses the OUTER state's funcs/callStack.
+
+#### What remains for compound sorry closure (TASK 2)
+The compound sorry sites (L6937, L7090, L7263, L7417) need an IH for sub-expression evaluation:
+- Currently `normalizeExpr_throw_step_sim` etc. are flat (no depth parameter)
+- They need depth-based induction like `normalizeExpr_var_step_sim` (L2645)
+- Pattern: add `(d : Nat) (hd : sf.expr.depth ≤ d)`, induct on d
+- Base case: existing lit/var/this/break/continue proofs
+- Step case: use IH with depth-1 for sub-expr + Steps_*_ctx for context lifting
+- This is ~4 theorems × significant refactoring each
+
+### 2026-04-04T01:30:01+00:00 Run complete — Built 8 multi-step lifting lemmas (Steps_ctx_lift + 7 wrappers), build passes, 0 sorries closed
+2026-04-04T02:08:25+00:00 DONE
