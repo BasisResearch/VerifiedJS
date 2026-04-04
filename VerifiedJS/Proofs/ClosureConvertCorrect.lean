@@ -4275,15 +4275,13 @@ private theorem closureConvert_step_simulation
             have hcore := Core_step?_call_consoleLog_flat_msg args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
             rw [← hsc_eta] at hcore
             -- Both steps produce the same (event, state') pair
-            have hpair := Option.some.inj (hflat.symm.trans hstep)
-            have hev_eq : ev = .log (match argVals.map Flat.convertValue with
-              | [v] => Flat.valueToString v
-              | vs => String.intercalate " " (vs.map Flat.valueToString)) := congrArg Prod.fst hpair
-            have hsf'eq := congrArg Prod.snd hpair
+            have hpair : (ev, sf') = _ := (hflat.symm.trans hstep).symm
+            simp only [Option.some.injEq, Prod.mk.injEq] at hpair
+            obtain ⟨hev_eq, hsf'_eq⟩ := hpair
+            subst hev_eq; subst hsf'_eq
             let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap, sc.trace ++ [ev], sc.funcs, sc.callStack⟩
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · show Core.step? sc = some (ev, sc')
-              rw [hev_eq]; exact hcore
+            · exact hcore
             · simp [sc', htrace]
             · exact hinj
             · exact henvCorr
@@ -4292,8 +4290,7 @@ private theorem closureConvert_step_simulation
             · simp [sc', hheapna]
             · simp [sc', noCallFrameReturn]
             · simp [sc', ExprAddrWF, ValueAddrWF]
-            · subst hsf'eq
-              exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩,
+            · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩,
                 by rw [hst, hst_eq]; exact ⟨rfl, rfl⟩⟩
           · -- Non-consoleLog function call: needs FuncsCorr invariant
             sorry -- non-consoleLog function call: needs sf.funcs[idx] ↔ sc.funcs[idx] correspondence

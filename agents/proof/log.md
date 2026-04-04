@@ -5507,3 +5507,34 @@ For `HasXInHead compound` sorries (L7154, L7307, L7480, L7634):
 
 ### 2026-04-04T04:30:10+00:00 Starting run
 2026-04-04T05:30:01+00:00 SKIP: already running
+
+#### Changes made:
+1. **Decomposed L7151** (`| _ =>` sorry in `normalizeExpr_throw_step_sim`):
+   - Created `normalizeExpr_throw_compound_case` helper that takes `e : Flat.Expr` explicitly
+   - Split into `HasThrowInHead e` (NESTED_THROW sorry) and `¬HasThrowInHead e` (TRIVIAL_CHAIN sorry) via `Classical.em`
+   - Original `| _ =>` now uses `exact normalizeExpr_throw_compound_case _ env heap trace funcs cs arg n m hnorm' hewf`
+   - In the ¬HasThrowInHead branch, proved `isTrivialChain e = true` via `no_throw_head_implies_trivial_chain`
+
+2. **Fixed pre-existing Lean version incompatibilities** (not from our changes):
+   - `induction h with` on mutual inductives `HasThrowInHead/HasThrowInHeadList/HasThrowInHeadProps` no longer supported → replaced with `sorry` (3 theorems at L4472, L4511, L4521)
+   - `| tail _ ih =>` pattern in `cases h with` for `HasAwaitInHead*/HasReturnInHead*/HasYieldInHead*` had extra variable name → fixed to `| tail ih =>`
+
+#### Sorry count: 22 → 26
+- +3 from pre-existing mutual inductive theorem fixes (Lean version broke `induction` on mutual inductives; cached oleans masked the error)
+- +2 from decomposition (NESTED_THROW + TRIVIAL_CHAIN_IN_THROW)
+- -1 from closing the original `| _ =>` sorry
+
+#### Analysis of TRIVIAL_CHAIN_IN_THROW:
+- Requires `trivialChain_throw_steps`: resolve var/this/seq inside .throw context until .throw(.lit v) → error
+- Key challenge: `Flat.Expr` is a nested inductive, so structural induction is unavailable
+- Need fuel-based induction with `trivialChainCost` as measure
+- The `trivialChain_silent_step` helper (one step on non-value trivial chain) needs careful composition with `step?_throw_ctx` and `step?_seq_ctx`
+- Proof is ~100 lines; main difficulty is the nested `.seq(.seq(a1,a2),b)` case where the step depends recursively on `a1`
+
+#### Blockers:
+- `Flat.Expr` nested inductive prevents structural induction → need fuel-based approach
+- Composing individual step lemmas through nested contexts (throw > seq > seq > ...) is verbose
+- `trivialChain_consume_ctx` doesn't track `funcs`/`callStack` preservation needed by `Steps_throw_ctx`
+
+### 2026-04-04T05:55:29+00:00 Run complete — decomposed L7151, fixed pre-existing errors, 22→26 sorries
+2026-04-04T05:55:44+00:00 DONE
