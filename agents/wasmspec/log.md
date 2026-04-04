@@ -6204,3 +6204,56 @@ normalizeExpr_eval_context_step_sim :
 ## Run: 2026-04-04T17:15:01+00:00
 
 ### 2026-04-04T17:15:14+00:00 Starting run
+
+### Changes made:
+
+#### 1. Closed 12 vacuous compound sub-cases (3 per theorem)
+
+In each of the 4 step_sim theorems, HasXInHead compound constructors where the expression wraps an abrupt form (return/yield/await/throw) inside another abrupt form are contradictory with NoNestedAbrupt. Specifically:
+
+**normalizeExpr_throw_step_sim** (L8521-8523):
+- `return_some_arg h` → exfalso via `noNestedAbrupt_hasThrowInHead_absurd_return`
+- `yield_some_arg h` → exfalso via `noNestedAbrupt_hasThrowInHead_absurd_yield`
+- `await_arg h` → exfalso via `noNestedAbrupt_hasThrowInHead_absurd_await`
+
+**normalizeExpr_return_step_sim** (L8678-8683):
+- `throw_arg h` → exfalso via `noNestedAbrupt_hasReturnInHead_absurd_throw`
+- `yield_some_arg h` → exfalso via `noNestedAbrupt_hasReturnInHead_absurd_yield`
+- `await_arg h` → exfalso via `noNestedAbrupt_hasReturnInHead_absurd_await`
+
+**normalizeExpr_await_step_sim** (L8855-8860):
+- `throw_arg h` → exfalso via `noNestedAbrupt_hasAwaitInHead_absurd_throw`
+- `return_some_arg h` → exfalso via `noNestedAbrupt_hasAwaitInHead_absurd_return`
+- `yield_some_arg h` → exfalso via `noNestedAbrupt_hasAwaitInHead_absurd_yield`
+
+**normalizeExpr_yield_step_sim** (L9013-9018):
+- `throw_arg h` → exfalso via `noNestedAbrupt_hasYieldInHead_absurd_throw`
+- `return_some_arg h` → exfalso via `noNestedAbrupt_hasYieldInHead_absurd_return`
+- `await_arg h` → exfalso via `noNestedAbrupt_hasYieldInHead_absurd_await`
+
+#### 2. Added `hna : NoNestedAbrupt sf.expr` parameter to 3 theorems
+- `normalizeExpr_return_step_sim`
+- `normalizeExpr_await_step_sim`
+- `normalizeExpr_yield_step_sim`
+Updated all call sites (L10158, L10211, L10252) to pass `hna`.
+
+#### 3. Build status
+All pre-existing errors (L9229-9343 in normalizeExpr_if_step_sim) remain unchanged.
+No new errors introduced. Sorry count remains 35 lines (same sorries, but each covers fewer sub-cases).
+
+### Analysis: Next steps for remaining compound sorries
+
+**Inner compound sorries (L8677, L8854, L9012):**
+These are the `| _ => sorry` wildcards inside the `_some_direct` cases where `inner_val` is compound (not lit/var/this/break/continue). With `hna`, `hasAbruptCompletion inner_val = false`. Approach:
+1. Use `normalizeExpr_X_some_or_k` to get disjunction (HasXInHead or continuation)
+2. HasXInHead → contradiction with hna (hasAbruptCompletion = true vs false)
+3. Continuation case → inner_val is a trivial chain
+Need: `no_X_head_implies_trivial_chain` (~100 lines each) + `trivialChain_X_steps` (~170 lines each)
+These are straightforward analogs of existing throw versions.
+
+**Outer compound sorries (L8526, L8683, L8860, L9018):**
+These are HasXInHead compound constructors (seq_left, seq_right, let_init, etc.) where the expression itself is compound with X nested inside. Require the general eval-context stepping lemma — fundamentally harder.
+
+**let/while/seq/tryCatch sorries (L9045, L9093, L9272-9346, L9390):**
+Need characterization of what normalizeExpr produces for these forms and Flat simulation. Orthogonal to the above.
+### 2026-04-04T17:51:37+00:00 Run complete — 12 vacuous sub-cases closed, hna added to 3 theorems
