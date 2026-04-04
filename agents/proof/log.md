@@ -5769,3 +5769,7 @@ Same strategy. Replaced 1 monolithic sorry with:
 - **2 sorries decomposed** (call hasAbrupt, call NoNestedAbrupt → provable sub-cases closed, funcDef.body case left as sorry)
 - **Net change: -4 sorries** (4 removed, 2 new unprovable-without-more-hypotheses sorries added for funcDef.body)
 ### 2026-04-04T23:24:52+00:00 Run complete — 4 sorries closed, 2 decomposed (funcDef.body unprovable), build blocked by pre-existing errors
+2026-04-04T23:25:10+00:00 DONE
+
+## Run: 2026-04-04T23:30:01+00:00
+

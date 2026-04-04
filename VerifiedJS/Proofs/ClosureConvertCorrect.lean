@@ -3372,9 +3372,19 @@ private theorem tryCatch_body_depth_lt (body : Core.Expr) (cp : String) (cb : Co
 private theorem state_with_expr_eq {s : Core.State} {e : Core.Expr} (h : s.expr = e) :
     s = { s with expr := e } := by cases s; subst h; rfl
 
+set_option maxHeartbeats 4000000 in
 private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.TraceEvent)
     (hsupp : s.expr.supported = true) (hstep : Core.step? s = some (ev, s')) :
     s'.expr.supported = true := by
+  -- Prove by strong induction on expression depth (needed for sub-expression stepping cases)
+  suffices ∀ (n : Nat) (s s' : Core.State) (ev : Core.TraceEvent),
+      s.expr.depth ≤ n → s.expr.supported = true → Core.step? s = some (ev, s') →
+      s'.expr.supported = true by
+    exact this s.expr.depth s s' ev (Nat.le_refl _) hsupp hstep
+  intro n
+  induction n using Nat.strongRecOn with
+  | _ n ih =>
+  intro s s' ev hd hsupp hstep
   cases hexpr : s.expr with
   | lit v =>
     rw [state_with_expr_eq hexpr] at hstep; simp [Core.step?] at hstep
@@ -3423,7 +3433,18 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         subst hlit
         have h := Core_step?_return_some_lit { s with expr := .«return» (some (.lit v)) } v
         rw [h] at hstep; injection hstep with hstep; obtain ⟨-, rfl⟩ := Prod.mk.inj hstep; rfl
-      | none => sorry
+      | none =>
+        cases h_sub : Core.step? { s with expr := e } with
+        | none => simp [Core.step?, hval, h_sub] at hstep
+        | some p =>
+          obtain ⟨t, sa⟩ := p
+          have hfwd := Core.step_return_step_arg e s.env s.heap s.trace s.funcs s.callStack hval t sa h_sub
+          rw [hfwd] at hstep
+          simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+          obtain ⟨-, rfl⟩ := hstep
+          simp only [Core.pushTrace, Core.Expr.supported]
+          exact ih e.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+            { s with expr := e } sa t (Nat.le_refl _) hsupp h_sub
   | labeled lbl body =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3453,7 +3474,18 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
       subst hlit
       simp [Core.step?, Core.pushTrace, Core.exprValue?] at hstep
       obtain ⟨-, rfl⟩ := hstep; exact hsupp.2
-    | none => sorry
+    | none =>
+      cases h_sub : Core.step? { s with expr := init } with
+      | none => simp [Core.step?, hval, h_sub] at hstep
+      | some p =>
+        obtain ⟨t, sa⟩ := p
+        have hfwd := Core.step_let_step_init name init body s.env s.heap s.trace s.funcs s.callStack hval t sa h_sub
+        rw [hfwd] at hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep
+        simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
+        exact ⟨ih init.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          { s with expr := init } sa t (Nat.le_refl _) hsupp.1 h_sub, hsupp.2⟩
   | assign name rhs =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3463,7 +3495,18 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
       subst hlit
       simp [Core.step?, Core.pushTrace, Core.exprValue?] at hstep
       obtain ⟨-, rfl⟩ := hstep; rfl
-    | none => sorry
+    | none =>
+      cases h_sub : Core.step? { s with expr := rhs } with
+      | none => simp [Core.step?, hval, h_sub] at hstep
+      | some p =>
+        obtain ⟨t, sa⟩ := p
+        have hfwd := Core.step_assign_step_rhs name rhs s.env s.heap s.trace s.funcs s.callStack hval t sa h_sub
+        rw [hfwd] at hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep
+        simp only [Core.pushTrace, Core.Expr.supported]
+        exact ih rhs.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          { s with expr := rhs } sa t (Nat.le_refl _) hsupp h_sub
   | «if» cond then_ else_ =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3475,7 +3518,18 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
       obtain ⟨-, rfl⟩ := hstep
       simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp
       cases Core.toBoolean v <;> simp_all [Core.Expr.supported]
-    | none => sorry
+    | none =>
+      cases h_sub : Core.step? { s with expr := cond } with
+      | none => simp [Core.step?, hval, h_sub] at hstep
+      | some p =>
+        obtain ⟨t, sa⟩ := p
+        have hfwd := Core.step_if_step_cond cond then_ else_ s.env s.heap s.trace s.funcs s.callStack hval t sa h_sub
+        rw [hfwd] at hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep
+        simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
+        exact ⟨⟨ih cond.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          { s with expr := cond } sa t (Nat.le_refl _) hsupp.1.1 h_sub, hsupp.1.2⟩, hsupp.2⟩
   | seq a b =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3485,7 +3539,18 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
       subst hlit
       simp [Core.step?, Core.pushTrace, Core.exprValue?] at hstep
       obtain ⟨-, rfl⟩ := hstep; exact hsupp.2
-    | none => sorry
+    | none =>
+      cases h_sub : Core.step? { s with expr := a } with
+      | none => simp [Core.step?, hval, h_sub] at hstep
+      | some p =>
+        obtain ⟨t, sa⟩ := p
+        have hfwd := Core.step_seq_nonvalue_lhs a b s.env s.heap s.trace s.funcs s.callStack hval t sa h_sub
+        rw [hfwd] at hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep
+        simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
+        exact ⟨ih a.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          { s with expr := a } sa t (Nat.le_refl _) hsupp.1 h_sub, hsupp.2⟩
   | throw arg =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3495,7 +3560,18 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
       subst hlit
       have h := Core_step?_throw_lit { s with expr := .throw (.lit v) } v
       rw [h] at hstep; injection hstep with hstep; obtain ⟨-, rfl⟩ := Prod.mk.inj hstep; rfl
-    | none => sorry
+    | none =>
+      cases h_sub : Core.step? { s with expr := arg } with
+      | none => simp [Core.step?, hval, h_sub] at hstep
+      | some p =>
+        obtain ⟨t, sa⟩ := p
+        have hfwd := Core.step_throw_step_arg arg s.env s.heap s.trace s.funcs s.callStack hval t sa h_sub
+        rw [hfwd] at hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep
+        simp only [Core.pushTrace, Core.Expr.supported]
+        exact ih arg.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          { s with expr := arg } sa t (Nat.le_refl _) hsupp h_sub
   | typeof arg =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3505,15 +3581,102 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
       subst hlit
       simp [Core.step?, Core.pushTrace, Core.exprValue?] at hstep
       obtain ⟨-, rfl⟩ := hstep; rfl
-    | none => sorry
-  | unary => sorry
-  | call => sorry
-  | binary => sorry
+    | none =>
+      cases h_sub : Core.step? { s with expr := arg } with
+      | none => simp [Core.step?, hval, h_sub] at hstep
+      | some p =>
+        obtain ⟨t, sa⟩ := p
+        have hfwd := Core.step_typeof_step_arg arg s.env s.heap s.trace s.funcs s.callStack hval t sa h_sub
+        rw [hfwd] at hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep
+        simp only [Core.pushTrace, Core.Expr.supported]
+        exact ih arg.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          { s with expr := arg } sa t (Nat.le_refl _) hsupp h_sub
+  | unary op arg =>
+    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+    rw [state_with_expr_eq hexpr] at hstep
+    cases hval : Core.exprValue? arg with
+    | some v =>
+      have hlit : arg = .lit v := by cases arg <;> simp [Core.exprValue?] at hval; subst hval; rfl
+      subst hlit
+      simp [Core.step?, Core.pushTrace, Core.exprValue?] at hstep
+      obtain ⟨-, rfl⟩ := hstep; rfl
+    | none =>
+      cases h_sub : Core.step? { s with expr := arg } with
+      | none => simp [Core.step?, hval, h_sub] at hstep
+      | some p =>
+        obtain ⟨t, sa⟩ := p
+        have hfwd := Core.step_unary_step_arg op arg s.env s.heap s.trace s.funcs s.callStack hval t sa h_sub
+        rw [hfwd] at hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep
+        simp only [Core.pushTrace, Core.Expr.supported]
+        exact ih arg.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          { s with expr := arg } sa t (Nat.le_refl _) hsupp h_sub
+  | binary op lhs rhs =>
+    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+    rw [state_with_expr_eq hexpr] at hstep
+    cases hval_l : Core.exprValue? lhs with
+    | none =>
+      cases h_sub : Core.step? { s with expr := lhs } with
+      | none => simp [Core.step?, hval_l, h_sub] at hstep
+      | some p =>
+        obtain ⟨t, sa⟩ := p
+        have hfwd := Core.step_binary_nonvalue_lhs op lhs rhs s.env s.heap s.trace s.funcs s.callStack hval_l t sa h_sub
+        rw [hfwd] at hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep
+        simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
+        exact ⟨ih lhs.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          { s with expr := lhs } sa t (Nat.le_refl _) hsupp.1 h_sub, hsupp.2⟩
+    | some lv =>
+      have hlit_l : lhs = .lit lv := by cases lhs <;> simp [Core.exprValue?] at hval_l; subst hval_l; rfl
+      subst hlit_l
+      cases hval_r : Core.exprValue? rhs with
+      | some rv =>
+        have hlit_r : rhs = .lit rv := by cases rhs <;> simp [Core.exprValue?] at hval_r; subst hval_r; rfl
+        subst hlit_r
+        simp [Core.step?, Core.pushTrace, Core.exprValue?] at hstep
+        obtain ⟨-, rfl⟩ := hstep; rfl
+      | none =>
+        cases h_sub : Core.step? { s with expr := rhs } with
+        | none => simp [Core.step?, Core.exprValue?, hval_r, h_sub] at hstep
+        | some p =>
+          obtain ⟨t, sa⟩ := p
+          simp [Core.step?, Core.exprValue?, hval_r, h_sub, Core.pushTrace] at hstep
+          obtain ⟨-, rfl⟩ := hstep
+          simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
+          exact ⟨rfl, ih rhs.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+            { s with expr := rhs } sa t (Nat.le_refl _) hsupp.2 h_sub⟩
+  | deleteProp obj prop =>
+    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+    rw [state_with_expr_eq hexpr] at hstep
+    cases hval : Core.exprValue? obj with
+    | some v =>
+      have hlit : obj = .lit v := by cases obj <;> simp [Core.exprValue?] at hval; subst hval; rfl
+      subst hlit
+      -- All value types produce .lit (.bool true) result
+      cases v <;> simp [Core.step?, Core.exprValue?, Core.pushTrace] at hstep <;>
+        (try (obtain ⟨-, rfl⟩ := hstep; rfl)) <;>
+        (try (split at hstep <;> (obtain ⟨-, rfl⟩ := hstep; rfl)))
+    | none =>
+      cases h_sub : Core.step? { s with expr := obj } with
+      | none => simp [Core.step?, hval, h_sub] at hstep
+      | some p =>
+        obtain ⟨t, sa⟩ := p
+        have hfwd := Core.step_deleteProp_step_obj obj prop s.env s.heap s.trace s.funcs s.callStack hval t sa h_sub
+        rw [hfwd] at hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep
+        simp only [Core.pushTrace, Core.Expr.supported]
+        exact ih obj.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          { s with expr := obj } sa t (Nat.le_refl _) hsupp h_sub
   | getProp => sorry
   | setProp => sorry
   | getIndex => sorry
   | setIndex => sorry
-  | deleteProp => sorry
+  | call => sorry
   | objectLit => sorry
   | arrayLit => sorry
   | tryCatch => sorry

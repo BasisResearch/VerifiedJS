@@ -8624,7 +8624,7 @@ private theorem normalizeExpr_return_step_sim
         -- Step 1: .return (some (.var name)) → .return (some (.lit v))
         have hstep1 : Flat.step? ⟨.return (some (.var name)), env, heap, trace, funcs, cs⟩ =
             some (.silent, ⟨.return (some (.lit v)), env, heap, trace ++ [.silent], funcs, cs⟩) := by
-          unfold Flat.step?; simp [Flat.exprValue?, hv_flat_env, Flat.step?]
+          unfold Flat.step?; simp [Flat.exprValue?, hv_anf, Flat.step?_pushTrace_expand, Flat.step?]
         -- Step 2: .return (some (.lit v)) → .lit v with error
         have hstep2 : Flat.step? ⟨.return (some (.lit v)), env, heap, trace ++ [.silent], funcs, cs⟩ =
             some (.error ("return:" ++ Flat.valueToString v),
@@ -8658,7 +8658,7 @@ private theorem normalizeExpr_return_step_sim
         -- Step 1: .return (some .this) → .return (some (.lit v))
         have hstep1 : Flat.step? ⟨.return (some .this), env, heap, trace, funcs, cs⟩ =
             some (.silent, ⟨.return (some (.lit v)), env, heap, trace ++ [.silent], funcs, cs⟩) := by
-          unfold Flat.step?; simp [Flat.exprValue?, hv_flat_env, Flat.step?]
+          unfold Flat.step?; simp [Flat.exprValue?, hv_anf, Flat.step?_pushTrace_expand, Flat.step?]
         -- Step 2: .return (some (.lit v)) → .lit v with error
         have hstep2 : Flat.step? ⟨.return (some (.lit v)), env, heap, trace ++ [.silent], funcs, cs⟩ =
             some (.error ("return:" ++ Flat.valueToString v),
