@@ -1,4 +1,4 @@
-# proof — Close L9180 (NoNestedAbrupt_step_preserved) via WF induction
+# proof — Decompose L9178 NoNestedAbrupt_step_preserved into per-constructor cases
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -17,11 +17,11 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 - If build OOMs: add `set_option maxHeartbeats 200000` above the theorem
 - Do NOT attempt to build the entire file if it's failing
 
-## STATE: ANF has 24 sorry lines. L9180 (NoNestedAbrupt_step_preserved) is your ONE target.
+## STATE: You successfully extracted NoNestedAbrupt_step_preserved as a standalone lemma at L9175. GOOD. Now FILL IT IN.
 
-## TASK 1 (DO THIS NOW): Prove NoNestedAbrupt_step_preserved at L9180
+## TASK (DO THIS NOW): Replace the sorry at L9178 with the full case split
 
-L9176-9180 is:
+The current code at L9175-9178:
 ```lean
 private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.TraceEvent)
     (hna : NoNestedAbrupt sf.expr) (hstep : Flat.step? sf = some (ev, sf')) :
@@ -29,15 +29,23 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
   sorry
 ```
 
-### CORRECT Constructor classification
+### STEP 1: Write hasAbruptCompletion_step_preserved helper
 
-**Flat.Expr constructors**: lit, var, this, let, assign, if, seq, call, newObj, getProp, setProp, getIndex, setIndex, deleteProp, typeof, getEnv, makeEnv, makeClosure, objectLit, arrayLit, throw, tryCatch, while_, break, continue, labeled, return, yield, await, unary, binary
+Insert this BEFORE L9174 (before the `/-- Flat single-step preserves NoNestedAbrupt` doc comment):
 
-**Vacuously true (NO NoNestedAbrupt constructor — `cases hna` closes)**: unary, binary, while_, labeled — ONLY 4!
+```lean
+private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env) (ev : Core.TraceEvent) (sf' : Flat.State)
+    (hac : hasAbruptCompletion e = false)
+    (hstep : Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf')) :
+    hasAbruptCompletion sf'.expr = false := by
+  sorry -- SEPARATE THEOREM: prove later by same induction pattern
+```
 
-**Everything else HAS a NoNestedAbrupt constructor.** `cases hna` gives sub-goals.
+### STEP 2: Replace L9178 sorry with full skeleton
 
-### APPROACH: Strong Nat induction on expr.depth
+Replace `sorry` at L9178 with EXACTLY this code:
 
 ```lean
   obtain ⟨expr, env, heap, trace, funcs, cs⟩ := sf
@@ -75,23 +83,22 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       cases hna with | seq ha hb =>
       simp [Flat.step?] at hstep
       split at hstep
-      case h_1 v hv => -- exprValue? a = some v → sf' has expr b
+      case h_1 v hv =>
         simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
         simp [Flat.State.expr]; exact hb
-      case h_2 hv => -- exprValue? a = none → step a, sf'.expr = .seq a' b
-        -- step? {expr := a, ...} = some (ev, sa) → sf'.expr = .seq sa.expr b
+      case h_2 hv =>
         split at hstep
         case h_1 ev' sa hsa =>
           simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
           simp [Flat.State.expr]
           exact NoNestedAbrupt.seq
-            (ih n (by omega) a (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ ha hsa) hb
+            (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ ha hsa) hb
         case h_2 => simp at hstep
     | «let» name init body =>
       cases hna with | «let» hinit hbody =>
       simp [Flat.step?] at hstep
       split at hstep
-      case h_1 v hv => -- exprValue? init = some v → sf'.expr = body
+      case h_1 v hv =>
         simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
         simp [Flat.State.expr]; exact hbody
       case h_2 hv =>
@@ -100,13 +107,13 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
           simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
           simp [Flat.State.expr]
           exact NoNestedAbrupt.let
-            (ih n (by omega) init (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hinit hsi) hbody
+            (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hinit hsi) hbody
         case h_2 => simp at hstep
     | assign name rhs =>
       cases hna with | assign hrhs =>
       simp [Flat.step?] at hstep
       split at hstep
-      case h_1 v hv => -- value → .lit v
+      case h_1 v hv =>
         simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
         simp [Flat.State.expr]; exact NoNestedAbrupt.lit
       case h_2 hv =>
@@ -115,13 +122,13 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
           simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
           simp [Flat.State.expr]
           exact NoNestedAbrupt.assign
-            (ih n (by omega) rhs (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hrhs hsr)
+            (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hrhs hsr)
         case h_2 => simp at hstep
     | «if» cond then_ else_ =>
       cases hna with | «if» hc hthen helse =>
       simp [Flat.step?] at hstep
       split at hstep
-      case h_1 v hv => -- exprValue? cond = some v → if toBoolean v then then_ else else_
+      case h_1 v hv =>
         simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
         simp [Flat.State.expr]; split <;> assumption
       case h_2 hv =>
@@ -130,14 +137,14 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
           simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
           simp [Flat.State.expr]
           exact NoNestedAbrupt.if
-            (ih n (by omega) cond (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hc hsc) hthen helse
+            (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hc hsc) hthen helse
         case h_2 => simp at hstep
-    -- THROW: value → .lit, non-value → .throw a' where a' from IH
+    -- THROW/RETURN/AWAIT/YIELD: use hasAbruptCompletion_step_preserved
     | throw arg =>
       cases hna with | throw habr =>
       simp [Flat.step?] at hstep
       split at hstep
-      case h_1 v hv => -- value → .lit .undefined
+      case h_1 v hv =>
         simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
         simp [Flat.State.expr]; exact NoNestedAbrupt.lit
       case h_2 hv =>
@@ -147,16 +154,15 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
           simp [Flat.State.expr]
           exact NoNestedAbrupt.throw (hasAbruptCompletion_step_preserved arg env heap trace funcs cs ev' sa habr hsa)
         case h_2 => simp at hstep
-    -- RETURN: none → .lit, some with value → .lit, some non-value → .return (some a')
     | «return» arg =>
       cases hna with
-      | return_none => -- .return none → steps to .lit .undefined
+      | return_none =>
         simp [Flat.step?] at hstep; simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
         simp [Flat.State.expr]; exact NoNestedAbrupt.lit
-      | return_some habr => -- .return (some e)
+      | return_some habr =>
         simp [Flat.step?] at hstep
         split at hstep
-        case h_1 v hv => -- exprValue? e = some v → .lit v
+        case h_1 v hv =>
           simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
           simp [Flat.State.expr]; exact NoNestedAbrupt.lit
         case h_2 hv =>
@@ -198,15 +204,15 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
             simp [Flat.State.expr]
             exact NoNestedAbrupt.yield_some (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ habr hse)
           case h_2 => simp at hstep
-    -- COMPLEX: getProp, setProp, etc. — context stepping with IH
+    -- COMPLEX: multi-sub-expression stepping — sorry for now
     | getProp obj prop =>
       cases hna with | getProp hobj =>
       simp [Flat.step?] at hstep
-      sorry -- split on exprValue? obj; value → .lit; non-value → IH
+      sorry
     | setProp obj prop val =>
       cases hna with | setProp hobj hval =>
       simp [Flat.step?] at hstep
-      sorry -- 3 sub-cases: obj value+val value → lit; obj non-value → IH on obj; obj value+val non-value → IH on val
+      sorry
     | getIndex obj idx =>
       cases hna with | getIndex hobj hidx =>
       simp [Flat.step?] at hstep
@@ -226,7 +232,7 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     | call f fenv args =>
       cases hna with | call hf henv hargs =>
       simp [Flat.step?] at hstep
-      sorry -- complex: many sub-cases (func step, env step, arg step, actual call)
+      sorry
     | newObj f fenv args =>
       cases hna with | newObj hf henv hargs =>
       simp [Flat.step?] at hstep
@@ -257,27 +263,34 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       | tryCatch_none hbody hcatch => sorry
 ```
 
-### CRITICAL: Write hasAbruptCompletion_step_preserved FIRST
+### IMPORTANT NOTES ON THE SKELETON:
+- The `ih` call uses `ih _` not `ih n` — the underscore lets Lean infer the nat argument
+- `hasAbruptCompletion_step_preserved` will be defined with sorry body — that's fine, it moves sorries to a separate theorem
+- After this, L9178 goes from 1 sorry → ~16 smaller sorries (1 for hasAbruptCompletion + 15 complex cases)
+- This is PROGRESS because each sorry is now isolated and self-contained
 
-This helper is needed by throw/return/await/yield cases. Write it BEFORE L9176 with a sorry body:
+### STEP 3: Try closing easy complex cases
+
+After skeleton compiles, try closing `getProp` (single sub-expr, same pattern as `assign`):
 ```lean
-private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
-    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
-    (funcs : Array Flat.FuncDef) (cs : List Flat.Env) (ev : Core.TraceEvent) (sf' : Flat.State)
-    (hac : hasAbruptCompletion e = false)
-    (hstep : Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf')) :
-    hasAbruptCompletion sf'.expr = false := by
-  sorry -- SEPARATE THEOREM: prove later by same induction pattern
+    | getProp obj prop =>
+      cases hna with | getProp hobj =>
+      simp [Flat.step?] at hstep
+      split at hstep
+      case h_1 v hv => -- exprValue? obj = some v → .lit result
+        simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+      case h_2 hv =>
+        split at hstep
+        case h_1 ev' so hso =>
+          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp [Flat.State.expr]
+          exact NoNestedAbrupt.getProp
+            (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hobj hso)
+        case h_2 => simp at hstep
 ```
 
-### EXECUTION PLAN
-1. Write `hasAbruptCompletion_step_preserved` with sorry body above L9176
-2. Replace L9180 sorry with the FULL skeleton above (vacuous 4 + simple 5 + medium 4 + throw/return/await/yield fully proved + complex with sorry)
-3. Build to verify — should go from 1 sorry to ~15 sorries but ALL are small isolated cases
-4. Try closing getProp/deleteProp/typeof (single sub-expr, same pattern as assign)
-
-## TASK 2 (ONLY IF TASK 1 IS DONE): trivialChain_return_steps
-Copy trivialChain_throw_steps pattern for return.
+Same pattern works for `deleteProp` and `typeof`.
 
 ## DO NOT:
 - Work on Group A (L7516-7702) — PARKED

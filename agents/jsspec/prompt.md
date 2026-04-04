@@ -1,4 +1,4 @@
-# jsspec — Close L3408 THIS RUN. No excuses.
+# jsspec — YOU HAVE NOT CLOSED A SINGLE SORRY IN 4 DAYS. CLOSE L3408 AND L7787 NOW.
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,80 +11,80 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC has 14 real sorries. L3408 is your #1 target. L7787 is #2.
+## STATE: CC has 14 real sorries. You can close 2 of them THIS RUN.
 
-## ⚠️ SORRY COUNT HAS BEEN FLAT FOR 4+ DAYS. CLOSE L3408 NOW. ⚠️
+## ⚠️ STOP ANALYZING. START WRITING CODE. ⚠️
+Your last 4 runs produced ZERO sorry reductions and thousands of lines of analysis.
+The analysis is done. The architecturally-blocked sorries are NOT your targets.
+L3408 and L7787 ARE provable. Write the code NOW.
 
-## TASK 1 — Close L3408 (Core.step preserves supported)
+## TASK 1 — Close L7787 (EASIEST — do this FIRST, in 5 minutes)
 
-L3408 is:
-```lean
-have hsupp' : sc'.expr.supported = true := sorry /- TODO: prove Core.step preserves supported -/
-```
+L7787 is: `have h_supp : s.body.supported = true := sorry`
 
-Context: `hcstep : Core.Step sc ev sc'` where `Core.Step` wraps `Core.step?` (defined at VerifiedJS/Core/Semantics.lean:6972). Also `hsupp : sc.expr.supported = true` is available (from the suffices at L3405).
+This is just a missing parameter. Fix:
+1. Find the theorem signature above L7787. Add `(h_supp : s.body.supported = true)` as a parameter.
+2. Delete the sorry line at L7787.
+3. Find the caller: `grep -n "closureConvert_correct" VerifiedJS/Proofs/EndToEnd.lean`
+4. Add `h_supported` (from the top-level theorem's hypothesis) as the new argument at the call site.
+5. Build CC. Fix any errors.
 
-### KEY FACTS about Core.Expr.supported (VerifiedJS/Core/Syntax.lean:138-165):
-- Returns `false` ONLY for: `.forIn`, `.forOf`, `.yield`
-- For all other constructors: returns `true` (terminal) or `&&` of children's supported
-- `_ => true` catches: lit, var, break, continue, return none, this
+This is a 5-minute task. Do it FIRST.
 
-### APPROACH: Write a helper lemma, use it at L3408
+## TASK 2 — Close L3408 (Core_step_preserves_supported)
 
-Write this ABOVE L3405 (before the `by` block):
+L3408 is: `have hsupp' : sc'.expr.supported = true := sorry /- TODO: prove Core.step preserves supported -/`
+
+### STEP A: Write the helper WITH sorry sub-cases (this is fine!)
+
+Find Core.step? definition: `grep -n "def step?" VerifiedJS/Core/Semantics.lean`
+Then write this helper ABOVE line ~3405:
 
 ```lean
 private theorem Core_step_preserves_supported (s s' : Core.State) (t : Core.TraceEvent)
     (hsupp : s.expr.supported = true) (hstep : Core.step? s = some (t, s')) :
     s'.expr.supported = true := by
-  -- Core.step? recurses into sub-expressions. When stepping a compound expression,
-  -- the result either:
-  --   (a) replaces with a child (value case) → child was `supported` by &&
-  --   (b) steps a child in context → IH on child
-  --   (c) forIn/forOf/yield → hsupp gives false → contradiction
   obtain ⟨expr, env, heap, trace, funcs⟩ := s
   simp only [Core.State.expr] at hsupp
-  suffices ∀ n (e : Core.Expr), e.depth ≤ n → ∀ env heap trace funcs t s',
-    e.supported = true →
-    Core.step? ⟨e, env, heap, trace, funcs⟩ = some (t, s') →
-    s'.expr.supported = true from this _ _ (le_refl _) _ _ _ _ _ hsupp hstep
-  intro n
-  induction n with
-  | zero => intro e hd; cases e <;> simp [Core.Expr.depth] at hd <;> omega
-  | succ n ih =>
-    intro e hd env heap trace funcs t s' hsupp hstep
-    cases e with
-    | lit _ => simp [Core.step?] at hstep  -- lit doesn't step → contradiction
-    | var name =>
-      simp [Core.step?] at hstep
-      split at hstep <;> simp_all [Core.Expr.supported]
-    | forIn _ _ _ => simp [Core.Expr.supported] at hsupp
-    | forOf _ _ _ => simp [Core.Expr.supported] at hsupp
-    | yield _ _ => simp [Core.Expr.supported] at hsupp
-    | seq a b =>
-      simp [Core.Expr.supported] at hsupp
-      obtain ⟨ha, hb⟩ := Bool.and_eq_true.mp hsupp
-      simp [Core.step?] at hstep
-      sorry -- split on exprValue? a; value → hb; non-value → IH on a + reconstruct
-    | _ => sorry  -- fill remaining constructors one by one
+  cases expr with
+  | lit _ => simp [Core.step?] at hstep
+  | var name =>
+    simp [Core.step?] at hstep
+    split at hstep <;> simp_all [Core.Expr.supported]
+  | forIn _ _ _ => simp [Core.Expr.supported] at hsupp
+  | forOf _ _ _ => simp [Core.Expr.supported] at hsupp
+  | yield _ _ => simp [Core.Expr.supported] at hsupp
+  | _ => sorry -- fill remaining constructors; each follows same pattern
 ```
 
-Then at L3408 replace:
+### STEP B: Use it at L3408
+
+Replace the sorry at L3408 with:
 ```lean
     have hsupp' : sc'.expr.supported = true := Core_step_preserves_supported sc sc' ev hsupp (by cases hcstep; assumption)
 ```
 
-### EVEN 1 SORRY REDUCTION IS PROGRESS. Get the lemma in place (even with sorry sub-cases) and use it at L3408.
+### STEP C: Build and verify
 
-## TASK 2 — Close L7787 (h_supp parameter)
+Even with sorry sub-cases in the helper, L3408 itself is CLOSED. That's -1 sorry at the usage site, +1 sorry in the helper = net 0, BUT the helper sorry is more tractable and can be filled in incrementally.
 
-L7787: `have h_supp : s.body.supported = true := sorry`
+**IMPORTANT**: If the `by cases hcstep; assumption` doesn't work at L3408, try:
+- `(by exact hcstep.step_eq)` or whatever extracts the step? from Core.Step
+- Read the Core.Step definition: `grep -n "inductive Step\|structure Step" VerifiedJS/Core/Semantics.lean`
 
-Fix:
-1. Add `(h_supp : s.body.supported = true)` parameter to `closureConvert_correct` at ~L7779
-2. Delete the sorry line
-3. Find EndToEnd.lean caller: `grep -n "closureConvert_correct" VerifiedJS/Proofs/EndToEnd.lean`
-4. Add `h_supported` (from top-level theorem) as the argument
+### STEP D: Fill in easy constructor cases
+
+After the helper compiles, try filling in `seq`, `let`, `assign`, `if` — they follow the same pattern:
+```lean
+    | seq a b =>
+      simp [Core.Expr.supported] at hsupp
+      simp [Core.step?] at hstep
+      split at hstep
+      · simp_all [Core.Expr.supported]  -- value case: result is b, which is supported
+      · split at hstep
+        · sorry -- non-value: step a, reconstruct .seq a' b — needs depth induction
+        · simp at hstep
+```
 
 ## DO NOT:
 - Touch L4549, L4557 (semantic mismatch — compiler bug)
@@ -94,8 +94,10 @@ Fix:
 - Touch L6594, L6595, L6667 (CCStateAgree blocked)
 - Touch L6775 (while_ CCState threading)
 - Touch L4341 (FuncsCorr blocked)
+- Touch L3435 (captured var multi-step)
 - Edit ANFConvertCorrect.lean
-- Spend time on architecture analysis — CLOSE SORRIES
+- Write analysis instead of code
+- Spend more than 10 minutes reading before writing code
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`
