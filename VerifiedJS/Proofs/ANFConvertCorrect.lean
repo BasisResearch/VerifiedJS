@@ -2769,6 +2769,128 @@ private theorem normalizeExpr_var_step_sim :
         (by intro hc; exact Flat.Expr.noConfusion hc) (by intro a' b' hc; exact Flat.Expr.noConfusion hc) n m _)
 
 
+/-! ### NoNestedAbrupt: predicate for well-formed abrupt completion nesting -/
+
+/- An expression has no abrupt completions (throw/return/yield/await/break/continue)
+   at any depth. Used as a constraint on arguments to throw/return/yield/await. -/
+mutual
+private def hasAbruptCompletion : Flat.Expr → Bool
+  | .throw _ | .«return» _ | .yield _ _ | .await _ | .«break» _ | .«continue» _ => true
+  | .lit _ | .var _ | .this => false
+  | .«let» _ init body => hasAbruptCompletion init || hasAbruptCompletion body
+  | .assign _ val => hasAbruptCompletion val
+  | .«if» cond then_ else_ =>
+    hasAbruptCompletion cond || hasAbruptCompletion then_ || hasAbruptCompletion else_
+  | .seq a b => hasAbruptCompletion a || hasAbruptCompletion b
+  | .call f env args =>
+    hasAbruptCompletion f || hasAbruptCompletion env || hasAbruptCompletionList args
+  | .newObj f env args =>
+    hasAbruptCompletion f || hasAbruptCompletion env || hasAbruptCompletionList args
+  | .getProp obj _ => hasAbruptCompletion obj
+  | .setProp obj _ val => hasAbruptCompletion obj || hasAbruptCompletion val
+  | .getIndex obj idx => hasAbruptCompletion obj || hasAbruptCompletion idx
+  | .setIndex obj idx val =>
+    hasAbruptCompletion obj || hasAbruptCompletion idx || hasAbruptCompletion val
+  | .deleteProp obj _ => hasAbruptCompletion obj
+  | .typeof arg => hasAbruptCompletion arg
+  | .getEnv env _ => hasAbruptCompletion env
+  | .makeEnv vals => hasAbruptCompletionList vals
+  | .makeClosure _ env => hasAbruptCompletion env
+  | .objectLit props => hasAbruptCompletionProps props
+  | .arrayLit elems => hasAbruptCompletionList elems
+  | .tryCatch body _ catch_ (some fin) =>
+    hasAbruptCompletion body || hasAbruptCompletion catch_ || hasAbruptCompletion fin
+  | .tryCatch body _ catch_ none =>
+    hasAbruptCompletion body || hasAbruptCompletion catch_
+  | .while_ cond body => hasAbruptCompletion cond || hasAbruptCompletion body
+  | .labeled _ body => hasAbruptCompletion body
+  | .unary _ arg => hasAbruptCompletion arg
+  | .binary _ lhs rhs => hasAbruptCompletion lhs || hasAbruptCompletion rhs
+
+private def hasAbruptCompletionList : List Flat.Expr → Bool
+  | [] => false
+  | e :: rest => hasAbruptCompletion e || hasAbruptCompletionList rest
+
+private def hasAbruptCompletionProps : List (Flat.PropName × Flat.Expr) → Bool
+  | [] => false
+  | (_, e) :: rest => hasAbruptCompletion e || hasAbruptCompletionProps rest
+end
+
+set_option autoImplicit true in
+/-- No nested abrupt completions: arguments to throw/return/yield/await are free
+    of abrupt completion forms. All other sub-expressions recursively satisfy
+    NoNestedAbrupt. This is a natural invariant of JavaScript programs since
+    throw/return/yield/await are statement-level, not expression-level. -/
+inductive NoNestedAbrupt : Flat.Expr → Prop where
+  | lit : NoNestedAbrupt (.lit v)
+  | var : NoNestedAbrupt (.var x)
+  | this : NoNestedAbrupt .this
+  | «let» (hinit : NoNestedAbrupt init) (hbody : NoNestedAbrupt body) :
+      NoNestedAbrupt (.let name init body)
+  | assign (hval : NoNestedAbrupt val) : NoNestedAbrupt (.assign name val)
+  | «if» (hcond : NoNestedAbrupt cond) (hthen : NoNestedAbrupt then_)
+      (helse : NoNestedAbrupt else_) : NoNestedAbrupt (.if cond then_ else_)
+  | seq (ha : NoNestedAbrupt a) (hb : NoNestedAbrupt b) : NoNestedAbrupt (.seq a b)
+  | throw (harg : hasAbruptCompletion arg = false) : NoNestedAbrupt (.throw arg)
+  | return_none : NoNestedAbrupt (.return none)
+  | return_some (harg : hasAbruptCompletion arg = false) : NoNestedAbrupt (.return (some arg))
+  | yield_none : NoNestedAbrupt (.yield none d)
+  | yield_some (harg : hasAbruptCompletion arg = false) : NoNestedAbrupt (.yield (some arg) d)
+  | await (harg : hasAbruptCompletion arg = false) : NoNestedAbrupt (.await arg)
+  | «break» : NoNestedAbrupt (.break l)
+  | «continue» : NoNestedAbrupt (.continue l)
+  | call (hf : NoNestedAbrupt f) (henv : NoNestedAbrupt env)
+      (hargs : ∀ e ∈ args, NoNestedAbrupt e) : NoNestedAbrupt (.call f env args)
+  | newObj (hf : NoNestedAbrupt f) (henv : NoNestedAbrupt env)
+      (hargs : ∀ e ∈ args, NoNestedAbrupt e) : NoNestedAbrupt (.newObj f env args)
+  | getProp (hobj : NoNestedAbrupt obj) : NoNestedAbrupt (.getProp obj prop)
+  | setProp (hobj : NoNestedAbrupt obj) (hval : NoNestedAbrupt val) :
+      NoNestedAbrupt (.setProp obj prop val)
+  | getIndex (hobj : NoNestedAbrupt obj) (hidx : NoNestedAbrupt idx) :
+      NoNestedAbrupt (.getIndex obj idx)
+  | setIndex (hobj : NoNestedAbrupt obj) (hidx : NoNestedAbrupt idx)
+      (hval : NoNestedAbrupt val) : NoNestedAbrupt (.setIndex obj idx val)
+  | deleteProp (hobj : NoNestedAbrupt obj) : NoNestedAbrupt (.deleteProp obj prop)
+  | typeof (harg : NoNestedAbrupt arg) : NoNestedAbrupt (.typeof arg)
+  | getEnv (henv : NoNestedAbrupt env) : NoNestedAbrupt (.getEnv env idx)
+  | makeEnv (hvals : ∀ e ∈ vals, NoNestedAbrupt e) : NoNestedAbrupt (.makeEnv vals)
+  | makeClosure (henv : NoNestedAbrupt env) : NoNestedAbrupt (.makeClosure funcIdx env)
+  | objectLit (hprops : ∀ p ∈ props, NoNestedAbrupt p.2) :
+      NoNestedAbrupt (.objectLit props)
+  | arrayLit (helems : ∀ e ∈ elems, NoNestedAbrupt e) : NoNestedAbrupt (.arrayLit elems)
+  | tryCatch_some (hbody : NoNestedAbrupt body) (hcatch : NoNestedAbrupt catch_)
+      (hfin : NoNestedAbrupt fin) :
+      NoNestedAbrupt (.tryCatch body param catch_ (some fin))
+  | tryCatch_none (hbody : NoNestedAbrupt body) (hcatch : NoNestedAbrupt catch_) :
+      NoNestedAbrupt (.tryCatch body param catch_ none)
+  | while_ (hcond : NoNestedAbrupt cond) (hbody : NoNestedAbrupt body) :
+      NoNestedAbrupt (.while_ cond body)
+  | labeled (hbody : NoNestedAbrupt body) : NoNestedAbrupt (.labeled label body)
+  | unary (harg : NoNestedAbrupt arg) : NoNestedAbrupt (.unary op arg)
+  | binary (hlhs : NoNestedAbrupt lhs) (hrhs : NoNestedAbrupt rhs) :
+      NoNestedAbrupt (.binary op lhs rhs)
+
+/-- Key inversion lemma: NoNestedAbrupt (.throw arg) implies arg has no abrupt completions. -/
+private theorem NoNestedAbrupt.throw_arg_abruptFree {arg : Flat.Expr}
+    (h : NoNestedAbrupt (.throw arg)) : hasAbruptCompletion arg = false := by
+  cases h; assumption
+
+/-- Key inversion lemma: NoNestedAbrupt (.return (some arg)) implies arg has no abrupt completions. -/
+private theorem NoNestedAbrupt.return_some_arg_abruptFree {arg : Flat.Expr}
+    (h : NoNestedAbrupt (.return (some arg))) : hasAbruptCompletion arg = false := by
+  cases h; assumption
+
+/-- Key inversion lemma: NoNestedAbrupt (.yield (some arg) d) implies arg has no abrupt completions. -/
+private theorem NoNestedAbrupt.yield_some_arg_abruptFree {arg : Flat.Expr} {d : Bool}
+    (h : NoNestedAbrupt (.yield (some arg) d)) : hasAbruptCompletion arg = false := by
+  cases h; assumption
+
+/-- Key inversion lemma: NoNestedAbrupt (.await arg) implies arg has no abrupt completions. -/
+private theorem NoNestedAbrupt.await_arg_abruptFree {arg : Flat.Expr}
+    (h : NoNestedAbrupt (.await arg)) : hasAbruptCompletion arg = false := by
+  cases h; assumption
+
+
 /-\! ### ANF Inversion Infrastructure (inlined from ANFInversion.lean) -/
 
 /-! # Part 1: Break Inversion -/
@@ -7062,18 +7184,20 @@ private theorem trivialChain_silent_step :
       have hstep_sf : Flat.step? sf = some (.silent, s_i) := by
         have : sf = { sf with expr := Flat.Expr.var name } := by cases sf; simp_all
         rw [this]; exact hstep
-      exact ⟨s_i, hstep_sf, by rw [hexpr_i], by rw [hexpr_i]; simp [trivialChainCost],
-        henv_i, hheap_i, hfuncs_i, hcs_i, htrace_i,
-        fun x hfx => by rw [hexpr_i] at hfx; cases hfx⟩
+      refine ⟨s_i, hstep_sf, ?_, ?_, henv_i, hheap_i, hfuncs_i, hcs_i, htrace_i, ?_⟩
+      · simp [hexpr_i, isTrivialChain]
+      · simp [hexpr_i, trivialChainCost]
+      · intro x hfx; rw [hexpr_i] at hfx; cases hfx
     | «this» =>
       obtain ⟨val, s_t, hstep_t, hexpr_t, henv_t, hheap_t, hfuncs_t, hcs_t, htrace_t⟩ :=
         step?_this_resolve sf
       have hstep_sf : Flat.step? sf = some (.silent, s_t) := by
         have : sf = { sf with expr := Flat.Expr.this } := by cases sf; simp_all
         rw [this]; exact hstep_t
-      exact ⟨s_t, hstep_sf, by rw [hexpr_t], by rw [hexpr_t]; simp [trivialChainCost],
-        henv_t, hheap_t, hfuncs_t, hcs_t, htrace_t,
-        fun x hfx => by rw [hexpr_t] at hfx; cases hfx⟩
+      refine ⟨s_t, hstep_sf, ?_, ?_, henv_t, hheap_t, hfuncs_t, hcs_t, htrace_t, ?_⟩
+      · simp [hexpr_t, isTrivialChain]
+      · simp [hexpr_t, trivialChainCost]
+      · intro x hfx; rw [hexpr_t] at hfx; cases hfx
     | seq a b =>
       simp [isTrivialChain] at htc
       obtain ⟨htc_a, htc_b⟩ := htc
