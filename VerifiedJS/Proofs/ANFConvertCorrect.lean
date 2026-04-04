@@ -2975,7 +2975,7 @@ private theorem firstNonValueExpr_done_all_lit {args : List Flat.Expr}
         | tail _ hm => exact ih heq x hm
       · simp at h
     · -- e is not a lit
-      simp at h; obtain ⟨rfl, _, _⟩ := h; intro x hx; exact absurd hx (List.not_mem_nil x)
+      simp at h; obtain ⟨rfl, _, _⟩ := h; intro x hx; exact absurd hx (List.not_mem_nil)
 
 private theorem hasAbruptCompletionList_firstNonValue_preserved
     {args : List Flat.Expr} {done : List Flat.Expr} {target : Flat.Expr}
@@ -3151,7 +3151,7 @@ private theorem firstNonValueProp_noNestedAbrupt_preserved
   have hsplit := firstNonValueProp_eq_append hfnv
   rw [hsplit] at hna
   have ht : NoNestedAbrupt target := by
-    have := hna (name, target) (List.mem_append_right _ (List.mem_cons_self _ _))
+    have := hna (name, target) (List.mem_append_right _ (List.mem_cons_self ..))
     exact this
   have hr : ∀ p ∈ remaining, NoNestedAbrupt p.2 := fun p hp =>
     hna p (List.mem_append_right _ (List.mem_cons.mpr (Or.inr hp)))

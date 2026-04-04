@@ -4336,7 +4336,7 @@ private theorem closureConvert_step_simulation
             obtain ⟨hev_eq, hsf'_eq⟩ := hpair
             subst hev_eq; subst hsf'_eq
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · dsimp only [sc']; exact hcore
+            · simp only [] at hcore ⊢; exact hcore
             · simp [sc', htrace]
             · exact hinj
             · exact henvCorr
