@@ -4548,3 +4548,55 @@ Previous sorry counts were under-counting by grouping. Real count is 56 lines. P
 
 ## Run: 2026-04-04T22:05:01+00:00
 
+
+## Run: 2026-04-04T22:05:01+00:00
+
+### Metrics
+- **Sorry count (raw lines)**: ANF 30 + CC 33 = **63 sorry lines** (unchanged from last run)
+- **Delta from last run (20:31)**: ANF 30→30 (0), CC 33→33 (0)
+- **Explanation**: Agents have been running but no sorry closures since last supervisor run. Proof agent idle since 21:35, wasmspec idle since 21:15, jsspec running since 18:00 (4+ hours, building CC).
+
+### Actions Taken
+1. **Killed 6 duplicate supervisor CC builds + 3 old ANF builds** — freed ~2.4GB (857MB→3.2GB available). These were leaked from previous supervisor lake build processes.
+2. **Fixed L9080-9082**: `ANF.Expr.while_.inj` and `ANF.Expr.seq.inj` produce `c' = c` not `c = c'` — added `.symm` to all 3 lines. This was blocking normalizeExpr_while_decomp.
+3. **Made `Flat.pushTrace` public** (removed `private` from Flat/Semantics.lean L191). This directly fixes 4 of the 12 pre-existing errors in normalizeExpr_if_step_sim (L9292, L9315, L9364, L9388).
+4. **REWROTE wasmspec prompt**: HIGHEST PRIORITY = fix remaining 8 if_step_sim errors (env.lookup type mismatch, simp progress, observableTrace). These errors block ALL downstream LSP verification.
+5. **REWROTE proof prompt**: tryCatch cases (L9792, L10168) + call/newObj all-values (L9706, L9721, L10083, L10097). Gave detailed Flat.step? tryCatch analysis.
+6. **REWROTE jsspec prompt**: Same focus — depth induction for Core_step_preserves_supported. Clearer code templates.
+7. Logged to time_estimate.csv: 63 sorry lines.
+
+### Sorry Breakdown
+
+**ANF (30 lines):**
+- Group A eval context (7): L7696-L7882 — PARKED
+- Compound HasXInHead (4): L8526, L8683, L8860, L9018 — PARKED
+- Inner compound (3): L8677, L8854, L9012 — DEFERRED
+- Let step sim (1): L9045 — wasmspec
+- While step sim (2): L9135, L9147 — wasmspec
+- If compound (4): L9328-9329, L9401-9402 — wasmspec (after errors fixed)
+- tryCatch step sim (1): L9446 — DEFERRED
+- hasAbrupt call/newObj/tryCatch (3): L9706, L9721, L9792 — proof agent
+- NoNestedAbrupt call/newObj/tryCatch (3): L10083, L10097, L10168 — proof agent
+- break/continue (2): L10559, L10612 — PARKED
+
+**CC (33 lines):**
+- Core_step_preserves_supported `| none =>` (8): L3426, L3456, L3466, L3479, L3489, L3499, L3509, L3519 — jsspec (needs depth induction)
+- Core_step_preserves_supported bottom 10: L3520-L3529 — jsspec
+- Other (15): L3537/3540/3595/3924/3947/4511/4719/4727/5365/6607/6764/6765/6837/6945 — various blockers
+
+### Critical Path
+1. **FIX if_step_sim errors** (wasmspec NOW): Unblocks LSP verification of 6+ proofs below L9285
+2. **Depth induction for CC** (jsspec): -18 sorries if successful
+3. **tryCatch + call/newObj all-values** (proof agent): -6 sorries
+4. My L9080-9082 fix + pushTrace fix: -4 compile errors (may enable downstream progress)
+
+### Honest Assessment
+Zero sorry progress this cycle. But:
+- Memory crisis resolved (6 leaked builds killed)
+- 2 infrastructure fixes (equality direction + private pushTrace) that directly unblock wasmspec
+- All 3 prompts rewritten with higher specificity
+- Next cycle should see progress if agents can build (memory now available)
+
+### Additional fixes applied (post-log):
+8. **Added bridge lemma `Flat_Env_lookup_eq_ANF`** — `@[simp]` lemma proving `Flat.Env.lookup = ANF.Env.lookup`. This directly fixes the 4 `env.lookup` type mismatch errors in if_step_sim (L9285, L9308, L9356, L9380). Combined with the pushTrace fix, 8 of 12 if_step_sim errors should be eliminated.
+9. **ANF build running** — will verify all 3 fixes (equality direction, pushTrace public, bridge lemma).

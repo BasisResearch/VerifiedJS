@@ -1,4 +1,4 @@
-# proof — Close call/newObj all-values cases + tryCatch in hasAbruptCompletion/NoNestedAbrupt
+# proof — Close tryCatch + call/newObj all-values in hasAbrupt/NoNestedAbrupt
 
 ## RULES
 - Edit: ANFConvertCorrect.lean, Flat/Semantics.lean, AND EndToEnd.lean
@@ -11,76 +11,83 @@
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
-## MEMORY: 7.7GB total, NO swap. ~100MB available right now.
-**WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
+## MEMORY: 7.7GB total, NO swap. ~3GB available.
+Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
-## STATUS — SUPERVISOR JUST CLOSED objectLit (2 sorries → 0)
-Equation lemmas for getProp/setProp/getIndex/setIndex/deleteProp NOW EXIST in Flat/Semantics.lean (after L1166). objectLit cases in both hasAbruptCompletion_step_preserved and NoNestedAbrupt_step_preserved are NOW PROVED.
+## NOTE: Pre-existing errors at L9285-9399 block LSP verification
+The wasmspec agent is fixing normalizeExpr_if_step_sim errors. Your proofs at L9706+ and L10083+ can't be LSP-verified until those are fixed. **Write the proofs anyway** — they follow established patterns.
 
-Remaining sorries in these two theorems: **6 total**
-- hasAbruptCompletion: L9706 (call all-values), L9721 (newObj all-values), L9779 (tryCatch)
-- NoNestedAbrupt: L10070 (call all-values), L10084 (newObj all-values), L10155 (tryCatch)
+## STATUS: supervisor fixed L9080-9082 (equality direction .symm)
 
-## TASK 1: Close call all-values cases (L9706, L10070)
+## TASK 1: tryCatch in hasAbruptCompletion (L9792)
 
-When both `f` and `envExpr` are values (`some fv`, `some envVal`), step? does:
-1. Check if consoleLog → produces `.lit .undefined` → done
-2. Check if normal call → check `valuesFromExprList? args`:
-   a. All values → execute call → `.lit result` or tryCatch body → need careful handling
-   b. Not all values → `firstNonValueExpr args` → step arg → use IH
+`hasAbruptCompletion (.tryCatch body param catchBody fin) = false` means:
+- `hasAbruptCompletion body = false`
+- `hasAbruptCompletion catchBody = false`
+- For `some fin`: `hasAbruptCompletion fin = false`
 
-For L9706 (hasAbruptCompletion), after `| some envVal =>`:
-```lean
-        | some envVal =>
-          -- Call with both f and env as values
-          rw [Flat.step?.eq_1] at hstep
-          simp only [hfv, hev] at hstep
-          -- Now hstep is about the inner call logic
-          -- Case split on consoleLog check, valuesFromExprList?, firstNonValueExpr
-          -- Terminal cases produce .lit → hasAbruptCompletion = false
-          -- Arg-stepping case: use ih + hasAbruptCompletionList_firstNonValue_preserved
-          sorry -- fill in with split/simp
-```
+Flat.step? for tryCatch (see Flat/Semantics.lean L880-946):
+1. **body is value** → isCallFrame branch (.lit v or .seq fin (.lit v)) → result has no abrupt
+2. **body not value, step body = some (.error msg, sb)** → handler or .lit → check each branch
+3. **body not value, step body = some (t, sb)** → `.tryCatch sb.expr param catchBody fin` → IH on body
 
-**Try this approach**: Use `unfold Flat.step? at hstep` then repeatedly `split at hstep` to decompose. If `split` breaks (Lean 4.29 `have` bindings), use:
-```lean
-          rw [Flat.step?.eq_1] at hstep
-          simp only [hfv, hev] at hstep
-          -- Try: simp [Flat.exprValue?, Flat.pushTrace] at hstep
-          -- Then cases on the remaining matches
-```
-
-## TASK 2: Close newObj all-values cases (L9721, L10084)
-
-Same pattern as call. When `f` is a value, need to handle envExpr stepping or all-values.
-
-## TASK 3: tryCatch cases (L9779, L10155)
-
-tryCatch step? is complex:
-```
-| .tryCatch body catchParam catchBody finally_ =>
-    match exprValue? body with
-    | some v => handle value (with/without finally)
-    | none => step body → .tryCatch stepped catchParam catchBody finally_
-```
-
-For the non-value case, use existing equation lemma pattern:
 ```lean
     | tryCatch body param catchBody fin =>
-      -- hasAbruptCompletion (.tryCatch ...) = hasAbruptCompletion body || ...
       simp only [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
-      obtain ⟨⟨hb, hc⟩, hf⟩ := hac
-      -- Case split body value vs non-value
+      -- Extract: hbody_ac, hcatch_ac, hfin_ac
       unfold Flat.step? at hstep
-      -- ... split on exprValue? body, then handle each case
+      -- The let isCallFrame binding may block split. Try:
+      -- simp only [] at hstep  (to reduce let bindings)
+      -- Then split on exprValue? body
+      -- Case 1 (some v): all branches produce .lit or .seq fin (.lit v)
+      --   .lit → hasAbruptCompletion = false ✓
+      --   .seq fin (.lit v) → hasAbruptCompletion = hfin || false = hfin = false ✓
+      -- Case 2 (none): split on step? body result
+      --   (.error msg, sb): result is .lit or handler → check each
+      --   (t, sb): result is .tryCatch sb.expr ... → IH gives hasAbruptCompletion sb.expr = false
+      sorry -- REPLACE WITH PROOF
 ```
 
-## What NOT to work on:
-- Group A (L7696-7882): PARKED
-- Compound HasXInHead (L8526, L8683, L8860, L9018): needs eval context lemmas
-- Inner compound (L8677, L8854, L9012): wasmspec owns these
-- break/continue (L10533, L10586): needs step? error propagation
-- CC anything
+**WARNING**: The `let isCallFrame := ...` and `let restoredEnv := ...` bindings may block `split`. If `split at hstep` fails, try:
+```lean
+      rw [Flat.step?.eq_1] at hstep
+      simp only [] at hstep  -- reduce let bindings
+```
+
+## TASK 2: tryCatch in NoNestedAbrupt (L10168)
+
+Same structure. `hna : NoNestedAbrupt (.tryCatch body param catchBody fin)` gives:
+- `tryCatch_some hbody hcatch hfin` (when `fin = some finExpr`)
+- `tryCatch_none hbody hcatch` (when `fin = none`)
+
+Then case-split step? result:
+- body is value → result is .lit → NoNestedAbrupt.lit
+- body steps normally → result is .tryCatch sb.expr ... → NoNestedAbrupt.tryCatch_some/none (IH) hcatch hfin
+- body errors → result is handler or .lit → use hcatch, hfin
+
+## TASK 3: call all-values (L9706, L10083) + newObj all-values (L9721, L10097)
+
+When both f and envExpr are values, step? does:
+1. consoleLog check → .lit .undefined
+2. Normal call: check valuesFromExprList? args
+   - All values → execute → .lit result or tryCatch wrapper
+   - Not all values → firstNonValueExpr → step arg → IH
+
+For hasAbruptCompletion: terminal cases produce .lit (false), arg-stepping uses IH + hasAbruptCompletionList helper.
+For NoNestedAbrupt: terminal cases produce .lit → NoNestedAbrupt.lit, arg-stepping uses IH + list helper.
+
+Try:
+```lean
+        | some envVal =>
+          rw [Flat.step?.eq_1] at hstep
+          simp only [hfv, hev] at hstep
+          -- Now case split the inner call logic
+          split at hstep  -- consoleLog check
+          <;> split at hstep  -- valuesFromExprList?
+          <;> try (simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [hasAbruptCompletion])
+          -- Remaining: arg-stepping case
+          sorry
+```
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

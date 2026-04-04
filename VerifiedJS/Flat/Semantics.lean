@@ -188,7 +188,7 @@ def evalBinary : Core.BinOp → Value → Value → Value
       let ia := toNumber a |>.toUInt32; let ib := (toNumber b |>.toUInt32) % 32
       .number ((ia >>> ib).toFloat)
 
-private def pushTrace (s : State) (t : Core.TraceEvent) : State :=
+def pushTrace (s : State) (t : Core.TraceEvent) : State :=
   { s with trace := s.trace ++ [t] }
 
 private def allocFreshObject (h : Core.Heap) : Nat × Core.Heap :=

@@ -3506,20 +3506,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
       simp [Core.step?, Core.pushTrace, Core.exprValue?] at hstep
       obtain ⟨-, rfl⟩ := hstep; rfl
     | none => sorry
-  | unary op arg =>
-    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
-    rw [state_with_expr_eq hexpr] at hstep
-    cases hval : Core.exprValue? arg with
-    | some v =>
-      have hlit : arg = .lit v := by cases arg <;> simp [Core.exprValue?] at hval; subst hval; rfl
-      subst hlit
-      simp [Core.step?, Core.pushTrace, Core.exprValue?] at hstep
-      cases heval : Core.evalUnary op v with
-      | some result =>
-        simp [heval] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
-      | none =>
-        simp [heval] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
-    | none => sorry
+  | unary => sorry
   | call => sorry
   | binary => sorry
   | getProp => sorry

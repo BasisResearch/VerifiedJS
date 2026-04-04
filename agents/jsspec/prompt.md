@@ -9,64 +9,64 @@
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
-## MEMORY: 7.7GB total, NO swap. ~100MB available right now.
-**WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
+## MEMORY: 7.7GB total, NO swap. ~3GB available (supervisor freed memory).
+Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
 ## SORRY COUNT: 33 total in ClosureConvertCorrect.lean
 
-### PRIMARY TARGET: 17 compound cases at L3412, L3431-L3447
+### PRIMARY TARGET: `| none =>` sorries (L3426, L3456, L3466, L3479, L3489, L3499, L3509, L3519)
 
-These are in `Core_step_preserves_supported`. The theorem at L3375 does case analysis but NO induction. The sorry'd cases (let, assign, if, seq, call, unary, binary, getProp, setProp, getIndex, setIndex, deleteProp, objectLit, arrayLit, throw, tryCatch, typeof) are compound: Core.step? steps a sub-expression.
+These 8 sorries are ALL the same pattern: a sub-expression is NOT a value, Core.step? steps it. The result expression has the SAME outer constructor with the stepped sub-expression. `supported` is preserved because:
+1. The stepped sub-expression preserves `supported` (by INDUCTION on the sub-step)
+2. The surrounding structure is unchanged
 
-**STATUS**: L3412 (return some) is the only one separate. L3431-L3447 are 17 blank sorries.
+**THE PROBLEM**: The current proof uses `cases e` with NO induction. Without an IH, these can't close.
 
-**FIX**: Convert to depth induction. The current proof structure is `cases e with ...`. You need:
+**THE FIX**: Add depth induction. Here's the EXACT approach:
 
-1. Add a `suffices` with depth induction BEFORE the `cases e`:
+1. Find the theorem `Core_step_preserves_supported` (around L3375). It currently starts with something like:
 ```lean
-  suffices ∀ n e, e.depth ≤ n → ∀ env heap trace funcs cs ev s',
-    e.supported = true →
-    Core.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, s') →
-    s'.expr.supported = true from
-    this _ _ (Nat.le_refl _) _ _ _ _ _ _ _ hsupp (by rwa [show s = ⟨s.expr, s.env, s.heap, s.trace, s.funcs, s.callStack⟩ from by cases s; rfl])
-  intro n
-  induction n with
-  | zero =>
-    intro e hd env heap trace funcs cs ev s' hsupp hstep
-    cases e with
-    | lit => simp [Core.step?] at hstep
-    | var => simp [Core.Expr.depth] at hd  -- depth ≥ 1
-    | _ => simp [Core.Expr.depth] at hd  -- depth ≥ 1 for all compound
-  | succ n ih =>
-    intro e hd env heap trace funcs cs ev s' hsupp hstep
-    cases e with
-    -- ... same cases as current proof, but now ih is available
+theorem Core_step_preserves_supported ... : s'.expr.supported = true := by
+  ... cases s.expr ...
 ```
 
-2. For each compound case, the pattern is:
+2. Wrap with depth induction. Change to:
 ```lean
-    | «let» name init body =>
-      simp [Core.Expr.supported] at hsupp
-      obtain ⟨hinit, hbody⟩ := hsupp
-      -- Core.step? for let: if init is value → substitute, if not → step init
+theorem Core_step_preserves_supported ... : s'.expr.supported = true := by
+  have : ∀ n (e : Core.Expr), e.depth ≤ n → ... := by
+    intro n; induction n with
+    | zero => intro e hd; cases e <;> simp [Core.Expr.depth] at hd
+    | succ n ih => intro e hd; cases e with
+      -- ... existing cases, but now `ih` is available
+  exact this _ _ (Nat.le_refl _) ...
+```
+
+3. For each `| none =>` case, the pattern becomes:
+```lean
+    | none =>
+      -- Core.step? steps the sub-expression
       simp [Core.step?] at hstep
-      -- Case split on exprValue? init
+      -- Extract stepped sub-expression
       split at hstep
-      · -- init is value: body with substitution. supported preserved by subst
-        sorry -- may need supported_subst lemma
-      · -- init not value: step init, produce .let stepped body
-        -- Use ih on the sub-step
-        sorry -- ih _ (by simp [Core.Expr.depth] at hd; omega) ...
+      · -- sub-step exists
+        obtain ⟨-, rfl⟩ := hstep
+        simp [Core.Expr.supported]
+        exact ⟨ih _ (by simp [Core.Expr.depth] at hd; omega) ... hsupp_sub ..., hrest⟩
+      · -- no step → contradiction
+        simp at hstep
 ```
 
-3. Many cases may close with just `simp_all [Core.Expr.supported]` after the IH is applied.
+4. Use `lean_multi_attempt` to test each case BEFORE committing.
 
-**USE `lean_multi_attempt` on each case** to test whether `simp_all [Core.Expr.supported, Core.step?, Core.pushTrace]` closes it.
+### SECONDARY TARGET: Bottom 10 cases (L3520-L3529)
 
-### SECONDARY TARGETS (if time permits)
-- L6525: functionDef — needs closure allocation proof
-- L4429: non-consoleLog call — needs funcs correspondence
-- L6682, L6755: tryCatch — inline sorry
+These are: call, binary, getProp, setProp, getIndex, setIndex, deleteProp, objectLit, arrayLit, tryCatch.
+
+Same pattern but more complex — each has multiple sub-expressions that could be values or not. With depth induction + IH available, use `simp [Core.step?, Core.Expr.supported] at hstep ⊢` then case split.
+
+### IMPORTANT: Don't break existing proofs!
+
+The cases that already work (lit, var, «break», «continue», functionDef, while_, newObj, etc.) must still compile. Test with `lean_goal` on a few existing cases after your changes.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

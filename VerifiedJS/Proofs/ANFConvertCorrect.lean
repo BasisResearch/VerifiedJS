@@ -46,6 +46,11 @@ theorem observableTrace_log (s : String) (rest : List Core.TraceEvent) :
 theorem observableTrace_error (s : String) (rest : List Core.TraceEvent) :
     observableTrace (.error s :: rest) = .error s :: observableTrace rest := rfl
 
+/-- Bridge lemma: Flat.Env.lookup and ANF.Env.lookup are identical. -/
+@[simp] theorem Flat_Env_lookup_eq_ANF (env : Flat.Env) (name : String) :
+    Flat.Env.lookup env name = ANF.Env.lookup env name := by
+  unfold Flat.Env.lookup ANF.Env.lookup; rfl
+
 theorem observableTrace_append (a b : List Core.TraceEvent) :
     observableTrace (a ++ b) = observableTrace a ++ observableTrace b := by
   simp [observableTrace, List.filter_append]

@@ -1,72 +1,70 @@
-# wasmspec — Close remaining ANF sorries: let/while/seq step_sim + inner compound cases
+# wasmspec — FIX if_step_sim ERRORS (unblocks ALL downstream LSP verification)
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
 - **DO NOT** run `lake build` anything large
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
-- MEMORY: 7.7GB total, NO swap. ~100MB available right now.
+- MEMORY: 7.7GB total, NO swap. ~3GB available right now (supervisor freed memory).
 - You CAN edit ANFConvertCorrect.lean AND Flat/Semantics.lean
 - Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
 ## MEMORY WARNING
-**WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
+Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
-## STATUS: 30 ANF sorry lines remaining
+## CRITICAL: normalizeExpr_if_step_sim has 12 ERRORS (L9285-L9399) that block ALL downstream LSP
 
-Supervisor just closed objectLit cases in hasAbruptCompletion_step_preserved and NoNestedAbrupt_step_preserved (L9764, L10127 → proved). Equation lemmas for getProp/setProp/getIndex/setIndex/deleteProp now exist in Flat/Semantics.lean.
+These errors prevent LSP verification of hasAbruptCompletion, NoNestedAbrupt, tryCatch, and ALL other sorries after L9285. FIXING THESE IS YOUR #1 PRIORITY.
 
-Proof agent is working on: call/newObj all-values (L9706, L9721, L10070, L10084) and tryCatch (L9779, L10155).
+### Error Pattern 1: `env.lookup` vs `ANF.Env.lookup` (L9285, L9308, L9356, L9380)
 
-## YOUR TARGETS
-
-### TARGET 1: normalizeExpr_let_step_sim (L9045)
-
-This sorry is about what normalizeExpr produces for `.let name init body`:
+The proof does:
+```lean
+have hlookup : env.lookup name_c = some v := by
+  simp only [ANF.evalTrivial] at heval; split at heval <;> simp_all
 ```
-normalizeExpr (.let name init body) k =
-  normalizeExpr init (fun initVar => .let name initVar (normalizeExpr body k))
+But `env : Flat.Env` (from destructuring `sf`), so `env.lookup` resolves to `List.lookup`. The hypothesis after simp becomes `ANF.Env.lookup env name_c = some v`.
+
+**FIX**: Check if `ANF.Env.lookup` is just `List.lookup` (use `lean_hover_info`). If yes, try:
+```lean
+have hlookup : env.lookup name_c = some v := by
+  simp only [ANF.evalTrivial] at heval
+  split at heval <;> simp_all [ANF.Env.lookup]
 ```
+Or try `exact heval` or `assumption` if they're definitionally equal. Or change the goal to `ANF.Env.lookup env name_c = some v`.
 
-The Flat step is `.let name init' body` where init' is stepped. The ANF side normalizes init, so stepping init on the Flat side corresponds to stepping normalizeExpr init on the ANF side.
+### Error Pattern 2: `Unknown identifier 'Flat.pushTrace'` (L9292, L9315, L9364, L9388)
 
-Use `lean_goal` at L9045 to get the exact proof state. Then:
-1. Unfold `normalizeExpr` to see the structure
-2. Apply the SimRel for the init sub-expression
-3. Reconstruct SimRel for the result
+`Flat.pushTrace` is `private` in Flat/Semantics.lean. It can't be referenced outside.
 
-### TARGET 2: while step_sim (L9135, L9147)
+**FIX OPTIONS** (pick one):
+A. Make `pushTrace` public: In `VerifiedJS/Flat/Semantics.lean` L191, change `private def pushTrace` to `def pushTrace`
+B. Replace `Flat.pushTrace {...} .silent` with an explicit state literal `{ expr := ..., env := ..., ... }`
+C. Use `step?_pushTrace_expand` simp lemma instead
 
-L9135: While condition is a value → step produces `.if cond body+loop .lit`
-L9147: While condition is compound → step the condition
+**Option A is simplest** — just remove `private` from L191.
 
-For L9147 (condition-steps), the pattern should be straightforward:
-- Flat steps the condition in `.while_ cond body`
-- ANF normalizes the while, which normalizes the condition first
-- The condition step preserves SimRel
+### Error Pattern 3: `simp at this` no progress (L9298, L9321, L9370, L9394)
 
-### TARGET 3: if compound sorries (L9328-9329, L9401-9402)
+After `have := Flat.step?_if_true ...`, the `simp at this` fails. The goal involves `step?_pushTrace_expand` on a pushTrace result.
 
-L9328: compound condition multi-step
-L9329: compound HasIfInHead
-L9401-9402: same pattern
+**FIX**: Try `simp [Flat.step?_pushTrace_expand] at this` directly, or inline the pushTrace expansion.
 
-These need the eval context stepping lemma for if-conditions. If the condition is compound (not lit/var/this), normalizeExpr recurses into it. The multi-step case needs induction.
+### Error Pattern 4: `observableTrace` mismatch (L9303, L9326, L9375, L9399)
 
-### TARGET 4: Inner compound cases (L8677, L8854, L9012)
+`htrace : observableTrace sa_trace = observableTrace trace` but goal needs matching with `[.silent, .silent]` vs `[.silent]`. The issue is the proof claims 2 silent steps but the trace arithmetic doesn't work out.
 
-These are the `| _ => sorry` wildcards where `inner_val` is compound. With `hna : NoNestedAbrupt`, `hasAbruptCompletion inner_val = false`. The approach:
-1. `normalizeExpr_X_some_or_k` gives disjunction: HasXInHead or continuation
-2. HasXInHead → contradiction with hna
-3. Continuation → inner_val is trivial chain
-
-These need `no_X_head_implies_trivial_chain` helpers (throw version exists, need return/await/yield).
+**FIX**: The `by simp [observableTrace_append, observableTrace]; exact htrace` pattern may need `observableTrace_silent` or manual `List.filter` reasoning. Check what `observableTrace` does with `.silent` events.
 
 ## PRIORITY ORDER
-1. L9147 (while condition-steps) — most likely closeable
-2. L9045 (let step_sim)
-3. L9328-9329, L9401-9402 (if compound)
+1. Fix `private pushTrace` (Option A — remove `private` from Flat/Semantics.lean L191)
+2. Fix `env.lookup` issues (check type aliases, add simp lemma or exact)
+3. Fix `simp` progress issues
+4. Fix `observableTrace` trace issues
+5. Once all 12 errors are fixed, the LSP will verify all theorems after L9285 → sorry count may drop
 
-## DO NOT just analyze. WRITE CODE. Close at least 1 sorry line.
+## AFTER FIXING ERRORS: Work on let/while step_sim sorries
+- L9045: let step sim
+- L9135, L9147: while step sim
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
