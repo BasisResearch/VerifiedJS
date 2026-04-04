@@ -2828,8 +2828,8 @@ inductive NoNestedAbrupt : Flat.Expr → Prop where
   | «let» (hinit : NoNestedAbrupt init) (hbody : NoNestedAbrupt body) :
       NoNestedAbrupt (.let name init body)
   | assign (hval : NoNestedAbrupt val) : NoNestedAbrupt (.assign name val)
-  | «if» (hcond : NoNestedAbrupt cond) (hthen : NoNestedAbrupt then_)
-      (helse : NoNestedAbrupt else_) : NoNestedAbrupt (.if cond then_ else_)
+  | «if» (hc : NoNestedAbrupt c) (hthen : NoNestedAbrupt then_)
+      (helse : NoNestedAbrupt else_) : NoNestedAbrupt (.if c then_ else_)
   | seq (ha : NoNestedAbrupt a) (hb : NoNestedAbrupt b) : NoNestedAbrupt (.seq a b)
   | throw (harg : hasAbruptCompletion arg = false) : NoNestedAbrupt (.throw arg)
   | return_none : NoNestedAbrupt (.return none)
@@ -2863,8 +2863,8 @@ inductive NoNestedAbrupt : Flat.Expr → Prop where
       NoNestedAbrupt (.tryCatch body param catch_ (some fin))
   | tryCatch_none (hbody : NoNestedAbrupt body) (hcatch : NoNestedAbrupt catch_) :
       NoNestedAbrupt (.tryCatch body param catch_ none)
-  | while_ (hcond : NoNestedAbrupt cond) (hbody : NoNestedAbrupt body) :
-      NoNestedAbrupt (.while_ cond body)
+  | while_ (hc : NoNestedAbrupt c) (hbody : NoNestedAbrupt body) :
+      NoNestedAbrupt (.while_ c body)
   | labeled (hbody : NoNestedAbrupt body) : NoNestedAbrupt (.labeled label body)
   | unary (harg : NoNestedAbrupt arg) : NoNestedAbrupt (.unary op arg)
   | binary (hlhs : NoNestedAbrupt lhs) (hrhs : NoNestedAbrupt rhs) :
@@ -4460,6 +4460,101 @@ theorem normalizeProps_throw_or_k
       · exact Or.inl (HasThrowInHeadProps.tail hleft)
       · obtain ⟨ts, n'', m'', hkts⟩ := hright
         exact Or.inr ⟨(p.1, t) :: ts, n'', m'', hkts⟩
+
+/-! ## HasThrowInHead implies hasAbruptCompletion -/
+
+set_option autoImplicit true in
+mutual
+/-- Any expression with throw reachable at CPS-head position contains an abrupt completion. -/
+private theorem hasThrowInHead_implies_hasAbruptCompletion :
+    HasThrowInHead e → hasAbruptCompletion e = true := by
+  intro h
+  induction h with
+  | throw_direct => rfl
+  | seq_left _ ih => simp [hasAbruptCompletion]; left; exact ih
+  | seq_right _ ih => simp [hasAbruptCompletion]; right; exact ih
+  | let_init _ ih => simp [hasAbruptCompletion]; left; exact ih
+  | getProp_obj _ ih => simp [hasAbruptCompletion]; exact ih
+  | setProp_obj _ ih => simp [hasAbruptCompletion]; left; exact ih
+  | setProp_val _ ih => simp [hasAbruptCompletion]; right; exact ih
+  | binary_lhs _ ih => simp [hasAbruptCompletion]; left; exact ih
+  | binary_rhs _ ih => simp [hasAbruptCompletion]; right; exact ih
+  | unary_arg _ ih => simp [hasAbruptCompletion]; exact ih
+  | typeof_arg _ ih => simp [hasAbruptCompletion]; exact ih
+  | deleteProp_obj _ ih => simp [hasAbruptCompletion]; exact ih
+  | assign_val _ ih => simp [hasAbruptCompletion]; exact ih
+  | call_func _ ih => simp [hasAbruptCompletion]; left; left; exact ih
+  | call_env _ ih => simp [hasAbruptCompletion]; left; right; exact ih
+  | call_args _ ih => simp [hasAbruptCompletion]; right; exact ih
+  | newObj_func _ ih => simp [hasAbruptCompletion]; left; left; exact ih
+  | newObj_env _ ih => simp [hasAbruptCompletion]; left; right; exact ih
+  | newObj_args _ ih => simp [hasAbruptCompletion]; right; exact ih
+  | if_cond _ ih => simp [hasAbruptCompletion]; left; left; exact ih
+  | return_some_arg _ _ => rfl
+  | yield_some_arg _ _ => rfl
+  | await_arg _ _ => rfl
+  | getIndex_obj _ ih => simp [hasAbruptCompletion]; left; exact ih
+  | getIndex_idx _ ih => simp [hasAbruptCompletion]; right; exact ih
+  | setIndex_obj _ ih => simp [hasAbruptCompletion]; left; left; exact ih
+  | setIndex_idx _ ih => simp [hasAbruptCompletion]; left; right; exact ih
+  | setIndex_val _ ih => simp [hasAbruptCompletion]; right; exact ih
+  | getEnv_env _ ih => simp [hasAbruptCompletion]; exact ih
+  | makeClosure_env _ ih => simp [hasAbruptCompletion]; exact ih
+  | makeEnv_values _ ih => simp [hasAbruptCompletion]; exact ih
+  | objectLit_props _ ih => simp [hasAbruptCompletion]; exact ih
+  | arrayLit_elems _ ih => simp [hasAbruptCompletion]; exact ih
+
+/-- Any list with throw in head has an element with abrupt completion. -/
+private theorem hasThrowInHeadList_implies_hasAbruptCompletionList :
+    HasThrowInHeadList es → hasAbruptCompletionList es = true := by
+  intro h
+  induction h with
+  | head hh =>
+    simp [hasAbruptCompletionList]
+    left; exact hasThrowInHead_implies_hasAbruptCompletion hh
+  | tail _ ih => simp [hasAbruptCompletionList]; right; exact ih
+
+/-- Any prop list with throw in head has an element with abrupt completion. -/
+private theorem hasThrowInHeadProps_implies_hasAbruptCompletionProps :
+    HasThrowInHeadProps ps → hasAbruptCompletionProps ps = true := by
+  intro h
+  induction h with
+  | head hh =>
+    simp [hasAbruptCompletionProps]
+    left; exact hasThrowInHead_implies_hasAbruptCompletion hh
+  | tail _ ih => simp [hasAbruptCompletionProps]; right; exact ih
+end
+
+/-- If NoNestedAbrupt and HasThrowInHead both hold for an expression inside a
+    return/yield/await argument, we get a contradiction. This is the key lemma
+    for eliminating impossible HasThrowInHead cases in Group D theorems. -/
+private theorem noNestedAbrupt_hasThrowInHead_absurd_return {arg : Flat.Expr}
+    (hna : NoNestedAbrupt (.return (some arg)))
+    (hth : HasThrowInHead arg) : False := by
+  have h1 := NoNestedAbrupt.return_some_arg_abruptFree hna
+  have h2 := hasThrowInHead_implies_hasAbruptCompletion hth
+  rw [h1] at h2; exact absurd h2 (by decide)
+
+private theorem noNestedAbrupt_hasThrowInHead_absurd_yield {arg : Flat.Expr} {d : Bool}
+    (hna : NoNestedAbrupt (.yield (some arg) d))
+    (hth : HasThrowInHead arg) : False := by
+  have h1 := NoNestedAbrupt.yield_some_arg_abruptFree hna
+  have h2 := hasThrowInHead_implies_hasAbruptCompletion hth
+  rw [h1] at h2; exact absurd h2 (by decide)
+
+private theorem noNestedAbrupt_hasThrowInHead_absurd_await {arg : Flat.Expr}
+    (hna : NoNestedAbrupt (.await arg))
+    (hth : HasThrowInHead arg) : False := by
+  have h1 := NoNestedAbrupt.await_arg_abruptFree hna
+  have h2 := hasThrowInHead_implies_hasAbruptCompletion hth
+  rw [h1] at h2; exact absurd h2 (by decide)
+
+private theorem noNestedAbrupt_hasThrowInHead_absurd_throw {arg : Flat.Expr}
+    (hna : NoNestedAbrupt (.throw arg))
+    (hth : HasThrowInHead arg) : False := by
+  have h1 := NoNestedAbrupt.throw_arg_abruptFree hna
+  have h2 := hasThrowInHead_implies_hasAbruptCompletion hth
+  rw [h1] at h2; exact absurd h2 (by decide)
 
 /-! ## Main theorem: normalizeExpr_throw_or_k -/
 
