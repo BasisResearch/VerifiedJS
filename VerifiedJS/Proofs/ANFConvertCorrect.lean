@@ -3126,7 +3126,7 @@ private theorem firstNonValueExpr_noNestedAbrupt_preserved
       ∀ e ∈ done ++ e' :: remaining, NoNestedAbrupt e) := by
   have hsplit := firstNonValueExpr_eq_append hfnv
   rw [hsplit] at hna
-  have ht : NoNestedAbrupt target := hna target (List.mem_append_right _ (List.mem_cons_self _ _))
+  have ht : NoNestedAbrupt target := hna target (List.mem_append_right _ (List.mem_cons_self ..))
   have hr : ∀ e ∈ remaining, NoNestedAbrupt e := fun e he =>
     hna e (List.mem_append_right _ (List.mem_cons.mpr (Or.inr he)))
   have hd : ∀ e ∈ done, NoNestedAbrupt e := fun e he =>
@@ -8518,9 +8518,12 @@ private theorem normalizeExpr_throw_step_sim
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
     | _ => exact normalizeExpr_throw_compound_case _ env heap trace funcs cs arg n m hnorm' hewf hna
+  | return_some_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_return hna h
+  | yield_some_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_yield hna h
+  | await_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_await hna h
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
-    sorry
+    sorry -- compound HasThrowInHead cases: need eval context stepping through seq/let/call/etc.
 
 /-- If normalizeExpr sf.expr k produces .return arg (with trivial-preserving k),
     then there exist Flat steps from sf matching the ANF return step. -/

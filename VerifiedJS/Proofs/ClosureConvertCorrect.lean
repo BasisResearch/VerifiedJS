@@ -4340,12 +4340,8 @@ private theorem closureConvert_step_simulation
                 | [v] => Flat.valueToString v
                 | vs => " ".intercalate (vs.map Flat.valueToString))],
               sc.funcs, sc.callStack⟩
-            have hev_core : ev = Core.TraceEvent.log (match argVals.map Flat.convertValue with
-                | [v] => Flat.valueToString v
-                | vs => " ".intercalate (vs.map Flat.valueToString)) := hev_eq
-            subst hev_core
             refine ⟨injMap, sc', ⟨hcore⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · simp [sc', htrace]
+            · simp only [sc']; rw [htrace]
             · exact hinj
             · exact henvCorr
             · exact henvwf

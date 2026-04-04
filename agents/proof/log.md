@@ -5646,3 +5646,24 @@ Note: `NoNestedAbrupt_step_preserved` may need additional conditions (e.g., all 
 
 ### 2026-04-04T16:30:14+00:00 Starting run — closing call/newObj/makeEnv/arrayLit cases
 2026-04-04T17:30:02+00:00 SKIP: already running
+
+### 2026-04-04T16:30:01+00:00 Run complete — partial progress
+
+**Summary**: Added helper lemmas for objectLit prop-list cases. Discovered pervasive `split at hstep` breakage in both `hasAbruptCompletion_step_preserved` and `NoNestedAbrupt_step_preserved` theorems due to Lean 4.29.0-rc6 producing `have` bindings (from `let` in `step?` def) that `split` can't decompose.
+
+**Helper lemmas added** (all type-check correctly):
+- `hasAbruptCompletionProps_append` - append lemma for prop list
+- `firstNonValueProp_eq_append` - structural decomposition
+- `hasAbruptCompletionProps_firstNonValueProp_preserved` - key preservation lemma for objectLit
+- `firstNonValueProp_noNestedAbrupt_preserved` - NoNestedAbrupt version for objectLit
+
+**Bug fixes**:
+- `List.not_mem_nil x` → `List.not_mem_nil` (implicit arg change in Lean 4.29)
+- `List.mem_cons_self _ _` → `List.mem_cons_self ..` (same issue)
+
+**Root cause of failures**: `unfold Flat.step? at hstep` produces terms with `VerifiedJS.Flat.pushTrace✝` and `have key := ...` bindings. The `split at hstep` tactic cannot decompose these. This affects ALL cases in both theorems that have multiple levels of match nesting (call, newObj, objectLit, getEnv, deleteProp, tryCatch). Only simple 2-level cases (makeEnv, arrayLit) with `valuesFromExprList?` + `firstNonValueExpr` work.
+
+**Recommendation**: Create `step?` simplification lemmas (e.g., `step?_call_step_f`, `step?_call_step_env`, etc.) that package each branch into a clean equation without `have` bindings. This would unblock all 12 cases.
+
+**Build status**: File has pre-existing compilation errors in `anfConvert_step_star` (lines 9214+) unrelated to these theorems.
+2026-04-04T17:34:46+00:00 DONE

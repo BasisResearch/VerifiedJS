@@ -1,61 +1,56 @@
-# wasmspec — Close ANF deferred compound sorries
+# wasmspec — Close compound throw/return/await/yield sorries OR help with hasAbruptCompletion
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
 - **DO NOT** run `lake build` anything large
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
-- MEMORY: 7.7GB total, NO swap. ~3.4GB available right now.
+- MEMORY: 7.7GB total, NO swap. ~2.9GB available right now.
 - You CAN edit ANFConvertCorrect.lean
 - Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
 ## MEMORY WARNING
 **WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
 
-## STATUS UPDATE: NoNestedAbrupt targets are DONE (proof agent closed them!)
+## STATUS: Last run was ANALYSIS ONLY with 0 closures. That is NOT acceptable.
 
-Your previous targets (L9971-10005) were already proved by the proof agent. New targets below.
+You spent an entire run analyzing and writing no code. The sorry count did NOT change. We need CODE CHANGES.
 
-## NEW TARGETS: Deferred compound sorries (7 total)
+## STRATEGY CHANGE: You are no longer doing analysis. You are writing proofs.
 
-These are throw/return/await/yield compound cases that all follow the same pattern. Each needs handling compound inner expressions (seq, let, assign, if, call, etc.) that have the relevant head constructor deeper inside.
+### Option A: Fix the call/newObj/getEnv "have bindings" issue
 
-### throw_step_sim compound (1 sorry):
-- **L8523**: `sorry` — compound throw cases. `HasThrowInHead` compound constructors.
+The hasAbruptCompletion_step_preserved theorem (L9383) and NoNestedAbrupt_step_preserved (L9662) both have proof attempts in block comments. The remaining sorry cases (call, newObj, getEnv, objectLit, tryCatch) all fail because `split at hstep` doesn't work when `Flat.step?` uses `have` bindings.
 
-### return compound (2 sorries):
-- **L8673**: `| _ => sorry -- compound inner_val: seq, let, assign, if, call, throw, etc.`
-- **L8676**: `sorry -- compound HasReturnInHead cases`
+**Your job**: Figure out how to handle `have` bindings in `Flat.step?` unfolding.
 
-### await compound (2 sorries):
-- **L8846**: `| _ => sorry -- compound inner_arg: seq, let, assign, if, call, throw, etc.`
-- **L8849**: `sorry`
+1. Use `lean_hover_info` on `Flat.step?` to see its definition
+2. Look at how `call`, `newObj`, `getEnv` cases work in `Flat.step?`
+3. Try alternatives to `split at hstep`:
+   - `simp only [Flat.step?] at hstep`
+   - `dsimp only [Flat.step?] at hstep`
+   - `unfold Flat.step? at hstep; dsimp at hstep`
+   - Extract the `have` bindings manually with `match` on the step result
 
-### yield compound (2 sorries):
-- **L9000**: `| _ => sorry -- compound inner_val: seq, let, assign, if, call, throw, etc.`
-- **L9003**: `sorry -- compound HasYieldInHead cases`
+4. Test with `lean_multi_attempt` at the call sorry position
 
-### Pattern: These all share the same structure
-When normalizeExpr produces a `.throw`/`.return`/`.await`/`.yield` and the expression has a HasXInHead compound constructor (like `seq_left`, `let_init`, `call_func`, etc.), we need to:
-1. Take one Flat step to evaluate the compound sub-expression
-2. Show the result still has the same head form
-3. Apply the IH
+If you crack this, it unblocks 10 sorries across both theorems.
 
-The key challenge is "eval context lifting" — stepping through an evaluation context. If the expression is `seq (call f env args) rest` and HasThrowInHead says throw is in the call's sub-expression, we need to step `call f env args` first.
+### Option B: Close compound sorries (7 total)
 
-### Assessment approach:
-1. Use `lean_goal` at each sorry to see what's actually needed
-2. Check if there's existing infrastructure for eval context stepping
-3. If one of them is close to provable, close it. If all are blocked on the same issue, document exactly what lemma is needed.
+If Option A is too hard:
+- **L8523**: throw compound
+- **L8673, L8676**: return compound
+- **L8846, L8849**: await compound
+- **L9000, L9003**: yield compound
 
-Even proving 1-2 of these is good progress.
+Use `lean_goal` at each sorry. If they all need "eval context stepping" infrastructure, pick the SIMPLEST one and write the proof.
 
-## ALSO AVAILABLE: let/while step sim (2 sorries)
-- **L9030**: `sorry -- Need characterization of what produces .let, flat simulation`
-- **L9078**: `sorry` in while_ step sim
+### Option C: tryCatch step sim (L9375)
+Another standalone sorry. Use `lean_goal` to assess.
 
-These might be easier. Use `lean_goal` to assess.
+## DO NOT just analyze. WRITE CODE. Close at least 1 sorry.
 
-## DO NOT EDIT L9600-9775 or L10054-10200 (proof agent owns those regions)
+## DO NOT EDIT L9377-9662 (proof agent region) unless doing Option A
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
