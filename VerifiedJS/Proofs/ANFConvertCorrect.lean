@@ -4469,19 +4469,56 @@ mutual
 private theorem hasThrowInHead_implies_hasAbruptCompletion :
     HasThrowInHead e → hasAbruptCompletion e = true := by
   intro h
-  sorry
+  cases h with
+  | throw_direct => simp [hasAbruptCompletion]
+  | seq_left h => simp [hasAbruptCompletion]; exact Or.inl (hasThrowInHead_implies_hasAbruptCompletion h)
+  | seq_right h => simp [hasAbruptCompletion]; exact Or.inr (hasThrowInHead_implies_hasAbruptCompletion h)
+  | let_init h => simp [hasAbruptCompletion]; exact Or.inl (hasThrowInHead_implies_hasAbruptCompletion h)
+  | getProp_obj h => simp [hasAbruptCompletion]; exact hasThrowInHead_implies_hasAbruptCompletion h
+  | setProp_obj h => simp [hasAbruptCompletion]; exact Or.inl (hasThrowInHead_implies_hasAbruptCompletion h)
+  | setProp_val h => simp [hasAbruptCompletion]; exact Or.inr (hasThrowInHead_implies_hasAbruptCompletion h)
+  | binary_lhs h => simp [hasAbruptCompletion]; exact Or.inl (hasThrowInHead_implies_hasAbruptCompletion h)
+  | binary_rhs h => simp [hasAbruptCompletion]; exact Or.inr (hasThrowInHead_implies_hasAbruptCompletion h)
+  | unary_arg h => simp [hasAbruptCompletion]; exact hasThrowInHead_implies_hasAbruptCompletion h
+  | typeof_arg h => simp [hasAbruptCompletion]; exact hasThrowInHead_implies_hasAbruptCompletion h
+  | deleteProp_obj h => simp [hasAbruptCompletion]; exact hasThrowInHead_implies_hasAbruptCompletion h
+  | assign_val h => simp [hasAbruptCompletion]; exact hasThrowInHead_implies_hasAbruptCompletion h
+  | call_func h => simp [hasAbruptCompletion]; exact Or.inl (Or.inl (hasThrowInHead_implies_hasAbruptCompletion h))
+  | call_env h => simp [hasAbruptCompletion]; exact Or.inl (Or.inr (hasThrowInHead_implies_hasAbruptCompletion h))
+  | call_args h => simp [hasAbruptCompletion]; exact Or.inr (hasThrowInHeadList_implies_hasAbruptCompletionList h)
+  | newObj_func h => simp [hasAbruptCompletion]; exact Or.inl (Or.inl (hasThrowInHead_implies_hasAbruptCompletion h))
+  | newObj_env h => simp [hasAbruptCompletion]; exact Or.inl (Or.inr (hasThrowInHead_implies_hasAbruptCompletion h))
+  | newObj_args h => simp [hasAbruptCompletion]; exact Or.inr (hasThrowInHeadList_implies_hasAbruptCompletionList h)
+  | if_cond h => simp [hasAbruptCompletion]; exact Or.inl (Or.inl (hasThrowInHead_implies_hasAbruptCompletion h))
+  | return_some_arg h => simp [hasAbruptCompletion]
+  | yield_some_arg h => simp [hasAbruptCompletion]
+  | await_arg h => simp [hasAbruptCompletion]
+  | getIndex_obj h => simp [hasAbruptCompletion]; exact Or.inl (hasThrowInHead_implies_hasAbruptCompletion h)
+  | getIndex_idx h => simp [hasAbruptCompletion]; exact Or.inr (hasThrowInHead_implies_hasAbruptCompletion h)
+  | setIndex_obj h => simp [hasAbruptCompletion]; exact Or.inl (Or.inl (hasThrowInHead_implies_hasAbruptCompletion h))
+  | setIndex_idx h => simp [hasAbruptCompletion]; exact Or.inl (Or.inr (hasThrowInHead_implies_hasAbruptCompletion h))
+  | setIndex_val h => simp [hasAbruptCompletion]; exact Or.inr (hasThrowInHead_implies_hasAbruptCompletion h)
+  | getEnv_env h => simp [hasAbruptCompletion]; exact hasThrowInHead_implies_hasAbruptCompletion h
+  | makeClosure_env h => simp [hasAbruptCompletion]; exact hasThrowInHead_implies_hasAbruptCompletion h
+  | makeEnv_values h => simp [hasAbruptCompletion]; exact hasThrowInHeadList_implies_hasAbruptCompletionList h
+  | objectLit_props h => simp [hasAbruptCompletion]; exact hasThrowInHeadProps_implies_hasAbruptCompletionProps h
+  | arrayLit_elems h => simp [hasAbruptCompletion]; exact hasThrowInHeadList_implies_hasAbruptCompletionList h
 
 /-- Any list with throw in head has an element with abrupt completion. -/
 private theorem hasThrowInHeadList_implies_hasAbruptCompletionList :
     HasThrowInHeadList es → hasAbruptCompletionList es = true := by
   intro h
-  sorry
+  cases h with
+  | head h => simp [hasAbruptCompletionList]; exact Or.inl (hasThrowInHead_implies_hasAbruptCompletion h)
+  | tail h => simp [hasAbruptCompletionList]; exact Or.inr (hasThrowInHeadList_implies_hasAbruptCompletionList h)
 
 /-- Any prop list with throw in head has an element with abrupt completion. -/
 private theorem hasThrowInHeadProps_implies_hasAbruptCompletionProps :
     HasThrowInHeadProps ps → hasAbruptCompletionProps ps = true := by
   intro h
-  sorry
+  cases h with
+  | head h => simp [hasAbruptCompletionProps]; exact Or.inl (hasThrowInHead_implies_hasAbruptCompletion h)
+  | tail h => simp [hasAbruptCompletionProps]; exact Or.inr (hasThrowInHeadProps_implies_hasAbruptCompletionProps h)
 end
 
 /-- If NoNestedAbrupt and HasThrowInHead both hold for an expression inside a
