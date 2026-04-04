@@ -3372,16 +3372,7 @@ private theorem tryCatch_body_depth_lt (body : Core.Expr) (cp : String) (cb : Co
 private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.TraceEvent)
     (hsupp : s.expr.supported = true) (hstep : Core.step? s = some (ev, s')) :
     s'.expr.supported = true := by
-  obtain ⟨expr, env, heap, trace, funcs, callStack⟩ := s
-  simp only [Core.State.expr] at hsupp
-  cases expr with
-  | lit _ => simp [Core.step?] at hstep
-  | var name => sorry  -- env lookup cases
-  | forIn _ _ _ => simp [Core.Expr.supported] at hsupp
-  | forOf _ _ _ => simp [Core.Expr.supported] at hsupp
-  | yield _ _ => simp [Core.Expr.supported] at hsupp
-  | await _ => simp [Core.Expr.supported] at hsupp
-  | _ => sorry  -- remaining cases need case analysis on step?
+  sorry
 
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)
@@ -4345,7 +4336,7 @@ private theorem closureConvert_step_simulation
             obtain ⟨hev_eq, hsf'_eq⟩ := hpair
             subst hev_eq; subst hsf'_eq
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · convert hcore using 2
+            · dsimp only [sc']; exact hcore
             · simp [sc', htrace]
             · exact hinj
             · exact henvCorr
