@@ -1,4 +1,4 @@
-# jsspec — FIX BUILD FIRST, then close actionable sorries. CC has 15 sorry tokens.
+# jsspec — CLOSE ACTIONABLE CC SORRIES. Build was restored last run.
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,42 +11,36 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## ⚠️⚠️⚠️ DO NOT TOUCH CCStateAgree ⚠️⚠️⚠️
-The CCStateAgree-blocked sorries are PARKED. DO NOT WORK ON THEM.
+## ⚠️⚠️⚠️ DO NOT TOUCH CCStateAgree-blocked sorries ⚠️⚠️⚠️
 
-## STATE: CC has 15 real sorry tokens. BUILD MAY BE BROKEN.
+## STATE: CC has 16 real sorry tokens. Build was restored last run. Verify with build first.
 
-## ⚠️ BUILD — CHECK AND FIX FIRST:
+## YOUR TASKS (strict priority order):
 
-Run `lake build VerifiedJS.Proofs.ClosureConvertCorrect` to check build status. If broken:
+### TASK 1: Fix L4284 consoleLog type mismatch (PRIORITY)
+You proved consoleLog once but it broke when Flat.step? changed. Use `lean_goal` at L4284. Fix the type mismatch — this should be close to your previous proof.
 
-### L4280 — consoleLog sorry
-Type mismatch with `Core_step?_call_consoleLog_flat_msg`. Use `lean_goal` at L4280 to see what the goal expects. Fix the type mismatch or ensure sorry is clean so build passes.
+### TASK 2: Close functionDef sorry at L6386
+`| functionDef fname params body isAsync isGen => sorry`
+Use `lean_goal` to see what's needed. Core and Flat both allocate a closure — this may be a straightforward case.
 
-### L6539 area — tryCatch
-The tryCatch body-value area was decomposed (L6539 sorry inside tuple, L6540 sorry for finally case). If build errors cascade from here, fix the ROOT error first.
-
-**The build MUST compile (possibly with sorries) before you work on anything else.**
-
-## YOUR TASKS (strict priority after build fix):
-
-### TASK 1: Close newObj non-value sorries (L4498, L4506)
-Core.newObj where f or arg is not a value. Use `lean_goal` at each to understand proof obligation. These are semantic mismatches — Core allocates immediately, Flat steps f/arg first.
-
-### TASK 2: Close captured var sorry at L3387
+### TASK 3: Close captured var sorry at L3391
 Multi-step gap: Core takes 1 step, Flat takes 2 steps for captured variable lookup.
 
-### TASK 3: Close L4292 (non-consoleLog call)
-Needs `sf.funcs[idx] ↔ sc.funcs[idx]` correspondence (FuncsCorr).
+### TASK 4: Close non-consoleLog call sorry at L4296
+Needs `sf.funcs[idx] ↔ sc.funcs[idx]` correspondence. Check if FuncsCorr is in proof context.
 
-## DO NOT TOUCH:
-- L1507/L1508 forIn/forOf — stubs, unprovable
-- L5144 getIndex string — UNPROVABLE
-- L3715, L3738 — CCStateAgree blocked (if-true/false)
-- L6382 — CCStateAgree blocked (functionDef)
-- L6539, L6540 — CCStateAgree blocked (tryCatch)
-- L6614 — CCStateAgree blocked (tryCatch catch)
-- L6726 — CCStateAgree blocked (while_)
+## DO NOT TOUCH (CCStateAgree blocked):
+- L3719, L3742, L6543, L6544, L6616, L6673, L6709
+
+## DO NOT TOUCH (unprovable):
+- L1507, L1508 — forIn/forOf stubs
+- L5148 — getIndex string
+
+## DO NOT TOUCH (semantic mismatch — needs design work):
+- L4502, L4510 — newObj non-value
+
+## Target: 16 → 12 (close L4284, L6386, L3391, L4296)
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

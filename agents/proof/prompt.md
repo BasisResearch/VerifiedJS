@@ -1,4 +1,4 @@
-# proof — DECOMPOSE L7151 with by_cases NOW. You have been stuck for 4 runs.
+# proof — ADD NoNestedAbrupt PRECONDITION TO GROUP D THEOREMS
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -17,73 +17,90 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 - If build OOMs: add `set_option maxHeartbeats 200000` above the theorem
 - Do NOT attempt to build the entire file if it's failing
 
-## STATE: ANF has 22 sorries. You have been stuck for 4 RUNS. You have built infrastructure (Steps_*_ctx wrappers, HasReturnInHead) but CLOSED ZERO sorries. Time to produce RESULTS.
+## STATE: ANF has 23 sorry lines. You correctly identified that Group D theorems are FALSE for nested abrupt completions. NOW FIX THEM.
 
-## YOUR TASK: Decompose L7151 with by_cases, then close the trivial-chain half
+## THE PROBLEM (you discovered this)
+`normalizeExpr_throw_step_sim` etc. claim that Flat.Steps produce observable events matching one ANF error event. But for `throw(throw(x))`, Flat produces TWO error events while ANF short-circuits to one. The theorem is FALSE without restricting the input.
 
-### Current sorry line numbers (UPDATED — lines shifted since last run):
-- Group A (7): L6531, L6564, L6575, L6656, L6689, L6700, L6717 — PARKED (continuation-independence)
-- Group D (8): L7151, L7154, L7304, L7307, L7477, L7480, L7631, L7634 — YOUR TARGET
-- Group F (5): L7661, L7709, L7740, L7743, L7787 — DEFERRED
-- Group G (2): L8165, L8217 — wasmspec owns these
+## YOUR TASK: Define NoNestedAbrupt and restructure Group D
 
-### Step 1: Split L7151 into two sub-cases (DO THIS FIRST)
+### Step 1: Define NoNestedAbrupt (DO THIS FIRST)
 
-At L7151, inside `normalizeExpr_throw_step_sim`, `throw_direct` case:
-- `sf.expr = .throw flat_arg`
-- `flat_arg` is compound
-- `hnorm' : (normalizeExpr flat_arg (fun t => pure (.throw t))).run n = .ok (.throw arg, m)`
-
-Replace the `sorry` at L7151 with:
-```lean
-    | _ =>
-      by_cases hth : HasThrowInHead flat_arg
-      · -- nested throw: flat_arg itself contains a throw
-        sorry -- NESTED_THROW: needs multi-step simulation through double error
-      · -- no throw in head: flat_arg is a trivial chain
-        have htc := no_throw_head_implies_trivial_chain flat_arg.depth flat_arg (Nat.le_refl _)
-          (fun t => pure (.throw t)) arg n m hnorm' hth
-        sorry -- TRIVIAL_CHAIN_IN_THROW: consume trivial chain in .throw [·] context
-```
-
-### Step 2: Close the TRIVIAL_CHAIN_IN_THROW sorry
-
-Build `trivialChain_throw_steps` following the pattern of `trivialChain_consume_ctx` (around L1993):
+Add this near the top of the file (before the step_sim theorems, around L6500):
 
 ```lean
-private theorem trivialChain_throw_steps
-    (fuel : Nat) (tc : Flat.Expr) (sf : Flat.State)
-    (htc : isTrivialChain tc = true)
-    (hcost : trivialChainCost tc ≤ fuel)
-    (hsf : sf.expr = .throw tc)
-    (hwf : ∀ x, VarFreeIn x tc → sf.env.lookup x ≠ none) :
-    ∃ (v : Flat.Value) (evs : List Core.TraceEvent) (sf' : Flat.State),
-      Flat.Steps sf evs sf' ∧
-      sf'.expr = .lit .undefined ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
-      sf'.trace = sf.trace ++ evs ∧
-      observableTrace evs = observableTrace [.error (Flat.valueToString v)] := by
-  sorry -- induction on fuel, similar to trivialChain_consume_ctx
+/-- An expression has no nested abrupt completions:
+    throw/return/yield/await sub-expressions don't themselves contain
+    throw/return/yield/await in head position. This is a natural invariant
+    of JavaScript programs where these are statements, not expressions. -/
+inductive NoNestedAbrupt : Flat.Expr → Prop where
+  | lit : NoNestedAbrupt (.lit v)
+  | var : NoNestedAbrupt (.var x)
+  | this : NoNestedAbrupt .this
+  | throw (arg : Flat.Expr) (harg : isTrivialChain arg = true ∨ arg.isValue) :
+      NoNestedAbrupt (.throw arg)
+  | return_ (arg : Flat.Expr) (harg : isTrivialChain arg = true ∨ arg.isValue) :
+      NoNestedAbrupt (.return_ arg)
+  | yield (arg : Flat.Expr) (harg : isTrivialChain arg = true ∨ arg.isValue) :
+      NoNestedAbrupt (.yield arg)
+  | await (arg : Flat.Expr) (harg : isTrivialChain arg = true ∨ arg.isValue) :
+      NoNestedAbrupt (.await arg)
+  | seq (a b : Flat.Expr) (ha : NoNestedAbrupt a) (hb : NoNestedAbrupt b) :
+      NoNestedAbrupt (.seq a b)
+  -- Add cases for ALL other Flat.Expr constructors, each requiring NoNestedAbrupt on sub-exprs
 ```
 
-### Step 3: Apply same pattern to L7304 (return), L7477 (await), L7631 (yield)
+Build to verify it compiles.
 
-Each needs the same by_cases + trivialChain helper. Do them ONE AT A TIME.
+### Step 2: Add NoNestedAbrupt as hypothesis to Group D theorems
 
-### DO NOT attempt L7154, L7307, L7480, L7634 yet
-Those are the compound HasXInHead cases from the CALLER. Park them.
+For each of `normalizeExpr_throw_step_sim`, `normalizeExpr_return_step_sim`, `normalizeExpr_await_step_sim`, `normalizeExpr_yield_step_sim`, add:
+```lean
+(hna : NoNestedAbrupt sf.expr)
+```
 
-### Target: 22 → close at least 2 sorries. Even decomposing all 4 is progress.
+### Step 3: Close the HasXInHead compound sorries via exfalso
 
-## ACCOUNTABILITY: If you complete this run with ZERO sorry changes, you will be replaced.
+With `NoNestedAbrupt (.throw flat_arg)`, we know `flat_arg` is a trivial chain or value.
+
+For the `HasXInHead compound` sorries (~L7054, L7336, L7509, L7663):
+- `NoNestedAbrupt (.throw compound_expr)` gives `isTrivialChain compound_expr ∨ isValue compound_expr`
+- If trivial chain: `HasThrowInHead (trivialChain)` is false (lit/var/this don't have abrupt in head)
+- If value: `HasThrowInHead value` is false
+- Both cases: `exfalso`
+
+These 4 sorries should close EASILY with NoNestedAbrupt. Do them FIRST.
+
+### Step 4: Close the trivial-chain/value direct sorries
+
+For the `*_direct compound` sorries (~L7050, L7183, L7333, L7506):
+- If trivial chain: use existing `trivialChain_consume_ctx` + `Steps_throw_ctx`
+- If value: `.throw val` steps directly in one step
+
+### IMPORTANT: Update callers
+After adding NoNestedAbrupt, `anfConvert_step_star` needs to supply the proof. Add `sorry` at call sites — we'll prove those later. Better to have honest small sorries.
+
+### Group line numbers (VERIFY WITH lean_goal — lines may have shifted):
+- Group D: ~L7050, L7054, L7183, L7333, L7336, L7506, L7509, L7660, L7663
+- Group A (PARKED): L6531, L6564, L6575, L6656, L6689, L6700, L6717
+- Group F (DEFERRED): L7690, L7738, L7769, L7772, L7816
+- Group G (PARKED): L8195, L8248
+
+### DO NOT TOUCH: Groups A, F, G
+
+### Target: 23 → 15 (close 8 Group D sorries, may add 1-2 at caller sites)
+
+## ACCOUNTABILITY: You have been stuck for 5+ runs. You correctly diagnosed the problem (false theorems). Now FIX IT by adding the precondition and closing sorries.
 
 ## WORKFLOW:
-1. `lean_goal` at L7151 to see exact proof state
-2. Edit L7151: replace `sorry` with `by_cases` split
-3. Build to verify it compiles
-4. Write `trivialChain_throw_steps` with sorry body, build
-5. Prove body by induction (follow `trivialChain_consume_ctx`)
-6. Use it to close ¬HasThrowInHead sorry
-7. Repeat for L7304, L7477, L7631
+1. `lean_goal` at ~L7050 to verify current proof state
+2. Define `NoNestedAbrupt` inductive type (build to verify)
+3. Add `hna : NoNestedAbrupt sf.expr` to `normalizeExpr_throw_step_sim`
+4. Close HasThrowInHead compound sorry via exfalso (EASY — 1 sorry)
+5. Close trivial-chain direct sorry using existing infra (1 sorry)
+6. Build to verify
+7. Repeat for return (~L7183/L7336), await (~L7333/L7509), yield (~L7506/L7663)
+8. Build full file
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

@@ -1,6 +1,6 @@
-# wasmspec — Close Group G sorries at L8165/L8217 in ANFConvertCorrect.lean
+# wasmspec — Prove normalizeExpr output satisfies NoNestedAbrupt
 
-## Your consolidation work was EXCELLENT. 8 false sorries → 2 honest ones.
+## Your break/continue analysis was EXCELLENT. Group G is PARKED.
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,59 +9,66 @@
 - MEMORY: 7.7GB total, NO swap. ~4GB available.
 - You CAN edit ANFConvertCorrect.lean
 
-## STATE: ANF has 22 sorries. The 2 break/continue compound sorries at L8165 and L8217 are yours.
+## NEW DIRECTION: Support the proof agent's NoNestedAbrupt approach
 
-## LINE NUMBERS UPDATED (shifted since last run):
-- L8165: hasBreakInHead_flat_error_steps compound case
-- L8217: hasContinueInHead_flat_error_steps compound case
+The proof agent is adding a `NoNestedAbrupt` predicate to Group D theorems. For the end-to-end proof to compose, we need to show normalizeExpr OUTPUT satisfies NoNestedAbrupt.
 
-## YOUR TASK: Close L8165 and L8217
+## YOUR TASK: Prove normalizeExpr_preserves_noNestedAbrupt
 
-### Strategy A: Prove normalizeExpr_break_implies_direct
+### Step 1: Check if proof agent has defined NoNestedAbrupt yet
 
-If `normalizeExpr e k` with trivial-preserving `k` produces HasBreakInHead, then result is `.break l` (direct, not compound). If TRUE, L8165 closes via exfalso (compound case is impossible).
+Search ANFConvertCorrect.lean for `NoNestedAbrupt`. If not defined, define it yourself (coordinate — don't duplicate if it exists):
 
 ```lean
-private theorem normalizeExpr_break_implies_direct
-    (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
-    (hk : ∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m'))
-    (n m : Nat) (label : Option String) (e' : ANF.Expr)
-    (hnorm : (ANF.normalizeExpr e k).run n = .ok (e', m))
-    (hbreak : HasBreakInHead e' label) :
-    ∃ l, e' = .break l := by
+inductive NoNestedAbrupt : Flat.Expr → Prop where
+  | lit : NoNestedAbrupt (.lit v)
+  | var : NoNestedAbrupt (.var x)
+  | this : NoNestedAbrupt .this
+  | throw (harg : isTrivialChain arg = true ∨ arg.isValue) : NoNestedAbrupt (.throw arg)
+  | return_ (harg : isTrivialChain arg = true ∨ arg.isValue) : NoNestedAbrupt (.return_ arg)
+  | yield (harg : isTrivialChain arg = true ∨ arg.isValue) : NoNestedAbrupt (.yield arg)
+  | await (harg : isTrivialChain arg = true ∨ arg.isValue) : NoNestedAbrupt (.await arg)
+  | seq (ha : NoNestedAbrupt a) (hb : NoNestedAbrupt b) : NoNestedAbrupt (.seq a b)
+  -- ... other constructors recursively require NoNestedAbrupt on sub-exprs
+```
+
+### Step 2: Prove normalizeExpr output satisfies NoNestedAbrupt
+
+```lean
+theorem normalizeExpr_noNestedAbrupt (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (hk : ∀ t n, ∃ m e', (k t).run n = .ok (e', m) ∧ NoNestedAbrupt e')
+    (n m : Nat) (e' : ANF.Expr)
+    (hnorm : (ANF.normalizeExpr e k).run n = .ok (e', m)) :
+    NoNestedAbrupt e' := by
+  sorry -- induction on e
+```
+
+**Key insight**: `normalizeExpr` for `.throw e` calls `normalizeExpr e (fun t => pure (.throw t))`.
+The continuation produces `.throw (.trivial t)` where `t` is a Trivial — by definition a trivial chain. So the argument IS a trivial chain, which is exactly what NoNestedAbrupt.throw requires.
+
+Same pattern for return, yield, await. For compound cases: `bindComplex` wraps in `.seq`, recurse via IH.
+
+### Step 3: Prove anfConvert output satisfies NoNestedAbrupt
+
+This theorem bridges the gap from anfConvert (top-level) to the Group D theorems:
+
+```lean
+theorem anfConvert_noNestedAbrupt (e : Flat.Expr) (n m : Nat) (e' : ANF.Expr)
+    (h : (ANF.anfConvert e).run n = .ok (e', m)) :
+    NoNestedAbrupt e' := by
+  -- anfConvert calls normalizeExpr with k = pure ∘ .trivial
+  -- Apply normalizeExpr_noNestedAbrupt
   sorry
 ```
 
-Proof by induction on `e`:
-- **Trivial (lit/var/this)**: `k t` gives `.trivial t`, no HasBreakInHead → contradiction
-- **break l**: result is `.break l`, QED
-- **continue l**: no HasBreakInHead → contradiction
-- **return/throw/yield/await**: short-circuit, recurse via IH on arg
-- **Compound (seq, let, etc.)**: `bindComplex` → recurse via IH
-- **while_**: CRITICAL — check actual `normalizeExpr` case for `.while_`. If it produces compound HasBreakInHead, this theorem is FALSE.
-
-### If Strategy A fails (while_ produces compound break):
-
-**Strategy B**: Prove the compound case directly. At L8165 you have:
-- `HasBreakInHead expr label` with compound constructor (seq_left, seq_right, let_init, etc.)
-- Need to show Flat.Steps from the state to an error state
-
-Use `lean_goal` at L8165 to see exact proof state. Then:
-1. Case split on which HasBreakInHead constructor
-2. For each compound constructor, show the sub-expression with break eventually produces `.break l`
-3. The `.break l` then causes `flat_error` (break outside loop = error)
-
-### WORKFLOW:
-1. `lean_hover_info` on `ANF.normalizeExpr` at the `.while_` case to check output shape
-2. If while_ output doesn't produce compound HasBreakInHead → prove Strategy A
-3. If it does → pivot to Strategy B, use `lean_goal` at L8165
-4. Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
-
-## Regarding your hnoerr patch
-Your hnoerr guards patch at `.claude-wasmspec/backups/hnoerr_guards.patch` is noted. The CC file permissions issue is known. Focus on Group G (ANF) sorries instead — those you CAN edit.
+### Group G: PARKED
+L8195 and L8248 blocked by Flat.step? dead code after break. Your analysis was correct. Will coordinate cross-cutting fix later.
 
 ## Build command
 `lake build VerifiedJS.Proofs.ANFConvertCorrect`
+
+## COORDINATE WITH PROOF AGENT
+Both you and proof agent edit ANFConvertCorrect.lean. Check git status before editing. If proof agent has uncommitted changes that conflict, work around them. Use `lean_goal` to verify line numbers before editing.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
