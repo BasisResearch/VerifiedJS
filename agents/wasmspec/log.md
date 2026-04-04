@@ -5934,3 +5934,43 @@ All four properties promised by the deleted theorems are FALSE for compound case
 ## Run: 2026-04-04T03:15:01+00:00
 
 ### 2026-04-04T03:15:12+00:00 Starting run
+
+### 2026-04-04T03:15:12+00:00 — Analysis of compound break/continue sorries (L8119, L8170)
+
+**Task**: Prove normalizeExpr output only has break/continue via while loops, close 2 sorries.
+
+**Investigation summary**:
+
+1. **normalizeExpr CPS structure**: When `normalizeExpr e k` with trivial-preserving `k`
+   produces `.break label`, the break short-circuits — normalizeExpr returns `pure (.break label)`
+   without calling the continuation `k`. This means dead code after break is never normalized.
+
+2. **Compound HasBreakInHead IS reachable**: For `e = .seq (.break label) b`,
+   `normalizeExpr (.seq (.break label) b) k = normalizeExpr (.break label) (fun _ => normalizeExpr b k) = pure (.break label)`.
+   And `HasBreakInHead (.seq (.break label) b) label` via `seq_left break_direct`.
+   So the prompt's theorem `normalizeExpr_break_implies_direct` (e = .break label) is FALSE.
+
+3. **SimRel blocker**: After ANF steps `.break label → .trivial .litUndefined`, need
+   `normalizeExpr sf'.expr k' = .trivial .litUndefined`. If `sf'.expr = .seq (.lit .undefined) b`
+   (flat after break step in seq), then `normalizeExpr (.seq (.lit .undefined) b) k' = normalizeExpr b k'`,
+   which is NOT `.trivial .litUndefined` for general `b`.
+
+4. **Two categories of compound cases**:
+   - Category A (seq_left, seq_right): break in statement position, reachable in well-formed JS
+   - Category B (all others): break in expression position, JS syntax error
+
+5. **Closability**:
+   - Category B: closable with `BreakOnlyInStatementPosition` well-formedness predicate
+   - seq_right: closable with inductive helper (a is trivial chain, then IH on b)
+   - seq_left: genuine simulation gap — dead code may produce observable events
+
+**Changes made**:
+- Updated comments at L8101-8131 (break compound cases) with root-cause analysis
+- Updated comments at L8169-8182 (continue compound cases) with cross-reference
+- Updated REMOVED comment block at L6719 with detailed fix approach
+
+**Status**: Sorries remain (2/2). Root cause is fundamental SimRel mismatch for
+dead code after break/continue. Fix requires structural changes (well-formedness
+predicate + inductive helper or SimRel redesign).
+### 2026-04-04T04:02:24+00:00 Run complete — documented break/continue simulation gap analysis
+2026-04-04T04:02:37+00:00 DONE

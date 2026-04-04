@@ -6738,6 +6738,35 @@ Fixing requires either:
   (a) A multi-step simulation accounting for dead-code trace differences, or
   (b) A flat semantics that short-circuits on break/continue error events, or
   (c) A proof that well-formed programs never have observable dead code after break.
+
+**Detailed analysis (wasmspec agent, 2026-04-04):**
+
+The compound HasBreakInHead/HasContinueInHead cases fall into two categories:
+
+Category (A) — break in statement position (seq_left, seq_right):
+  Reachable in well-formed JS. Example: `.seq (.break l) (.assign "x" (.lit 1))`
+  normalizeExpr short-circuits to `.break l`, flat evaluates dead code after break.
+  `seq_right` is potentially closable: `a` must be a trivial chain (normalizeExpr
+  called k on it), so flat evaluates `a` silently, then IH handles `b`. Needs a
+  helper theorem proved by induction on `e.depth`.
+  `seq_left` is the genuine gap: dead code `b` after break in `a` may produce
+  observable events. ANF_SimRel requires `normalizeExpr sf'.expr k' = .trivial
+  .litUndefined` but sf'.expr includes dead code whose normalization is unrelated.
+
+Category (B) — break in expression position (all other compound constructors):
+  getProp_obj, setProp_obj, setProp_val, binary_lhs, binary_rhs, unary_arg,
+  typeof_arg, deleteProp_obj, assign_val, call_func, call_env, call_args,
+  newObj_func, newObj_env, newObj_args, if_cond, throw_arg, return_some_arg,
+  yield_some_arg, await_arg, getIndex_*, setIndex_*, getEnv_env,
+  makeClosure_env, makeEnv_values, objectLit_props, arrayLit_elems, let_init.
+  These correspond to break in expression position (e.g., `f(break, x)`,
+  `a + break`, `if (break) ...`), which is a syntax error in JavaScript.
+  Closable with a `BreakOnlyInStatementPosition` well-formedness predicate
+  added to ExprWellFormed or anfConvert_correct.
+
+Recommended fix: add `BreakOnlyInStatementPosition` predicate. This closes
+Category (B) immediately. For Category (A), seq_right is closable with an
+inductive helper; seq_left requires approach (a), (b), or (c) above.
 -/
 
 /-- step? on .throw (.lit v) produces an immediate error. -/
@@ -8098,12 +8127,29 @@ private theorem anfConvert_step_star
           congr 1
         · exact ANF.normalizeExpr_lit_undefined_trivial n
       · simp; intro x hfx; cases hfx
-    -- All compound HasBreakInHead cases: simulation gap for dead code after break.
-    -- The flat semantics evaluates dead code after break (changing env/heap, producing
-    -- extra trace events), while ANF eliminates it. The step-by-step simulation
-    -- `observableTrace [ev] = observableTrace evs` cannot hold when dead code produces
-    -- observable events. See detailed analysis in the comment block above
-    -- (REMOVED: hasBreakInHead_flat_error_steps).
+    -- Compound HasBreakInHead cases: simulation gap for dead code after break.
+    --
+    -- ROOT CAUSE: When normalizeExpr e k (with trivial-preserving k) produces
+    -- .break label, the flat expression e can be compound (e.g., .seq (.break l) b).
+    -- normalizeExpr short-circuits at .break, discarding continuation (b is never
+    -- normalized). In flat semantics, .seq evaluates .break (producing error event),
+    -- then continues with dead code b — which may produce ADDITIONAL observable events.
+    -- ANF_SimRel requires normalizeExpr sf'.expr k' = .trivial .litUndefined, but
+    -- sf'.expr includes dead code b whose normalization is unknown/unrelated.
+    --
+    -- The compound cases split into two categories:
+    -- (A) seq_left/seq_right: break in statement position (reachable in well-formed JS)
+    -- (B) All others (getProp_obj, binary_lhs, call_func, etc.): break in expression
+    --     position, which is a syntax error in JS. Unreachable with a syntactic
+    --     well-formedness condition (BreakOnlyInStatementPosition).
+    --
+    -- FIX OPTIONS:
+    -- (1) Add BreakOnlyInStatementPosition to ExprWellFormed → closes category (B).
+    --     For seq_right: a is trivial chain (normalizeExpr called k on a), so flat
+    --     evaluates a silently, then IH on b. Needs helper by induction on e.depth.
+    --     For seq_left: genuine gap — dead code b after break may have observable events.
+    -- (2) Weaken ANF_SimRel to allow "dead code" states after break/continue.
+    -- (3) Change flat semantics to short-circuit on break/continue error events.
     | seq_left _ | seq_right _ | let_init _
     | getProp_obj _ | setProp_obj _ | setProp_val _
     | binary_lhs _ | binary_rhs _ | unary_arg _ | typeof_arg _
@@ -8115,7 +8161,7 @@ private theorem anfConvert_step_star
     | setIndex_obj _ | setIndex_idx _ | setIndex_val _
     | getEnv_env _ | makeClosure_env _ | makeEnv_values _
     | objectLit_props _ | arrayLit_elems _ =>
-      -- SORRY: Simulation gap — dead code after break. See REMOVED comment above L6719.
+      -- SORRY: Simulation gap — dead code after break. See analysis above.
       sorry
   | «continue» label =>
     obtain ⟨sa_expr, sa_env, sa_heap, sa_trace⟩ := sa
@@ -8154,7 +8200,8 @@ private theorem anfConvert_step_star
           congr 1
         · exact ANF.normalizeExpr_lit_undefined_trivial n
       · simp; intro x hfx; cases hfx
-    -- All compound HasContinueInHead cases: same simulation gap as break (dead code).
+    -- Compound HasContinueInHead cases: same simulation gap as break (dead code).
+    -- See detailed analysis in the break compound cases comment above.
     | seq_left _ | seq_right _ | let_init _
     | getProp_obj _ | setProp_obj _ | setProp_val _
     | binary_lhs _ | binary_rhs _ | unary_arg _ | typeof_arg _
@@ -8166,7 +8213,7 @@ private theorem anfConvert_step_star
     | setIndex_obj _ | setIndex_idx _ | setIndex_val _
     | getEnv_env _ | makeClosure_env _ | makeEnv_values _
     | objectLit_props _ | arrayLit_elems _ =>
-      -- SORRY: Simulation gap — dead code after continue. See REMOVED comment above L6719.
+      -- SORRY: Simulation gap — dead code after continue. See break analysis above.
       sorry
 
 set_option maxHeartbeats 400000 in
