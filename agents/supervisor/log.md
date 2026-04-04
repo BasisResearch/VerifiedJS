@@ -1,3 +1,65 @@
+## Run: 2026-04-04T10:05:04+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 + CC 14 = **38** (Wasm/Semantics 0, LowerCorrect 0)
+- **Delta from last run**: 38 → 38 = **0**. Quality improved again.
+
+### Why sorry count is flat but quality improved
+proof agent closed L9303 (NoNestedAbrupt invariant sorry in anfConvert_step_star caller) by adding `hna` param and creating standalone `NoNestedAbrupt_step_preserved` theorem at L9180. This converts a structural-invariant sorry into a self-contained case-bash theorem (30-80 lines). Net: -1 +1 = 0, but the new sorry is MUCH easier to close.
+
+wasmspec closed if_direct cases for normalizeExpr_if_step_sim (both true/false branches, lit/var/this conditions). Added compound case sorry markers. Net zero but significant infrastructure.
+
+### Agent Analysis
+1. **proof** (09:30 run, ANF modified 09:42): Closed L9303 by propagating hna param. Created NoNestedAbrupt_step_preserved (L9180) with sorry body. NET ZERO but better sorry. REDIRECTED to close L9180 (case bash on Flat.step?), then trivialChain_return_steps.
+2. **jsspec** (09:00 run, CC modified 09:37): Still running. CC at 14 real sorries (unchanged). Targets: L3408 (Core.step preserves supported), L7787 (h_supp param). grep -c shows 17 but 3 are comment lines.
+3. **wasmspec** (08:15 run, completed ~10:09): Closed if_direct cases. Built normalizeExpr_if_lit/var/this_decomp helpers. ANF at 24. REDIRECTED to compound condition (L9063/L9129) via trivialChain.
+
+### Actions Taken
+1. Counted sorries: ANF 24 + CC 14 = 38. Flat but quality improved (2 sorry restructurings).
+2. **UPDATED proof prompt**: New P0 = L9180 NoNestedAbrupt_step_preserved (case bash). P1 = trivialChain_return_steps (L8493/8496).
+3. **UPDATED jsspec prompt**: Same targets (L3408, L7787). Added more specific code guidance.
+4. **UPDATED wasmspec prompt**: P0 = L9063/L9129 trivialChain compound condition. P1 = L9064/L9130 compound HasIfInHead.
+5. Logged to time_estimate.csv: 38.
+6. Build verification in progress.
+
+### Sorry Breakdown (line numbers updated)
+
+**ANF (24 real sorry tokens):**
+- Group A (7): L7516, L7549, L7560, L7641, L7674, L7685, L7702 — eval context lifting, PARKED
+- Throw dispatch compound (L8343): DEFERRED
+- Return compound (L8493, L8496): TARGET — proof agent Task 2
+- Await compound (L8666, L8669): DEFERRED — same pattern
+- Yield compound (L8820, L8823): DEFERRED — same pattern
+- Let step sim (L8850): wasmspec Task 3 if time
+- While step sim (L8898): PARKED
+- If step sim compound condition (L9063, L9129): TARGET — wasmspec Task 1
+- If step sim compound HasIfInHead (L9064, L9130): TARGET — wasmspec Task 2
+- TryCatch step sim (L9174): DEFERRED
+- NoNestedAbrupt_step_preserved (L9180): TARGET — proof agent Task 1 (NEW, case-bash)
+- Break compound (L9571): PARKED
+- Continue compound (L9624): PARKED
+
+**CC (14 real sorry tokens):**
+- Core.step preserves supported (L3408): TARGET — jsspec Task 1
+- Captured var multi-step (L3435): jsspec Task 3
+- CCStateAgree if-true (L3764): BLOCKED by architecture
+- CCStateAgree if-false (L3787): BLOCKED by architecture
+- FuncsCorr non-consoleLog (L4341): BLOCKED
+- Semantic mismatch call f (L4549): BLOCKED (compiler)
+- Semantic mismatch call arg (L4557): BLOCKED (compiler)
+- getIndex string unprovable (L5195): UNPROVABLE
+- functionDef (L6437): BLOCKED by HeapInj
+- tryCatch body-value (L6594): CCStateAgree blocked
+- tryCatch with finally (L6595): CCStateAgree blocked
+- tryCatch error (L6667): CCStateAgree blocked
+- while_ CCState threading (L6775): BLOCKED
+- h_supp param (L7787): TARGET — jsspec Task 2 (quick win)
+
+### OUTLOOK: Target next run = ≤36 (proof closes L9180 = -1, jsspec closes L3408+L7787 = -2)
+### RISK: L9180 case bash may be large (30+ constructors). jsspec L3408 same pattern. Both are tractable but slow.
+
+---
+
 ## Run: 2026-04-04T09:30:05+00:00
 
 ### Metrics
