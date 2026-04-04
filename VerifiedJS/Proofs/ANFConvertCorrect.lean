@@ -9779,8 +9779,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
 private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.TraceEvent)
     (hna : NoNestedAbrupt sf.expr) (hstep : Flat.step? sf = some (ev, sf')) :
     NoNestedAbrupt sf'.expr := by
-  sorry -- Entire theorem needs rework: split at hstep fails with have bindings in step? unfolding
-  /-  obtain ⟨expr, env, heap, trace, funcs, cs⟩ := sf
+  obtain ⟨expr, env, heap, trace, funcs, cs⟩ := sf
   simp only [Flat.State.expr] at hna
   suffices ∀ n e, e.depth ≤ n → ∀ env heap trace funcs cs ev sf',
     NoNestedAbrupt e →
@@ -10042,9 +10041,59 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
         split at hstep
         next ev' sa hsa => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.typeof (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ harg hsa)
         next => simp at hstep
-    | call f fenv args => sorry
-    | newObj f fenv args => sorry
-    | getEnv envExpr idx => sorry -- split at hstep fails due to have bindings in step? unfolding
+    | call f fenv args =>
+      cases hna with | call hf henv hargs =>
+      cases hfv : Flat.exprValue? f with
+      | none =>
+        rw [Flat.step?_call_step_func _ _ _ _ hfv] at hstep
+        simp only [Option.bind_eq_some, Prod.exists] at hstep
+        obtain ⟨t', sf'', hinner, heq⟩ := hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at heq
+        obtain ⟨rfl, rfl⟩ := heq
+        simp only [Flat.State.expr]
+        exact NoNestedAbrupt.call (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hf hinner) henv hargs
+      | some fv =>
+        cases hev : Flat.exprValue? fenv with
+        | none =>
+          rw [Flat.step?_call_step_env _ _ _ _ fv hfv hev] at hstep
+          simp only [Option.bind_eq_some, Prod.exists] at hstep
+          obtain ⟨t', se', hinner, heq⟩ := hstep
+          simp only [Option.some.injEq, Prod.mk.injEq] at heq
+          obtain ⟨rfl, rfl⟩ := heq
+          simp only [Flat.State.expr]
+          exact NoNestedAbrupt.call NoNestedAbrupt.lit (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ henv hinner) hargs
+        | some envVal =>
+          -- All-values case
+          sorry
+    | newObj f fenv args =>
+      cases hna with | newObj hf henv hargs =>
+      cases hfv : Flat.exprValue? f with
+      | none =>
+        rw [Flat.step?_newObj_step_func _ _ _ _ hfv] at hstep
+        simp only [Option.bind_eq_some, Prod.exists] at hstep
+        obtain ⟨t', sf'', hinner, heq⟩ := hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at heq
+        obtain ⟨rfl, rfl⟩ := heq
+        simp only [Flat.State.expr]
+        exact NoNestedAbrupt.newObj (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hf hinner) henv hargs
+      | some fv =>
+        -- envExpr/args stepping or all-values case
+        sorry
+    | getEnv envExpr idx =>
+      cases hna with | getEnv henv =>
+      cases hev : Flat.exprValue? envExpr with
+      | none =>
+        rw [Flat.step?_getEnv_step_env _ _ _ hev] at hstep
+        simp only [Option.bind_eq_some, Prod.exists] at hstep
+        obtain ⟨t', se', hinner, heq⟩ := hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at heq
+        obtain ⟨rfl, rfl⟩ := heq
+        simp only [Flat.State.expr]
+        exact NoNestedAbrupt.getEnv (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ henv hinner)
+      | some envVal =>
+        -- envExpr is a value: resolves to .lit
+        unfold Flat.step? at hstep
+        split at hstep <;> simp at hstep <;> obtain ⟨_, rfl⟩ := hstep <;> simp [Flat.State.expr] <;> exact NoNestedAbrupt.lit
     | makeEnv vals =>
       cases hna with | makeEnv hvals =>
       unfold Flat.step? at hstep
@@ -10086,7 +10135,7 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
           next t se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.arrayLit (hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueExpr_depth hfnv; omega) _ _ _ _ _ _ htarget hse))
           next => simp at hstep
         next => simp at hstep
-    | tryCatch body param catchBody fin => sorry -/
+    | tryCatch body param catchBody fin => sorry
 
 /-- Flat multi-step preserves NoNestedAbrupt. -/
 private theorem NoNestedAbrupt_steps_preserved {sf sf' : Flat.State} {evs : List Core.TraceEvent}
