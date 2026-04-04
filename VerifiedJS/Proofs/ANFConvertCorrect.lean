@@ -9732,7 +9732,8 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         exact ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hac hinner
       | some envVal =>
         -- envExpr is a value: resolves to .lit (property lookup or error)
-        unfold Flat.step? at hstep
+        rw [Flat.step?.eq_1] at hstep
+        simp only [hev] at hstep
         split at hstep <;> simp at hstep <;> obtain ⟨_, rfl⟩ := hstep <;> simp [Flat.State.expr, hasAbruptCompletion]
     | makeEnv vals =>
       simp only [hasAbruptCompletion] at hac
@@ -10094,7 +10095,8 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
         exact NoNestedAbrupt.getEnv (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ henv hinner)
       | some envVal =>
         -- envExpr is a value: resolves to .lit
-        unfold Flat.step? at hstep
+        rw [Flat.step?.eq_1] at hstep
+        simp only [hev] at hstep
         split at hstep <;> simp at hstep <;> obtain ⟨_, rfl⟩ := hstep <;> simp [Flat.State.expr] <;> exact NoNestedAbrupt.lit
     | makeEnv vals =>
       cases hna with | makeEnv hvals =>
