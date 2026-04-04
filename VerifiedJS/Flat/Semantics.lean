@@ -1158,7 +1158,7 @@ theorem step?_call_consoleLog (s : State)
   rw [step?.eq_1]; simp only [hf]; cases step? { s with expr := f } <;> rfl
 
 /-- Stepping a newObj when funcExpr is a value but envExpr is not: recurse into envExpr. -/
-@[simp] theorem step?_newObj_step_env (s : State) (f envE : Expr) (args : List Expr)
+theorem step?_newObj_step_env (s : State) (f envE : Expr) (args : List Expr)
     (fv : Value) (hf : exprValue? f = some fv) (he : exprValue? envE = none) :
     step? { s with expr := .newObj f envE args } =
       (step? { s with expr := envE }).bind fun (t, se) =>
