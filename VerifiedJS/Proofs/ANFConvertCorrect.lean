@@ -9300,7 +9300,7 @@ private theorem normalizeExpr_if_step_sim
           have hstep2 : Flat.step? ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
             some (.silent, ⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
             have := Flat.step?_if_true ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ v then_flat else_flat hfbool
-            simp at this; simp [Flat.step?_pushTrace_expand] at this; exact this
+            simp [Flat.step?_pushTrace_expand] at this; exact this
           refine ⟨⟨then_flat, env, heap, trace ++ [.silent, .silent], funcs, cs⟩, [.silent, .silent],
             .tail ⟨hstep1⟩ (.tail ⟨?_⟩ (.refl _)), ?_, ?_, ?_⟩
           · simp [List.append_assoc] at hstep2; exact hstep2
@@ -9323,7 +9323,7 @@ private theorem normalizeExpr_if_step_sim
           have hstep2 : Flat.step? ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
             some (.silent, ⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
             have := Flat.step?_if_true ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ v then_flat else_flat hfbool
-            simp at this; simp [Flat.step?_pushTrace_expand] at this; exact this
+            simp [Flat.step?_pushTrace_expand] at this; exact this
           refine ⟨⟨then_flat, env, heap, trace ++ [.silent, .silent], funcs, cs⟩, [.silent, .silent],
             .tail ⟨hstep1⟩ (.tail ⟨?_⟩ (.refl _)), ?_, ?_, ?_⟩
           · simp [List.append_assoc] at hstep2; exact hstep2
@@ -9372,7 +9372,7 @@ private theorem normalizeExpr_if_step_sim
           have hstep2 : Flat.step? ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
             some (.silent, ⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
             have := Flat.step?_if_false ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ v then_flat else_flat hfbool
-            simp at this; simp [Flat.step?_pushTrace_expand] at this; exact this
+            simp [Flat.step?_pushTrace_expand] at this; exact this
           refine ⟨⟨else_flat, env, heap, trace ++ [.silent, .silent], funcs, cs⟩, [.silent, .silent],
             .tail ⟨hstep1⟩ (.tail ⟨?_⟩ (.refl _)), ?_, ?_, ?_⟩
           · simp [List.append_assoc] at hstep2; exact hstep2
@@ -9396,7 +9396,7 @@ private theorem normalizeExpr_if_step_sim
           have hstep2 : Flat.step? ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
             some (.silent, ⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
             have := Flat.step?_if_false ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ v then_flat else_flat hfbool
-            simp at this; simp [Flat.step?_pushTrace_expand] at this; exact this
+            simp [Flat.step?_pushTrace_expand] at this; exact this
           refine ⟨⟨else_flat, env, heap, trace ++ [.silent, .silent], funcs, cs⟩, [.silent, .silent],
             .tail ⟨hstep1⟩ (.tail ⟨?_⟩ (.refl _)), ?_, ?_, ?_⟩
           · simp [List.append_assoc] at hstep2; exact hstep2

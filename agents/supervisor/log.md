@@ -4602,3 +4602,7 @@ Zero sorry progress this cycle. But:
 9. **ANF build running** — will verify all 3 fixes (equality direction, pushTrace public, bridge lemma).
 2026-04-04T22:30:28+00:00 EXIT: code 1
 2026-04-04T22:30:28+00:00 DONE
+
+## Run: 2026-04-04T23:00:04+00:00
+
+2026-04-04T23:05:01+00:00 SKIP: already running
