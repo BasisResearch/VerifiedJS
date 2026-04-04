@@ -1,3 +1,57 @@
+## Run: 2026-04-04T11:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 + CC 14 = **38** (Wasm/Semantics 0 real, 2 comment mentions)
+- **Delta from last run**: 38 → 38 = **0**. ANF file modified at 11:07 — agent actively working.
+
+### Why sorry count is flat
+An agent is actively editing ANFConvertCorrect.lean (modified 2 min ago). jsspec and wasmspec last logged at 10:00 and 10:15 respectively. No completed reductions yet this cycle.
+
+### Agent Analysis
+1. **proof** (actively editing ANF at 11:07): Working on L9180. Previous prompt had BUG: claimed 10 vacuously-true cases but only 4 exist (unary, binary, while_, labeled). Also had wrong constructor arities (e.g. `makeClosure params body isAsync isGen` but actual is `makeClosure funcIdx env`). **REWROTE PROMPT**: Complete corrected skeleton with ALL cases spelled out — vacuous (4), simple (5), medium with full tactic code (seq/let/assign/if), throw/return/await/yield with hasAbruptCompletion_step_preserved, and complex with sorry placeholders. If agent follows skeleton: L9180 goes from 1 sorry → ~15 small sorries.
+2. **jsspec** (last logged 10:00, CC unchanged since 09:37): Likely stuck or completed analysis without code changes. **REWROTE PROMPT**: Added note that `Core.Step` wraps `Core.step?` (L6972 in Core/Semantics.lean). Provided corrected lemma template referencing actual Core.State structure (5-field, not 6). Emphasized even a sorry-body helper that replaces L3408 is progress.
+3. **wasmspec** (last logged 10:15): Building HasIfInHead infrastructure. **UPDATED PROMPT**: Pointed out `step?_if_cond_step` ALREADY EXISTS at L1474 — no need to write step?_if_ctx from scratch. This should unblock Task 1 immediately.
+
+### Actions Taken
+1. Counted sorries: ANF 24 + CC 14 = 38. Flat. Wasm/Semantics 0 (grep -c counted comments).
+2. **REWROTE proof prompt**: Fixed constructor classification bug (4 vacuous, not 10). Provided complete tactic code for seq/let/assign/if/throw/return/await/yield cases. Added hasAbruptCompletion_step_preserved helper template.
+3. **REWROTE jsspec prompt**: Clearer Core.Step → Core.step? connection. Fixed State destructuring. Added urgency about 4-day stall.
+4. **UPDATED wasmspec prompt**: Pointed out step?_if_cond_step already exists at L1474.
+5. Logged to time_estimate.csv: 38.
+
+### Sorry Breakdown (unchanged)
+
+**ANF (24 real sorry tokens):**
+- Group A (7): L7516-L7702 — eval context lifting, PARKED
+- Throw dispatch compound (L8343): DEFERRED
+- Return compound (L8493, L8496): TARGET — proof agent Task 2
+- Await compound (L8666, L8669): DEFERRED
+- Yield compound (L8820, L8823): DEFERRED
+- Let step sim (L8850): wasmspec Task 3
+- While step sim (L8898): PARKED
+- If step sim compound condition (L9063, L9129): TARGET — wasmspec Task 1
+- If step sim compound HasIfInHead (L9064, L9130): TARGET — wasmspec Task 2
+- TryCatch step sim (L9174): DEFERRED
+- NoNestedAbrupt_step_preserved (L9180): TARGET — proof agent Task 1
+- Break compound (L9571): PARKED
+- Continue compound (L9624): PARKED
+
+**CC (14 real sorry tokens):**
+- Core.step preserves supported (L3408): TARGET — jsspec Task 1
+- Captured var multi-step (L3435): BLOCKED
+- CCStateAgree if-true (L3764): BLOCKED by architecture
+- CCStateAgree if-false (L3787): BLOCKED by architecture
+- FuncsCorr non-consoleLog (L4341): BLOCKED
+- Semantic mismatch call f (L4549): BLOCKED (compiler)
+- Semantic mismatch call arg (L4557): BLOCKED (compiler)
+- getIndex string unprovable (L5195): UNPROVABLE
+- functionDef (L6437): BLOCKED by HeapInj
+- tryCatch body-value (L6594): CCStateAgree blocked
+- tryCatch with finally (L6595): CCStateAgree blocked
+- tryCatch non-error (L6667): need CCStateAgree
+- while_ CCState threading (L6775): BLOCKED by architecture
+- h_supp param (L7787): QUICK WIN — jsspec Task 2
+
 ## Run: 2026-04-04T11:00:02+00:00
 
 ### Metrics
@@ -3655,3 +3709,4 @@ jsspec confirmed ALL 17 ANF sorries are architecturally blocked. normalizeExpr C
 
 ## Run: 2026-04-04T11:05:01+00:00
 
+2026-04-04T11:16:00+00:00 DONE

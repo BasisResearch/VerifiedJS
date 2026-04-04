@@ -8920,7 +8920,7 @@ private theorem normalizeExpr_if_lit_decomp
       obtain ⟨else_anf, n2⟩ := val_else
       simp [helse, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
       obtain ⟨⟨hc, ht, he⟩, hm⟩ := hnorm
-      exact ⟨by rw [hc], n1, by rw [← ht] at hthen; exact hthen, by rw [← he, ← hm] at helse; exact helse⟩
+      exact ⟨by simp_all, n1, by simp_all, by simp_all⟩
 
 /-- Same decomposition for var condition. -/
 private theorem normalizeExpr_if_var_decomp
@@ -8944,7 +8944,7 @@ private theorem normalizeExpr_if_var_decomp
       obtain ⟨else_anf, n2⟩ := val_else
       simp [helse, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
       obtain ⟨⟨hc, ht, he⟩, hm⟩ := hnorm
-      exact ⟨by rw [hc], n1, by rw [← ht] at hthen; exact hthen, by rw [← he, ← hm] at helse; exact helse⟩
+      exact ⟨by simp_all, n1, by simp_all, by simp_all⟩
 
 /-- Same decomposition for .this condition. -/
 private theorem normalizeExpr_if_this_decomp
@@ -8968,7 +8968,7 @@ private theorem normalizeExpr_if_this_decomp
       obtain ⟨else_anf, n2⟩ := val_else
       simp [helse, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
       obtain ⟨⟨hc, ht, he⟩, hm⟩ := hnorm
-      exact ⟨by rw [hc], n1, by rw [← ht] at hthen; exact hthen, by rw [← he, ← hm] at helse; exact helse⟩
+      exact ⟨by simp_all, n1, by simp_all, by simp_all⟩
 
 /-- If normalizeExpr sf.expr k produces .if cond then_ else_ (with trivial-preserving k),
     then one ANF step on the if can be simulated by Flat steps. -/
@@ -9012,7 +9012,7 @@ private theorem normalizeExpr_if_step_sim
           have hfbool : Flat.toBoolean fv = true := by cases fv <;> simp_all [Flat.toBoolean]
           refine ⟨⟨then_flat, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent],
             .tail ⟨?_⟩ (.refl _), ?_, ?_, ?_⟩
-          · simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
+          · simp [Flat.step?, Flat.exprValue?, hfbool]
           · rfl
           · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace, k, n, n1, hthen_r, hk⟩
           · intro x hfx; exact hewf x (VarFreeIn.if_then _ _ _ _ hfx)
@@ -9026,12 +9026,10 @@ private theorem normalizeExpr_if_step_sim
             have hfbool : Flat.toBoolean v' = true := by cases v' <;> simp_all [Flat.toBoolean]
             have hstep1 : Flat.step? ⟨.if (.var name_c) then_flat else_flat, env, heap, trace, funcs, cs⟩ =
                 some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
-              simp [Flat.step?, Flat.exprValue?]; constructor
-              · simp [Flat.step?, hlookup, Flat.pushTrace]
-              · rfl
+              simp [Flat.step?, Flat.exprValue?, hlookup]
             have hstep2 : Flat.step? ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
                 some (.silent, ⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
-              simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
+              simp [Flat.step?, Flat.exprValue?, hfbool]
             refine ⟨⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩,
               [.silent, .silent], .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)), ?_, ?_, ?_⟩
             · simp [observableTrace]
@@ -9048,12 +9046,10 @@ private theorem normalizeExpr_if_step_sim
             have hfbool : Flat.toBoolean v' = true := by cases v' <;> simp_all [Flat.toBoolean]
             have hstep1 : Flat.step? ⟨.if .this then_flat else_flat, env, heap, trace, funcs, cs⟩ =
                 some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
-              simp [Flat.step?, Flat.exprValue?]; constructor
-              · simp [Flat.step?, hlookup, Flat.pushTrace]
-              · rfl
+              simp [Flat.step?, Flat.exprValue?, hlookup]
             have hstep2 : Flat.step? ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
                 some (.silent, ⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
-              simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
+              simp [Flat.step?, Flat.exprValue?, hfbool]
             refine ⟨⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩,
               [.silent, .silent], .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)), ?_, ?_, ?_⟩
             · simp [observableTrace]
@@ -9078,7 +9074,7 @@ private theorem normalizeExpr_if_step_sim
           have hfbool : Flat.toBoolean fv = false := by cases fv <;> simp_all [Flat.toBoolean]
           refine ⟨⟨else_flat, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent],
             .tail ⟨?_⟩ (.refl _), ?_, ?_, ?_⟩
-          · simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
+          · simp [Flat.step?, Flat.exprValue?, hfbool]
           · rfl
           · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace, k, n1, _, helse_r, hk⟩
           · intro x hfx; exact hewf x (VarFreeIn.if_else _ _ _ _ hfx)
@@ -9092,12 +9088,10 @@ private theorem normalizeExpr_if_step_sim
             have hfbool : Flat.toBoolean v' = false := by cases v' <;> simp_all [Flat.toBoolean]
             have hstep1 : Flat.step? ⟨.if (.var name_c) then_flat else_flat, env, heap, trace, funcs, cs⟩ =
                 some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
-              simp [Flat.step?, Flat.exprValue?]; constructor
-              · simp [Flat.step?, hlookup, Flat.pushTrace]
-              · rfl
+              simp [Flat.step?, Flat.exprValue?, hlookup]
             have hstep2 : Flat.step? ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
                 some (.silent, ⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
-              simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
+              simp [Flat.step?, Flat.exprValue?, hfbool]
             refine ⟨⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩,
               [.silent, .silent], .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)), ?_, ?_, ?_⟩
             · simp [observableTrace]
@@ -9114,12 +9108,10 @@ private theorem normalizeExpr_if_step_sim
             have hfbool : Flat.toBoolean v' = false := by cases v' <;> simp_all [Flat.toBoolean]
             have hstep1 : Flat.step? ⟨.if .this then_flat else_flat, env, heap, trace, funcs, cs⟩ =
                 some (.silent, ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩) := by
-              simp [Flat.step?, Flat.exprValue?]; constructor
-              · simp [Flat.step?, hlookup, Flat.pushTrace]
-              · rfl
+              simp [Flat.step?, Flat.exprValue?, hlookup]
             have hstep2 : Flat.step? ⟨.if (.lit v') then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
                 some (.silent, ⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
-              simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
+              simp [Flat.step?, Flat.exprValue?, hfbool]
             refine ⟨⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩,
               [.silent, .silent], .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)), ?_, ?_, ?_⟩
             · simp [observableTrace]
