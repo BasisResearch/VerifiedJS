@@ -4264,16 +4264,15 @@ private theorem closureConvert_step_simulation
             rw [hsf_eta] at hstep
             -- Both Flat and Core produce (.log msg, .lit .undefined)
             have hflat := Flat_step?_call_consoleLog_vals sf 0 .null _ _ hfvals
-            -- Flat.step? sf_modified = some (msg_event, sf_result)
-            -- hstep : Flat.step? sf_modified = some (ev, sf')
-            -- Therefore ev = msg_event and sf' = sf_result
-            have hpair : ev = _ ∧ sf' = _ := by
-              have h := hflat.symm.trans hstep
-              exact ⟨congrArg Prod.fst (Option.some.inj h), congrArg Prod.snd (Option.some.inj h)⟩
-            obtain ⟨hev, hsf'eq⟩ := hpair
-            subst hev; subst hsf'eq
             have hst_eq := allValues_convertExprList_state args argVals scope envVar envMap st hallv
+            -- Define sc' using ev (before subst) so it tracks the actual event
             let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap, sc.trace ++ [ev], sc.funcs, sc.callStack⟩
+            -- Extract ev and sf' from step determinism
+            have hpair := Option.some.inj (hflat.symm.trans hstep)
+            have hev := congrArg Prod.fst hpair
+            have hsf'eq := congrArg Prod.snd hpair
+            -- Substitute to eliminate ev and sf'
+            subst hev; subst hsf'eq
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
             · have hsc_eq : sc = { sc with expr := .call (.lit (.function Core.consoleLogIdx)) args } := by
                 obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
