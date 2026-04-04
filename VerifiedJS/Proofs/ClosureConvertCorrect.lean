@@ -3473,9 +3473,8 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
       subst hlit
       simp [Core.step?, Core.pushTrace, Core.exprValue?] at hstep
       obtain ⟨-, rfl⟩ := hstep
-      cases Core.toBoolean v
-      · exact hsupp.2.2
-      · exact hsupp.2.1
+      simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp
+      cases Core.toBoolean v <;> simp_all [Core.Expr.supported]
     | none => sorry
   | seq a b =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
@@ -3515,7 +3514,11 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
       have hlit : arg = .lit v := by cases arg <;> simp [Core.exprValue?] at hval; subst hval; rfl
       subst hlit
       simp [Core.step?, Core.pushTrace, Core.exprValue?] at hstep
-      split at hstep <;> (obtain ⟨-, rfl⟩ := hstep; rfl)
+      cases heval : Core.evalUnary op v with
+      | some result =>
+        simp [heval] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
+      | none =>
+        simp [heval] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
     | none => sorry
   | call => sorry
   | binary => sorry

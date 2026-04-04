@@ -4545,3 +4545,6 @@ Previous sorry counts were under-counting by grouping. Real count is 56 lines. P
 - Sorry count: 32→30 in ANFConvertCorrect.lean (-2 objectLit cases closed)
 - Total sorries across main files: 63 (30 ANF + 33 CC + 0 Lower + 0 Wasm)
 2026-04-04T21:47:13+00:00 DONE
+
+## Run: 2026-04-04T22:05:01+00:00
+
