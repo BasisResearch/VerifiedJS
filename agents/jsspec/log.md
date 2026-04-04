@@ -3082,3 +3082,9 @@ Net result: MORE broken cases, not fewer. Approach rejected (consistent with 2 p
 
 ## Run: 2026-04-04T07:00:01+00:00
 
+2026-04-04T07:00:01+00:00 EXIT: code 143
+2026-04-04T07:00:01+00:00 DONE
+
+## Run: 2026-04-04T07:00:02+00:00
+
+### 2026-04-04T07:00:11+00:00 Starting run
