@@ -4269,18 +4269,21 @@ private theorem closureConvert_step_simulation
             -- Both Flat and Core produce (.log msg, .lit .undefined)
             have hflat := Flat_step?_call_consoleLog_vals sf 0 .null _ _ hfvals
             have hst_eq := allValues_convertExprList_state args argVals scope envVar envMap st hallv
-            -- Define sc' using ev (before subst) so it tracks the actual event
-            let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap, sc.trace ++ [ev], sc.funcs, sc.callStack⟩
-            -- Extract ev and sf' from step determinism
+            -- Prove Core step independently
+            have hsc_eta : sc = ⟨.call (.lit (.function Core.consoleLogIdx)) args, sc.env, sc.heap, sc.trace, sc.funcs, sc.callStack⟩ := by
+              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+            have hcore := Core_step?_call_consoleLog_flat_msg args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
+            rw [← hsc_eta] at hcore
+            -- Both steps produce the same (event, state') pair
             have hpair := Option.some.inj (hflat.symm.trans hstep)
-            have hev := congrArg Prod.fst hpair
+            have hev_eq : ev = .log (match argVals.map Flat.convertValue with
+              | [v] => Flat.valueToString v
+              | vs => String.intercalate " " (vs.map Flat.valueToString)) := congrArg Prod.fst hpair
             have hsf'eq := congrArg Prod.snd hpair
-            -- Substitute to eliminate ev and sf'
-            subst hev; subst hsf'eq
+            let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap, sc.trace ++ [ev], sc.funcs, sc.callStack⟩
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · show Core.step? sc = some _
-              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc
-              exact Core_step?_call_consoleLog_flat_msg args argVals _ _ _ _ _ hallv
+            · show Core.step? sc = some (ev, sc')
+              rw [hev_eq]; exact hcore
             · simp [sc', htrace]
             · exact hinj
             · exact henvCorr
@@ -4289,7 +4292,8 @@ private theorem closureConvert_step_simulation
             · simp [sc', hheapna]
             · simp [sc', noCallFrameReturn]
             · simp [sc', ExprAddrWF, ValueAddrWF]
-            · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩,
+            · subst hsf'eq
+              exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩,
                 by rw [hst, hst_eq]; exact ⟨rfl, rfl⟩⟩
           · -- Non-consoleLog function call: needs FuncsCorr invariant
             sorry -- non-consoleLog function call: needs sf.funcs[idx] ↔ sc.funcs[idx] correspondence

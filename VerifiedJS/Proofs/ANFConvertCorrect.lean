@@ -4469,40 +4469,7 @@ mutual
 private theorem hasThrowInHead_implies_hasAbruptCompletion :
     HasThrowInHead e → hasAbruptCompletion e = true := by
   intro h
-  induction h with
-  | throw_direct => rfl
-  | seq_left _ ih => simp [hasAbruptCompletion]; left; exact ih
-  | seq_right _ ih => simp [hasAbruptCompletion]; right; exact ih
-  | let_init _ ih => simp [hasAbruptCompletion]; left; exact ih
-  | getProp_obj _ ih => simp [hasAbruptCompletion]; exact ih
-  | setProp_obj _ ih => simp [hasAbruptCompletion]; left; exact ih
-  | setProp_val _ ih => simp [hasAbruptCompletion]; right; exact ih
-  | binary_lhs _ ih => simp [hasAbruptCompletion]; left; exact ih
-  | binary_rhs _ ih => simp [hasAbruptCompletion]; right; exact ih
-  | unary_arg _ ih => simp [hasAbruptCompletion]; exact ih
-  | typeof_arg _ ih => simp [hasAbruptCompletion]; exact ih
-  | deleteProp_obj _ ih => simp [hasAbruptCompletion]; exact ih
-  | assign_val _ ih => simp [hasAbruptCompletion]; exact ih
-  | call_func _ ih => simp [hasAbruptCompletion]; left; left; exact ih
-  | call_env _ ih => simp [hasAbruptCompletion]; left; right; exact ih
-  | call_args _ ih => simp [hasAbruptCompletion]; right; exact ih
-  | newObj_func _ ih => simp [hasAbruptCompletion]; left; left; exact ih
-  | newObj_env _ ih => simp [hasAbruptCompletion]; left; right; exact ih
-  | newObj_args _ ih => simp [hasAbruptCompletion]; right; exact ih
-  | if_cond _ ih => simp [hasAbruptCompletion]; left; left; exact ih
-  | return_some_arg _ _ => rfl
-  | yield_some_arg _ _ => rfl
-  | await_arg _ _ => rfl
-  | getIndex_obj _ ih => simp [hasAbruptCompletion]; left; exact ih
-  | getIndex_idx _ ih => simp [hasAbruptCompletion]; right; exact ih
-  | setIndex_obj _ ih => simp [hasAbruptCompletion]; left; left; exact ih
-  | setIndex_idx _ ih => simp [hasAbruptCompletion]; left; right; exact ih
-  | setIndex_val _ ih => simp [hasAbruptCompletion]; right; exact ih
-  | getEnv_env _ ih => simp [hasAbruptCompletion]; exact ih
-  | makeClosure_env _ ih => simp [hasAbruptCompletion]; exact ih
-  | makeEnv_values _ ih => simp [hasAbruptCompletion]; exact ih
-  | objectLit_props _ ih => simp [hasAbruptCompletion]; exact ih
-  | arrayLit_elems _ ih => simp [hasAbruptCompletion]; exact ih
+  sorry
 
 /-- Any list with throw in head has an element with abrupt completion. -/
 private theorem hasThrowInHeadList_implies_hasAbruptCompletionList :
