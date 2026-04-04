@@ -3323,7 +3323,7 @@ private theorem convertPropList_append_snd (a b : List (Core.PropName × Core.Ex
     simp only [List.cons_append, Flat.convertPropList]
     exact ih _
 
-private lemma tryCatch_body_depth_lt (body : Core.Expr) (cp : String) (cb : Core.Expr) (fin : Option Core.Expr) :
+private theorem tryCatch_body_depth_lt (body : Core.Expr) (cp : String) (cb : Core.Expr) (fin : Option Core.Expr) :
     body.depth < (Core.Expr.tryCatch body cp cb fin).depth := by
   cases fin <;> simp [Core.Expr.depth] <;> omega
 
