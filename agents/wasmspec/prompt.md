@@ -1,4 +1,4 @@
-# wasmspec — Close objectLit equation lemma + if-compound sorries in ANF
+# wasmspec — Close remaining ANF sorries: let/while/seq step_sim + inner compound cases
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -11,48 +11,60 @@
 ## MEMORY WARNING
 **WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
 
-## STATUS: 32 ANF sorry lines. Proof agent is working on equation lemmas for getProp/setProp/etc + objectLit/tryCatch cases. You focus on DIFFERENT sorries.
+## STATUS: 30 ANF sorry lines remaining
 
-## TARGET 1: objectLit step? equation lemma (for proof agent)
+Supervisor just closed objectLit cases in hasAbruptCompletion_step_preserved and NoNestedAbrupt_step_preserved (L9764, L10127 → proved). Equation lemmas for getProp/setProp/getIndex/setIndex/deleteProp now exist in Flat/Semantics.lean.
 
-Write this in Flat/Semantics.lean, AFTER the objectLit_allValues theorem (~L1960). This enables objectLit cases in hasAbruptCompletion/NoNestedAbrupt.
+Proof agent is working on: call/newObj all-values (L9706, L9721, L10070, L10084) and tryCatch (L9779, L10155).
 
-```lean
-/-- Stepping objectLit when there's a non-value prop: step the first non-value. -/
-@[simp] theorem step?_objectLit_step_prop (s : State) (props : List (PropName × Expr))
-    (done : List (PropName × Expr)) (name : PropName) (target : Expr) (remaining : List (PropName × Expr))
-    (hfnv : firstNonValueProp props = some (done, name, target, remaining)) :
-    step? { s with expr := .objectLit props } =
-      match step? { s with expr := target } with
-      | some (t, sa) =>
-          some (t, pushTrace { s with expr := .objectLit (done ++ [(name, sa.expr)] ++ remaining), env := sa.env, heap := sa.heap } t)
-      | none => none := by
-  rw [step?.eq_1]
-  -- valuesFromPropList? fails since firstNonValueProp found a non-value
-  have hvnone := valuesFromPropList?_none_of_firstNonValueProp hfnv
-  simp only [hvnone, hfnv]
-  cases step? { s with expr := target } <;> rfl
+## YOUR TARGETS
+
+### TARGET 1: normalizeExpr_let_step_sim (L9045)
+
+This sorry is about what normalizeExpr produces for `.let name init body`:
+```
+normalizeExpr (.let name init body) k =
+  normalizeExpr init (fun initVar => .let name initVar (normalizeExpr body k))
 ```
 
-NOTE: You may need to prove the helper `valuesFromPropList?_none_of_firstNonValueProp` first. Check if it exists with `lean_local_search`. If not, prove it: if firstNonValueProp returns Some, then valuesFromPropList? returns none.
+The Flat step is `.let name init' body` where init' is stepped. The ANF side normalizes init, so stepping init on the Flat side corresponds to stepping normalizeExpr init on the ANF side.
 
-## TARGET 2: if-compound sorries (L9326-9327, L9399-9400)
+Use `lean_goal` at L9045 to get the exact proof state. Then:
+1. Unfold `normalizeExpr` to see the structure
+2. Apply the SimRel for the init sub-expression
+3. Reconstruct SimRel for the result
 
-These are inside `normalizeExpr_if_step_sim` and `normalizeExpr_if_compound_step_sim`. They're about `.if` where the condition is compound (not a value). L9326/9399 are "compound condition: multi-step" and L9327/9400 are "compound HasIfInHead".
+### TARGET 2: while step_sim (L9135, L9147)
 
-Use `lean_goal` at these positions to understand what's needed. The pattern may be:
-- Condition is compound → normalizeExpr steps it → Flat also steps it → simulation matches
+L9135: While condition is a value → step produces `.if cond body+loop .lit`
+L9147: While condition is compound → step the condition
 
-## TARGET 3: Let step sim (L9045) and while step sim (L9133, L9145)
+For L9147 (condition-steps), the pattern should be straightforward:
+- Flat steps the condition in `.while_ cond body`
+- ANF normalizes the while, which normalizes the condition first
+- The condition step preserves SimRel
 
-L9045: `normalizeExpr_let_step_sim` — sorry. Need characterization of what normalizeExpr produces for `.let`.
-L9133: While condition value case
-L9145: Condition-steps case
+### TARGET 3: if compound sorries (L9328-9329, L9401-9402)
 
-For L9145 specifically, when `exprValue? c = none` and `step? c = some (t, sc)`:
-- The while condition steps
-- After step: `sa'.expr = .while_ sc.expr d` — this preserves SimRel
-- This should be closeable
+L9328: compound condition multi-step
+L9329: compound HasIfInHead
+L9401-9402: same pattern
+
+These need the eval context stepping lemma for if-conditions. If the condition is compound (not lit/var/this), normalizeExpr recurses into it. The multi-step case needs induction.
+
+### TARGET 4: Inner compound cases (L8677, L8854, L9012)
+
+These are the `| _ => sorry` wildcards where `inner_val` is compound. With `hna : NoNestedAbrupt`, `hasAbruptCompletion inner_val = false`. The approach:
+1. `normalizeExpr_X_some_or_k` gives disjunction: HasXInHead or continuation
+2. HasXInHead → contradiction with hna
+3. Continuation → inner_val is trivial chain
+
+These need `no_X_head_implies_trivial_chain` helpers (throw version exists, need return/await/yield).
+
+## PRIORITY ORDER
+1. L9147 (while condition-steps) — most likely closeable
+2. L9045 (let step_sim)
+3. L9328-9329, L9401-9402 (if compound)
 
 ## DO NOT just analyze. WRITE CODE. Close at least 1 sorry line.
 

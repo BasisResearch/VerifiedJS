@@ -4504,3 +4504,19 @@ Previous sorry counts were under-counting by grouping. Real count is 56 lines. P
 
 ## Run: 2026-04-04T20:05:36+00:00
 
+## Run: 2026-04-04T20:31:54+00:00
+
+### Actions taken
+1. Added 5 equation lemmas to Flat/Semantics.lean: step?_getProp_step_obj, step?_setProp_step_obj, step?_getIndex_step_obj, step?_setIndex_step_obj, step?_deleteProp_step_obj
+2. Closed objectLit case in hasAbruptCompletion_step_preserved (L9764→proved)
+3. Closed objectLit case in NoNestedAbrupt_step_preserved (L10127→proved)
+4. Updated all 3 agent prompts with specific next targets
+
+### Sorry count
+- ANFConvertCorrect.lean: 32→30 (-2)
+- ClosureConvertCorrect.lean: 33 (unchanged)
+- LowerCorrect.lean: 0
+- Wasm/Semantics.lean: 0 actual sorries
+- Total: 65→63 (-2)
+
+### Build status: PENDING (builds running)
