@@ -9282,7 +9282,7 @@ private theorem normalizeExpr_if_step_sim
             .tail ⟨?_⟩ (.refl _), ?_, ?_, ?_⟩
           · simp [Flat.step?, Flat.exprValue?, hfbool, Flat.step?_pushTrace_expand]
           · rfl
-          · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace, k, n, n1, hthen_r, hk⟩
+          · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace_silent, observableTrace_nil]; exact htrace, k, n, n1, hthen_r, hk⟩
           · intro x hfx; exact hewf x (VarFreeIn.if_then _ _ _ _ hfx)
         | var name_c =>
           obtain ⟨hcond_eq, n1, hthen_r, _⟩ := normalizeExpr_if_var_decomp name_c then_flat else_flat k n cond then_ else_ m hnorm
@@ -9305,7 +9305,7 @@ private theorem normalizeExpr_if_step_sim
             .tail ⟨hstep1⟩ (.tail ⟨?_⟩ (.refl _)), ?_, ?_, ?_⟩
           · simp [List.append_assoc] at hstep2; exact hstep2
           · rfl
-          · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace, k, n, n1, hthen_r, hk⟩
+          · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace_silent, observableTrace_nil]; exact htrace, k, n, n1, hthen_r, hk⟩
           · intro x hfx; exact hewf x (VarFreeIn.if_then _ _ _ _ hfx)
         | this =>
           obtain ⟨hcond_eq, n1, hthen_r, _⟩ := normalizeExpr_if_this_decomp then_flat else_flat k n cond then_ else_ m hnorm
@@ -9328,7 +9328,7 @@ private theorem normalizeExpr_if_step_sim
             .tail ⟨hstep1⟩ (.tail ⟨?_⟩ (.refl _)), ?_, ?_, ?_⟩
           · simp [List.append_assoc] at hstep2; exact hstep2
           · rfl
-          · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace, k, n, n1, hthen_r, hk⟩
+          · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace_silent, observableTrace_nil]; exact htrace, k, n, n1, hthen_r, hk⟩
           · intro x hfx; exact hewf x (VarFreeIn.if_then _ _ _ _ hfx)
         | _ => sorry -- compound condition: multi-step
       all_goals sorry -- compound HasIfInHead
@@ -9353,7 +9353,7 @@ private theorem normalizeExpr_if_step_sim
             .tail ⟨?_⟩ (.refl _), ?_, ?_, ?_⟩
           · simp [Flat.step?, Flat.exprValue?, hfbool, Flat.step?_pushTrace_expand]
           · rfl
-          · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace, k, n1, _, helse_r, hk⟩
+          · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace_silent, observableTrace_nil]; exact htrace, k, n1, _, helse_r, hk⟩
           · intro x hfx; exact hewf x (VarFreeIn.if_else _ _ _ _ hfx)
         | var name_c =>
           obtain ⟨hcond_eq, n1, _, helse_r⟩ := normalizeExpr_if_var_decomp name_c then_flat else_flat k n cond then_ else_ m hnorm
@@ -9377,7 +9377,7 @@ private theorem normalizeExpr_if_step_sim
             .tail ⟨hstep1⟩ (.tail ⟨?_⟩ (.refl _)), ?_, ?_, ?_⟩
           · simp [List.append_assoc] at hstep2; exact hstep2
           · rfl
-          · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace, k, n1, _, helse_r, hk⟩
+          · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace_silent, observableTrace_nil]; exact htrace, k, n1, _, helse_r, hk⟩
           · intro x hfx; exact hewf x (VarFreeIn.if_else _ _ _ _ hfx)
         | this =>
           obtain ⟨hcond_eq, n1, _, helse_r⟩ := normalizeExpr_if_this_decomp then_flat else_flat k n cond then_ else_ m hnorm
@@ -9401,7 +9401,7 @@ private theorem normalizeExpr_if_step_sim
             .tail ⟨hstep1⟩ (.tail ⟨?_⟩ (.refl _)), ?_, ?_, ?_⟩
           · simp [List.append_assoc] at hstep2; exact hstep2
           · rfl
-          · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace, k, n1, _, helse_r, hk⟩
+          · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace_silent, observableTrace_nil]; exact htrace, k, n1, _, helse_r, hk⟩
           · intro x hfx; exact hewf x (VarFreeIn.if_else _ _ _ _ hfx)
         | _ => sorry -- compound condition: multi-step
       all_goals sorry -- compound HasIfInHead
