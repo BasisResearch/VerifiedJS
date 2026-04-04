@@ -9113,10 +9113,25 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
   suffices ∀ n e, e.depth ≤ n → ∀ env heap trace funcs cs ev sf',
     NoNestedAbrupt e →
     Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf') →
-    NoNestedAbrupt sf'.expr from this _ _ (le_refl _) _ _ _ _ _ hna hstep
+    NoNestedAbrupt sf'.expr from this _ _ (Nat.le_refl _) _ _ _ _ _ hna hstep
   intro n
   induction n with
-  | zero => intro e hd; cases e <;> simp [Flat.Expr.depth] at hd <;> omega
+  | zero =>
+    intro e hd env heap trace funcs cs ev sf' hna hstep
+    cases e with
+    | lit v => simp [Flat.step?] at hstep
+    | var name => unfold Flat.step? at hstep; split at hstep <;> simp at hstep <;> obtain ⟨_, rfl⟩ := hstep <;> exact NoNestedAbrupt.lit
+    | this => unfold Flat.step? at hstep; split at hstep <;> simp at hstep <;> obtain ⟨_, rfl⟩ := hstep <;> exact NoNestedAbrupt.lit
+    | «break» _ => unfold Flat.step? at hstep; simp at hstep; obtain ⟨_, rfl⟩ := hstep; exact NoNestedAbrupt.lit
+    | «continue» _ => unfold Flat.step? at hstep; simp at hstep; obtain ⟨_, rfl⟩ := hstep; exact NoNestedAbrupt.lit
+    | «return» arg => cases arg with
+      | none => unfold Flat.step? at hstep; simp at hstep; obtain ⟨_, rfl⟩ := hstep; exact NoNestedAbrupt.lit
+      | some => simp [Flat.Expr.depth] at hd
+    | yield arg _ => cases arg with
+      | none => unfold Flat.step? at hstep; simp at hstep; obtain ⟨_, rfl⟩ := hstep; exact NoNestedAbrupt.lit
+      | some => simp [Flat.Expr.depth] at hd
+    | tryCatch _ _ _ f => cases f <;> simp [Flat.Expr.depth] at hd
+    | _ => simp [Flat.Expr.depth] at hd
   | succ n ih =>
     intro e hd env heap trace funcs cs ev sf' hna hstep
     cases e with
@@ -9125,14 +9140,14 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     -- SIMPLE: steps to .lit → NoNestedAbrupt.lit
     | var name =>
       simp [Flat.step?] at hstep
-      split at hstep <;> simp [Flat.pushTrace] at hstep <;> obtain ⟨_, rfl⟩ := hstep <;> exact NoNestedAbrupt.lit
+      split at hstep <;> simp at hstep <;> obtain ⟨_, rfl⟩ := hstep <;> exact NoNestedAbrupt.lit
     | this =>
       simp [Flat.step?] at hstep
-      split at hstep <;> simp [Flat.pushTrace] at hstep <;> obtain ⟨_, rfl⟩ := hstep <;> exact NoNestedAbrupt.lit
-    | break label =>
-      simp [Flat.step?] at hstep; simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact NoNestedAbrupt.lit
-    | continue label =>
-      simp [Flat.step?] at hstep; simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact NoNestedAbrupt.lit
+      split at hstep <;> simp at hstep <;> obtain ⟨_, rfl⟩ := hstep <;> exact NoNestedAbrupt.lit
+    | «break» label =>
+      unfold Flat.step? at hstep; simp at hstep; obtain ⟨_, rfl⟩ := hstep; exact NoNestedAbrupt.lit
+    | «continue» label =>
+      unfold Flat.step? at hstep; simp at hstep; obtain ⟨_, rfl⟩ := hstep; exact NoNestedAbrupt.lit
     -- VACUOUSLY TRUE: no NoNestedAbrupt constructor exists
     | unary op arg => cases hna
     | binary op l r => cases hna
@@ -9144,12 +9159,12 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       simp [Flat.step?] at hstep
       split at hstep
       case h_1 v hv =>
-        simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp at hstep; obtain ⟨_, rfl⟩ := hstep
         simp [Flat.State.expr]; exact hb
       case h_2 hv =>
         split at hstep
         case h_1 ev' sa hsa =>
-          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep
           simp [Flat.State.expr]
           exact NoNestedAbrupt.seq
             (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ ha hsa) hb
@@ -9159,12 +9174,12 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       simp [Flat.step?] at hstep
       split at hstep
       case h_1 v hv =>
-        simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp at hstep; obtain ⟨_, rfl⟩ := hstep
         simp [Flat.State.expr]; exact hbody
       case h_2 hv =>
         split at hstep
         case h_1 ev' si hsi =>
-          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep
           simp [Flat.State.expr]
           exact NoNestedAbrupt.let
             (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hinit hsi) hbody
@@ -9174,12 +9189,12 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       simp [Flat.step?] at hstep
       split at hstep
       case h_1 v hv =>
-        simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp at hstep; obtain ⟨_, rfl⟩ := hstep
         simp [Flat.State.expr]; exact NoNestedAbrupt.lit
       case h_2 hv =>
         split at hstep
         case h_1 ev' sr hsr =>
-          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep
           simp [Flat.State.expr]
           exact NoNestedAbrupt.assign
             (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hrhs hsr)
@@ -9189,12 +9204,12 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       simp [Flat.step?] at hstep
       split at hstep
       case h_1 v hv =>
-        simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp at hstep; obtain ⟨_, rfl⟩ := hstep
         simp [Flat.State.expr]; split <;> assumption
       case h_2 hv =>
         split at hstep
         case h_1 ev' sc hsc =>
-          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep
           simp [Flat.State.expr]
           exact NoNestedAbrupt.if
             (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hc hsc) hthen helse
@@ -9205,30 +9220,30 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       simp [Flat.step?] at hstep
       split at hstep
       case h_1 v hv =>
-        simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp at hstep; obtain ⟨_, rfl⟩ := hstep
         simp [Flat.State.expr]; exact NoNestedAbrupt.lit
       case h_2 hv =>
         split at hstep
         case h_1 ev' sa hsa =>
-          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep
           simp [Flat.State.expr]
           exact NoNestedAbrupt.throw (hasAbruptCompletion_step_preserved arg env heap trace funcs cs ev' sa habr hsa)
         case h_2 => simp at hstep
     | «return» arg =>
       cases hna with
       | return_none =>
-        simp [Flat.step?] at hstep; simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp [Flat.step?] at hstep; simp at hstep; obtain ⟨_, rfl⟩ := hstep
         simp [Flat.State.expr]; exact NoNestedAbrupt.lit
       | return_some habr =>
         simp [Flat.step?] at hstep
         split at hstep
         case h_1 v hv =>
-          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep
           simp [Flat.State.expr]; exact NoNestedAbrupt.lit
         case h_2 hv =>
           split at hstep
           case h_1 ev' se hse =>
-            simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+            simp at hstep; obtain ⟨_, rfl⟩ := hstep
             simp [Flat.State.expr]
             exact NoNestedAbrupt.return_some (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ habr hse)
           case h_2 => simp at hstep
@@ -9237,30 +9252,30 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       simp [Flat.step?] at hstep
       split at hstep
       case h_1 v hv =>
-        simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp at hstep; obtain ⟨_, rfl⟩ := hstep
         simp [Flat.State.expr]; exact NoNestedAbrupt.lit
       case h_2 hv =>
         split at hstep
         case h_1 ev' sa hsa =>
-          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep
           simp [Flat.State.expr]
           exact NoNestedAbrupt.await (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ habr hsa)
         case h_2 => simp at hstep
     | yield arg d =>
       cases hna with
       | yield_none =>
-        simp [Flat.step?] at hstep; simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp [Flat.step?] at hstep; simp at hstep; obtain ⟨_, rfl⟩ := hstep
         simp [Flat.State.expr]; exact NoNestedAbrupt.lit
       | yield_some habr =>
         simp [Flat.step?] at hstep
         split at hstep
         case h_1 v hv =>
-          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep
           simp [Flat.State.expr]; exact NoNestedAbrupt.lit
         case h_2 hv =>
           split at hstep
           case h_1 ev' se hse =>
-            simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+            simp at hstep; obtain ⟨_, rfl⟩ := hstep
             simp [Flat.State.expr]
             exact NoNestedAbrupt.yield_some (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ habr hse)
           case h_2 => simp at hstep
@@ -9270,12 +9285,12 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       simp [Flat.step?] at hstep
       split at hstep
       case h_1 v hv =>
-        simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp at hstep; obtain ⟨_, rfl⟩ := hstep
         simp [Flat.State.expr]; exact NoNestedAbrupt.lit
       case h_2 hv =>
         split at hstep
         case h_1 ev' so hso =>
-          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp at hstep; obtain ⟨_, rfl⟩ := hstep
           simp [Flat.State.expr]
           exact NoNestedAbrupt.getProp
             (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hobj hso)
