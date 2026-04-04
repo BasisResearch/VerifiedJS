@@ -9554,3 +9554,64 @@ hasBreakInHead_flat_error_steps may be UNPROVABLE as currently stated. Error eve
 ## Run: 2026-04-04T01:05:01+00:00
 
 2026-04-04T01:09:47+00:00 DONE
+
+## Run: 2026-04-04T01:30:02+00:00
+
+
+### Metrics
+- **Sorry count**: ANF 22 + CC 14 = **36** (was 37 last run)
+- **Delta from last run (00:05)**: -1. CC went 15→14 (jsspec closed consoleLog at 00:26). ANF stable at 22.
+- **LowerCorrect**: 0 sorries
+- **Wasm/Semantics**: 0 actual sorries (comments only)
+
+### Agent Status
+1. **proof** (started 01:30, RUNNING): Just started. Last run (00:30-00:54) produced detailed analysis of all 22 ANF sorries but closed 0. Prior run closed 1 (L7135). Prompt is well-configured with Steps_*_ctx multi-step lifting as top priority — this is the right approach to unblock 4-8 compound sorries.
+   - **Prompt KEPT**: Already correctly directs to Steps_*_ctx (Task 1) → compound Type A sorries (Task 2) → continuation-independence (Task 3).
+
+2. **jsspec** (started 01:00, RUNNING 30min): Prompt aborted CCStateAgree invariant change. Redirected to newObj (L4498/L4506) and tryCatch error (L6608). Last run closed consoleLog (GREAT). Has 14 actual CC sorries remaining.
+   - **Prompt KEPT**: Already well-configured with closable targets.
+
+3. **wasmspec** (started 01:15, RUNNING 15min): Working on normalizeExpr_no_compound_break (fix hasBreakInHead) + CCStateAgree alternative research.
+   - **Prompt KEPT**: Tasks are the right priorities.
+
+### Actions Taken
+1. Counted sorries: ANF 22 + CC 14 = 36 (down 1 from last run).
+2. Reviewed all 3 agent logs — all on correct tasks, no redirects needed.
+3. Kept all 3 prompts — agents properly configured from last run.
+4. Logged to time_estimate.csv.
+
+### Sorry Breakdown
+
+**ANF (22 sorries — unchanged):**
+- L6409, L6442, L6534, L6567: non-labeled inner value (need continuation-independence) — 4
+- L6453, L6578, L6595: compound/bindComplex — 3
+- L6612: hasBreakInHead (NOT PROVABLE as stated) — 1
+- L6625: hasContinueInHead (NOT PROVABLE as stated) — 1
+- L6778, L6931, L7104, L7258: compound flat_arg/inner_val (need Steps_*_ctx) — 4
+- L6781, L6934, L7107, L7261: compound HasXInHead (need break fix) — 4
+- L7288: .let characterization (SKIP) — 1
+- L7336, L7367, L7370: if simulation — 3
+- L7414: final sorry — 1
+
+**CC (14 actual sorries — down 1, consoleLog closed):**
+- L1507/1508: forIn/forOf stubs (UNPROVABLE) — 2
+- L3387: captured var — 1
+- L3715, L3738×2: if CCStateAgree (BLOCKED) — 3
+- L4292: non-consoleLog call (BLOCKED no FuncsCorr) — 1
+- L4498, L4506: newObj (jsspec target) — 2
+- L5144: getIndex string (UNPROVABLE) — 1
+- L6382: functionDef (BLOCKED CCStateAgree) — 1
+- L6537: tryCatch finally (BLOCKED CCStateAgree) — 1
+- L6608: tryCatch error (jsspec investigating) — 1
+- L6715: while_ (BLOCKED CCStateAgree) — 1
+
+### Strategy
+- **proof agent**: If Steps_*_ctx lemmas land → close L6778, L6931, L7104, L7258 (4 sorries) → ANF to 18
+- **jsspec**: If newObj all-values closes → CC to 12; if tryCatch error also → CC to 11
+- **wasmspec**: normalizeExpr_no_compound_break → fix hasBreakInHead approach → unblock L6612+L6625 downstream
+
+### Risk
+- proof agent spent last run on analysis only. If it does analysis again this run without closing sorries, will need to restructure approach (maybe have it focus on ONE sorry with exact lean_multi_attempt tactics instead of building infrastructure lemmas).
+
+2026-04-04T01:33:39+00:00 DONE
+2026-04-04T01:33:46+00:00 DONE
