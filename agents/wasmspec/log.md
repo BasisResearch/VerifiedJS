@@ -6078,3 +6078,17 @@ observable events and breaking ANF_SimRel correspondence.
 
 ### 2026-04-04T08:15:10+00:00 Starting run
 2026-04-04T09:15:01+00:00 SKIP: already running
+### 2026-04-04T10:09:02+00:00 Run complete — Closed if_direct cases for normalizeExpr_if_step_sim (L8925/L8928)
+
+**Accomplished:**
+- Added 3 helper lemmas (normalizeExpr_if_lit_decomp, normalizeExpr_if_var_decomp, normalizeExpr_if_this_decomp) to decompose normalizeExpr for .if with simple conditions
+- Closed the if_direct case of HasIfInHead for BOTH true and false branches of normalizeExpr_if_step_sim
+- Handles all three simple condition forms: .lit fv, .var name, .this
+- Each case constructs explicit Flat.Steps (1 step for lit, 2 steps for var/this) and establishes ANF_SimRel
+- Build passes with 0 errors, 24 sorry lines remain (same count as before minus 2 closed, plus compound case sorry markers)
+
+**Remaining sorry in normalizeExpr_if_step_sim:**
+- Compound condition cases (when if condition is not lit/var/this — needs trivialChain infrastructure)
+- Compound HasIfInHead cases (when .if is nested inside seq/binary/etc. — needs depth-induction like normalizeExpr_labeled_step_sim)
+
+**Sorry count:** 24 total in file
