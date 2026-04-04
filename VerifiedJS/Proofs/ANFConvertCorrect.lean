@@ -6767,6 +6767,234 @@ private theorem Flat.step?_throw_this_ok (v : Flat.Value)
     some (.silent, ⟨.throw (.lit v), env, heap, trace ++ [.silent], funcs, cs⟩) := by
   simp only [Flat.step?, Flat.exprValue?, h]; rfl
 
+/-- If normalizeExpr e k produces .throw arg and e has no throw-in-head,
+    then e must be a trivial chain (lit, var, this, or seqs thereof).
+    This is because all other expression forms either:
+    (1) replace k entirely (throw/return/yield/await), producing non-throw output or HasThrowInHead
+    (2) use bindComplex, which always produces .let, never .throw
+    (3) are special forms (labeled/while/tryCatch) that never produce .throw -/
+private theorem no_throw_head_implies_trivial_chain :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    ∀ (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat),
+    (ANF.normalizeExpr e k).run n = .ok (.throw arg, m) →
+    ¬ HasThrowInHead e →
+    isTrivialChain e = true := by
+  intro d; induction d with
+  | zero =>
+    intro e hd k arg n m h hno
+    cases e with
+    | lit _ => rfl
+    | var _ => rfl
+    | «this» => rfl
+    | «break» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | «continue» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | «return» arg_r =>
+      cases arg_r with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some _ => exfalso; simp [Flat.Expr.depth] at hd
+    | yield arg_y _ =>
+      cases arg_y with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some _ => exfalso; simp [Flat.Expr.depth] at hd
+    | tryCatch _ _ _ fin => exfalso; cases fin <;> (simp [Flat.Expr.depth] at hd; try omega)
+    | _ => exfalso; simp [Flat.Expr.depth] at hd; try omega
+  | succ d ih =>
+    intro e hd k arg n m h hno
+    cases e with
+    | lit _ => rfl
+    | var _ => rfl
+    | «this» => rfl
+    | «break» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | «continue» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | «throw» _ => exfalso; exact hno HasThrowInHead.throw_direct
+    | «return» arg_r =>
+      cases arg_r with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some v =>
+        exfalso; simp only [ANF.normalizeExpr] at h
+        rcases ANF.normalizeExpr_throw_or_k v _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+        · exact hno (HasThrowInHead.return_some_arg hleft)
+        · simp [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at hkt
+    | yield arg_y dlg =>
+      cases arg_y with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some v =>
+        exfalso; simp only [ANF.normalizeExpr] at h
+        rcases ANF.normalizeExpr_throw_or_k v _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+        · exact hno (HasThrowInHead.yield_some_arg hleft)
+        · simp [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at hkt
+    | await v =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_throw_or_k v _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.await_arg hleft)
+      · simp [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq] at hkt
+    | labeled l body => exfalso; exact absurd h (ANF.normalizeExpr_labeled_not_throw l body k arg n m)
+    | while_ c b => exfalso; exact absurd h (ANF.normalizeExpr_while_not_throw c b k arg n m)
+    | tryCatch body cp cb fin =>
+      exfalso; exact absurd h (ANF.normalizeExpr_tryCatch_not_throw body cp cb fin k arg n m)
+    | seq a b =>
+      simp only [ANF.normalizeExpr] at h
+      have hda : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have hdb : b.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have hno_a : ¬HasThrowInHead a := fun ha => hno (HasThrowInHead.seq_left ha)
+      have hno_b : ¬HasThrowInHead b := fun hb => hno (HasThrowInHead.seq_right hb)
+      have htc_a := ih a hda (fun _ => ANF.normalizeExpr b k) arg n m h hno_a
+      have hpass := normalizeExpr_trivialChain_passthrough a.depth a (Nat.le_refl _) htc_a
+        (ANF.normalizeExpr b k) n
+      have h_b : (ANF.normalizeExpr b k).run n = .ok (.throw arg, m) := by rw [← hpass]; exact h
+      have htc_b := ih b hdb k arg n m h_b hno_b
+      simp [isTrivialChain, htc_a, htc_b]
+    | «let» name init body =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_throw_or_k init _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.let_init hleft)
+      · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure,
+          Except.pure, Except.bind] at hkt
+        split at hkt <;> simp_all
+    | «if» c t e =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_throw_or_k c _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.if_cond hleft)
+      · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure,
+          Except.pure, Except.bind] at hkt
+        split at hkt <;> (try simp_all)
+        split at hkt <;> simp_all
+    | assign name val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_throw_or_k val _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.assign_val hleft)
+      · exact absurd hkt (ANF.bindComplex_never_throw_general _ _ _ _ _)
+    | getProp obj _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_throw_or_k obj _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.getProp_obj hleft)
+      · exact absurd hkt (ANF.bindComplex_never_throw_general _ _ _ _ _)
+    | deleteProp obj _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_throw_or_k obj _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.deleteProp_obj hleft)
+      · exact absurd hkt (ANF.bindComplex_never_throw_general _ _ _ _ _)
+    | typeof val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_throw_or_k val _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.typeof_arg hleft)
+      · exact absurd hkt (ANF.bindComplex_never_throw_general _ _ _ _ _)
+    | unary _ val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_throw_or_k val _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.unary_arg hleft)
+      · exact absurd hkt (ANF.bindComplex_never_throw_general _ _ _ _ _)
+    | getEnv envPtr _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_throw_or_k envPtr _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.getEnv_env hleft)
+      · exact absurd hkt (ANF.bindComplex_never_throw_general _ _ _ _ _)
+    | makeClosure _ env =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_throw_or_k env _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.makeClosure_env hleft)
+      · exact absurd hkt (ANF.bindComplex_never_throw_general _ _ _ _ _)
+    | setProp obj _ val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_throw_or_k obj _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.setProp_obj hleft)
+      · rcases ANF.normalizeExpr_throw_or_k val _ arg _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasThrowInHead.setProp_val hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_never_throw_general _ _ _ _ _)
+    | binary _ lhs rhs =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_throw_or_k lhs _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.binary_lhs hleft)
+      · rcases ANF.normalizeExpr_throw_or_k rhs _ arg _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasThrowInHead.binary_rhs hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_never_throw_general _ _ _ _ _)
+    | getIndex obj idx =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_throw_or_k obj _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.getIndex_obj hleft)
+      · rcases ANF.normalizeExpr_throw_or_k idx _ arg _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasThrowInHead.getIndex_idx hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_never_throw_general _ _ _ _ _)
+    | setIndex obj idx val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_throw_or_k obj _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.setIndex_obj hleft)
+      · rcases ANF.normalizeExpr_throw_or_k idx _ arg _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasThrowInHead.setIndex_idx hleft)
+        · rcases ANF.normalizeExpr_throw_or_k val _ arg _ _ hkt₂ with hleft | ⟨_, _, _, hkt₃⟩
+          · exact hno (HasThrowInHead.setIndex_val hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_never_throw_general _ _ _ _ _)
+    | call f env args =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_throw_or_k f _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.call_func hleft)
+      · rcases ANF.normalizeExpr_throw_or_k env _ arg _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasThrowInHead.call_env hleft)
+        · have args_ih : ∀ e, e ∈ args → ∀ k' (arg' : ANF.Trivial) n m,
+              (ANF.normalizeExpr e k').run n = .ok (.throw arg', m) →
+              HasThrowInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.throw arg', m') :=
+            fun e he => ANF.normalizeExpr_throw_or_k e
+          rcases normalizeExprList_throw_or_k args args_ih _ _ _ _ hkt₂ with hleft | ⟨_, _, _, hkt₃⟩
+          · exact hno (HasThrowInHead.call_args hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_never_throw_general _ _ _ _ _)
+    | newObj f env args =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_throw_or_k f _ arg _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.newObj_func hleft)
+      · rcases ANF.normalizeExpr_throw_or_k env _ arg _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasThrowInHead.newObj_env hleft)
+        · have args_ih : ∀ e, e ∈ args → ∀ k' (arg' : ANF.Trivial) n m,
+              (ANF.normalizeExpr e k').run n = .ok (.throw arg', m) →
+              HasThrowInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.throw arg', m') :=
+            fun e he => ANF.normalizeExpr_throw_or_k e
+          rcases normalizeExprList_throw_or_k args args_ih _ _ _ _ hkt₂ with hleft | ⟨_, _, _, hkt₃⟩
+          · exact hno (HasThrowInHead.newObj_args hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_never_throw_general _ _ _ _ _)
+    | makeEnv values =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have vals_ih : ∀ e, e ∈ values → ∀ k' (arg' : ANF.Trivial) n m,
+          (ANF.normalizeExpr e k').run n = .ok (.throw arg', m) →
+          HasThrowInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.throw arg', m') :=
+        fun e he => ANF.normalizeExpr_throw_or_k e
+      rcases normalizeExprList_throw_or_k values vals_ih _ _ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.makeEnv_values hleft)
+      · exact absurd hkt (ANF.bindComplex_never_throw_general _ _ _ _ _)
+    | objectLit props =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have props_ih : ∀ (name : Flat.PropName) (e : Flat.Expr), (name, e) ∈ props →
+          ∀ k' (arg' : ANF.Trivial) n m,
+          (ANF.normalizeExpr e k').run n = .ok (.throw arg', m) →
+          HasThrowInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.throw arg', m') :=
+        fun name e he => ANF.normalizeExpr_throw_or_k e
+      rcases normalizeProps_throw_or_k props props_ih _ _ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.objectLit_props hleft)
+      · exact absurd hkt (ANF.bindComplex_never_throw_general _ _ _ _ _)
+    | arrayLit elems =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have elems_ih : ∀ e, e ∈ elems → ∀ k' (arg' : ANF.Trivial) n m,
+          (ANF.normalizeExpr e k').run n = .ok (.throw arg', m) →
+          HasThrowInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.throw arg', m') :=
+        fun e he => ANF.normalizeExpr_throw_or_k e
+      rcases normalizeExprList_throw_or_k elems elems_ih _ _ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasThrowInHead.arrayLit_elems hleft)
+      · exact absurd hkt (ANF.bindComplex_never_throw_general _ _ _ _ _)
+
 /-- If normalizeExpr sf.expr k produces .throw arg (with trivial-preserving k),
     then there exist Flat steps from sf that produce the same error event
     as the ANF throw step. Covers both evalTrivial ok and error cases. -/

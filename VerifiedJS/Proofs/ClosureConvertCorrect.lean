@@ -6507,8 +6507,8 @@ private theorem closureConvert_step_simulation
       | none =>
         simp [Flat.convertOptExpr] at hconv
         obtain ⟨hsf_expr, hst'_eq⟩ := hconv
-        have hsf_eta : sf = { sf with expr := .tryCatch (.lit (Flat.convertValue v)) catchParam
-            (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst none } := by
+        have hsf_eta : sf = { sf with expr := (.tryCatch (.lit (Flat.convertValue v)) catchParam
+            (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst .none) } := by
           cases sf; simp_all
         rw [hsf_eta] at hstep
         have hstep_rw := Flat_step?_tryCatch_body_value sf (Flat.convertValue v) catchParam
@@ -6607,7 +6607,7 @@ private theorem closureConvert_step_simulation
             -- but CCStateAgree st st1 remains (body conversion may change nextId/funcs.size)
             sorry
         · -- Non-error: body step preserves tryCatch wrapper
-          push_neg at herr
+          simp only [not_exists] at herr
           have heq := Flat_step?_tryCatch_body_step sf fbody catchParam fcatch ffin sb t hncf hfnv hm herr
           rw [heq] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨hev_eq, hsf'_eq⟩ := hstep; subst hev_eq; subst hsf'_eq
