@@ -9016,7 +9016,8 @@ private theorem normalizeExpr_if_step_sim
           obtain ⟨hcond_eq, n1, hthen_r, _⟩ := normalizeExpr_if_lit_decomp fv then_flat else_flat k n cond then_ else_ m hnorm
           rw [hcond_eq, evalTrivial_trivialOfValue] at heval
           obtain rfl := Except.ok.inj heval
-          have hfbool : Flat.toBoolean fv = true := by cases fv <;> simp only [Flat.toBoolean] <;> first | rfl | exact hbool_anf | simp_all
+          have hfbool : Flat.toBoolean fv = true := by
+                revert hbool_anf; cases fv <;> simp [Flat.toBoolean]
           refine ⟨⟨then_flat, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent],
             .tail ⟨?_⟩ (.refl _), ?_, ?_, ?_⟩
           · simp [Flat.step?, Flat.exprValue?, hfbool, Flat.step?_pushTrace_expand]
@@ -9039,7 +9040,8 @@ private theorem normalizeExpr_if_step_sim
           obtain ⟨hcond_eq, n1, _, helse_r⟩ := normalizeExpr_if_lit_decomp fv then_flat else_flat k n cond then_ else_ m hnorm
           rw [hcond_eq, evalTrivial_trivialOfValue] at heval
           obtain rfl := Except.ok.inj heval
-          have hfbool : Flat.toBoolean fv = false := by cases fv <;> simp only [Flat.toBoolean] <;> first | rfl | exact hbool_anf | simp_all
+          have hfbool : Flat.toBoolean fv = false := by
+                revert hbool_anf; cases fv <;> simp [Flat.toBoolean] <;> (try intro h) <;> (first | rfl | exact h | (cases ‹Bool› <;> simp_all))
           refine ⟨⟨else_flat, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent],
             .tail ⟨?_⟩ (.refl _), ?_, ?_, ?_⟩
           · simp [Flat.step?, Flat.exprValue?, hfbool, Flat.step?_pushTrace_expand]
