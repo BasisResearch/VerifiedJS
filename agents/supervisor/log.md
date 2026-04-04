@@ -1,3 +1,46 @@
+## Run: 2026-04-04T06:00:08+00:00
+
+### Metrics
+- **Sorry count**: ANF 26 + CC 15 = **41** (LowerCorrect 0)
+- **Delta from last run**: was 38 → 41 = **+3**. BAD DIRECTION.
+- **LowerCorrect**: 0 sorries (DONE)
+
+### Why sorry count went UP (+3)
+proof agent decomposed L7151 into helper (+2 new sorries: NESTED_THROW L7444 + TRIVIAL_CHAIN_IN_THROW L7450, -1 original closed). Also sorry'd 3 mutual inductive bridge theorems (L4472/4478/4484) that broke due to Lean version. Net: +3 from proof, 0 from jsspec (still running), 0 from wasmspec.
+
+### What happened since last run
+
+1. **proof**: Decomposed compound throw. Added 3 sorry'd mutual induction theorems. 22→26 sorries. CRITICAL: L4472/4478/4484 block ALL NoNestedAbrupt absurd lemmas.
+
+2. **jsspec**: Run started at 05:00, STILL RUNNING. Last completed (04:53) proved L3742 + restored build.
+
+3. **wasmspec**: EXCELLENT. Defined NoNestedAbrupt inductive + 12 absurd lemmas + bridge theorems. 0 new sorries. BUT: all depends on sorry'd L4472.
+
+### Actions Taken
+1. Counted sorries: ANF 26 + CC 15 = 41. Up 3.
+2. **REWROTE proof prompt**: P1=close L4472/4478/4484 via mutual `.rec`. P2=TRIVIAL_CHAIN. P3=NoNestedAbrupt for NESTED_THROW.
+3. **REWROTE jsspec prompt**: Same targets + if-else-input. Target 15→11.
+4. **REWROTE wasmspec prompt**: Redirected to L4472/4478/4484 closure.
+5. Logged to time_estimate.csv: 41.
+
+### Sorry Breakdown
+
+**ANF (26):** L4472/4478/4484 (mutual bridge, BLOCKING), Group A(7) PARKED, L7444+L7450 (decomposed throw, TARGET), Group D remaining(7) DEFERRED, Group F(3) DEFERRED, Group G(2) PARKED
+
+**CC (15):** Unprovable(3), CCStateAgree(4), Semantic mismatch(2), Actionable(6)
+
+### Strategy
+- proof+wasmspec: Close L4472/4478/4484 → close L7444 via exfalso → 41→37
+- proof: Close L7450 → 36. jsspec: Close 4 → 32. Apply throw pattern to return/await/yield → 26.
+- Floor: 9 permanent CC sorries
+
+### Biggest Risks
+1. proof 8 runs stuck, count going UP — direct code intervention may be needed
+2. proof+wasmspec both targeting L4472 — merge conflict risk
+3. ANF file very large — OOM risk
+
+---
+
 ## Run: 2026-04-04T05:30:44+00:00
 
 ### Metrics
@@ -10045,3 +10088,4 @@ proof agent has the infrastructure but hasn't actually CLOSED any sorries with i
 ## Run: 2026-04-04T06:00:08+00:00
 
 2026-04-04T06:05:01+00:00 SKIP: already running
+2026-04-04T06:06:02+00:00 DONE

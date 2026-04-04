@@ -4274,8 +4274,8 @@ private theorem closureConvert_step_simulation
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
             have hcore := Core_step?_call_consoleLog_flat_msg args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
             rw [← hsc_eta] at hcore
-            -- Both steps produce the same (event, state') pair
-            have hpair : (ev, sf') = _ := (hflat.symm.trans hstep).symm
+            -- Both steps produce the same (event, state') pair: use simp to normalize dependent match
+            have hpair := hstep.symm.trans hflat
             simp only [Option.some.injEq, Prod.mk.injEq] at hpair
             obtain ⟨hev_eq, hsf'_eq⟩ := hpair
             subst hev_eq; subst hsf'_eq
