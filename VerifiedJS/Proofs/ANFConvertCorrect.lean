@@ -2153,7 +2153,7 @@ private theorem trivialChain_inner_step
     | «this» =>
       have hbound := hwf "this" .this_var
       obtain ⟨val, hval⟩ := Option.ne_none_iff_exists'.mp hbound
-      exact ⟨.lit val, by simp only [Flat.step?, hval], rfl,
+      exact ⟨.lit val, by simp only [Flat.step?, hval]; rfl, rfl,
         by simp [trivialChainCost], fun _ h => nomatch h⟩
     | seq a b =>
       simp [isTrivialChain] at htc; obtain ⟨htc_a, htc_b⟩ := htc
@@ -2165,11 +2165,11 @@ private theorem trivialChain_inner_step
         have hs_i : s_i = ⟨b, env, heap, trace ++ [Core.TraceEvent.silent], funcs, cs⟩ := by
           cases s_i; simp_all
         rw [hs_i] at hstep
-        exact ⟨b, hstep, htc_b, by simp [trivialChainCost]; omega,
+        exact ⟨b, hstep, htc_b, by simp [trivialChainCost],
           fun x hfx => hwf x (.seq_r _ _ _ hfx)⟩
-      | var _ => simp [trivialChainCost] at hcost
-      | «this» => simp [trivialChainCost] at hcost
-      | seq _ _ => simp [trivialChainCost] at hcost
+      | var _ => simp_all [trivialChainCost]
+      | «this» => simp_all [trivialChainCost]
+      | seq _ _ => simp_all [trivialChainCost]
       | _ => simp [isTrivialChain] at htc_a
     | _ => simp [isTrivialChain] at htc
   | succ fuel ih =>
@@ -2187,7 +2187,7 @@ private theorem trivialChain_inner_step
     | «this» =>
       have hbound := hwf "this" .this_var
       obtain ⟨val, hval⟩ := Option.ne_none_iff_exists'.mp hbound
-      exact ⟨.lit val, by simp only [Flat.step?, hval], rfl,
+      exact ⟨.lit val, by simp only [Flat.step?, hval]; rfl, rfl,
         by simp [trivialChainCost], fun _ h => nomatch h⟩
     | seq a b =>
       simp [isTrivialChain] at htc; obtain ⟨htc_a, htc_b⟩ := htc
@@ -2201,7 +2201,7 @@ private theorem trivialChain_inner_step
         have hs_i : s_i = ⟨b, env, heap, trace ++ [Core.TraceEvent.silent], funcs, cs⟩ := by
           cases s_i; simp_all
         rw [hs_i] at hstep
-        exact ⟨b, hstep, htc_b, by simp [trivialChainCost]; omega,
+        exact ⟨b, hstep, htc_b, by simp [trivialChainCost],
           fun x hfx => hwf x (.seq_r _ _ _ hfx)⟩
       | none =>
         have hcost_a : trivialChainCost a ≤ fuel + 1 := by
