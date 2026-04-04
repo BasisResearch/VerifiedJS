@@ -3088,3 +3088,18 @@ Net result: MORE broken cases, not fewer. Approach rejected (consistent with 2 p
 ## Run: 2026-04-04T07:00:02+00:00
 
 ### 2026-04-04T07:00:11+00:00 Starting run
+
+#### L6673 tryCatch non-error body step CCStateAgree — CLOSED
+- Replaced sorry with proof that threads IH's CCStateAgree through the tryCatch sub-conversions
+- Used `convertExpr_state_determined` for catchBody and `convertOptExpr_state_determined` for finally_
+- IH gives `hAgreeIn : CCStateAgree st st_a` and `hAgreeOut : CCStateAgree st1 st_a'`
+- These thread through the catch and finally conversions to establish output CCStateAgree
+- Sorry count: 15 → 14
+
+#### Investigated but blocked:
+- **L6386 functionDef**: Blocked by HeapInj staging. Flat's makeClosure allocates env object on heap that Core doesn't. Current HeapInj = HeapCorr (identical heaps) can't handle divergent heaps.
+- **L3391 captured var**: Multi-step mismatch. Flat takes 2 steps (var lookup + getEnv) for captured vars, Core takes 1 step. Lock-step simulation can't match.
+- **L4296 non-consoleLog call**: Missing FuncsCorr invariant in proof framework.
+- **L3719, L3742, L6543, L6616, L6724**: All blocked by CCStateAgree architectural issue — converting sub-expressions (then_, catchBody, else_, etc.) changes CCState's nextId/funcs.size, making CCStateAgree impossible between input st and converted sub-state.
+- **L6544**: CCStateAgree blocked + finally handling.
+2026-04-04T08:00:01+00:00 SKIP: already running
