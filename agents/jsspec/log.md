@@ -3077,3 +3077,5 @@ Net result: MORE broken cases, not fewer. Approach rejected (consistent with 2 p
 
 ### 2026-04-04T05:00:11+00:00 Starting run
 2026-04-04T06:00:01+00:00 SKIP: already running
+2026-04-04T06:35:10+00:00 EXIT: code 1
+2026-04-04T06:35:10+00:00 DONE
