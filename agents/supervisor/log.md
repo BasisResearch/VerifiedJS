@@ -1,3 +1,46 @@
+## Run: 2026-04-04T16:30:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 34 (live, proof agent actively editing) + CC 13 (actual) + Wasm 0 = **47 actual sorries**
+- **Delta from last run (16:00)**: ANF 35→34 (-1 live, proof agent mid-run), CC 13→13 (unchanged)
+- **Net real progress**: -1 sorry closed (call sub-stepping proved, all-values branch sorry'd)
+
+### Agent Status
+1. **proof** (RUNNING since 16:30): Just started new run. Already proved call case in hasAbruptCompletion (sub-stepping branches proved, all-values sorry at L9630). Working on makeEnv/arrayLit/objectLit/tryCatch. **REWROTE prompt**: updated line numbers, makeEnv/arrayLit templates, redirected away from NoNestedAbrupt (wasmspec handles that).
+2. **jsspec** (RUNNING since 15:30): Lean worker active on CC. No visible sorry closures yet from this run. **REWROTE prompt**: pushed for visible progress, added fallback task L3441.
+3. **wasmspec** (RUNNING since 16:15): Lean worker active on ANF. **REDIRECTED** from if-compound (confirmed HARD, needs trivialChain infrastructure) to NoNestedAbrupt cases (L9971-10005). Gave call/newObj/makeEnv/arrayLit templates symmetric to proof agent's hasAbruptCompletion proofs.
+
+### Actions Taken
+1. Counted sorries: ANF 34 (live) + CC 13 actual = 47. Down 1 mid-run.
+2. Killed supervisor's own lake build (freed memory).
+3. **REWROTE proof prompt**: Updated targets — call done, focus on makeEnv/arrayLit/objectLit/tryCatch. Added region coordination with wasmspec.
+4. **REDIRECTED wasmspec**: From if-compound (HARD) to NoNestedAbrupt cases. Provided full templates for call/newObj/makeEnv/arrayLit.
+5. **REWROTE jsspec prompt**: Pushed for progress, added fallback task.
+6. Logged to time_estimate.csv.
+7. Memory: 1.1GB available, 2 lean workers running. Tight but stable.
+
+### Sorry Breakdown
+
+**ANF (34 sorry tokens, live count):**
+- Group A (7): L7696-L7882 — eval context lifting, PARKED
+- Throw compound (1): L8523 — DEFERRED
+- Return compound (2): L8673, L8676 — DEFERRED
+- Await compound (2): L8846, L8849 — DEFERRED
+- Yield compound (2): L9000, L9003 — DEFERRED
+- Let/While step sim (2): L9030, L9078 — DEFERRED/PARKED
+- If compound (4): L9257, L9258, L9330, L9331 — HARD, deprioritized
+- TryCatch (1): L9375 — DEFERRED
+- hasAbruptCompletion remaining (5): L9630 (call all-values), L9688, L9701, L9702, L9703 — proof agent target
+- NoNestedAbrupt (6): L9971, L9972, L9990, L10003, L10004, L10005 — wasmspec target
+- Break/Continue (2): L10396, L10449 — PARKED
+
+**CC (13 actual):** L3375 (jsspec target), rest BLOCKED
+
+### Critical Assessment
+Proof agent productive — call done, continuing with makeEnv/arrayLit. wasmspec redirected to NoNestedAbrupt (parallel work, different file region). jsspec needs to show results. Memory tight but stable. Target: -6 to -10 next run if both proof+wasmspec deliver.
+
+---
+
 ## Run: 2026-04-04T16:00:06+00:00
 
 ### Metrics
@@ -4193,3 +4236,4 @@ MAJOR PROGRESS this run. NoNestedAbrupt went from 22 sorry → 7 sorry (list/com
 
 ## Run: 2026-04-04T16:30:02+00:00
 
+2026-04-04T16:35:47+00:00 DONE
