@@ -3323,6 +3323,10 @@ private theorem convertPropList_append_snd (a b : List (Core.PropName × Core.Ex
     simp only [List.cons_append, Flat.convertPropList]
     exact ih _
 
+private lemma tryCatch_body_depth_lt (body : Core.Expr) (cp : String) (cb : Core.Expr) (fin : Option Core.Expr) :
+    body.depth < (Core.Expr.tryCatch body cp cb fin).depth := by
+  cases fin <;> simp [Core.Expr.depth] <;> omega
+
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)
     (h : Flat.closureConvert s = .ok t) :
@@ -6557,11 +6561,7 @@ private theorem closureConvert_step_simulation
           obtain ⟨hev_eq, hsf'_eq⟩ := hstep; subst hev_eq; subst hsf'_eq
           -- Error case: apply IH to body sub-step, construct catch handler state
           have hdepth : body.depth < n := by
-            have : body.depth < (Core.Expr.tryCatch body catchParam catchBody finally_).depth :=
-              match finally_ with
-              | some fin => by simp [Core.Expr.depth]; omega
-              | none => by simp [Core.Expr.depth]; omega
-            omega
+            have := tryCatch_body_depth_lt body catchParam catchBody finally_; omega
           obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
               hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
             ih_depth body.depth hdepth envVar envMap injMap
@@ -6621,11 +6621,7 @@ private theorem closureConvert_step_simulation
           obtain ⟨hev_eq, hsf'_eq⟩ := hstep; subst hev_eq; subst hsf'_eq
           -- Apply IH to body sub-step
           have hdepth : body.depth < n := by
-            have : body.depth < (Core.Expr.tryCatch body catchParam catchBody finally_).depth :=
-              match finally_ with
-              | some fin => by simp [Core.Expr.depth]; omega
-              | none => by simp [Core.Expr.depth]; omega
-            omega
+            have := tryCatch_body_depth_lt body catchParam catchBody finally_; omega
           obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
               hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
             ih_depth body.depth hdepth envVar envMap injMap
