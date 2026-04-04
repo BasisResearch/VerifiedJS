@@ -8186,7 +8186,8 @@ private theorem normalizeExpr_throw_compound_case
     (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
     (arg : ANF.Trivial) (n m : Nat)
     (hnorm' : (ANF.normalizeExpr e (fun t => pure (ANF.Expr.throw t))).run n = .ok (.throw arg, m))
-    (hewf : ExprWellFormed (.throw e) env) :
+    (hewf : ExprWellFormed (.throw e) env)
+    (hna : NoNestedAbrupt (.throw e)) :
     (∀ v, ANF.evalTrivial env arg = .ok v →
       ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
         Flat.Steps ⟨.throw e, env, heap, trace, funcs, cs⟩ evs sf' ∧
@@ -8201,7 +8202,9 @@ private theorem normalizeExpr_throw_compound_case
         observableTrace evs = observableTrace [.error msg]) := by
   rcases Classical.em (HasThrowInHead e) with hth | hnth
   · -- NESTED_THROW: e itself contains a throw in head position
-    sorry
+    -- NoNestedAbrupt (.throw e) says hasAbruptCompletion e = false
+    -- HasThrowInHead e implies hasAbruptCompletion e = true → contradiction
+    exact absurd hth (fun h => noNestedAbrupt_hasThrowInHead_absurd_throw hna h)
   · -- No throw in head: e must be a trivial chain
     have htc := no_throw_head_implies_trivial_chain e.depth e (Nat.le_refl _)
       (fun t => pure (.throw t)) arg n m hnorm' hnth
@@ -8217,7 +8220,8 @@ private theorem normalizeExpr_throw_step_sim
     (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat)
     (hnorm : (ANF.normalizeExpr sf.expr k).run n = .ok (.throw arg, m))
     (hk : ∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m'))
-    (hewf : ExprWellFormed sf.expr sf.env) :
+    (hewf : ExprWellFormed sf.expr sf.env)
+    (hna : NoNestedAbrupt sf.expr) :
     -- ok case: evalTrivial succeeds
     (∀ v, ANF.evalTrivial sf.env arg = .ok v →
       ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
@@ -8235,7 +8239,7 @@ private theorem normalizeExpr_throw_step_sim
   have hthrow := ANF.normalizeExpr_throw_implies_hasThrowInHead sf.expr k hk arg n m hnorm
   cases sf with
   | mk e env heap trace funcs cs =>
-  simp only [Flat.State.expr] at hnorm hewf hthrow
+  simp only [Flat.State.expr] at hnorm hewf hthrow hna
   cases hthrow with
   | throw_direct =>
     rename_i flat_arg
@@ -8333,7 +8337,7 @@ private theorem normalizeExpr_throw_step_sim
     | «continue» _ =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
-    | _ => exact normalizeExpr_throw_compound_case _ env heap trace funcs cs arg n m hnorm' hewf
+    | _ => exact normalizeExpr_throw_compound_case _ env heap trace funcs cs arg n m hnorm' hewf hna
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
     sorry
@@ -9105,8 +9109,9 @@ private theorem anfConvert_step_star
     all_goals simp only [ANF.State.heap] at hheap
     all_goals simp only [ANF.State.env] at henv
     all_goals simp only [ANF.State.trace] at htrace
+    all_goals have hna_sf : NoNestedAbrupt sf.expr := sorry -- TODO: propagate NoNestedAbrupt invariant
     all_goals obtain ⟨hthrow_ok, hthrow_err⟩ :=
-      normalizeExpr_throw_step_sim sf k arg n m hnorm hk_triv hewf
+      normalizeExpr_throw_step_sim sf k arg n m hnorm hk_triv hewf hna_sf
     · -- error case: evalTrivial produced error msg
       rename_i msg
       have heval_sf : ANF.evalTrivial sf.env arg = .error msg := by rw [← henv]; exact heval
