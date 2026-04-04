@@ -6039,3 +6039,6 @@ observable events and breaking ANF_SimRel correspondence.
 - Verified: zero errors, axiom check shows only propext (no sorry)
 - Has{Await,Return,Yield}InHead variants were already proven — no action needed
 2026-04-04T06:25:53+00:00 DONE
+
+## Run: 2026-04-04T07:15:01+00:00
+
