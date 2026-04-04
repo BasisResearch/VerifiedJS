@@ -16,33 +16,37 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 CC has 18 sorry tokens (grep count). Your 2 targets:
 
-## TASK 1 — Fix L4333 REGRESSION
+## TASK 1 — Fix L4333 REGRESSION (HIGHEST PRIORITY)
 
 L4333: `· sorry /- was: convert hcore using 2 — tactic unavailable -/`
 
-1. Use `lean_goal` at L4333 col 9 to see the goal
-2. Try `lean_multi_attempt` with:
-   - `exact hcore`
-   - `convert hcore using 3`
-   - `convert hcore using 1`
-   - `simp only [sc'] at hcore ⊢; exact hcore`
-   - `exact hcore.1`
-   - `cases hcore; assumption`
-   - `rw [show sc'.expr = _ from rfl] at hcore; exact hcore`
-   - `congr 1`
-3. If none work, read the goal carefully and craft the right tactic
+Context: This is inside the consoleLog call case. `hcore` proves `Core.step? sc = some (ev, sc')` for some sc'. The goal at L4333 is likely `Core.Step sc ev sc'` (the inductive step wrapper around step?).
+
+**Strategy**: Look at the `Core.Step` definition. If it's a wrapper around `step?`:
+```lean
+inductive Core.Step (s : Core.State) (ev : Core.TraceEvent) (s' : Core.State) : Prop where
+  | mk : s.step? = some (ev, s') → Core.Step s ev s'
+```
+Then the proof is simply `exact Core.Step.mk hcore` or `constructor; exact hcore`.
+
+Try these tactics in order:
+1. `exact Core.Step.mk hcore`
+2. `constructor; exact hcore`
+3. `exact ⟨hcore⟩`
+4. `exact hcore`
+5. Use `lean_goal` at L4333 col 9 to see the actual goal, then match
 
 ## TASK 2 — Close L3408 (Core_step_preserves_supported)
 
 L3408: `have hsupp' : sc'.expr.supported = true := sorry`
 
-Write a helper lemma and use it:
+This needs a helper lemma proving Core.step preserves `supported`. Write it:
 
 ```lean
-private theorem Core_step_preserves_supported (s s' : Core.State) (t : Core.TraceEvent)
-    (hsupp : s.expr.supported = true) (hstep : Core.step? s = some (t, s')) :
+private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.TraceEvent)
+    (hsupp : s.expr.supported = true) (hstep : Core.step? s = some (ev, s')) :
     s'.expr.supported = true := by
-  obtain ⟨expr, env, heap, trace, funcs⟩ := s
+  obtain ⟨expr, env, heap, trace, funcs, callStack⟩ := s
   simp only [Core.State.expr] at hsupp
   cases expr with
   | lit _ => simp [Core.step?] at hstep
@@ -50,15 +54,17 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (t : Core.Trac
   | forIn _ _ _ => simp [Core.Expr.supported] at hsupp
   | forOf _ _ _ => simp [Core.Expr.supported] at hsupp
   | yield _ _ => simp [Core.Expr.supported] at hsupp
-  | _ => sorry
+  | _ => sorry  -- remaining cases need case analysis on step?
 ```
 
-Place above L3405 and replace L3408 with:
+Place above L3405 and replace L3408's sorry:
 ```lean
-    have hsupp' : sc'.expr.supported = true := Core_step_preserves_supported _ _ _ hsupp hstep
+    have hsupp' := Core_step_preserves_supported _ _ _ hsupp (by obtain ⟨h⟩ := hcstep; exact h)
 ```
 
-This converts 1 sorry into 1 sorry inside a helper — same count but better structure for future work.
+Wait — `hcstep` is `Core.Step sc ev sc'`. You need to extract `step?` from it. Check if `Core.Step` has a field like `.step_eq` or use `cases hcstep with | mk h => ...`.
+
+This converts 1 deep sorry into 1 sorry inside a helper — same count but better structure.
 
 ## DO NOT ANALYZE ARCHITECTURE. CLOSE SORRIES.
 

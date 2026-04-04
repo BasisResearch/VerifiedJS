@@ -1,4 +1,4 @@
-# proof — Close L7791 (EndToEnd param) + hasAbruptCompletion_step_preserved
+# proof — Close L7791 (EndToEnd param) + hasAbruptCompletion_step_preserved + list helper lemmas
 
 ## RULES
 - Edit: ANFConvertCorrect.lean AND EndToEnd.lean
@@ -18,10 +18,6 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 - **Start small**: build only the specific lemma you're editing
 - If build OOMs: add `set_option maxHeartbeats 200000` above the theorem
 - Do NOT attempt to build the entire file if it's failing
-
-## MAJOR PROGRESS — NoNestedAbrupt 15/22 cases DONE
-
-You have already closed 15 NoNestedAbrupt cases (seq, let, assign, if, throw, return, await, yield, getProp, deleteProp, typeof). Supervisor closed 8 more (unary, binary, while_, labeled, setProp, getIndex, getEnv, makeClosure). Only 7 sorry remain: setIndex, call, newObj, makeEnv, objectLit, arrayLit, tryCatch. These are list/complex cases — PARK THEM for now.
 
 ## TASK 1 (PRIORITY): Close L7791 in ClosureConvertCorrect.lean via EndToEnd.lean
 
@@ -69,9 +65,72 @@ This theorem says: if `hasAbruptCompletion expr = false` and `Flat.step?` succee
 
 The `hasAbruptCompletion` function returns true only for break/continue/return/throw/yield/await with nested abrupt. For all other constructors, it recurses on sub-expressions. Use the same `ih` pattern.
 
-## TASK 3 (IF TIME): Close remaining NoNestedAbrupt list cases
+## TASK 3: Write firstNonValueExpr_reconstruct helper lemma
 
-The 7 remaining cases (setIndex, call, newObj, makeEnv, objectLit, arrayLit, tryCatch) need `firstNonValueExpr`/`firstNonValueProp` induction. These are optional — focus on Tasks 1-2 first.
+The remaining 6 NoNestedAbrupt list cases (call, newObj, makeEnv, objectLit, arrayLit, tryCatch) all need this lemma:
+
+```lean
+theorem firstNonValueExpr_reconstruct {l : List Flat.Expr} {done target rest}
+    (h : Flat.firstNonValueExpr l = some (done, target, rest)) :
+    l = done ++ [target] ++ rest := by
+  induction l generalizing done target rest with
+  | nil => simp [Flat.firstNonValueExpr] at h
+  | cons e tl ih =>
+    unfold Flat.firstNonValueExpr at h
+    split at h
+    · -- e = .lit _
+      split at h
+      · next heq => simp at h; obtain ⟨rfl, rfl, rfl⟩ := h; simp; exact ih heq
+      · simp at h
+    · -- e is not lit
+      simp at h; obtain ⟨rfl, rfl, rfl⟩ := h; rfl
+```
+
+Place this near `firstNonValueExpr_depth` in Flat/Syntax.lean or ANFConvertCorrect.lean (whichever compiles). Then use it to prove the call case:
+
+```lean
+    | call f fenv args =>
+      cases hna with | call hf henv hargs =>
+      unfold Flat.step? at hstep
+      split at hstep
+      next =>  -- f not value → step f
+        split at hstep
+        next ev' sf hsf => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
+          exact NoNestedAbrupt.call (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hf hsf) henv hargs
+        next => simp at hstep
+      next =>  -- f is value
+        split at hstep
+        next =>  -- env not value → step env
+          split at hstep
+          next ev' se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
+            exact NoNestedAbrupt.call hf (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ henv hse) hargs
+          next => simp at hstep
+        next envVal =>  -- env is value
+          split at hstep
+          next argVals =>  -- all args values
+            -- All call dispatch cases produce .lit or function body (need NNA for body separately)
+            sorry  -- function call dispatch: produces .lit or wrapped tryCatch
+          next =>  -- some arg not value
+            split at hstep
+            next done target remaining hfnve =>
+              split at hstep
+              next ev' sa hsa =>
+                simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
+                have hrec := firstNonValueExpr_reconstruct hfnve
+                have htarget_na : NoNestedAbrupt target := by
+                  have : target ∈ args := by rw [hrec]; simp
+                  exact hargs _ this
+                exact NoNestedAbrupt.call hf henv (fun e he => by
+                  simp [List.mem_append] at he
+                  rcases he with hmem | rfl | hmem
+                  · have : e ∈ args := by rw [hrec]; simp [List.mem_append]; left; left; exact hmem
+                    exact hargs _ this
+                  · exact ih _ (by simp [Flat.Expr.depth] at hd; have := firstNonValueExpr_depth hfnve; omega) _ _ _ _ _ _ htarget_na hsa
+                  · have : e ∈ args := by rw [hrec]; simp [List.mem_append]; right; right; exact hmem
+                    exact hargs _ this)
+              next => simp at hstep
+            next => simp at hstep
+```
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`
