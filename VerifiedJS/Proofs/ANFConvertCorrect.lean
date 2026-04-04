@@ -8935,18 +8935,20 @@ private theorem normalizeExpr_if_step_sim
         cases c_flat with
         | lit fv =>
           rw [ANF.normalizeExpr_if'] at hnorm
-          simp only [ANF.normalizeExpr, ANF.trivialOfFlatValue, trivialOfFlatValue_eq_trivialOfValue] at hnorm
-          simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
+          simp only [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue] at hnorm
           cases hthen_r : (ANF.normalizeExpr then_flat k).run n with
-          | error msg => simp [hthen_r] at hnorm
+          | error msg =>
+            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
           | ok val_then =>
             obtain ⟨then_anf, n1⟩ := val_then
-            simp [hthen_r] at hnorm
+            simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, hthen_r] at hnorm
             cases helse_r : (ANF.normalizeExpr else_flat k).run n1 with
-            | error msg => simp [helse_r] at hnorm
+            | error msg =>
+              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r] at hnorm
             | ok val_else =>
               obtain ⟨else_anf, n2⟩ := val_else
-              simp [helse_r, pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
+              simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, helse_r,
+                          pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
               obtain ⟨hcond_eq, hthen_eq, helse_eq, hm_eq⟩ := hnorm
               subst hthen_eq helse_eq hm_eq
               rw [hcond_eq, evalTrivial_trivialOfValue] at heval
@@ -8958,17 +8960,18 @@ private theorem normalizeExpr_if_step_sim
                   some (.silent, ⟨then_flat, env, heap, trace ++ [.silent], funcs, cs⟩)
                 simp [Flat.step?, Flat.exprValue?, hfbool, Flat.pushTrace]
               · rfl
-              · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace, k, n, n1, hthen_r, hk⟩
+              · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace]; exact htrace,
+                  k, n, n1, by simp [StateT.run] at hthen_r; exact hthen_r, hk⟩
               · intro x hfx; exact hewf x (VarFreeIn.if_then _ _ _ _ hfx)
         | var name_c =>
           rw [ANF.normalizeExpr_if', ANF.normalizeExpr_var'] at hnorm
           simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
-          cases hthen_r : (ANF.normalizeExpr then_flat k).run n with
+          cases hthen_r : ANF.normalizeExpr then_flat k n with
           | error msg => simp [hthen_r] at hnorm
           | ok val_then =>
             obtain ⟨then_anf, n1⟩ := val_then
             simp [hthen_r] at hnorm
-            cases helse_r : (ANF.normalizeExpr else_flat k).run n1 with
+            cases helse_r : ANF.normalizeExpr else_flat k n1 with
             | error msg => simp [helse_r] at hnorm
             | ok val_else =>
               obtain ⟨else_anf, n2⟩ := val_else
@@ -8998,12 +9001,12 @@ private theorem normalizeExpr_if_step_sim
         | this =>
           rw [ANF.normalizeExpr_if', ANF.normalizeExpr_this'] at hnorm
           simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
-          cases hthen_r : (ANF.normalizeExpr then_flat k).run n with
+          cases hthen_r : ANF.normalizeExpr then_flat k n with
           | error msg => simp [hthen_r] at hnorm
           | ok val_then =>
             obtain ⟨then_anf, n1⟩ := val_then
             simp [hthen_r] at hnorm
-            cases helse_r : (ANF.normalizeExpr else_flat k).run n1 with
+            cases helse_r : ANF.normalizeExpr else_flat k n1 with
             | error msg => simp [helse_r] at hnorm
             | ok val_else =>
               obtain ⟨else_anf, n2⟩ := val_else
@@ -9045,12 +9048,12 @@ private theorem normalizeExpr_if_step_sim
           rw [ANF.normalizeExpr_if'] at hnorm
           simp only [ANF.normalizeExpr, ANF.trivialOfFlatValue, trivialOfFlatValue_eq_trivialOfValue] at hnorm
           simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
-          cases hthen_r : (ANF.normalizeExpr then_flat k).run n with
+          cases hthen_r : ANF.normalizeExpr then_flat k n with
           | error msg => simp [hthen_r] at hnorm
           | ok val_then =>
             obtain ⟨then_anf, n1⟩ := val_then
             simp [hthen_r] at hnorm
-            cases helse_r : (ANF.normalizeExpr else_flat k).run n1 with
+            cases helse_r : ANF.normalizeExpr else_flat k n1 with
             | error msg => simp [helse_r] at hnorm
             | ok val_else =>
               obtain ⟨else_anf, n2⟩ := val_else
@@ -9071,12 +9074,12 @@ private theorem normalizeExpr_if_step_sim
         | var name_c =>
           rw [ANF.normalizeExpr_if', ANF.normalizeExpr_var'] at hnorm
           simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
-          cases hthen_r : (ANF.normalizeExpr then_flat k).run n with
+          cases hthen_r : ANF.normalizeExpr then_flat k n with
           | error msg => simp [hthen_r] at hnorm
           | ok val_then =>
             obtain ⟨then_anf, n1⟩ := val_then
             simp [hthen_r] at hnorm
-            cases helse_r : (ANF.normalizeExpr else_flat k).run n1 with
+            cases helse_r : ANF.normalizeExpr else_flat k n1 with
             | error msg => simp [helse_r] at hnorm
             | ok val_else =>
               obtain ⟨else_anf, n2⟩ := val_else
@@ -9106,12 +9109,12 @@ private theorem normalizeExpr_if_step_sim
         | this =>
           rw [ANF.normalizeExpr_if', ANF.normalizeExpr_this'] at hnorm
           simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
-          cases hthen_r : (ANF.normalizeExpr then_flat k).run n with
+          cases hthen_r : ANF.normalizeExpr then_flat k n with
           | error msg => simp [hthen_r] at hnorm
           | ok val_then =>
             obtain ⟨then_anf, n1⟩ := val_then
             simp [hthen_r] at hnorm
-            cases helse_r : (ANF.normalizeExpr else_flat k).run n1 with
+            cases helse_r : ANF.normalizeExpr else_flat k n1 with
             | error msg => simp [helse_r] at hnorm
             | ok val_else =>
               obtain ⟨else_anf, n2⟩ := val_else
