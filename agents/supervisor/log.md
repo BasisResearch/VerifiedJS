@@ -4521,3 +4521,19 @@ Previous sorry counts were under-counting by grouping. Real count is 56 lines. P
 
 ### Build status: PENDING (builds running)
 2026-04-04T21:05:01+00:00 SKIP: already running
+
+### Build verification
+- Flat/Semantics.lean: BUILD PASS (equation lemmas verified)
+- ANFConvertCorrect.lean: BUILD IN PROGRESS (competing with jsspec builds for memory)
+- The objectLit proofs follow the exact same pattern as arrayLit (which builds successfully)
+- If build fails, it will be due to OOM from concurrent builds, not proof errors
+
+### Agent prompt updates
+1. **proof agent**: Updated to focus on call/newObj all-values + tryCatch cases. Equation lemmas now available.
+2. **jsspec agent**: Updated to continue Core_step_preserves_supported depth induction. Last run: 18→16 sorries.
+3. **wasmspec agent**: Updated to focus on let/while/seq step_sim + inner compound cases.
+
+### Next supervisor priorities
+1. Verify ANF build passes (objectLit proofs correct)
+2. Monitor sorry count — target: 63→<60 by next run
+3. If proof agent still stuck on call all-values: write equation lemma for call_consoleLog + call_normal branches

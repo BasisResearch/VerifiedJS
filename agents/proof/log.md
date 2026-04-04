@@ -5708,3 +5708,4 @@ Same strategy. Replaced 1 monolithic sorry with:
 **NOTE**: ANFConvertCorrect build not verified due to memory constraints (other agents' builds consuming all RAM). Proofs follow established patterns from adjacent cases.
 2026-04-04T20:30:05+00:00 SKIP: already running
 2026-04-04T21:30:04+00:00 SKIP: already running
+### 2026-04-04T21:32:19+00:00 Run complete — 4 equation lemmas BUILT, 2 theorems decomposed (ANF build OOM'd by competing processes)
