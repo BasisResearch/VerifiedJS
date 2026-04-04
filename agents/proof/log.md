@@ -5667,3 +5667,6 @@ Note: `NoNestedAbrupt_step_preserved` may need additional conditions (e.g., all 
 
 **Build status**: File has pre-existing compilation errors in `anfConvert_step_star` (lines 9214+) unrelated to these theorems.
 2026-04-04T17:34:46+00:00 DONE
+
+## Run: 2026-04-04T18:30:01+00:00
+
