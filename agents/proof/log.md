@@ -5645,3 +5645,4 @@ Note: `NoNestedAbrupt_step_preserved` may need additional conditions (e.g., all 
 ## Run: 2026-04-04T16:30:01+00:00
 
 ### 2026-04-04T16:30:14+00:00 Starting run — closing call/newObj/makeEnv/arrayLit cases
+2026-04-04T17:30:02+00:00 SKIP: already running
