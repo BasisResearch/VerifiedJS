@@ -2925,6 +2925,76 @@ private def hasAbruptCompletionProps : List (Flat.PropName × Flat.Expr) → Boo
   | (_, e) :: rest => hasAbruptCompletion e || hasAbruptCompletionProps rest
 end
 
+private theorem hasAbruptCompletionList_append (a b : List Flat.Expr) :
+    hasAbruptCompletionList (a ++ b) = (hasAbruptCompletionList a || hasAbruptCompletionList b) := by
+  induction a with
+  | nil => simp [hasAbruptCompletionList]
+  | cons e tl ih => simp [hasAbruptCompletionList, ih, Bool.or_assoc]
+
+private theorem hasAbruptCompletionList_cons_false (e : Flat.Expr) (rest : List Flat.Expr) :
+    hasAbruptCompletionList (e :: rest) = false ↔
+    hasAbruptCompletion e = false ∧ hasAbruptCompletionList rest = false := by
+  simp [hasAbruptCompletionList, Bool.or_eq_false_iff]
+
+private theorem hasAbruptCompletion_lit_false (v : Flat.Value) :
+    hasAbruptCompletion (.lit v) = false := by
+  simp [hasAbruptCompletion]
+
+private theorem firstNonValueExpr_eq_append {args : List Flat.Expr}
+    {done : List Flat.Expr} {target : Flat.Expr} {remaining : List Flat.Expr}
+    (h : Flat.firstNonValueExpr args = some (done, target, remaining)) :
+    args = done ++ target :: remaining := by
+  induction args generalizing done target remaining with
+  | nil => simp [Flat.firstNonValueExpr] at h
+  | cons e tl ih =>
+    unfold Flat.firstNonValueExpr at h
+    split at h
+    · -- e = .lit _
+      split at h
+      · next heq => simp at h; obtain ⟨rfl, rfl, rfl⟩ := h; simp; exact ih heq
+      · simp at h
+    · -- e is not a lit
+      simp at h; obtain ⟨rfl, rfl, rfl⟩ := h; simp
+
+private theorem firstNonValueExpr_done_all_lit {args : List Flat.Expr}
+    {done : List Flat.Expr} {target : Flat.Expr} {remaining : List Flat.Expr}
+    (h : Flat.firstNonValueExpr args = some (done, target, remaining)) :
+    ∀ e ∈ done, ∃ v, e = .lit v := by
+  induction args generalizing done target remaining with
+  | nil => simp [Flat.firstNonValueExpr] at h
+  | cons e tl ih =>
+    unfold Flat.firstNonValueExpr at h
+    split at h
+    · -- e = .lit v
+      rename_i v
+      split at h
+      · next heq =>
+        simp at h; obtain ⟨rfl, rfl, rfl⟩ := h
+        intro x hx; cases hx with
+        | head => exact ⟨v, rfl⟩
+        | tail _ hm => exact ih heq x hm
+      · simp at h
+    · -- e is not a lit
+      simp at h; obtain ⟨rfl, _, _⟩ := h; intro x hx; exact absurd hx (List.not_mem_nil x)
+
+private theorem hasAbruptCompletionList_firstNonValue_preserved
+    {args : List Flat.Expr} {done : List Flat.Expr} {target : Flat.Expr}
+    {remaining : List Flat.Expr}
+    (hfnv : Flat.firstNonValueExpr args = some (done, target, remaining))
+    (hac : hasAbruptCompletionList args = false) :
+    hasAbruptCompletion target = false ∧
+    hasAbruptCompletionList remaining = false ∧
+    ∀ (e : Flat.Expr), hasAbruptCompletion e = false →
+      hasAbruptCompletionList (done ++ e :: remaining) = false := by
+  have hsplit := firstNonValueExpr_eq_append hfnv
+  rw [hsplit] at hac
+  rw [hasAbruptCompletionList_append] at hac
+  simp [Bool.or_eq_false_iff] at hac
+  obtain ⟨hd, ht, hr⟩ := hac
+  refine ⟨ht, hr, fun e he => ?_⟩
+  rw [hasAbruptCompletionList_append]
+  simp [Bool.or_eq_false_iff, hasAbruptCompletionList, he, hr, hd]
+
 set_option autoImplicit true in
 /-- No nested abrupt completions: arguments to throw/return/yield/await are free
     of abrupt completion forms. All other sub-expressions recursively satisfy
@@ -2999,6 +3069,29 @@ private theorem NoNestedAbrupt.await_arg_abruptFree {arg : Flat.Expr}
     (h : NoNestedAbrupt (.await arg)) : hasAbruptCompletion arg = false := by
   cases h; assumption
 
+
+private theorem firstNonValueExpr_noNestedAbrupt_preserved
+    {args : List Flat.Expr} {done : List Flat.Expr} {target : Flat.Expr}
+    {remaining : List Flat.Expr}
+    (hfnv : Flat.firstNonValueExpr args = some (done, target, remaining))
+    (hna : ∀ e ∈ args, NoNestedAbrupt e) :
+    NoNestedAbrupt target ∧
+    (∀ e ∈ remaining, NoNestedAbrupt e) ∧
+    (∀ (e' : Flat.Expr), NoNestedAbrupt e' →
+      ∀ e ∈ done ++ e' :: remaining, NoNestedAbrupt e) := by
+  have hsplit := firstNonValueExpr_eq_append hfnv
+  rw [hsplit] at hna
+  have ht : NoNestedAbrupt target := hna target (List.mem_append_right _ (List.mem_cons_self _ _))
+  have hr : ∀ e ∈ remaining, NoNestedAbrupt e := fun e he =>
+    hna e (List.mem_append_right _ (List.mem_cons.mpr (Or.inr he)))
+  have hd : ∀ e ∈ done, NoNestedAbrupt e := fun e he =>
+    hna e (List.mem_append_left _ he)
+  refine ⟨ht, hr, fun e' he' x hx => ?_⟩
+  cases List.mem_append.mp hx with
+  | inl h => exact hd x h
+  | inr h => cases List.mem_cons.mp h with
+    | inl h => subst h; exact he'
+    | inr h => exact hr x h
 
 /-\! ### ANF Inversion Infrastructure (inlined from ANFInversion.lean) -/
 
@@ -9326,24 +9419,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
     | setProp obj prop val => sorry -- value-matching case
     | getIndex obj idx => sorry -- value-matching case
     | setIndex obj idx val => sorry -- value-matching case
-          next => simp at hstep
-        next =>  -- idx is value
-          split at hstep
-          next vv =>  -- val is value
-            simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
-          next =>  -- val not value → step val
-            split at hstep
-            next ev' sv hsv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]; exact ⟨⟨by simp [hasAbruptCompletion], by simp [hasAbruptCompletion]⟩, ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hv hsv⟩
-            next => simp at hstep
-    | deleteProp obj prop =>
-      simp only [hasAbruptCompletion] at hac
-      unfold Flat.step? at hstep
-      split at hstep
-      next v hv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
-      next hv =>
-        split at hstep
-        next ev' so hso => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion]; exact ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hac hso
-        next => simp at hstep
+    | deleteProp obj prop => sorry -- value-matching case
     | typeof arg =>
       simp only [hasAbruptCompletion] at hac
       unfold Flat.step? at hstep
@@ -9355,23 +9431,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         next => simp at hstep
     | call f fenv args => sorry
     | newObj f fenv args => sorry
-    | getEnv envExpr idx =>
-      simp only [hasAbruptCompletion] at hac
-      unfold Flat.step? at hstep
-      split at hstep
-      next addr =>  -- envExpr is .object addr
-        split at hstep  -- heapObjectAt?
-        next props =>
-          split at hstep  -- find slot
-          next kv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
-          next => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
-        next => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
-      next =>  -- envExpr is some other value
-        simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
-      next =>  -- envExpr not value → step
-        split at hstep
-        next ev' se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp only [Flat.State.expr, hasAbruptCompletion]; exact ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ _ hac hse
-        next => simp at hstep
+    | getEnv envExpr idx => sorry -- value-matching case
     | makeEnv vals => sorry
     | makeClosure funcIdx envExpr =>
       simp only [hasAbruptCompletion] at hac

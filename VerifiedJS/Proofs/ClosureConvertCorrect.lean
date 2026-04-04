@@ -3369,6 +3369,20 @@ private theorem tryCatch_body_depth_lt (body : Core.Expr) (cp : String) (cb : Co
     body.depth < (Core.Expr.tryCatch body cp cb fin).depth := by
   cases fin <;> simp [Core.Expr.depth] <;> omega
 
+private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.TraceEvent)
+    (hsupp : s.expr.supported = true) (hstep : Core.step? s = some (ev, s')) :
+    s'.expr.supported = true := by
+  obtain ⟨expr, env, heap, trace, funcs, callStack⟩ := s
+  simp only [Core.State.expr] at hsupp
+  cases expr with
+  | lit _ => simp [Core.step?] at hstep
+  | var name => simp [Core.step?] at hstep; split at hstep <;> simp_all [Core.Expr.supported]
+  | forIn _ _ _ => simp [Core.Expr.supported] at hsupp
+  | forOf _ _ _ => simp [Core.Expr.supported] at hsupp
+  | yield _ _ => simp [Core.Expr.supported] at hsupp
+  | await _ => simp [Core.Expr.supported] at hsupp
+  | _ => sorry  -- remaining cases need case analysis on step?
+
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)
     (h : Flat.closureConvert s = .ok t) :
@@ -3405,7 +3419,8 @@ private theorem closureConvert_step_simulation
     intro sf sc ev sf' ⟨htrace, ⟨injMap, hinj, henv⟩, hncfr, hexprwf, henvwf, hheapvwf, hheapna, hsupp, scope, envVar, envMap, st, st', hconv⟩ hstep
     obtain ⟨injMap', sc', hcstep, htrace', hinj', henv', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', _, _⟩ :=
       this sc.expr.depth envVar envMap injMap sf sc ev sf' scope st st' rfl htrace hinj henv henvwf hheapvwf hheapna hncfr hexprwf hsupp hconv hstep
-    have hsupp' : sc'.expr.supported = true := sorry /- TODO: prove Core.step preserves supported -/
+    have hsupp' : sc'.expr.supported = true :=
+      Core_step_preserves_supported _ _ _ hsupp (by obtain ⟨h⟩ := hcstep; exact h)
     exact ⟨sc', hcstep, htrace', ⟨injMap', hinj', henv'⟩, hncfr', hexprwf', henvwf', hheapvwf', hheapna', hsupp', scope, envVar, envMap, st_a, st_a', hconv'⟩
   intro n
   induction n using Nat.strongRecOn with
@@ -4330,7 +4345,7 @@ private theorem closureConvert_step_simulation
             obtain ⟨hev_eq, hsf'_eq⟩ := hpair
             subst hev_eq; subst hsf'_eq
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · sorry /- was: convert hcore using 2 — tactic unavailable -/
+            · exact hcore
             · simp [sc', htrace]
             · exact hinj
             · exact henvCorr
