@@ -9041,7 +9041,7 @@ private theorem normalizeExpr_if_step_sim
           rw [hcond_eq, evalTrivial_trivialOfValue] at heval
           obtain rfl := Except.ok.inj heval
           have hfbool : Flat.toBoolean fv = false := by
-                revert hbool_anf; cases fv <;> exact id <;> (try intro h) <;> (first | rfl | exact h | (cases ‹Bool› <;> simp_all))
+                revert hbool_anf; cases fv <;> exact fun h => by first | rfl | (exact Bool.eq_false_of_ne_true h) | (exfalso; exact h rfl)
           refine ⟨⟨else_flat, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent],
             .tail ⟨?_⟩ (.refl _), ?_, ?_, ?_⟩
           · simp [Flat.step?, Flat.exprValue?, hfbool, Flat.step?_pushTrace_expand]

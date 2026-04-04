@@ -5626,3 +5626,6 @@ Note: `NoNestedAbrupt_step_preserved` may need additional conditions (e.g., all 
 **Task 2 (return/await/yield trivialChain): NOT attempted** — requires ~200+ lines per case (trivialChain_*_steps, no_*_head_implies_trivial_chain, normalizeExpr_*_compound_case), plus adding hna to normalizeExpr_*_step_sim. Infrastructure too large for remaining time/memory.
 ### 2026-04-04T11:48:48+00:00 Run complete — Task 1 done (L9303 sorry→hna), sorry count net zero (24→24), no build breakage
 2026-04-04T11:49:12+00:00 DONE
+
+## Run: 2026-04-04T12:30:01+00:00
+
