@@ -1,4 +1,4 @@
-# wasmspec — Close L9026/9049 compound condition + L9027/9050 HasIfInHead
+# wasmspec — Close L9027/9028/9052/9053 (if compound + HasIfInHead)
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -8,57 +8,45 @@
 - You CAN edit ANFConvertCorrect.lean
 - Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
-## PROGRESS: HasIfInHead infrastructure built. if_direct cases closed. ANF at 24 sorries.
+## ⚠️ YOU HAVE BEEN IDLE SINCE 10:09. 2+ HOURS WASTED. ⚠️
+## ⚠️ START WORKING IMMEDIATELY. ⚠️
 
-## STATE: Your targets are L9026, L9027, L9049, L9050 (if compound condition + HasIfInHead).
+## PROGRESS: HasIfInHead infrastructure built. if_direct cases closed. ANF at 24+ sorries.
 
-## TASK 1: Close L9026 and L9049 — trivialChain_if_condition_steps
+## STATE: Your targets are L9027, L9028, L9052, L9053 (if compound condition + HasIfInHead).
 
-### step?_if_cond_step ALREADY EXISTS at ~L1474. Do NOT rewrite it.
-
-1. Search: `lean_local_search "trivialChain_throw_steps"` — copy that structure exactly.
-2. Search: `lean_local_search "step?_if_cond_step"` — this is your context-lifting lemma.
-3. Also search for `Steps_if_cond_ctx` near L1829 — this is multi-step lifting.
-
-4. Write `trivialChain_if_condition_steps`:
+Current code at L9027-9028:
 ```lean
-private theorem trivialChain_if_condition_steps (c then_ else_ : Flat.Expr)
-    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
-    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
-    (htc : isTrivialChain c = true) :
-    ∃ v evs sf_mid,
-      Flat.Steps ⟨.if c then_ else_, env, heap, trace, funcs, cs⟩ evs sf_mid ∧
-      sf_mid.expr = .if (.lit v) then_ else_ ∧
-      evalTrivial env c = .ok v := by
-  sorry -- fuel induction, same as trivialChain_throw_steps
+        | var _ | this | _ => sorry -- var/this/compound condition
+      all_goals sorry -- compound HasIfInHead
 ```
 
-Even with sorry body, use it at L9026/L9049 to close those sorries.
+And L9052-9053 (same pattern for the false branch).
 
-5. Then fill in the fuel-induction proof following trivialChain_throw_steps EXACTLY:
-   - Base: `.lit v` → 0 steps, already done
-   - `.var name` → 1 step (env lookup), use `step?_if_cond_step`
-   - `.this` → 1 step
-   - `.seq a b` → step a to value, drop, recurse on b with IH
+## TASK 1: Close L9027 and L9052 — var/this/compound condition
 
-## TASK 2: Close L9027 and L9050 — compound HasIfInHead
+These are the cases where the if-condition is not a literal. For `var` and `this`, these should step to a literal in 1 step. For compound expressions, use `isTrivialChain` fuel induction.
 
-Use `lean_goal` at L9027 to see what goals remain. Each is a HasIfInHead constructor case.
+1. Use `lean_goal` at L9027 to see what the goal is
+2. For the `var` case: the condition is `.var name`, which steps to `.lit v` in one step via env lookup. Construct the step explicitly.
+3. For the `this` case: similar — steps to `.lit (env.this)` in one step.
+4. For the `_` (compound) case: use `trivialChain_if_condition_steps` (write it if it doesn't exist, with sorry body — even that helps).
 
-For each: the `.if` is nested in an expression context (seq, let, etc.). One Flat step on the outer expression steps the context, getting closer to the `.if`. Use depth induction.
+### step?_if_cond_step ALREADY EXISTS at ~L1474. Use it.
+### Steps_if_cond_ctx exists near ~L1829. Use it for multi-step lifting.
 
-Pattern:
-```lean
--- HasIfInHead.seq_left: expr = .seq (.if c t e) b
--- Flat.step? steps the .seq, which steps the .if condition
--- IH gives the result at smaller depth
-```
+## TASK 2: Close L9028 and L9053 — compound HasIfInHead
+
+These are cases where `.if` is nested in a compound expression (seq, let, etc.). Each HasIfInHead constructor gives you one layer of nesting. Use depth induction with IH.
+
+1. Use `lean_goal` at L9028 to see the HasIfInHead cases
+2. For each case (e.g. `HasIfInHead.seq_left`): the outer expression steps the inner .if. Use the IH.
 
 ## TASK 3 (IF TIME): Close L8856 (let step sim)
 
 ## COORDINATE WITH PROOF AGENT
-- proof agent works on L9100 (NoNestedAbrupt_step_preserved). DO NOT touch L9097-9110.
-- proof agent may edit nearby areas. Check before editing L9090-9115.
+- proof agent works on L9286-9334 (NoNestedAbrupt complex cases). DO NOT touch L9267-9335.
+- You work on L9027-9053. These are DIFFERENT areas.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

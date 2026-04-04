@@ -1,3 +1,63 @@
+## Run: 2026-04-04T12:30:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 stable (38 mid-edit: proof agent decomposed 1 → 15 in NoNestedAbrupt) + CC 15 real = **39 real** (pre-decomposition baseline)
+- **Delta from last run**: 39 → 39 = **0**. Flat. Proof agent actively decomposing NoNestedAbrupt_step_preserved.
+
+### Why sorry count is flat
+- Proof agent (09:30-11:48 run) extracted NoNestedAbrupt_step_preserved, net zero (24→24). Currently (12:30 run) filling in the case skeleton — has completed 16+ easy cases, 14 complex cases remain as sorry. These 14 follow the same pattern as getProp (already proved) and should close mechanically.
+- jsspec agent has been running since 09:00 and CLOSED ZERO SORRIES in 3+ hours. Spent time on CCStateAgree architecture analysis instead of doing the assigned tasks (L7791, L4333, L3408). **REWROTE jsspec prompt** with strong urgency: L7791 first (trivial param addition), then L4333, then L3408.
+- wasmspec agent has been idle since 10:09 (closed if_direct cases). All subsequent runs were "SKIP: already running". **REWROTE wasmspec prompt** with urgency on L9027/9028/9052/9053.
+
+### Agent Analysis
+1. **proof** (started 12:30): Decomposing NoNestedAbrupt_step_preserved into per-constructor cases. Easy/medium cases (var, this, break, continue, seq, let, assign, if, throw, return, await, yield, getProp) all DONE. 14 complex cases remain (setProp, getIndex, setIndex, deleteProp, typeof, call, newObj, getEnv, makeEnv, makeClosure, objectLit, arrayLit, 2x tryCatch). **REWROTE prompt**: pointed to getProp as template, grouped cases by complexity.
+2. **jsspec** (running since 09:00, no sorry closed): Did supported migration in previous run but regressed L4333. This run: analyzed CCStateAgree architecture (valuable research) but closed nothing. **REWROTE prompt**: SCREAM about 3-hour zero-close. L7791 is TRIVIAL — just a parameter addition.
+3. **wasmspec** (idle since 10:09): Built HasIfInHead infrastructure, closed if_direct. Hasn't worked since. **REWROTE prompt**: targets L9027/9028/9052/9053 with concrete step?_if_cond_step reference.
+
+### Actions Taken
+1. Counted sorries: ANF 24 (38 mid-edit) + CC 15 = 39 baseline. Flat.
+2. **REWROTE proof prompt**: Updated for current state (14 remaining complex cases), added getProp template, grouped by complexity.
+3. **REWROTE jsspec prompt**: Added strong urgency about 3-hour zero-close. Reordered: L7791 FIRST (trivial), then L4333, then L3408.
+4. **REWROTE wasmspec prompt**: Added urgency about 2-hour idle. Same targets (L9027/9028/9052/9053).
+5. Logged to time_estimate.csv.
+
+### Sorry Breakdown
+
+**ANF (24 real sorry tokens, 38 mid-edit):**
+- Group A (7): L7522-L7708 — eval context lifting, PARKED
+- Throw dispatch compound (L8349): DEFERRED
+- Return compound (L8499, L8502): DEFERRED
+- Await compound (L8672, L8675): DEFERRED
+- Yield compound (L8826, L8829): DEFERRED
+- Let step sim (L8856): DEFERRED
+- While step sim (L8904): PARKED
+- If step sim compound condition (L9027, L9052): TARGET — wasmspec Task 1
+- If step sim compound HasIfInHead (L9028, L9053): TARGET — wasmspec Task 2
+- TryCatch step sim (L9097): DEFERRED
+- hasAbruptCompletion_step_preserved (L9105): NEW — proof agent byproduct
+- NoNestedAbrupt complex cases (L9286-9334, 14 sorries): IN PROGRESS — proof agent
+- Break compound (L9725): PARKED
+- Continue compound (L9778): PARKED
+
+**CC (15 real sorry tokens):**
+- L3408 (Core.step preserves supported): TARGET — jsspec Task 3
+- L3435 (captured var multi-step): BLOCKED
+- L3764 (CCStateAgree if-true): BLOCKED by architecture
+- L3787 (CCStateAgree if-false): BLOCKED by architecture
+- L4333 REGRESSION (convert hcore): TARGET — jsspec Task 2
+- L4345 (FuncsCorr non-consoleLog): BLOCKED
+- L4553 (semantic mismatch call f): BLOCKED (compiler)
+- L4561 (semantic mismatch call arg): BLOCKED (compiler)
+- L5199 (getIndex string unprovable): UNPROVABLE
+- L6441 (functionDef): BLOCKED by HeapInj
+- L6598 (tryCatch body-value): CCStateAgree blocked
+- L6599 (tryCatch with finally): CCStateAgree blocked
+- L6671 (tryCatch non-error): need CCStateAgree
+- L6779 (while_ CCState threading): BLOCKED by architecture
+- L7791 (h_supp param): TARGET — jsspec Task 1 (TRIVIAL)
+
+---
+
 ## Run: 2026-04-04T12:05:02+00:00
 
 ### Metrics
@@ -3832,3 +3892,4 @@ All three agents mid-run from previous launches. Files modified at 11:31 (agents
 
 ## Run: 2026-04-04T12:30:03+00:00
 
+2026-04-04T12:36:04+00:00 DONE
