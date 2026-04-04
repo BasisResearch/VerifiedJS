@@ -9041,7 +9041,8 @@ private theorem normalizeExpr_if_step_sim
           rw [hcond_eq, evalTrivial_trivialOfValue] at heval
           obtain rfl := Except.ok.inj heval
           have hfbool : Flat.toBoolean fv = false := by
-                revert hbool_anf; cases fv <;> exact fun h => by first | rfl | (exact Bool.eq_false_of_ne_true h) | (exfalso; exact h rfl)
+                revert hbool_anf; cases fv <;> exact fun h => by
+                  first | rfl | exact Bool.eq_false_iff.mpr h | exact absurd rfl h
           refine ⟨⟨else_flat, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent],
             .tail ⟨?_⟩ (.refl _), ?_, ?_, ?_⟩
           · simp [Flat.step?, Flat.exprValue?, hfbool, Flat.step?_pushTrace_expand]
@@ -9095,11 +9096,242 @@ private theorem normalizeExpr_tryCatch_step_sim
   -- Structural decomposition deferred: needs characterization of what produces .tryCatch
   sorry
 
+private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env) (ev : Core.TraceEvent) (sf' : Flat.State)
+    (hac : hasAbruptCompletion e = false)
+    (hstep : Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf')) :
+    hasAbruptCompletion sf'.expr = false := by
+  sorry -- SEPARATE THEOREM: prove later by same induction pattern
+
 /-- Flat single-step preserves NoNestedAbrupt. -/
 private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.TraceEvent)
     (hna : NoNestedAbrupt sf.expr) (hstep : Flat.step? sf = some (ev, sf')) :
     NoNestedAbrupt sf'.expr := by
-  sorry
+  obtain ⟨expr, env, heap, trace, funcs, cs⟩ := sf
+  simp only [Flat.State.expr] at hna
+  suffices ∀ n e, e.depth ≤ n → ∀ env heap trace funcs cs ev sf',
+    NoNestedAbrupt e →
+    Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf') →
+    NoNestedAbrupt sf'.expr from this _ _ (le_refl _) _ _ _ _ _ hna hstep
+  intro n
+  induction n with
+  | zero => intro e hd; cases e <;> simp [Flat.Expr.depth] at hd <;> omega
+  | succ n ih =>
+    intro e hd env heap trace funcs cs ev sf' hna hstep
+    cases e with
+    -- DOES NOT STEP (step? = none → contradicts hstep)
+    | lit v => simp [Flat.step?] at hstep
+    -- SIMPLE: steps to .lit → NoNestedAbrupt.lit
+    | var name =>
+      simp [Flat.step?] at hstep
+      split at hstep <;> simp [Flat.pushTrace] at hstep <;> obtain ⟨_, rfl⟩ := hstep <;> exact NoNestedAbrupt.lit
+    | this =>
+      simp [Flat.step?] at hstep
+      split at hstep <;> simp [Flat.pushTrace] at hstep <;> obtain ⟨_, rfl⟩ := hstep <;> exact NoNestedAbrupt.lit
+    | break label =>
+      simp [Flat.step?] at hstep; simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact NoNestedAbrupt.lit
+    | continue label =>
+      simp [Flat.step?] at hstep; simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact NoNestedAbrupt.lit
+    -- VACUOUSLY TRUE: no NoNestedAbrupt constructor exists
+    | unary op arg => cases hna
+    | binary op l r => cases hna
+    | while_ cond body => cases hna
+    | labeled label body => cases hna
+    -- MEDIUM: context-stepping with IH
+    | seq a b =>
+      cases hna with | seq ha hb =>
+      simp [Flat.step?] at hstep
+      split at hstep
+      case h_1 v hv =>
+        simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp [Flat.State.expr]; exact hb
+      case h_2 hv =>
+        split at hstep
+        case h_1 ev' sa hsa =>
+          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp [Flat.State.expr]
+          exact NoNestedAbrupt.seq
+            (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ ha hsa) hb
+        case h_2 => simp at hstep
+    | «let» name init body =>
+      cases hna with | «let» hinit hbody =>
+      simp [Flat.step?] at hstep
+      split at hstep
+      case h_1 v hv =>
+        simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp [Flat.State.expr]; exact hbody
+      case h_2 hv =>
+        split at hstep
+        case h_1 ev' si hsi =>
+          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp [Flat.State.expr]
+          exact NoNestedAbrupt.let
+            (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hinit hsi) hbody
+        case h_2 => simp at hstep
+    | assign name rhs =>
+      cases hna with | assign hrhs =>
+      simp [Flat.step?] at hstep
+      split at hstep
+      case h_1 v hv =>
+        simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+      case h_2 hv =>
+        split at hstep
+        case h_1 ev' sr hsr =>
+          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp [Flat.State.expr]
+          exact NoNestedAbrupt.assign
+            (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hrhs hsr)
+        case h_2 => simp at hstep
+    | «if» cond then_ else_ =>
+      cases hna with | «if» hc hthen helse =>
+      simp [Flat.step?] at hstep
+      split at hstep
+      case h_1 v hv =>
+        simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp [Flat.State.expr]; split <;> assumption
+      case h_2 hv =>
+        split at hstep
+        case h_1 ev' sc hsc =>
+          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp [Flat.State.expr]
+          exact NoNestedAbrupt.if
+            (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hc hsc) hthen helse
+        case h_2 => simp at hstep
+    -- THROW/RETURN/AWAIT/YIELD: use hasAbruptCompletion_step_preserved
+    | throw arg =>
+      cases hna with | throw habr =>
+      simp [Flat.step?] at hstep
+      split at hstep
+      case h_1 v hv =>
+        simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+      case h_2 hv =>
+        split at hstep
+        case h_1 ev' sa hsa =>
+          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp [Flat.State.expr]
+          exact NoNestedAbrupt.throw (hasAbruptCompletion_step_preserved arg env heap trace funcs cs ev' sa habr hsa)
+        case h_2 => simp at hstep
+    | «return» arg =>
+      cases hna with
+      | return_none =>
+        simp [Flat.step?] at hstep; simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+      | return_some habr =>
+        simp [Flat.step?] at hstep
+        split at hstep
+        case h_1 v hv =>
+          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+        case h_2 hv =>
+          split at hstep
+          case h_1 ev' se hse =>
+            simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+            simp [Flat.State.expr]
+            exact NoNestedAbrupt.return_some (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ habr hse)
+          case h_2 => simp at hstep
+    | await arg =>
+      cases hna with | await habr =>
+      simp [Flat.step?] at hstep
+      split at hstep
+      case h_1 v hv =>
+        simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+      case h_2 hv =>
+        split at hstep
+        case h_1 ev' sa hsa =>
+          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp [Flat.State.expr]
+          exact NoNestedAbrupt.await (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ habr hsa)
+        case h_2 => simp at hstep
+    | yield arg d =>
+      cases hna with
+      | yield_none =>
+        simp [Flat.step?] at hstep; simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+      | yield_some habr =>
+        simp [Flat.step?] at hstep
+        split at hstep
+        case h_1 v hv =>
+          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+        case h_2 hv =>
+          split at hstep
+          case h_1 ev' se hse =>
+            simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+            simp [Flat.State.expr]
+            exact NoNestedAbrupt.yield_some (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ habr hse)
+          case h_2 => simp at hstep
+    -- COMPLEX: multi-sub-expression stepping — sorry for now
+    | getProp obj prop =>
+      cases hna with | getProp hobj =>
+      simp [Flat.step?] at hstep
+      split at hstep
+      case h_1 v hv =>
+        simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+        simp [Flat.State.expr]; exact NoNestedAbrupt.lit
+      case h_2 hv =>
+        split at hstep
+        case h_1 ev' so hso =>
+          simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep
+          simp [Flat.State.expr]
+          exact NoNestedAbrupt.getProp
+            (ih _ (by simp [Flat.Expr.depth] at hd; omega) _ _ _ _ _ _ hobj hso)
+        case h_2 => simp at hstep
+    | setProp obj prop val =>
+      cases hna with | setProp hobj hval =>
+      simp [Flat.step?] at hstep
+      sorry
+    | getIndex obj idx =>
+      cases hna with | getIndex hobj hidx =>
+      simp [Flat.step?] at hstep
+      sorry
+    | setIndex obj idx val =>
+      cases hna with | setIndex hobj hidx hval =>
+      simp [Flat.step?] at hstep
+      sorry
+    | deleteProp obj prop =>
+      cases hna with | deleteProp hobj =>
+      simp [Flat.step?] at hstep
+      sorry
+    | typeof arg =>
+      cases hna with | typeof harg =>
+      simp [Flat.step?] at hstep
+      sorry
+    | call f fenv args =>
+      cases hna with | call hf henv hargs =>
+      simp [Flat.step?] at hstep
+      sorry
+    | newObj f fenv args =>
+      cases hna with | newObj hf henv hargs =>
+      simp [Flat.step?] at hstep
+      sorry
+    | getEnv envExpr idx =>
+      cases hna with | getEnv henv =>
+      simp [Flat.step?] at hstep
+      sorry
+    | makeEnv vals =>
+      cases hna with | makeEnv hvals =>
+      simp [Flat.step?] at hstep
+      sorry
+    | makeClosure funcIdx envExpr =>
+      cases hna with | makeClosure henv =>
+      simp [Flat.step?] at hstep
+      sorry
+    | objectLit props =>
+      cases hna with | objectLit hprops =>
+      simp [Flat.step?] at hstep
+      sorry
+    | arrayLit elems =>
+      cases hna with | arrayLit helems =>
+      simp [Flat.step?] at hstep
+      sorry
+    | tryCatch body param catchBody fin =>
+      cases hna with
+      | tryCatch_some hbody hcatch hfin => sorry
+      | tryCatch_none hbody hcatch => sorry
 
 /-- Flat multi-step preserves NoNestedAbrupt. -/
 private theorem NoNestedAbrupt_steps_preserved {sf sf' : Flat.State} {evs : List Core.TraceEvent}
