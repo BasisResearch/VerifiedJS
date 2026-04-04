@@ -6557,8 +6557,10 @@ private theorem closureConvert_step_simulation
           obtain ⟨hev_eq, hsf'_eq⟩ := hstep; subst hev_eq; subst hsf'_eq
           -- Error case: apply IH to body sub-step, construct catch handler state
           have hdepth : body.depth < n := by
-            have : body.depth + 1 ≤ (Core.Expr.tryCatch body catchParam catchBody finally_).depth := by
-              cases finally_ <;> simp [Core.Expr.depth] <;> omega
+            have : body.depth < (Core.Expr.tryCatch body catchParam catchBody finally_).depth :=
+              match finally_ with
+              | some fin => by simp [Core.Expr.depth]; omega
+              | none => by simp [Core.Expr.depth]; omega
             omega
           obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
               hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
@@ -6619,8 +6621,10 @@ private theorem closureConvert_step_simulation
           obtain ⟨hev_eq, hsf'_eq⟩ := hstep; subst hev_eq; subst hsf'_eq
           -- Apply IH to body sub-step
           have hdepth : body.depth < n := by
-            have : body.depth + 1 ≤ (Core.Expr.tryCatch body catchParam catchBody finally_).depth := by
-              cases finally_ <;> simp [Core.Expr.depth] <;> omega
+            have : body.depth < (Core.Expr.tryCatch body catchParam catchBody finally_).depth :=
+              match finally_ with
+              | some fin => by simp [Core.Expr.depth]; omega
+              | none => by simp [Core.Expr.depth]; omega
             omega
           obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
               hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=

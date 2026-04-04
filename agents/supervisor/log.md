@@ -1,3 +1,59 @@
+## Run: 2026-04-04T04:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 22 + CC 15 = **37** (Wasm 0)
+- **Delta from last run**: was 36 → 37 = **+1**. CC tryCatch decomposition (1 sorry split into 2).
+- **LowerCorrect**: 0 sorries (DONE)
+
+### What happened since last run
+
+1. **proof**: NO PROGRESS on Group D. 4 runs stuck. Has infrastructure (Steps_*_ctx, HasReturnInHead ~650 lines) but hasn't closed a single sorry. Prompt was rewritten last run with by_cases decomposition approach at L7122 (now L7151). Giving one more run.
+
+2. **jsspec**: CC went 14→15. The tryCatch area at L6537 was decomposed into L6539+L6540 (body-value split into two CCStateAgree-blocked sub-cases). Build may still be broken at L4280 (consoleLog type mismatch). Architecturally blocked on 5 assigned sorries due to CCStateAgree invariant.
+
+3. **wasmspec**: Prepared hnoerr guards patch (472 lines) but BLOCKED on file permissions for CC. Reclassified all 22 CC sorries. Cannot edit CC file. Redirected to Group G (ANF L8165/L8217).
+
+### Agent Status
+
+1. **proof**: CRITICAL — 4 runs without closing a sorry. Prompt REWRITTEN with updated line numbers (L7122→L7151, etc). Same by_cases decomposition approach. If no sorry closed this run, agent needs manual code intervention or replacement.
+
+2. **jsspec**: Build must be fixed first (L4280 consoleLog). Then: newObj (L4498/L4506), captured var (L3387), call (L4292). Prompt REWRITTEN with corrected line numbers and explicit DO NOT TOUCH list for all CCStateAgree-blocked sorries (7 total).
+
+3. **wasmspec**: Redirected to Group G (L8165/L8217). Strategy A: prove normalizeExpr_break_implies_direct to close via exfalso. Strategy B fallback: direct compound case proof. Prompt REWRITTEN.
+
+### Actions Taken
+1. Counted sorries: ANF 22 + CC 15 = 37. Up 1 from decomposition.
+2. **REWROTE proof prompt**: Updated all line numbers. Same by_cases approach. Added accountability warning.
+3. **REWROTE jsspec prompt**: Updated line numbers. Explicit CCStateAgree DO NOT TOUCH list (7 sorries). Build fix priority.
+4. **REWROTE wasmspec prompt**: Redirected from CC (can't edit) to ANF Group G. Two strategies provided.
+5. Logged to time_estimate.csv.
+
+### Sorry Breakdown
+
+**ANF (22 sorry tokens):**
+- Group A (7): L6531, L6564, L6575, L6656, L6689, L6700, L6717 → BLOCKED (continuation-independence)
+- Group D (8): L7151, L7154, L7304, L7307, L7477, L7480, L7631, L7634 → TARGET (proof agent)
+- Group F (5): L7661, L7709, L7740, L7743, L7787 → DEFERRED (characterization)
+- Group G (2): L8165, L8217 → TARGET (wasmspec, normalizeExpr_break_implies_direct)
+
+**CC (15 sorry tokens):**
+- Unprovable (3): L1507 forIn, L1508 forOf, L5144 getIndex
+- CCStateAgree blocked (7): L3715, L3738, L6382, L6539, L6540, L6614, L6726
+- Actionable (5): L4280 consoleLog (build), L4292 call, L3387 captured-var, L4498 newObj-f, L4506 newObj-arg
+
+### Strategy
+- **Quick wins**: proof closes Group D trivial-chain halves (4 sorries) → 37→33
+- **Medium-term**: wasmspec closes Group G (2) → 33→31. jsspec fixes build + closes newObj (2) → 31→29.
+- **Hard**: continuation-independence → Group A (7). CCStateAgree → 7 CC sorries.
+- **Floor**: 3 unprovable CC sorries (forIn, forOf, getIndex) are permanent.
+
+### Biggest Risks
+1. proof agent stuck for 4 runs — if no progress this run, manual intervention required
+2. CC build still broken — blocks all jsspec sorry work
+3. wasmspec pivoted to ANF but normalizeExpr_break_implies_direct may be false (while_ case)
+
+---
+
 ## Run: 2026-04-04T03:05:02+00:00
 
 ### Metrics
@@ -9871,3 +9927,4 @@ proof agent has the infrastructure but hasn't actually CLOSED any sorries with i
 
 ## Run: 2026-04-04T04:05:01+00:00
 
+2026-04-04T04:10:20+00:00 DONE
