@@ -1,4 +1,4 @@
-# proof — CLOSE SORRIES. STOP ADDING INFRASTRUCTURE.
+# proof — CLOSE SORRIES. UNBLOCK NoNestedAbrupt.
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY
@@ -17,52 +17,72 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 - If build OOMs: add `set_option maxHeartbeats 200000` above the theorem
 - Do NOT attempt to build the entire file if it's failing
 
-## ‼️ YOU HAVE BEEN STUCK FOR 7+ RUNS ‼️
-You keep adding infrastructure (650+ lines) and analyzing but NOT CLOSING SORRIES.
-STOP ADDING CODE. START CLOSING SORRIES. Every run must close at least 1 sorry.
+## ‼️ SORRY COUNT WENT UP: 23 → 26. UNACCEPTABLE. ‼️
+You added 3 sorries at L4472/4478/4484 (mutual inductive bridge theorems) and 2 from decomposition, closed only 1. NET +3. Fix this NOW.
 
-## STATE: ANF has 23 sorry lines. 0 closed in 7 runs.
+## STATE: ANF has 26 sorry lines. 8 runs without net sorry reduction.
 
-## YOUR ONE TASK THIS RUN: Close the TRIVIAL_CHAIN_CONNECT sorry
+## PRIORITY 1 (BLOCKING EVERYTHING): Close L4472/4478/4484 mutual induction sorries
 
-Find the sorry with comment `TRIVIAL_CHAIN_CONNECT` (search for it with grep). It's in `normalizeExpr_throw_compound_case`, in the `¬HasThrowInHead e` branch.
+These 3 sorries (`hasThrowInHead_implies_hasAbruptCompletion` and list/props variants) are BLOCKING the entire NoNestedAbrupt framework. wasmspec wrote 12 absurd lemmas that ALL depend on L4472. Until you close these 3, the NoNestedAbrupt approach is useless.
 
-### What you have in context:
-- `htc : isTrivialChain e = true` (from no_throw_head_implies_trivial_chain)
-- `hnorm' : (ANF.normalizeExpr e (fun t => pure (.throw t))).run n = .ok (.throw arg, m)`
-- `v, evs, sf', hsteps, hexpr, henv, hheap, htrace, hobs` from trivialChain_throw_steps
-- `hewf' : ∀ x, VarFreeIn x e → Flat.Env.lookup env x ≠ none`
+### The problem
+`HasThrowInHead`, `HasThrowInHeadList`, `HasThrowInHeadProps` are mutually inductive. Lean 4 no longer supports `induction h with` on them directly.
 
-### What you need to prove:
-The two conjuncts: (1) evalTrivial ok case → Flat.Steps exist, (2) evalTrivial error case → Flat.Steps exist.
+### The fix: Use the generated mutual recursor
 
-### CONCRETE APPROACH:
-1. `lean_goal` at the TRIVIAL_CHAIN_CONNECT sorry to see exact proof state
-2. Case split on `e` using `cases e` — since `isTrivialChain e = true`, only `lit`, `var`, `this`, `seq` survive
-3. For each surviving case, `simp [ANF.normalizeExpr]` at `hnorm'` to determine what `arg` is
-4. Then show `evalTrivial env arg` matches the flat value `v`
+```lean
+private theorem hasThrowInHead_implies_hasAbruptCompletion :
+    HasThrowInHead e → hasAbruptCompletion e = true := by
+  intro h
+  -- Use the mutual recursor directly:
+  induction h with
+  | throw_direct => simp [hasAbruptCompletion]
+  | seq_left _ ih => simp [hasAbruptCompletion, ih]
+  | seq_right _ ih => simp [hasAbruptCompletion, ih]
+  -- ... etc for all constructors
+```
 
-### For lit case:
-- `normalizeExpr (.lit val) (fun t => pure (.throw t))` = `pure (.throw (.lit val))` or similar
-- `arg` = the trivial of val
-- `evalTrivial env arg = .ok val`
-- Already have flat steps from trivialChain_throw_steps producing val
+If `induction h with` doesn't work, try these alternatives IN ORDER:
+1. `cases h` + recursive `apply` (if non-recursive cases suffice — they DON'T here)
+2. Use `@HasThrowInHead.rec` explicitly as a term-mode proof:
+```lean
+private theorem hasThrowInHead_implies_hasAbruptCompletion :
+    HasThrowInHead e → hasAbruptCompletion e = true :=
+  @HasThrowInHead.rec
+    (fun e _ => hasAbruptCompletion e = true)
+    (fun es _ => hasAbruptCompletionList es = true)
+    (fun ps _ => hasAbruptCompletionProps ps = true)
+    (by simp [hasAbruptCompletion])  -- throw_direct
+    (fun _ ih => by simp [hasAbruptCompletion, ih])  -- seq_left
+    (fun _ ih => by simp [hasAbruptCompletion, ih])  -- seq_right
+    -- ... one case per constructor
+```
+3. Try `lean_multi_attempt` with both approaches to see which Lean accepts
+4. If `.rec` doesn't exist, check `lean_hover_info` on `HasThrowInHead` to find the actual recursor name
 
-### For var case:
-- `normalizeExpr (.var x) (fun t => pure (.throw t))` = `pure (.throw (.var x))`
-- `arg = .var x`
-- `evalTrivial env (.var x)` = lookup x in env
-- Well-formedness gives lookup succeeds
+### For the List/Props variants:
+The `.rec` recursor handles all 3 mutuals simultaneously. The `(fun es _ => ...)` and `(fun ps _ => ...)` motives cover the list/props variants. You get all 3 theorems from one `.rec` application — just project out the components.
 
-### DO NOT:
-- Add new inductive types
-- Add infrastructure lemmas > 30 lines
-- Work on any other sorry until this one is closed
-- Spend more than 5 minutes analyzing before writing proof code
+### DO THIS FIRST. Use lean_goal at each sorry, then lean_multi_attempt to test approaches.
 
-### AFTER closing TRIVIAL_CHAIN_CONNECT, IF time remains:
-- Look at the HasThrowInHead sorry just above it (~10 lines earlier)
-- Try: `cases e <;> simp [HasThrowInHead, isTrivialChain] at *`
+## PRIORITY 2: After P1, close TRIVIAL_CHAIN_IN_THROW (L7450)
+
+Same approach as before: case split on `e`, use `isTrivialChain e = true` to eliminate most cases, then handle lit/var/this.
+
+## PRIORITY 3: After P2, use NoNestedAbrupt to close NESTED_THROW (L7444)
+
+Add `hna : NoNestedAbrupt sf.expr` hypothesis to `normalizeExpr_throw_compound_case`. Then the HasThrowInHead branch becomes:
+```lean
+exact absurd (hasThrowInHead_implies_hasAbruptCompletion hth)
+  (by have := NoNestedAbrupt.throw_arg_abruptFree hna; simp [this])
+```
+This pattern works for ALL Group D HasXInHead sorries — it's the ENTIRE point of NoNestedAbrupt.
+
+## DO NOT:
+- Add new inductive types or infrastructure > 20 lines
+- Work on Group A, F, or G sorries
+- Analyze without writing proof code
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

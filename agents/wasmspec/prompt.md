@@ -1,4 +1,4 @@
-# wasmspec — Help proof agent close TRIVIAL_CHAIN_CONNECT sorry
+# wasmspec — CLOSE THE 3 MUTUAL INDUCTION SORRIES. Your NoNestedAbrupt work is blocked on them.
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -8,65 +8,69 @@
 - You CAN edit ANFConvertCorrect.lean
 
 ## BACKGROUND
-The proof agent has been stuck for 7+ runs. It needs a helper lemma to close the TRIVIAL_CHAIN_CONNECT sorry. You will write this helper.
+You wrote excellent NoNestedAbrupt infrastructure last run (12 absurd lemmas, 4 bridge theorem blocks). BUT: the absurd lemmas at ~L4490 ALL depend on `hasThrowInHead_implies_hasAbruptCompletion` which is **sorry'd at L4472**. Your entire framework is built on sorry. Fix this NOW.
 
-## YOUR TASK: Write trivialChain_normalizeExpr_trivialOf
+## YOUR TASK: Close L4472, L4478, L4484
 
-### What the proof agent needs
-
-At the TRIVIAL_CHAIN_CONNECT sorry (grep for it in ANFConvertCorrect.lean), the proof state has:
-- `e : Flat.Expr` with `isTrivialChain e = true`
-- `normalizeExpr e (fun t => pure (.throw t))` produced `.throw arg`
-- `trivialChain_throw_steps` gave flat value `v`
-
-The GAP: no lemma connects `arg` (the ANF.Trivial) to `e` (the Flat.Expr).
-
-### Step 1: Write the helper lemma
-
-Add this BEFORE `normalizeExpr_throw_compound_case` in ANFConvertCorrect.lean:
-
+These are the mutual theorems:
 ```lean
-/-- When e is a trivial chain (lit/var/this), normalizeExpr e k calls k with
-    the trivial representation, and evalTrivial on that trivial matches
-    the flat evaluation. -/
-private theorem trivialChain_normalizeExpr_produces_trivial
-    (e : Flat.Expr) (n : Nat)
-    (htc : isTrivialChain e = true)
-    (h_simple : ∀ x, VarFreeIn x e → Flat.Env.lookup env x ≠ none) :
-    -- For base cases only (no seq needed for throw since normalizeExpr
-    -- handles seq via bindComplex which lifts through the continuation)
-    match e with
-    | .lit v => ∃ t, (fun t => pure (ANF.Expr.throw t) : ANF.Trivial → ANF.ConvM ANF.Expr) t
-                  ... -- produces the right trivial
-    | .var x => ...
-    | .this => ...
+mutual
+theorem hasThrowInHead_implies_hasAbruptCompletion :
+    HasThrowInHead e → hasAbruptCompletion e = true := by intro h; sorry
+
+theorem hasThrowInHeadList_implies_hasAbruptCompletionList :
+    HasThrowInHeadList es → hasAbruptCompletionList es = true := by intro h; sorry
+
+theorem hasThrowInHeadProps_implies_hasAbruptCompletionProps :
+    HasThrowInHeadProps ps → hasAbruptCompletionProps ps = true := by intro h; sorry
+end
 ```
 
-Actually, simpler: just prove by cases in place. Use `lean_goal` at the sorry to see what's needed, then help the proof agent by writing a targeted cases proof.
+### Why they're sorry'd
+Lean 4 broke `induction h with` on these mutually recursive inductives (`HasThrowInHead` references `HasThrowInHeadList` in `call_args`, etc.).
 
-### Step 2: Actual approach — CASES on e at the sorry site
+### How to fix: Use the mutual recursor explicitly
 
-Rather than writing a separate lemma, check with `lean_goal` what `e` can be when `isTrivialChain e = true`. The answer is: `.lit`, `.var`, `.this`, `.seq a b` (recursively).
+The three inductives generate a mutual `.rec` (or `.casesOn`). Use it as a term-mode proof:
 
-For the simplest path: write a proof that does:
 ```lean
-cases e with
-| lit v => simp [ANF.normalizeExpr, pure, Pure.pure, StateT.pure] at hnorm'; ...
-| var x => simp [ANF.normalizeExpr, pure, Pure.pure, StateT.pure] at hnorm'; ...
-| this => simp [ANF.normalizeExpr, pure, Pure.pure, StateT.pure] at hnorm'; ...
-| seq a b => simp [isTrivialChain] at htc; ...
-| _ => simp [isTrivialChain] at htc
+-- All 3 theorems from one recursor application
+private def hasThrowInHead_hasAbruptCompletion_aux :
+    (∀ e, HasThrowInHead e → hasAbruptCompletion e = true) ×
+    (∀ es, HasThrowInHeadList es → hasAbruptCompletionList es = true) ×
+    (∀ ps, HasThrowInHeadProps ps → hasAbruptCompletionProps ps = true) := by
+  refine ⟨fun e h => ?_, fun es h => ?_, fun ps h => ?_⟩
+  all_goals induction h with  -- try this first
+  | throw_direct => simp [hasAbruptCompletion]
+  | seq_left _ ih => simp [hasAbruptCompletion, ih]
+  -- ... etc
 ```
 
-### Step 3: Build and verify
+If `induction h with` fails, try the explicit `.rec`:
+```lean
+@HasThrowInHead.rec
+  (fun e _ => hasAbruptCompletion e = true)       -- motive for Expr
+  (fun es _ => hasAbruptCompletionList es = true)  -- motive for List
+  (fun ps _ => hasAbruptCompletionProps ps = true) -- motive for Props
+  -- One case per HasThrowInHead constructor:
+  (by simp [hasAbruptCompletion])                  -- throw_direct
+  (fun _ ih => by simp [hasAbruptCompletion]; exact Or.inl ih)  -- seq_left
+  (fun _ ih => by simp [hasAbruptCompletion]; exact Or.inr ih)  -- seq_right
+  (fun _ ih => by simp [hasAbruptCompletion]; exact Or.inl ih)  -- let_init
+  -- ... one per constructor (34 constructors total across all 3)
+```
 
-`lake build VerifiedJS.Proofs.ANFConvertCorrect`
+### Steps:
+1. `lean_hover_info` on `HasThrowInHead` to check if `.rec` exists and its signature
+2. `lean_multi_attempt` to test the approach
+3. Write the proof
+4. Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
 ### COORDINATE WITH PROOF AGENT
-Check `git diff` before editing. If proof agent has uncommitted changes at the same location, work around them. The proof agent is focused on the same sorry — your helper goes BEFORE it.
+The proof agent is ALSO targeting these 3 sorries. Check `git diff` before editing. If proof agent has changes at L4470-4484, work around them or focus on a DIFFERENT approach (e.g., write a standalone mutual def that the proof agent's sorry can call).
 
-### Group G: STILL PARKED
-L8797 and L8850 unchanged. No action needed.
+### After closing L4472/4478/4484:
+Do the same for the Has{Return,Await,Yield}InHead variants — there should be similar bridge theorems. Check if they also need the same mutual recursor treatment.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

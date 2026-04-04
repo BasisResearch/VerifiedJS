@@ -1,4 +1,4 @@
-# jsspec — CLOSE CC SORRIES. Good progress last run (+1 proved, build restored).
+# jsspec — CLOSE CC SORRIES. Keep going, you're the only one making progress.
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -11,11 +11,11 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 
 ## MEMORY: 7.7GB total, NO swap. ~4GB available.
 
-## STATE: CC has 15 sorry tokens (was 16, you proved L3742 second sorry). Build should be working.
+## STATE: CC has 15 sorry tokens (confirmed). You are the ONLY agent reducing sorry count. Keep it up.
 
 ## YOUR TASKS (strict priority order):
 
-### TASK 1: Close functionDef sorry at ~L6385
+### TASK 1: Close functionDef sorry at ~L6386
 `| functionDef fname params body isAsync isGen => sorry`
 Use `lean_goal` to see what's needed. Core and Flat both allocate a closure — the proof should show that the conversion of a functionDef in both Core and Flat produce equivalent results. Try `simp` + constructor matching first.
 
@@ -23,23 +23,25 @@ Use `lean_goal` to see what's needed. Core and Flat both allocate a closure — 
 Multi-step gap: Core takes 1 step, Flat takes 2 steps for captured variable lookup.
 Use `lean_goal` to understand what's needed, then construct the witness explicitly.
 
-### TASK 3: Close non-consoleLog call sorry at ~L4295
+### TASK 3: Close non-consoleLog call sorry at ~L4296
 Needs `sf.funcs[idx] ↔ sc.funcs[idx]` correspondence. Check if `FuncsCorr` or similar is in the proof context with `lean_goal`.
 
-### TASK 4: If you close any of the above, try the tryCatch sorries at ~L6542, L6615, L6672
-These may have similar structure to cases you've already proved.
+### TASK 4: Close if-else input CCStateAgree sorry at ~L3742
+The first sorry on that line. Use `lean_goal`. This may be similar to the second sorry you already proved (`by rw [hconv.2]; exact ⟨rfl, rfl⟩`).
 
-## DO NOT TOUCH (CCStateAgree blocked):
-- ~L3719, ~L6543, ~L6708, and any sorry with "CCStateAgree" comment
+### TASK 5: If you close any of the above, try tryCatch sorries at ~L6543, L6616, L6673
 
 ## DO NOT TOUCH (unprovable):
-- L1507, L1508 — forIn/forOf stubs
-- ~L5147 — getIndex string
+- L1507, L1508 — forIn/forOf stubs (theorem false)
+- ~L5148 — getIndex string (Float.toString opaque)
 
 ## DO NOT TOUCH (semantic mismatch):
-- ~L4501, ~L4509 — newObj non-value
+- ~L4502, ~L4510 — newObj non-value
 
-## Target: 15 → 12 (close functionDef, captured var, call)
+## DO NOT TOUCH (CCStateAgree blocked):
+- ~L3719, ~L6544, ~L6709
+
+## Target: 15 → 11 (close functionDef, captured var, call, if-else-input)
 
 ## CRITICAL: LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`
