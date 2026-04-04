@@ -9300,7 +9300,7 @@ private theorem normalizeExpr_if_step_sim
           have hstep2 : Flat.step? ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
             some (.silent, ⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
             have := Flat.step?_if_true ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ v then_flat else_flat hfbool
-            simp [Flat.step?_pushTrace_expand] at this; exact this
+            simp only [Flat.step?_pushTrace_expand] at this; exact this
           refine ⟨⟨then_flat, env, heap, trace ++ [.silent, .silent], funcs, cs⟩, [.silent, .silent],
             .tail ⟨hstep1⟩ (.tail ⟨?_⟩ (.refl _)), ?_, ?_, ?_⟩
           · simp [List.append_assoc] at hstep2; exact hstep2
@@ -9323,7 +9323,7 @@ private theorem normalizeExpr_if_step_sim
           have hstep2 : Flat.step? ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
             some (.silent, ⟨then_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
             have := Flat.step?_if_true ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ v then_flat else_flat hfbool
-            simp [Flat.step?_pushTrace_expand] at this; exact this
+            simp only [Flat.step?_pushTrace_expand] at this; exact this
           refine ⟨⟨then_flat, env, heap, trace ++ [.silent, .silent], funcs, cs⟩, [.silent, .silent],
             .tail ⟨hstep1⟩ (.tail ⟨?_⟩ (.refl _)), ?_, ?_, ?_⟩
           · simp [List.append_assoc] at hstep2; exact hstep2
@@ -9372,7 +9372,7 @@ private theorem normalizeExpr_if_step_sim
           have hstep2 : Flat.step? ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
             some (.silent, ⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
             have := Flat.step?_if_false ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ v then_flat else_flat hfbool
-            simp [Flat.step?_pushTrace_expand] at this; exact this
+            simp only [Flat.step?_pushTrace_expand] at this; exact this
           refine ⟨⟨else_flat, env, heap, trace ++ [.silent, .silent], funcs, cs⟩, [.silent, .silent],
             .tail ⟨hstep1⟩ (.tail ⟨?_⟩ (.refl _)), ?_, ?_, ?_⟩
           · simp [List.append_assoc] at hstep2; exact hstep2
@@ -9396,7 +9396,7 @@ private theorem normalizeExpr_if_step_sim
           have hstep2 : Flat.step? ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ =
             some (.silent, ⟨else_flat, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
             have := Flat.step?_if_false ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ [.silent], funcs, cs⟩ v then_flat else_flat hfbool
-            simp [Flat.step?_pushTrace_expand] at this; exact this
+            simp only [Flat.step?_pushTrace_expand] at this; exact this
           refine ⟨⟨else_flat, env, heap, trace ++ [.silent, .silent], funcs, cs⟩, [.silent, .silent],
             .tail ⟨hstep1⟩ (.tail ⟨?_⟩ (.refl _)), ?_, ?_, ?_⟩
           · simp [List.append_assoc] at hstep2; exact hstep2
@@ -9709,7 +9709,6 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         | some envVal =>
           rw [Flat.step?.eq_1] at hstep
           simp only [hfv, hev] at hstep
-          simp only [] at hstep
           split at hstep  -- valuesFromExprList?
           · next argVals hvs =>  -- all values
             split at hstep  -- match on fv (closure or not)
@@ -9759,7 +9758,6 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         | some envVal =>
           rw [Flat.step?.eq_1] at hstep
           simp only [hfv, hev] at hstep
-          simp only [] at hstep
           split at hstep  -- valuesFromExprList?
           · next argVals hvs =>  -- all values → .lit (.object addr)
             simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
@@ -9851,12 +9849,12 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         obtain ⟨hbody_ac, hcatch_ac⟩ := hac
         cases hbv : Flat.exprValue? body with
         | some v =>
-          unfold Flat.step? at hstep; simp only [hbv] at hstep; simp only [] at hstep
+          unfold Flat.step? at hstep; simp only [hbv] at hstep
           split at hstep  -- if param == "__call_frame_return__"
           · simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
           · simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
         | none =>
-          unfold Flat.step? at hstep; simp only [hbv] at hstep; simp only [] at hstep
+          unfold Flat.step? at hstep; simp only [hbv] at hstep
           split at hstep
           · next msg sb hbs =>  -- error
             split at hstep  -- isCallFrame && return
@@ -9875,7 +9873,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         obtain ⟨⟨hbody_ac, hcatch_ac⟩, hfin_ac⟩ := hac
         cases hbv : Flat.exprValue? body with
         | some v =>
-          unfold Flat.step? at hstep; simp only [hbv] at hstep; simp only [] at hstep
+          unfold Flat.step? at hstep; simp only [hbv] at hstep
           split at hstep  -- if isCallFrame
           · simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
           · -- not callFrame, fin = some finExpr → .seq finExpr (.lit v)
@@ -9883,7 +9881,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
             simp only [Flat.State.expr, hasAbruptCompletion, Bool.or_eq_false_iff]
             exact ⟨hfin_ac, by simp [hasAbruptCompletion]⟩
         | none =>
-          unfold Flat.step? at hstep; simp only [hbv] at hstep; simp only [] at hstep
+          unfold Flat.step? at hstep; simp only [hbv] at hstep
           split at hstep
           · next msg sb hbs =>  -- error
             split at hstep
@@ -10190,7 +10188,6 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
         | some envVal =>
           rw [Flat.step?.eq_1] at hstep
           simp only [hfv, hev] at hstep
-          simp only [] at hstep
           split at hstep  -- valuesFromExprList?
           · next argVals hvs =>  -- all values
             split at hstep  -- match on fv (closure or not)
@@ -10238,7 +10235,6 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
         | some envVal =>
           rw [Flat.step?.eq_1] at hstep
           simp only [hfv, hev] at hstep
-          simp only [] at hstep
           split at hstep  -- valuesFromExprList?
           · next argVals hvs =>  -- all values → .lit (.object addr)
             simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
@@ -10327,12 +10323,12 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       | tryCatch_none hbody hcatch =>
         cases hbv : Flat.exprValue? body with
         | some v =>
-          unfold Flat.step? at hstep; simp only [hbv] at hstep; simp only [] at hstep
+          unfold Flat.step? at hstep; simp only [hbv] at hstep
           split at hstep  -- if isCallFrame
           · simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
           · simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
         | none =>
-          unfold Flat.step? at hstep; simp only [hbv] at hstep; simp only [] at hstep
+          unfold Flat.step? at hstep; simp only [hbv] at hstep
           split at hstep
           · next msg sb hbs =>
             split at hstep
@@ -10347,13 +10343,13 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       | tryCatch_some hbody hcatch hfin =>
         cases hbv : Flat.exprValue? body with
         | some v =>
-          unfold Flat.step? at hstep; simp only [hbv] at hstep; simp only [] at hstep
+          unfold Flat.step? at hstep; simp only [hbv] at hstep
           split at hstep
           · simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
           · simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]
             exact NoNestedAbrupt.seq hfin NoNestedAbrupt.lit
         | none =>
-          unfold Flat.step? at hstep; simp only [hbv] at hstep; simp only [] at hstep
+          unfold Flat.step? at hstep; simp only [hbv] at hstep
           split at hstep
           · next msg sb hbs =>
             split at hstep

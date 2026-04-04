@@ -1,3 +1,48 @@
+## Run: 2026-04-04T23:00:04+00:00
+
+### Metrics
+- **Sorry count**: ANF 26 + CC 30 = **56 sorry lines**
+- **Delta from last run (18:05)**: Line count went UP (17→56) but this reflects decomposition of monolithic sorries into per-case sorries. The 18:05 count of "17" was counting unique blocks, not lines.
+- **Actual unique blocks**: ANF ~15 unique sorry blocks + CC ~12 unique sorry blocks = ~27
+
+### Agent Status
+1. **proof** (last completed ~21:32, restarted 22:30): Wrote 4 step? equation lemmas in Flat/Semantics.lean. Decomposed hasAbruptCompletion_step_preserved and NoNestedAbrupt_step_preserved into per-constructor cases with depth induction. Closed 8 sub-cases (call/none, call/some/none, newObj/none, getEnv/none). Blocked on funcDef.body invariant (L9721, L10202). **REWROTE prompt**: Add funcs invariant hypothesis to both theorems, then close L9721/L10202.
+2. **jsspec** (18:00 run lasted 4.5h with 0 closures, restarted 23:00): ZERO progress last run despite long runtime. CC still at 30 sorry lines. **REWROTE prompt**: More concrete depth induction instructions with exact Lean code for the suffices wrapper.
+3. **wasmspec** (last run 22:15, restarted 23:00): Split L9093 into sub-cases, added normalizeExpr_while_decomp lemma. if_step_sim errors still unfixed. **REWROTE prompt**: Simplified error fix instructions — start with removing private from pushTrace.
+
+### Actions Taken
+1. Counted sorries: ANF 26 + CC 30 = 56 lines. Real unique blocks ~27.
+2. **REWROTE proof prompt**: Key architectural fix — add hfuncs_ac/hfuncs_na hypothesis to hasAbruptCompletion_step_preserved and NoNestedAbrupt_step_preserved. Closes L9721 + L10202 directly. Provided exact code.
+3. **REWROTE jsspec prompt**: More detailed depth induction plan. jsspec has been stuck on this for multiple runs. Emphasized incremental approach — add suffices wrapper first, THEN fix cases.
+4. **REWROTE wasmspec prompt**: Prioritized fixing private pushTrace as simplest unblock for all 12 if_step_sim errors. Then env.lookup, simp, and trace issues.
+5. Logged to time_estimate.csv: 56 sorries.
+
+### Sorry Breakdown
+
+**ANF (26 sorry lines, ~15 unique blocks):**
+- L7701-7887 (7): eval context lifting — PARKED
+- L8531, 8682, 8688, 8859, 8865, 9017, 9023 (7): compound HasX — PARKED
+- L9050 (1): let step sim — wasmspec target
+- L9140, 9152 (2): while step sim — wasmspec target
+- L9333, 9334, 9406, 9407 (4): if compound — needs HasIfInHead compound
+- L9451 (1): tryCatch step sim — DEFERRED
+- L9721, 10202 (2): funcDef.body invariant — proof agent target (NEWLY IDENTIFIED FIX)
+- L10759, 10812 (2): break/continue compound — needs error propagation
+
+**CC (30 sorry lines, ~12 unique blocks):**
+- L3426-3508 (7): Core_step_preserves_supported | none => — jsspec target (depth induction)
+- L3509-3519 (11): Core_step_preserves_supported constructors — jsspec target
+- L3585 (1): supported preservation
+- L3914, 3937, 5355, 6754 (4): inline sorry in tactic terms
+- L4501, 4709, 4717 (3): call/semantic mismatch
+- L6597 (1): functionDef
+- L6755, 6827, 6935 (3): tryCatch/while
+
+### Critical Assessment
+jsspec is the bottleneck — 30 CC sorries, 18 of which are ONE theorem. If jsspec lands depth induction, huge payoff. Proof agent has a clear path on funcDef.body invariant (2 sorries). Wasmspec has straightforward error fixes that unblock LSP verification.
+
+---
+
 ## Run: 2026-04-04T18:05:01+00:00
 
 ### Metrics
@@ -4606,3 +4651,4 @@ Zero sorry progress this cycle. But:
 ## Run: 2026-04-04T23:00:04+00:00
 
 2026-04-04T23:05:01+00:00 SKIP: already running
+2026-04-04T23:07:47+00:00 DONE

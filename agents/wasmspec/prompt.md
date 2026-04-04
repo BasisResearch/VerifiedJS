@@ -1,70 +1,58 @@
-# wasmspec — FIX if_step_sim ERRORS (unblocks ALL downstream LSP verification)
+# wasmspec — FIX if_step_sim ERRORS then close let/while sorries
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
 - **DO NOT** run `lake build` anything large
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
-- MEMORY: 7.7GB total, NO swap. ~3GB available right now (supervisor freed memory).
+- MEMORY: 7.7GB total, NO swap. ~2.6GB available right now.
 - You CAN edit ANFConvertCorrect.lean AND Flat/Semantics.lean
 - Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
 ## MEMORY WARNING
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
-## CRITICAL: normalizeExpr_if_step_sim has 12 ERRORS (L9285-L9399) that block ALL downstream LSP
+## STATUS: You split L9093 into sub-cases and added normalizeExpr_while_decomp. Good progress.
 
-These errors prevent LSP verification of hasAbruptCompletion, NoNestedAbrupt, tryCatch, and ALL other sorries after L9285. FIXING THESE IS YOUR #1 PRIORITY.
+## TASK 1: Fix if_step_sim ERRORS at L9285-L9399 (PRIORITY 1)
 
-### Error Pattern 1: `env.lookup` vs `ANF.Env.lookup` (L9285, L9308, L9356, L9380)
+These 12 errors block ALL downstream LSP verification. There are 4 repeated error patterns across 4 if-condition cases (lit, var, this, compound).
 
-The proof does:
-```lean
-have hlookup : env.lookup name_c = some v := by
-  simp only [ANF.evalTrivial] at heval; split at heval <;> simp_all
-```
-But `env : Flat.Env` (from destructuring `sf`), so `env.lookup` resolves to `List.lookup`. The hypothesis after simp becomes `ANF.Env.lookup env name_c = some v`.
+### Error 1: `Flat.pushTrace` is private (L9297, L9320, L9364, L9388)
+**FIX**: In `VerifiedJS/Flat/Semantics.lean`, find `private def pushTrace` (around L191) and remove `private`. Make it `protected def pushTrace` or just `def pushTrace`.
 
-**FIX**: Check if `ANF.Env.lookup` is just `List.lookup` (use `lean_hover_info`). If yes, try:
-```lean
-have hlookup : env.lookup name_c = some v := by
-  simp only [ANF.evalTrivial] at heval
-  split at heval <;> simp_all [ANF.Env.lookup]
-```
-Or try `exact heval` or `assumption` if they're definitionally equal. Or change the goal to `ANF.Env.lookup env name_c = some v`.
+### Error 2: `env.lookup` vs `ANF.Env.lookup` (L9290, L9313, L9356, L9380)
+After simp, the hypothesis becomes `ANF.Env.lookup env name = some v` but the goal needs `env.lookup name = some v`.
+**FIX**: Check with `lean_hover_info` whether `ANF.Env.lookup` and `List.lookup` are the same. If yes, add `[ANF.Env.lookup]` to the simp call. Or use `exact` instead of simp.
 
-### Error Pattern 2: `Unknown identifier 'Flat.pushTrace'` (L9292, L9315, L9364, L9388)
+### Error 3: `simp at this` no progress (L9299, L9322, L9370, L9394)
+The `have := Flat.step?_if_true ...` produces something that `simp` can't simplify.
+**FIX**: Try `simp [Flat.step?_pushTrace_expand]` directly, or try `exact this` if the types already match, or `unfold Flat.pushTrace at this`.
 
-`Flat.pushTrace` is `private` in Flat/Semantics.lean. It can't be referenced outside.
+### Error 4: `observableTrace` mismatch (L9303, L9326, L9375, L9399)
+The trace has `[.silent, .silent]` but needs to match the goal.
+**FIX**: Likely just needs `simp [observableTrace_append, observableTrace_silent, observableTrace_nil, List.append_assoc]`.
 
-**FIX OPTIONS** (pick one):
-A. Make `pushTrace` public: In `VerifiedJS/Flat/Semantics.lean` L191, change `private def pushTrace` to `def pushTrace`
-B. Replace `Flat.pushTrace {...} .silent` with an explicit state literal `{ expr := ..., env := ..., ... }`
-C. Use `step?_pushTrace_expand` simp lemma instead
+### Approach: Fix error 1 FIRST (just remove `private`), then build to see how many errors remain.
 
-**Option A is simplest** — just remove `private` from L191.
+## TASK 2: Close let step sim (L9050)
 
-### Error Pattern 3: `simp at this` no progress (L9298, L9321, L9370, L9394)
+Currently: `sorry -- Need characterization of what produces .let, flat simulation`
 
-After `have := Flat.step?_if_true ...`, the `simp at this` fails. The goal involves `step?_pushTrace_expand` on a pushTrace result.
+When ANF has `.let name init body` and `exprValue? init = none`, ANF.step? steps init. The Flat simulation needs to show Flat can match. The normalizeExpr for let should produce something Flat can step.
 
-**FIX**: Try `simp [Flat.step?_pushTrace_expand] at this` directly, or inline the pushTrace expansion.
+Use `lean_hover_info` on normalizeExpr and ANF.step? for `.let` to understand the exact structure.
 
-### Error Pattern 4: `observableTrace` mismatch (L9303, L9326, L9375, L9399)
+## TASK 3: Continue while sub-cases (L9140, L9152)
 
-`htrace : observableTrace sa_trace = observableTrace trace` but goal needs matching with `[.silent, .silent]` vs `[.silent]`. The issue is the proof claims 2 silent steps but the trace arithmetic doesn't work out.
-
-**FIX**: The `by simp [observableTrace_append, observableTrace]; exact htrace` pattern may need `observableTrace_silent` or manual `List.filter` reasoning. Check what `observableTrace` does with `.silent` events.
+You already split L9093 and added `normalizeExpr_while_decomp`. Continue:
+- L9140: while condition value case — transient state
+- L9152: condition-steps case — needs flat while-condition simulation
 
 ## PRIORITY ORDER
-1. Fix `private pushTrace` (Option A — remove `private` from Flat/Semantics.lean L191)
-2. Fix `env.lookup` issues (check type aliases, add simp lemma or exact)
-3. Fix `simp` progress issues
-4. Fix `observableTrace` trace issues
-5. Once all 12 errors are fixed, the LSP will verify all theorems after L9285 → sorry count may drop
-
-## AFTER FIXING ERRORS: Work on let/while step_sim sorries
-- L9045: let step sim
-- L9135, L9147: while step sim
+1. Fix `private pushTrace` → rebuild → see remaining errors
+2. Fix env.lookup, simp, observableTrace errors
+3. L9050 (let step sim)
+4. L9140, L9152 (while)
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
