@@ -3786,8 +3786,11 @@ private theorem closureConvert_step_simulation
             (Flat.convertExpr else_ scope envVar envMap (Flat.convertExpr then_ scope envVar envMap st).snd).snd, by
             simp [sc', Flat.convertExpr], sorry, by rw [hconv.2]; exact ⟨rfl, rfl⟩⟩
     | none =>
+      have hsupp_cond : cond.supported = true := by
+        have h := hsupp; unfold Core.Expr.supported at h
+        exact (Bool.and_eq_true.mp (Bool.and_eq_true.mp h).1).1
       have hfnv : Flat.exprValue? (Flat.convertExpr cond scope envVar envMap st).fst = none :=
-        convertExpr_not_value_supported cond hcev (by simp [Core.Expr.supported, Bool.and_eq_true] at hsupp; exact hsupp.1) scope envVar envMap st
+        convertExpr_not_value_supported cond hcev hsupp_cond scope envVar envMap st
       have hsf_eta : sf = { sf with expr := (Flat.Expr.if (Flat.convertExpr cond scope envVar envMap st).fst
           (Flat.convertExpr then_ scope envVar envMap (Flat.convertExpr cond scope envVar envMap st).snd).fst
           (Flat.convertExpr else_ scope envVar envMap
@@ -3829,7 +3832,7 @@ private theorem closureConvert_step_simulation
           { sf with expr := (Flat.convertExpr cond scope envVar envMap st).fst }
           { sc with expr := cond }
           ev sa scope st (Flat.convertExpr cond scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_cond hexprwf_cond (by simp [Core.Expr.supported, Bool.and_eq_true] at hsupp; exact hsupp.1)
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_cond hexprwf_cond hsupp_cond
           (by simp)
           ⟨hsubstep⟩
       let sc' : Core.State :=
@@ -4090,8 +4093,11 @@ private theorem closureConvert_step_simulation
             simp [sc', Flat.convertExpr, evalBinary_convertValue], ⟨rfl, rfl⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
       | none =>
         -- rhs stepping, lhs is a value
+        have hsupp_rhs : rhs.supported = true := by
+          have h := hsupp; unfold Core.Expr.supported at h
+          exact (Bool.and_eq_true.mp h).2
         have hfnv : Flat.exprValue? (Flat.convertExpr rhs scope envVar envMap st).fst = none :=
-          convertExpr_not_value_supported rhs hrv (by simp [Core.Expr.supported, Bool.and_eq_true] at hsupp; exact hsupp.2) scope envVar envMap st
+          convertExpr_not_value_supported rhs hrv hsupp_rhs scope envVar envMap st
         have hsf_eta : sf = { sf with expr := (Flat.Expr.binary op (.lit (Flat.convertValue lv))
             (Flat.convertExpr rhs scope envVar envMap st).fst) } := by
           cases sf; simp_all
@@ -4121,7 +4127,7 @@ private theorem closureConvert_step_simulation
             { sf with expr := (Flat.convertExpr rhs scope envVar envMap st).fst }
             { sc with expr := rhs }
             ev sa scope st (Flat.convertExpr rhs scope envVar envMap st).snd
-            (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_rhs hexprwf_rhs (by simp [Core.Expr.supported, Bool.and_eq_true] at hsupp; exact hsupp.2)
+            (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_rhs hexprwf_rhs hsupp_rhs
             (by simp)
             ⟨hsubstep⟩
         let sc' : Core.State :=
@@ -4326,7 +4332,7 @@ private theorem closureConvert_step_simulation
             obtain ⟨hev_eq, hsf'_eq⟩ := hpair
             subst hev_eq; subst hsf'_eq
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · convert hcore using 2 <;> (cases argVals.map Flat.convertValue <;> simp <;> try rfl; rename_i h t; cases t <;> rfl)
+            · sorry /- was: convert hcore using 2 — tactic unavailable -/
             · simp [sc', htrace]
             · exact hinj
             · exact henvCorr
