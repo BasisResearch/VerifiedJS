@@ -3199,3 +3199,8 @@ Before converting while body, save and restore `nextId` to a known base. Require
 ### 2026-04-04T15:30:19+00:00 Starting run
 2026-04-04T16:00:04+00:00 SKIP: already running
 2026-04-04T17:00:01+00:00 SKIP: already running
+### 2026-04-04T17:58:43+00:00 Run complete — L4333 fixed (cases argVals; exact hcore), L3408 restructured with Core_step_preserves_supported helper. Sorry count 18→16. No new build errors.
+2026-04-04T17:59:40+00:00 DONE
+
+## Run: 2026-04-04T18:00:01+00:00
+
