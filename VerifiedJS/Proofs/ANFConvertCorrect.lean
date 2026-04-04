@@ -9078,49 +9078,36 @@ private theorem normalizeExpr_seq_step_sim
       obtain ⟨rfl, rfl⟩ := hstep_eq
       -- a = .while_ c d by characterization
       obtain ⟨c, d, rfl⟩ := normalizeExpr_seq_while_first sf.expr k hk n m _ b hnorm
-      -- Split on the inner while step: does the condition evaluate to a value or step?
+      -- Split the inner while step by unfolding step? on .while_ c d
       -- hstep_inner : ANF.step? ⟨.while_ c d, sf.env, sf.heap, sa_trace⟩ = some (t_inner, sa_inner)
-      -- Case-split on exprValue? c
-      cases hexprv_c : ANF.exprValue? c with
-      | some v =>
-        -- Condition is a value: while unrolls
-        -- step? on .while_ c d when exprValue? c = some v produces:
-        --   (.silent, { expr := if toBoolean v then .seq d (.while_ c d) else .trivial .litUndefined,
-        --               env := sf.env, heap := sf.heap, trace := sa_trace ++ [.silent] })
-        have hwhile_val : ANF.step? ⟨.while_ c d, sf.env, sf.heap, sa_trace⟩ =
-            some (.silent, ⟨if ANF.toBoolean v then .seq d (.while_ c d) else .trivial .litUndefined,
-                  sf.env, sf.heap, sa_trace ++ [.silent]⟩) := by
-          simp only [ANF.step?, hexprv_c, ANF.pushTrace]
-        rw [hwhile_val] at hstep_inner
-        obtain ⟨rfl, rfl⟩ := hstep_inner
-        -- sa'.expr = .seq (if toBoolean v then .seq d (.while_ c d) else .trivial .litUndefined) b
-        -- BLOCKED: These transient forms (.seq (.seq d (.while_ c d)) b or .seq (.trivial _) b)
-        -- are not producible by normalizeExpr with trivial-preserving k (normalizeExpr_seq_while_first),
-        -- so ANF_SimRel cannot be established. Needs multi-step simulation or SimRel generalization.
+      have hstep_inner' := hstep_inner
+      unfold ANF.step? at hstep_inner'
+      simp only [ANF.pushTrace] at hstep_inner'
+      -- Now hstep_inner' has match on exprValue? c
+      split at hstep_inner'
+      · -- exprValue? c = some v: condition is a value, while unrolls
+        rename_i v hv_cond
+        obtain ⟨rfl, rfl⟩ := hstep_inner'
+        -- sa_inner = { expr := if toBoolean v then .seq d (.while_ c d) else .trivial .litUndefined, ... }
+        -- sa'.expr = .seq sa_inner.expr b — transient form that breaks SimRel
+        -- (.seq (.seq d (.while_ c d)) b or .seq (.trivial .litUndefined) b)
+        -- These are NOT producible by normalizeExpr with trivial-preserving k.
+        -- Needs multi-step simulation or SimRel generalization.
         sorry -- While condition value case: transient state breaks single-step SimRel
-      | none =>
-        -- Condition is not a value: condition steps
-        -- step? on .while_ c d when exprValue? c = none uses step? on c
-        cases hstep_c : ANF.step? ⟨c, sf.env, sf.heap, sa_trace⟩ with
-        | none =>
-          -- c doesn't step: contradicts hstep_inner
-          have : ANF.step? ⟨.while_ c d, sf.env, sf.heap, sa_trace⟩ = none := by
-            simp only [ANF.step?, hexprv_c, hstep_c]
-          rw [this] at hstep_inner; exact absurd hstep_inner (by simp)
-        | some step_result =>
-          obtain ⟨t_cond, sc⟩ := step_result
-          -- c steps to sc: while becomes .while_ sc.expr d
-          have hwhile_step : ANF.step? ⟨.while_ c d, sf.env, sf.heap, sa_trace⟩ =
-              some (t_cond, ⟨.while_ sc.expr d, sc.env, sc.heap, sa_trace ++ [t_cond]⟩) := by
-            simp only [ANF.step?, hexprv_c, hstep_c, ANF.pushTrace]
-          rw [hwhile_step] at hstep_inner
-          obtain ⟨rfl, rfl⟩ := hstep_inner
-          -- Now: sa'.expr = .seq (.while_ sc.expr d) b, sa'.env = sc.env, sa'.heap = sc.heap
-          -- This form IS compatible with normalizeExpr output (.seq (.while_ ...) ...)
-          -- but requires showing that the flat side can simulate the condition step.
+      · -- exprValue? c = none: condition steps
+        rename_i hnv_cond
+        split at hstep_inner'
+        · -- step? c = some (t_cond, sc): condition steps
+          rename_i t_cond_sc hstep_cond
+          obtain ⟨t_cond, sc⟩ := t_cond_sc
+          obtain ⟨rfl, rfl⟩ := hstep_inner'
+          -- Now: t_inner = t_cond, sa_inner = { .while_ sc.expr d, sc.env, sc.heap, sa_trace ++ [t_cond] }
+          -- sa'.expr = .seq (.while_ sc.expr d) b — this IS a normalizeExpr-compatible form
           -- Needs: decomposition of hnorm to extract the flat while condition,
           -- recursive SimRel for condition stepping, and reconstruction.
           sorry -- Condition-steps case: needs flat while-condition simulation
+        · -- step? c = none: contradicts hstep_inner
+          simp at hstep_inner'
     · exact absurd hstep_eq (by simp)
 
 /-- Decompose normalizeExpr (.if (.lit fv) then_flat else_flat) k into its components. -/
