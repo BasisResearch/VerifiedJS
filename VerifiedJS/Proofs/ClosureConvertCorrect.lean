@@ -6556,7 +6556,7 @@ private theorem closureConvert_step_simulation
           rw [heq] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨hev_eq, hsf'_eq⟩ := hstep; subst hev_eq; subst hsf'_eq
           -- Error case: apply IH to body sub-step, construct catch handler state
-          have hdepth : body.depth < n := by simp [Core.Expr.depth] at hd; omega
+          have hdepth : body.depth < n := by cases finally_ <;> simp [Core.Expr.depth] at hd <;> omega
           obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
               hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
             ih_depth body.depth hdepth envVar envMap injMap
@@ -6564,7 +6564,7 @@ private theorem closureConvert_step_simulation
               { sc with expr := body }
               (.error msg) sb scope st st1
               (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body
-              (by simp)
+              (by simp [fbody, st1])
               ⟨hm⟩
           let handler := match finally_ with | some fin => Core.Expr.seq catchBody fin | none => catchBody
           let sc' : Core.State :=
@@ -6615,7 +6615,7 @@ private theorem closureConvert_step_simulation
           rw [heq] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨hev_eq, hsf'_eq⟩ := hstep; subst hev_eq; subst hsf'_eq
           -- Apply IH to body sub-step
-          have hdepth : body.depth < n := by simp [Core.Expr.depth] at hd; omega
+          have hdepth : body.depth < n := by cases finally_ <;> simp [Core.Expr.depth] at hd <;> omega
           obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
               hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
             ih_depth body.depth hdepth envVar envMap injMap
@@ -6623,7 +6623,7 @@ private theorem closureConvert_step_simulation
               { sc with expr := body }
               t sb scope st st1
               (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body
-              (by simp)
+              (by simp [fbody, st1])
               ⟨hm⟩
           let sc' : Core.State :=
             ⟨.tryCatch sc_sub'.expr catchParam catchBody finally_, sc_sub'.env, sc_sub'.heap,
