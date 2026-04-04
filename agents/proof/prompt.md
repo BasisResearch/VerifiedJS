@@ -1,4 +1,4 @@
-# proof — Close makeEnv/objectLit/arrayLit/tryCatch + all NoNestedAbrupt cases
+# proof — Close tryCatch catch handlers + break/continue error propagation
 
 ## RULES
 - Edit: ANFConvertCorrect.lean AND EndToEnd.lean
@@ -11,69 +11,43 @@
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
-## MEMORY: 7.7GB total, NO swap. ~1.1GB available.
+## MEMORY: 7.7GB total, NO swap. ~3.4GB available right now.
 **WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
 
-## STATUS: call partially proved! ANF at 34 sorries (was 35).
+## STATUS: AMAZING PROGRESS! ANF down to 27 sorries (was 34).
 
-You proved call sub-stepping (f not value, env not value, firstNonValueExpr args). Only the "all values → call executes" branch is sorry'd (L9630). Great work!
+You proved makeEnv, objectLit, arrayLit in hasAbruptCompletion AND most NoNestedAbrupt cases! Excellent work.
 
-## YOUR TARGETS (hasAbruptCompletion_step_preserved):
+## YOUR TARGETS NOW:
 
-### Already done:
-- call: PROVED (except all-values branch, sorry at L9630 — OK to leave)
-- newObj: DONE (assumed same pattern as call)
+### Priority 1: tryCatch catch handler sorries (2 sorries)
+- **L9759**: hasAbruptCompletion tryCatch catch handler. When body throws error (not return:, not callFrame), the catch triggers: `sf' = {expr = seq (Let.subst param thrownVal catchBody) fin, ...}`. Need to show `hasAbruptCompletion sf'.expr = false` given `hasAbruptCompletion catchBody = false` and `hasAbruptCompletion fin = false`. Key: need `hasAbruptCompletion_subst_preserved` lemma.
+- **L10190**: NoNestedAbrupt tryCatch catch handler. Same pattern but for NoNestedAbrupt. When body errors, catch fires. Need `NoNestedAbrupt_subst_preserved` or show substitution preserves NoNestedAbrupt.
 
-### Remaining (4 sorries):
-- L9688: `| makeEnv vals => sorry`
-- L9701: `| objectLit props => sorry`
-- L9702: `| arrayLit elems => sorry`
-- L9703: `| tryCatch body param catchBody fin => sorry`
+### Approach for catch handlers:
+The catch case unfolds to something like `seq (catchBody[param := thrownVal]) fin` (with finally) or just `catchBody[param := thrownVal]` (without finally). You need:
+1. Check what `Flat.step?` produces for the catch case — use `lean_goal` at the sorry
+2. If it produces `Let.subst param val catchBody`, you need a lemma: substituting a value into an expression preserves hasAbruptCompletion/NoNestedAbrupt
+3. If the substitution lemma doesn't exist, create it (should be straightforward structural induction)
 
-### makeEnv/arrayLit template (use hasAbruptCompletionList_firstNonValue_preserved):
-```lean
-    | makeEnv vals =>
-      simp only [hasAbruptCompletion] at hac
-      unfold Flat.step? at hstep
-      split at hstep
-      next =>  -- all values → allocate env
-        simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]
-      next =>  -- firstNonValueExpr
-        split at hstep
-        next done target remaining hfnv =>
-          have ⟨htarget, hrem, hrecon⟩ := hasAbruptCompletionList_firstNonValue_preserved hfnv hac
-          split at hstep
-          next t se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep
-            simp only [Flat.State.expr, hasAbruptCompletion]
-            exact hrecon _ (ih _ (by simp [Flat.Expr.depth] at hd; have := Flat.firstNonValueExpr_depth hfnv; omega) _ _ _ _ _ _ _ htarget hse)
-          next => simp at hstep
-        next => simp at hstep
-```
+### Priority 2: break/continue error propagation (2 sorries)
+- **L10603**: break compound cases — `HasBreakInHead` compound constructors
+- **L10656**: continue compound cases — `HasContinueInHead` compound constructors
 
-arrayLit is identical to makeEnv.
+Both say "Requires Flat.step? error propagation". The issue: when break/continue appears inside a compound expression (like `seq (break l) rest`), Flat.step? should propagate the error event. The direct case (just `.break label`) is already proved.
 
-### objectLit: needs `hasAbruptCompletionProps_firstNonValueProp_preserved`
-Check if this lemma exists (grep for it). If not, create it following the same pattern as `hasAbruptCompletionList_firstNonValue_preserved`. The objectLit case uses `firstNonValueProp` instead of `firstNonValueExpr`.
-
-### tryCatch: complex, sorry individual sub-cases
-```lean
-    | tryCatch body param catchBody fin =>
-      unfold Flat.step? at hstep
-      -- tryCatch has: body value, body throw, body step sub-cases
-      -- Use lean_goal to see what's needed, then handle body-step via IH
-      sorry -- decompose into sub-cases with individual sorries
-```
-
-## ALSO: NoNestedAbrupt (wasmspec is handling these — DO NOT EDIT L9971-10005)
-
-wasmspec is now working on NoNestedAbrupt call/newObj/makeEnv/objectLit/arrayLit/tryCatch (L9971-10005). Stay out of that region.
+### What NOT to work on:
+- Group A (L7696-7882): eval context lifting — PARKED, needs major infrastructure
+- If compound (L9257/9258/9330/9331): needs trivialChain — PARKED
+- Call all-values (L9630): unknown function body — HARD, defer
+- NoNestedAbrupt call all-values (L10058): same — defer
 
 ## APPROACH
-1. Close makeEnv first (template above)
-2. Close arrayLit (identical to makeEnv)
-3. Try objectLit (needs props helper)
-4. Try tryCatch (complex)
-Target: -3 to -4 this run.
+1. Use `lean_goal` at L9759 to see the exact proof state for catch handler
+2. Check if `hasAbruptCompletion` is preserved through `Let.subst` (grep for it)
+3. If not, write the lemma and close both catch handler sorries (-2)
+4. Then try break/continue compound cases (-2)
+Target: -2 to -4 this run.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

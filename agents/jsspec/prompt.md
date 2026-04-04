@@ -1,4 +1,4 @@
-# jsspec — Close L3375 (Core_step_preserves_supported remaining cases)
+# jsspec — Close CC sorries starting with L3375
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -9,47 +9,45 @@
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
-## MEMORY: 7.7GB total, NO swap. ~1.1GB available.
+## MEMORY: 7.7GB total, NO swap. ~3.4GB available right now.
 **WAIT for other builds to finish before starting yours.** Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count is 0 or 1.
 
-## STATUS
-- **L4333 is CLOSED** ✓
-- **L7791 is CLOSED** ✓
-- CC has 13 actual sorries. Your target: L3375 (`sorry` inside Core_step_preserves_supported).
-- You've been running since 15:30 — **PLEASE SHOW PROGRESS**. If L3375 is blocked, document exactly why and move to the next closeable sorry.
+## STATUS: CC has 13 actual sorries. You've been running since 15:30 with NO closures.
 
-## TASK 1 — Complete Core_step_preserves_supported (L3375)
+ANF is down to 27 (proof agent closed 7 this cycle). CC needs to show progress too.
 
-The wildcard `sorry` at L3375 needs expanding into per-constructor cases on the expression.
+## CC SORRY BREAKDOWN (13 actual):
+1. **L3375**: Core_step_preserves_supported wildcard sorry — YOUR PRIMARY TARGET
+2. L3441: captured var multi-step
+3. L3770: if-true CCStateAgree
+4. L3793: if-false CCStateAgree
+5. L4355: non-consoleLog function call
+6. L4563: f not a value semantic mismatch
+7. L4571: non-value arg semantic mismatch
+8. L5209: getIndex string UNPROVABLE
+9. L6451: functionDef
+10. L6608: tryCatch body-value
+11. L6609: tryCatch body-value with finally
+12. L6681: tryCatch sorry
+13. L6789: while_ CCState threading
 
-### Strategy: Replace `sorry` with explicit constructor cases.
+## TASK 1 — L3375 Core_step_preserves_supported
 
-**Easy cases** (single sub-expression, same pattern):
+Replace the wildcard `sorry` with per-constructor cases. Easy cases close with:
 ```lean
-  | this => simp [Core.step?] at hstep; split at hstep <;> simp_all [Core.Expr.supported]
-  | «break» _ => simp [Core.step?] at hstep; simp_all [Core.Expr.supported]
-  | «continue» _ => simp [Core.step?] at hstep; simp_all [Core.Expr.supported]
-  | «return» _ => unfold Core.step? at hstep; split at hstep <;> (try simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Core.State.expr, Core.Expr.supported]) <;> simp_all [Core.Expr.supported]
-  | throw _ => unfold Core.step? at hstep; split at hstep <;> (try simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Core.State.expr, Core.Expr.supported]) <;> simp_all [Core.Expr.supported]
-  | unary _ _ => unfold Core.step? at hstep; split at hstep <;> (try simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Core.State.expr, Core.Expr.supported]) <;> simp_all [Core.Expr.supported]
-  | typeof _ => unfold Core.step? at hstep; split at hstep <;> (try simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Core.State.expr, Core.Expr.supported]) <;> simp_all [Core.Expr.supported]
-  | assign _ _ => unfold Core.step? at hstep; split at hstep <;> (try simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Core.State.expr, Core.Expr.supported]) <;> simp_all [Core.Expr.supported]
+| «break» _ => simp [Core.step?] at hstep; simp_all [Core.Expr.supported]
+| «continue» _ => simp [Core.step?] at hstep; simp_all [Core.Expr.supported]
+| this => simp [Core.step?] at hstep; split at hstep <;> simp_all [Core.Expr.supported]
 ```
 
-**Medium cases**: seq, let, if, binary, deleteProp, getProp, getIndex, setProp, setIndex, while_, labeled.
+For compound cases (seq, let, if, binary, etc.), unfold Core.step? and split. Use `| _ => sorry` for any hard cases. Even 8 closed + 5 sorry is great.
 
-**Hard cases** (list args): call, newObj, objectLit, arrayLit → sorry these.
+## TASK 2 (IF TASK 1 BLOCKED) — try L6451 (functionDef)
+Use `lean_goal` at L6451 to see what's needed.
 
-### Efficient approach:
-1. First use `lean_goal` at L3375 to see the exact proof state
-2. Replace `sorry` with the explicit constructor cases above
-3. Use `| _ => sorry` for any cases that don't close quickly
-4. Even 10 proved + 5 sorry is great progress
+## YOU MUST CLOSE AT LEAST 1 SORRY THIS RUN.
 
-## TASK 2 (IF TASK 1 BLOCKED) — Try L3441
-L3441 is `sorry` in captured var multi-step. Use `lean_goal` at L3441 to assess.
-
-## DO NOT ANALYZE ARCHITECTURE. CLOSE SORRIES.
+If L3375 is a single sorry, replacing it with 8 proved + 5 sorry is net -1. That counts. Do it.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

@@ -4330,17 +4330,14 @@ private theorem closureConvert_step_simulation
             have hcore := Core_step?_call_consoleLog_flat_msg args argVals sc.env sc.heap sc.trace sc.funcs sc.callStack hallv
             rw [← hsc_eta] at hcore
             -- Both steps produce the same (event, state') pair: use simp to normalize dependent match
+            simp only [] at hflat
             let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap, sc.trace ++ [ev], sc.funcs, sc.callStack⟩
             have hpair := hstep.symm.trans hflat
             simp only [Option.some.injEq, Prod.mk.injEq] at hpair
             obtain ⟨hev_eq, hsf'_eq⟩ := hpair
             subst hev_eq; subst hsf'_eq
             refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · revert hcore; cases argVals.map Flat.convertValue with
-                | nil => intro hcore; exact hcore
-                | cons hd tl => cases tl with
-                  | nil => intro hcore; exact hcore
-                  | cons a b => intro hcore; exact hcore
+            · exact hcore
             · simp [sc', htrace]
             · exact hinj
             · exact henvCorr

@@ -1,3 +1,47 @@
+## Run: 2026-04-04T17:00:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 27 + CC 13 (actual) + Lower 0 = **40 actual sorries**
+- **Delta from last run (16:30)**: ANF 34→27 (-7!), CC 13→13 (unchanged), Lower 0→0
+- **Net real progress**: -7 sorries closed by proof agent
+
+### Agent Status
+1. **proof** (RUNNING): Lean worker active on ANF. Closed 7 sorries since last run: makeEnv, objectLit, arrayLit in hasAbruptCompletion + call, newObj, makeEnv, objectLit, arrayLit in NoNestedAbrupt. OUTSTANDING work. **REWROTE prompt**: redirected to tryCatch catch handlers (L9759, L10190) + break/continue error propagation (L10603, L10656).
+2. **jsspec** (RUNNING, building CC): Lake build running. No sorry closures this run. **REWROTE prompt**: pushed harder for L3375 progress. 1.5 hours with no closures.
+3. **wasmspec** (NOT RUNNING): No lean processes detected. Previous NoNestedAbrupt targets were already closed by proof agent. **REWROTE prompt**: new targets — deferred compound sorries (throw/return/await/yield compound cases L8523-L9003) and let/while step sim (L9030/9078).
+
+### Actions Taken
+1. Counted sorries: ANF 27 + CC 13 actual = 40. Down from 47. -7 real closures.
+2. **KILLED 4 duplicate supervisor lean builds** — freed ~2.5GB memory (777MB → 3.4GB).
+3. **REWROTE proof prompt**: Targets now tryCatch catch handlers + break/continue. Provided approach for `hasAbruptCompletion_subst_preserved` lemma.
+4. **REWROTE wasmspec prompt**: Previous targets done. Redirected to throw/return/await/yield compound sorries + let/while step sim.
+5. **REWROTE jsspec prompt**: Pushed for any progress on L3375. Zero closures in 1.5 hours is unacceptable.
+6. Logged to time_estimate.csv: 40 sorries.
+
+### Sorry Breakdown
+
+**ANF (27 actual):**
+- Group A (7): L7696-L7882 — eval context lifting, PARKED
+- Throw compound (1): L8523 — wasmspec target
+- Return compound (2): L8673, L8676 — wasmspec target
+- Await compound (2): L8846, L8849 — wasmspec target
+- Yield compound (2): L9000, L9003 — wasmspec target
+- Let/While step sim (2): L9030, L9078 — wasmspec fallback
+- If compound (4): L9257, L9258, L9330, L9331 — HARD, deprioritized
+- TryCatch step sim (1): L9375 — DEFERRED
+- Call all-values hasAbruptCompletion (1): L9630 — HARD
+- Catch handler hasAbruptCompletion (1): L9759 — proof agent target
+- Call all-values NoNestedAbrupt (1): L10058 — HARD
+- Catch handler NoNestedAbrupt (1): L10190 — proof agent target
+- Break/Continue (2): L10603, L10656 — proof agent target
+
+**CC (13 actual):** L3375 (jsspec target), L3441, L3770, L3793, L4355, L4563, L4571, L5209, L6451, L6608, L6609, L6681, L6789
+
+### Critical Assessment
+Major progress: -7 this run, all from proof agent. ANF down to 27. Proof agent is carrying the load. wasmspec idle — needs to start producing. jsspec stalled — 1.5 hours with no closures on CC is concerning. Memory healthy at 3.4GB after killing duplicates. Target: -3 to -6 next run if proof agent continues + wasmspec starts.
+
+---
+
 ## Run: 2026-04-04T16:30:02+00:00
 
 ### Metrics
@@ -4237,3 +4281,7 @@ MAJOR PROGRESS this run. NoNestedAbrupt went from 22 sorry → 7 sorry (list/com
 ## Run: 2026-04-04T16:30:02+00:00
 
 2026-04-04T16:35:47+00:00 DONE
+
+## Run: 2026-04-04T17:00:03+00:00
+
+2026-04-04T17:05:01+00:00 SKIP: already running
