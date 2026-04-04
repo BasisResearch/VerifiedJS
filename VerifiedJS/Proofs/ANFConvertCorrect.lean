@@ -8532,7 +8532,8 @@ private theorem normalizeExpr_return_step_sim
     (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : Option ANF.Trivial) (n m : Nat)
     (hnorm : (ANF.normalizeExpr sf.expr k).run n = .ok (.return arg, m))
     (hk : ∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m'))
-    (hewf : ExprWellFormed sf.expr sf.env) :
+    (hewf : ExprWellFormed sf.expr sf.env)
+    (hna : NoNestedAbrupt sf.expr) :
     -- none case: return without argument
     (arg = none →
       ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
@@ -8557,7 +8558,7 @@ private theorem normalizeExpr_return_step_sim
   have hret := ANF.normalizeExpr_return_implies_hasReturnInHead sf.expr k hk arg n m hnorm
   cases sf with
   | mk e env heap trace funcs cs =>
-  simp only [Flat.State.expr] at hnorm hewf hret
+  simp only [Flat.State.expr] at hnorm hewf hret hna
   cases hret with
   | return_none_direct =>
     -- sf.expr = .return none, normalizeExpr produces pure (.return none), so arg = none
@@ -8674,9 +8675,12 @@ private theorem normalizeExpr_return_step_sim
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
     | _ => sorry -- compound inner_val: seq, let, assign, if, call, throw, etc.
+  | throw_arg h => exfalso; exact noNestedAbrupt_hasReturnInHead_absurd_throw hna h
+  | yield_some_arg h => exfalso; exact noNestedAbrupt_hasReturnInHead_absurd_yield hna h
+  | await_arg h => exfalso; exact noNestedAbrupt_hasReturnInHead_absurd_await hna h
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
-    sorry -- compound HasReturnInHead cases: seq_left, seq_right, let_init, etc.
+    sorry -- compound HasReturnInHead cases: need eval context stepping
 
 /-- step? on .await (.lit v) resolves immediately to .lit v with silent event. -/
 private theorem Flat.step?_await_lit_eq (v : Flat.Value)
@@ -8712,7 +8716,8 @@ private theorem normalizeExpr_await_step_sim
     (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat)
     (hnorm : (ANF.normalizeExpr sf.expr k).run n = .ok (.await arg, m))
     (hk : ∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m'))
-    (hewf : ExprWellFormed sf.expr sf.env) :
+    (hewf : ExprWellFormed sf.expr sf.env)
+    (hna : NoNestedAbrupt sf.expr) :
     -- ok case
     (∀ v, ANF.evalTrivial sf.env arg = .ok v →
       ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
@@ -8730,7 +8735,7 @@ private theorem normalizeExpr_await_step_sim
   have hawait := ANF.normalizeExpr_await_implies_hasAwaitInHead sf.expr k hk arg n m hnorm
   cases sf with
   | mk e env heap trace funcs cs =>
-  simp only [Flat.State.expr] at hnorm hewf hawait
+  simp only [Flat.State.expr] at hnorm hewf hawait hna
   cases hawait with
   | await_direct =>
     rename_i inner_arg
@@ -8847,9 +8852,12 @@ private theorem normalizeExpr_await_step_sim
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
     | _ => sorry -- compound inner_arg: seq, let, assign, if, call, throw, etc.
+  | throw_arg h => exfalso; exact noNestedAbrupt_hasAwaitInHead_absurd_throw hna h
+  | return_some_arg h => exfalso; exact noNestedAbrupt_hasAwaitInHead_absurd_return hna h
+  | yield_some_arg h => exfalso; exact noNestedAbrupt_hasAwaitInHead_absurd_yield hna h
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
-    sorry
+    sorry -- compound HasAwaitInHead cases: need eval context stepping
 
 /-- If normalizeExpr sf.expr k produces .yield arg delegate (with trivial-preserving k),
     then there exist Flat steps from sf matching the ANF yield step. -/
@@ -8858,7 +8866,8 @@ private theorem normalizeExpr_yield_step_sim
     (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : Option ANF.Trivial) (delegate : Bool) (n m : Nat)
     (hnorm : (ANF.normalizeExpr sf.expr k).run n = .ok (.yield arg delegate, m))
     (hk : ∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m'))
-    (hewf : ExprWellFormed sf.expr sf.env) :
+    (hewf : ExprWellFormed sf.expr sf.env)
+    (hna : NoNestedAbrupt sf.expr) :
     -- none case
     (arg = none →
       ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
@@ -8883,7 +8892,7 @@ private theorem normalizeExpr_yield_step_sim
   have hyield := ANF.normalizeExpr_yield_implies_hasYieldInHead sf.expr k hk arg delegate n m hnorm
   cases sf with
   | mk e env heap trace funcs cs =>
-  simp only [Flat.State.expr] at hnorm hewf hyield
+  simp only [Flat.State.expr] at hnorm hewf hyield hna
   cases hyield with
   | yield_none_direct =>
     rename_i d_val
@@ -9001,9 +9010,12 @@ private theorem normalizeExpr_yield_step_sim
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
     | _ => sorry -- compound inner_val: seq, let, assign, if, call, throw, etc.
+  | throw_arg h => exfalso; exact noNestedAbrupt_hasYieldInHead_absurd_throw hna h
+  | return_some_arg h => exfalso; exact noNestedAbrupt_hasYieldInHead_absurd_return hna h
+  | await_arg h => exfalso; exact noNestedAbrupt_hasYieldInHead_absurd_await hna h
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
-    sorry -- compound HasYieldInHead cases: seq_left, seq_right, let_init, etc.
+    sorry -- compound HasYieldInHead cases: need eval context stepping
 
 /-- If normalizeExpr sf.expr k produces .let name rhs body (with trivial-preserving k),
     then one ANF step on the let can be simulated by Flat steps. -/
@@ -10151,7 +10163,7 @@ private theorem anfConvert_step_star
     simp only [ANF.State.env] at henv
     simp only [ANF.State.trace] at htrace
     obtain ⟨hret_none, hret_ok, hret_err⟩ :=
-      normalizeExpr_return_step_sim sf k arg n m hnorm hk_triv hewf
+      normalizeExpr_return_step_sim sf k arg n m hnorm hk_triv hewf hna
     cases arg with
     | none =>
       simp only [ANF.step?, ANF.pushTrace] at hstep_eq
@@ -10196,7 +10208,7 @@ private theorem anfConvert_step_star
     simp only [ANF.State.env] at henv
     simp only [ANF.State.trace] at htrace
     obtain ⟨hyield_none, hyield_ok, hyield_err⟩ :=
-      normalizeExpr_yield_step_sim sf k arg delegate n m hnorm hk_triv hewf
+      normalizeExpr_yield_step_sim sf k arg delegate n m hnorm hk_triv hewf hna
     cases arg with
     | none =>
       simp only [ANF.step?, ANF.pushTrace] at hstep_eq
@@ -10241,7 +10253,7 @@ private theorem anfConvert_step_star
     simp only [ANF.State.env] at henv
     simp only [ANF.State.trace] at htrace
     obtain ⟨hawait_ok, hawait_err⟩ :=
-      normalizeExpr_await_step_sim sf k arg n m hnorm hk_triv hewf
+      normalizeExpr_await_step_sim sf k arg n m hnorm hk_triv hewf hna
     simp only [ANF.step?, ANF.pushTrace] at hstep_eq
     cases heval : ANF.evalTrivial sa_env arg <;> simp [heval] at hstep_eq
     all_goals obtain ⟨rfl, rfl⟩ := hstep_eq

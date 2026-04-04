@@ -1,3 +1,45 @@
+## Run: 2026-04-04T17:30:04+00:00
+
+### Metrics
+- **Sorry count**: ANF 25 + CC 13 + Wasm 0 = **38 real sorries**
+- **Delta from last run (17:00)**: ANF 27→25 (-2), CC 13→13 (unchanged)
+- **Net real progress**: -2 sorries (proof agent closed catch handler cases)
+
+### Agent Status
+1. **proof** (RUNNING since 16:30): Lake build running since 17:17 (still compiling ANFConvertCorrect). Closed 2 more cases since 17:00. **REWROTE prompt**: KEY INSIGHT — hasAbruptCompletion_step_preserved and NoNestedAbrupt_step_preserved proofs are FULLY WRITTEN in block comments (L9384-9656 and L9663-9969), just need uncommenting + 5 case fixes each (call, newObj, getEnv, objectLit, tryCatch). Redirected to uncomment-and-fix approach.
+2. **jsspec** (RUNNING since 15:30, 2+ hours): ZERO closures this cycle. **REWROTE prompt**: ultimatum — produce code or be replaced. Same targets (L3375 → L6451 → L3441).
+3. **wasmspec** (started 17:15): Last run was analysis-only, 0 code changes. **REWROTE prompt**: no more analysis, write code. Redirected to either (A) crack the "have bindings" issue in Flat.step? unfolding (unblocks 10 sorries) or (B) close compound throw/return/await/yield sorries.
+
+### Actions Taken
+1. Counted sorries: ANF 25 + CC 13 = 38. Down from 40. **-2 real closures.**
+2. **Killed supervisor's own lake build** — freed ~760MB (2.4GB → 2.9GB available).
+3. **REWROTE proof prompt**: Uncomment-and-fix strategy for hasAbruptCompletion/NoNestedAbrupt block comment proofs. This is the highest-leverage move.
+4. **REWROTE wasmspec prompt**: No more analysis runs. Must write code. Option A (crack have-bindings) or Option B (compound sorries).
+5. **REWROTE jsspec prompt**: 2+ hours with 0 closures is unacceptable. Must produce.
+6. Logged to time_estimate.csv: 38 sorries.
+
+### Sorry Breakdown
+
+**ANF (25 actual):**
+- Group A (7): L7696-L7882 — eval context lifting, PARKED
+- Throw compound (1): L8523 — wasmspec target
+- Return compound (2): L8673, L8676 — wasmspec target
+- Await compound (2): L8846, L8849 — wasmspec target
+- Yield compound (2): L9000, L9003 — wasmspec target
+- Let/While step sim (2): L9030, L9078 — PARKED
+- If compound (4): L9257, L9258, L9330, L9331 — PARKED (needs trivialChain)
+- TryCatch step sim (1): L9375 — DEFERRED
+- hasAbruptCompletion_step_preserved (1): L9383 — proof agent target (UNCOMMENT PROOF)
+- NoNestedAbrupt_step_preserved (1): L9662 — proof agent target (UNCOMMENT PROOF)
+- Break/Continue compound (2): L10360, L10413 — proof agent fallback
+
+**CC (13 actual):** L3375 (jsspec target), L3441, L3770, L3793, L4355, L4563, L4571, L5209 (UNPROVABLE), L6451, L6608, L6609, L6681, L6789
+
+### Critical Assessment
+Steady progress: -2 this run from proof agent. Proof agent is the workhorse — 9 closures in last 3 runs. The KEY move now is uncommenting the block-comment proofs for hasAbruptCompletion/NoNestedAbrupt: 50+ proved cases sitting dormant behind a `/-...-/` delimiter. If the "have bindings" issue in Flat.step? can be cracked, 10 sorry→proved in one shot. wasmspec MUST produce code next run. jsspec is stalled — if no closures by 18:00, will reassign CC targets to proof agent.
+
+---
+
 ## Run: 2026-04-04T17:00:03+00:00
 
 ### Metrics
@@ -4289,3 +4331,4 @@ MAJOR PROGRESS this run. NoNestedAbrupt went from 22 sorry → 7 sorry (list/com
 
 ## Run: 2026-04-04T17:30:04+00:00
 
+2026-04-04T17:36:07+00:00 DONE

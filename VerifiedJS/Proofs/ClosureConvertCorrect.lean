@@ -4333,15 +4333,17 @@ private theorem closureConvert_step_simulation
             have hpair := hstep.symm.trans hflat
             simp only [Option.some.injEq, Prod.mk.injEq] at hpair
             obtain ⟨hev_eq, hsf'_eq⟩ := hpair
-            subst hsf'_eq
-            -- Define sc' using the core event (avoids dependent match on hfvals)
-            let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
-              sc.trace ++ [Core.TraceEvent.log (match argVals.map Flat.convertValue with
-                | [v] => Flat.valueToString v
-                | vs => " ".intercalate (vs.map Flat.valueToString))],
-              sc.funcs, sc.callStack⟩
-            refine ⟨injMap, sc', ⟨hcore⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-            · simp only [sc']; rw [htrace]
+            subst hev_eq; subst hsf'_eq
+            let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap, sc.trace ++ [ev], sc.funcs, sc.callStack⟩
+            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+            · -- Core.step?: eliminate dependent match by case splitting
+              revert hcore
+              cases argVals with
+              | nil => intro hcore; exact hcore
+              | cons hd tl => cases tl with
+                | nil => intro hcore; exact hcore
+                | cons a b => intro hcore; exact hcore
+            · simp [sc', htrace]
             · exact hinj
             · exact henvCorr
             · exact henvwf
