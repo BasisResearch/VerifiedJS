@@ -6545,7 +6545,7 @@ private theorem closureConvert_step_simulation
       have hexprwf_body : ExprAddrWF body sc.heap.objects.size := by
         cases finally_ <;> simp [ExprAddrWF] at hexprwf <;> exact hexprwf.1
       have hsf_eta : sf = { sf with expr := .tryCatch fbody catchParam fcatch ffin } := by
-        cases sf; simp_all
+        cases sf; simp_all [fbody, fcatch, ffin, st1, st2]
       rw [hsf_eta] at hstep
       match hm : Flat.step? { sf with expr := fbody } with
       | some (t, sb) =>
