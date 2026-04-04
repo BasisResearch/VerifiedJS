@@ -3103,3 +3103,5 @@ Net result: MORE broken cases, not fewer. Approach rejected (consistent with 2 p
 - **L3719, L3742, L6543, L6616, L6724**: All blocked by CCStateAgree architectural issue — converting sub-expressions (then_, catchBody, else_, etc.) changes CCState's nextId/funcs.size, making CCStateAgree impossible between input st and converted sub-state.
 - **L6544**: CCStateAgree blocked + finally handling.
 2026-04-04T08:00:01+00:00 SKIP: already running
+### 2026-04-04T08:00:02+00:00 Run complete — closed L6673 sorry (15→14), others blocked by CCStateAgree/HeapInj architecture
+2026-04-04T08:00:10+00:00 DONE

@@ -6877,7 +6877,7 @@ mutual
 /-- Predicate tracking whether an expression has .if in CPS-head position.
     Structurally parallel to HasThrowInHead but with .if_direct instead of .throw_direct. -/
 inductive HasIfInHead : Flat.Expr → Prop where
-  | if_direct : HasIfInHead (.if cond then_ else_)
+  | if_direct : HasIfInHead (.if c t e)
   | seq_left : HasIfInHead a → HasIfInHead (.seq a b)
   | seq_right : HasIfInHead b → HasIfInHead (.seq a b)
   | let_init : HasIfInHead init → HasIfInHead (.let name init body)
