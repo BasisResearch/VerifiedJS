@@ -3414,7 +3414,16 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
       rw [state_with_expr_eq hexpr] at hstep
       have h := Core_step?_return_none { s with expr := .«return» none }
       rw [h] at hstep; injection hstep with hstep; obtain ⟨-, rfl⟩ := Prod.mk.inj hstep; rfl
-    | some => sorry
+    | some e =>
+      rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+      rw [state_with_expr_eq hexpr] at hstep
+      cases hval : Core.exprValue? e with
+      | some v =>
+        have hlit : e = .lit v := by cases e <;> simp [Core.exprValue?] at hval; subst hval; rfl
+        subst hlit
+        have h := Core_step?_return_some_lit { s with expr := .«return» (some (.lit v)) } v
+        rw [h] at hstep; injection hstep with hstep; obtain ⟨-, rfl⟩ := Prod.mk.inj hstep; rfl
+      | none => sorry
   | labeled lbl body =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3435,12 +3444,66 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
     rw [state_with_expr_eq hexpr] at hstep
     simp [Core.step?, Core.pushTrace] at hstep
     obtain ⟨-, rfl⟩ := hstep; rfl
-  | «let» => sorry
-  | assign => sorry
-  | «if» => sorry
-  | seq => sorry
+  | «let» name init body =>
+    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+    rw [state_with_expr_eq hexpr] at hstep
+    cases hval : Core.exprValue? init with
+    | some v =>
+      simp [Core.step?, Core.pushTrace, Core.exprValue?, hval] at hstep
+      obtain ⟨-, rfl⟩ := hstep; exact hsupp.2
+    | none => sorry
+  | assign name rhs =>
+    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+    rw [state_with_expr_eq hexpr] at hstep
+    cases hval : Core.exprValue? rhs with
+    | some v =>
+      simp [Core.step?, Core.pushTrace, Core.exprValue?, hval] at hstep
+      obtain ⟨-, rfl⟩ := hstep; rfl
+    | none => sorry
+  | «if» cond then_ else_ =>
+    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+    rw [state_with_expr_eq hexpr] at hstep
+    cases hval : Core.exprValue? cond with
+    | some v =>
+      simp [Core.step?, Core.pushTrace, Core.exprValue?, hval] at hstep
+      obtain ⟨-, rfl⟩ := hstep
+      cases Core.toBoolean v <;> simp [Core.Expr.supported] <;> [exact hsupp.2.2; exact hsupp.2.1]
+    | none => sorry
+  | seq a b =>
+    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+    rw [state_with_expr_eq hexpr] at hstep
+    cases hval : Core.exprValue? a with
+    | some _ =>
+      simp [Core.step?, Core.pushTrace, Core.exprValue?, hval] at hstep
+      obtain ⟨-, rfl⟩ := hstep; exact hsupp.2
+    | none => sorry
+  | throw arg =>
+    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+    rw [state_with_expr_eq hexpr] at hstep
+    cases hval : Core.exprValue? arg with
+    | some v =>
+      have hlit : arg = .lit v := by cases arg <;> simp [Core.exprValue?] at hval; subst hval; rfl
+      subst hlit
+      have h := Core_step?_throw_lit { s with expr := .throw (.lit v) } v
+      rw [h] at hstep; injection hstep with hstep; obtain ⟨-, rfl⟩ := Prod.mk.inj hstep; rfl
+    | none => sorry
+  | typeof arg =>
+    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+    rw [state_with_expr_eq hexpr] at hstep
+    cases hval : Core.exprValue? arg with
+    | some v =>
+      simp [Core.step?, Core.pushTrace, Core.exprValue?, hval] at hstep
+      obtain ⟨-, rfl⟩ := hstep; rfl
+    | none => sorry
+  | unary op arg =>
+    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+    rw [state_with_expr_eq hexpr] at hstep
+    cases hval : Core.exprValue? arg with
+    | some v =>
+      simp [Core.step?, Core.pushTrace, Core.exprValue?, hval] at hstep
+      split at hstep <;> (obtain ⟨-, rfl⟩ := hstep; rfl)
+    | none => sorry
   | call => sorry
-  | unary => sorry
   | binary => sorry
   | getProp => sorry
   | setProp => sorry
@@ -3449,9 +3512,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
   | deleteProp => sorry
   | objectLit => sorry
   | arrayLit => sorry
-  | throw => sorry
   | tryCatch => sorry
-  | typeof => sorry
 
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)

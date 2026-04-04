@@ -1836,3 +1836,4 @@ Done
 [9.5s] Got 95 bytes, clean: '\x1b[?2004h\x1b[?1004h\x1b[?2026h\r◐medium·/effort\r\r\n\x1b[?2026l'
 [SENT] /exit
 Done
+2026-04-04T22:00:01+00:00 Token expires in 30m, refreshing...
