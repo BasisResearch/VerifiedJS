@@ -2044,14 +2044,11 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
   unfold step? at h
   split at h
   all_goals (repeat (first | contradiction | split at h))
-  -- Close goals where h is a direct some = some equation
   all_goals (first
     | (simp only [Option.some.injEq, Prod.mk.injEq] at h;
        obtain ⟨-, rfl⟩ := h; try rfl;
        simp [pushTrace, allocFreshObject, allocEnvObject, allocObjectWithProps])
-    | (-- Handle remaining goals with match on step? result in h
-       -- Name the step? call, then split on it
-       revert h; generalize step? _ = result; intro h;
+    | (revert h; generalize step? _ = result; intro h;
        rcases result with _ | ⟨t, si⟩;
        · simp at h
        · simp only [Option.some.injEq, Prod.mk.injEq] at h;
