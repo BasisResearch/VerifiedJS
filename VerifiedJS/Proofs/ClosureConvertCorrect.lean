@@ -8216,7 +8216,7 @@ private theorem closureConvert_step_simulation
               (Flat.convertOptExpr finally_ scope envVar envMap
                 (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st_a').snd).snd,
               ?_, hAgreeIn, by rw [hconv.2]; exact ⟨hsd_f.2.1.symm, hsd_f.2.2.symm⟩⟩
-            simp only [Flat.convertExpr, ← hconv'_fst, hconv'_snd, hsd_c.1, hsd_f.1]
+            simp only [sc', Flat.convertExpr, hconv'_fst, hconv'_snd, hsd_c.1, hsd_f.1, fcatch, ffin]
       | none =>
         have heq : Flat.step? { sf with expr := .tryCatch fbody catchParam fcatch ffin } = none := by
           simp only [Flat.step?, hfnv, hm]

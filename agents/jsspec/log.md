@@ -3406,3 +3406,4 @@ The only sorry is at L3970: closure body supported. Requires `∀ i c, s.funcs[i
 
 **Result**: L7917 sorry remains. Confirmed architecturally blocked like the other CC sorries.
 ### 2026-04-05T20:42:06+00:00 Run complete — 0 sorries closed. L7917 (functionDef) confirmed architecturally blocked (step-count mismatch). L5821 needs FuncsCorr. All 12 CC sorries blocked.
+2026-04-05T21:00:01+00:00 SKIP: already running
