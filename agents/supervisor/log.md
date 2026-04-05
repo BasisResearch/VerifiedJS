@@ -1,3 +1,59 @@
+## Run: 2026-04-05T03:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 26 + CC 20 = **46 real sorries**
+- **Delta from last run (23:00)**: -10 sorries (56→46). CC down from 30→20 (jsspec closed 10 in Core_step_preserves_supported). ANF unchanged at 26.
+- **Wasm/Semantics.lean**: 0 real sorries (just comments)
+
+### Agent Status
+1. **proof** (completed 03:04): Proved step?_preserves_funcs, Steps_preserves_funcs, fixed L9482 and L10760-10761 funcs threading. Infrastructure DONE. Did NOT start Task 4 (L9460/9469 case splits) yet. **Prompt updated**: Concrete case-split approach for hasAbruptCompletion_step_preserved with exact tactic blocks per constructor.
+
+2. **jsspec** (RUNNING since 01:00, building CC at 03:03): EXCELLENT progress — closed 10 sorries in Core_step_preserves_supported via depth induction (return/let/assign/if/seq/throw/typeof/unary/binary/deleteProp). 8 remaining in theorem (getProp/setProp/getIndex/setIndex/call/objectLit/arrayLit/tryCatch at L3806-3811). Also 12 other CC sorries. **Prompt NOT updated** (running mid-task, don't disrupt).
+
+3. **wasmspec** (completed 03:02): Accomplished infrastructure (removed funcs:=sb.funcs from step? tryCatch branches, verified step?_preserves_funcs proof via LSP). But ZERO primary sorry closures — got blocked by concurrency conflicts with proof agent on Flat/Semantics.lean. **Prompt REWRITTEN**: Told to ONLY edit ANFConvertCorrect.lean, avoid L9453-9500 (proof agent territory). Targets: L9050, L9333/9334, L9406/9407.
+
+### Actions Taken
+1. Counted sorries: ANF 26 + CC 20 = 46 real sorries. Down 10 from last run.
+2. **Updated proof prompt**: Detailed case-split approach for L9460 (hasAbruptCompletion_step_preserved) with exact Lean tactic blocks for lit/var/this/seq/break/continue/return/throw constructors. Added set_option maxHeartbeats 3200000.
+3. **Rewrote wasmspec prompt**: Clear concurrency boundaries — wasmspec ONLY touches L9050, L9333/9334, L9406/9407. Must NOT touch Flat/Semantics.lean or L9453-9500. This prevents the concurrency deadlock from last run.
+4. Left jsspec prompt unchanged — it's running and making progress.
+5. Logged to time_estimate.csv: 46 sorries.
+
+### Sorry Breakdown
+
+**ANF (26 sorries, same as last run):**
+- L7701-7887 (7): normalizeExpr_labeled eval context — PARKED
+- L8531-9023 (7): compound HasThrow/Return/Await/Yield — PARKED
+- L9050 (1): let step sim — **wasmspec target**
+- L9140, 9152 (2): while step sim — deferred
+- L9333, 9334, 9406, 9407 (4): if compound + HasIfInHead — **wasmspec target**
+- L9451 (1): tryCatch step sim — deferred
+- L9460 (1): hasAbruptCompletion_step_preserved body — **proof agent target**
+- L9469 (1): NoNestedAbrupt_step_preserved body — **proof agent target**
+- L9866, 9919 (2): break/continue compound — deferred
+
+**CC (20 sorries):**
+- L2965, 2983 (2): list/propList supported helper lemmas
+- L3806-3811 (6): Core_step_preserves_supported remaining cases — **jsspec target**
+- L3877 (1): supported preservation detail
+- L4206, 4229 (2): CCStateAgree if-branches
+- L4793 (1): funcs correspondence
+- L5001, 5009 (2): semantic mismatch (Core alloc vs Flat step)
+- L5647 (1): UNPROVABLE getIndex string
+- L6889 (1): functionDef case
+- L7046, 7047 (2): tryCatch CCStateAgree
+- L7119 (1): tryCatch inner
+- L7227 (1): while_ CCState threading
+
+### Critical Assessment
+**jsspec is on fire** — 10 closures in one run is the best rate we've seen. If it closes the remaining 6 in Core_step_preserves_supported (L3806-3811), that unblocks FuncsSupported propagation. The 8 harder CC sorries (CCStateAgree, semantic mismatch, while) are architecturally blocked and may need design changes.
+
+**proof agent** has the highest-impact single targets: L9460 + L9469 are worth 2 sorries directly but unblock NoNestedAbrupt_steps_preserved → anfConvert_steps_star → end-to-end composition. This is the critical path.
+
+**wasmspec** needs a clean run without concurrency interference. The prompt now prevents Flat/Semantics.lean conflicts. Its 5 targets (L9050 + 4 if compound) are independently tractable.
+
+---
+
 ## Run: 2026-04-04T23:00:04+00:00
 
 ### Metrics
@@ -4823,3 +4879,4 @@ If proof closes L9460+L9469 and wasmspec closes L9050+if cases: ANF drops to ~15
 
 ## Run: 2026-04-05T03:05:01+00:00
 
+2026-04-05T03:08:47+00:00 DONE
