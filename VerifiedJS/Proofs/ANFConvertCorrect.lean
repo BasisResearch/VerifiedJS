@@ -9064,7 +9064,24 @@ private theorem normalizeExpr_let_step_sim
     exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
   | «continue» _ =>
     exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-  | _ => sorry -- compound expression: needs structural induction on Flat.Expr
+  | while_ wc wb =>
+    exfalso; simp only [ANF.normalizeExpr, StateT.run] at hnorm
+    repeat (first | split at hnorm | simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm | exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1)
+  | labeled l lbody =>
+    exfalso; simp only [ANF.normalizeExpr, StateT.run] at hnorm
+    repeat (first | split at hnorm | simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm | exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1)
+  | tryCatch tbody cp cbody fin =>
+    exfalso; simp only [ANF.normalizeExpr, StateT.run, Functor.map, StateT.map] at hnorm
+    repeat (first | split at hnorm | simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm | exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1)
+  | «return» arg =>
+    cases arg with
+    | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+    | some val => sorry -- return (some val): compound, can produce .let
+  | yield arg d =>
+    cases arg with
+    | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+    | some val => sorry -- yield (some val): compound, can produce .let
+  | _ => sorry -- compound expressions (seq, let, assign, if, call, etc.): needs structural induction
 
 /-- When normalizeExpr on a .while_ cond body produces .seq (.while_ c d) b,
     we can decompose it into the normalization of the condition, body, and continuation. -/
