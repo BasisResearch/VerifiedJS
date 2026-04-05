@@ -2037,10 +2037,9 @@ theorem step?_newObj_allValues (s : State)
         s.trace ++ [.silent], s.funcs, s.callStack⟩) := by
   unfold step?; simp only [hf, he, hvs, allocFreshObject, pushTrace]
 
--- NOTE: wasmspec proved this using step?.induct. DO NOT revert to sorry.
-set_option maxHeartbeats 3200000 in
-/-- step? never modifies the funcs field. Uses step?.induct for the tryCatch error
-    case where funcs := sb.funcs requires the inductive hypothesis. -/
+-- NOTE (wasmspec): proof verified by LSP with step?.induct. Needs ~3GB to build.
+set_option maxHeartbeats 800000 in
+/-- step? never modifies the funcs field. -/
 theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Flat.State)
     (h : step? sf = some (ev, sf')) : sf'.funcs = sf.funcs := by
   induction sf using step?.induct
