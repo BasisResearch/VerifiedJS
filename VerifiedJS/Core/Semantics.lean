@@ -11542,6 +11542,26 @@ theorem step_objectLit_allValues (props : List (PropName × Expr)) (env : Env) (
     (step? ⟨.objectLit props, env, heap, trace, funcs, cs⟩).isSome = true := by
   unfold step?; split <;> simp_all
 
+/-- objectLit non-value prop stuck: objectLit is stuck. -/
+theorem step_objectLit_prop_stuck (props : List (PropName × Expr)) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (done : List (PropName × Expr)) (k : PropName) (target : Expr) (rest : List (PropName × Expr))
+    (hfnv : firstNonValueProp props = some (done, k, target, rest))
+    (hstuck : step? ⟨target, env, heap, trace, funcs, cs⟩ = none) :
+    step? ⟨.objectLit props, env, heap, trace, funcs, cs⟩ = none := by
+  unfold step?; split <;> simp_all
+
+/-- arrayLit non-value elem stuck: arrayLit is stuck. -/
+theorem step_arrayLit_elem_stuck (elems : List Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (done : List Expr) (target : Expr) (rest : List Expr)
+    (hfnv : firstNonValueExpr elems = some (done, target, rest))
+    (hstuck : step? ⟨target, env, heap, trace, funcs, cs⟩ = none) :
+    step? ⟨.arrayLit elems, env, heap, trace, funcs, cs⟩ = none := by
+  unfold step?; split <;> simp_all
+
 /-- §12.3.3 newObj always steps (allocates empty object). -/
 theorem step_newObj (callee : Expr) (args : List Expr) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)

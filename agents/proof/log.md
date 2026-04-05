@@ -5860,3 +5860,37 @@ The step? definition appears to have been concurrently modified (additional simp
 ### 2026-04-05T07:00:17+00:00 Starting run
 2026-04-05T07:27:18+00:00 Build started for ANFConvertCorrect
 2026-04-05T07:30:01+00:00 SKIP: already running
+
+### 2026-04-05T08:15:00+00:00 Tasks 1-4 complete
+
+**Task 1: HasTryCatchInHead definition** (L7501-7941)
+- Defined `HasTryCatchInHead`, `HasTryCatchInHeadList`, `HasTryCatchInHeadProps` mutual inductives
+- Proved `HasTryCatchInHead_not_value`
+- Modeled exactly on HasIfInHead (L7048-7499)
+
+**Task 2: normalizeExpr_tryCatch_or_k**
+- Proved helper lemmas:
+  - `ANF.bindComplex_never_tryCatch_general`
+  - `ANF.normalizeExpr_labeled_not_tryCatch`
+  - `ANF.normalizeExpr_while_not_tryCatch`
+- Proved `normalizeExprList_tryCatch_or_k`, `normalizeProps_tryCatch_or_k`
+- Proved `ANF.normalizeExpr_tryCatch_or_k` via strong induction on depth
+  - Key difference from if_or_k: `.tryCatch` case is direct constructor (vs `.if` being direct in if_or_k)
+  - `.if` case uses IH on cond + simp/split contradiction on continuation (produces .if, not .tryCatch)
+  - All other cases parallel the if version with 7 underscores (vs 6 for if)
+
+**Task 3: normalizeExpr_tryCatch_implies_hasTryCatchInHead**
+- Trivial from Task 2 + k-contradiction (k produces .trivial, not .tryCatch)
+
+**Task 4: Wired into normalizeExpr_tryCatch_step_sim (L10122)**
+- Used `generalize hsfe : sf.expr = sfe` to avoid dependent elimination failure on sf.expr projection
+- Case split: `| tryCatch_direct => sorry` (main case, now tractable) and `| _ => sorry` (compound cases)
+
+**Build result**: No new errors introduced. Pre-existing errors at L11033 (NoNestedAbrupt_step_preserved decreasing_by) from other agents.
+
+### Sorry classification update
+The normalizeExpr_tryCatch_step_sim sorry is now split into:
+- `| tryCatch_direct => sorry` — direct tryCatch in sf.expr, should be provable by unfolding normalizeExpr (.tryCatch ..) and step?
+- `| _ => sorry` — compound cases (sf.expr is .seq/.let/.getProp/etc. with tryCatch in head), needs step simulation through compound prefix
+2026-04-05T08:17:34+00:00 DONE
+2026-04-05T08:17:46+00:00 DONE

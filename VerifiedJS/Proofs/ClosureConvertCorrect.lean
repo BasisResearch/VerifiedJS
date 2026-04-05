@@ -3458,7 +3458,7 @@ private theorem tryCatch_body_depth_lt (body : Core.Expr) (cp : String) (cb : Co
 private theorem state_with_expr_eq {s : Core.State} {e : Core.Expr} (h : s.expr = e) :
     s = { s with expr := e } := by cases s; subst h; rfl
 
-set_option maxHeartbeats 4000000 in
+set_option maxHeartbeats 8000000 in
 private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.TraceEvent)
     (hsupp : s.expr.supported = true) (hstep : Core.step? s = some (ev, s')) :
     s'.expr.supported = true := by
@@ -4027,8 +4027,8 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
       obtain ⟨done, k, target, rest⟩ := val
       cases h_sub : Core.step? { s with expr := target } with
       | none =>
-        unfold Core.step? at hstep
-        simp only [hfnv, h_sub] at hstep
+        have := Core.step_objectLit_prop_stuck props s.env s.heap s.trace s.funcs s.callStack done k target rest hfnv h_sub
+        rw [this] at hstep; exact absurd hstep (by simp)
       | some p =>
         obtain ⟨t, se⟩ := p
         have hfwd := Core.step_objectLit_step_prop props s.env s.heap s.trace s.funcs s.callStack done k target rest hfnv t se h_sub
@@ -4054,8 +4054,8 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
       obtain ⟨done, target, rest⟩ := val
       cases h_sub : Core.step? { s with expr := target } with
       | none =>
-        unfold Core.step? at hstep
-        simp only [hfnv, h_sub] at hstep
+        have := Core.step_arrayLit_elem_stuck elems s.env s.heap s.trace s.funcs s.callStack done target rest hfnv h_sub
+        rw [this] at hstep; exact absurd hstep (by simp)
       | some p =>
         obtain ⟨t, se⟩ := p
         have hfwd := Core.step_arrayLit_step_elem elems s.env s.heap s.trace s.funcs s.callStack done target rest hfnv t se h_sub
@@ -4069,7 +4069,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           { s with expr := target } se t (Nat.le_refl _) htgt_supp h_sub
         exact listSupported_replace_target se.expr hd_supp hse_supp hr_supp
   | tryCatch body catchParam catchBody finally_ =>
-    rw [hexpr] at hsupp; simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp
+    rw [hexpr] at hsupp; simp only [Core.Expr.supported, Bool.and_eq_true, decide_eq_true_eq] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
     cases hval_b : Core.exprValue? body with
     | some v =>
