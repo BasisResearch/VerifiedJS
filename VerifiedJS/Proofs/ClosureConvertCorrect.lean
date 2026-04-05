@@ -3841,7 +3841,9 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
       cases hval_i : Core.exprValue? idx with
       | none =>
         cases h_sub : Core.step? { s with expr := idx } with
-        | none => simp [Core.step?, Core.exprValue?, hval_i, h_sub] at hstep
+        | none =>
+          have hov : Core.exprValue? (.lit ov) = some ov := rfl
+          simp [Core.step?, hov, hval_i, h_sub] at hstep
         | some p =>
           obtain ⟨t, sa⟩ := p
           have hfwd := Core.step_getIndex_step_idx ov idx s.env s.heap s.trace s.funcs s.callStack hval_i t sa h_sub
@@ -3871,15 +3873,17 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         simp only [Option.some.injEq, Prod.mk.injEq] at hstep
         obtain ⟨-, rfl⟩ := hstep
         simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-        exact ⟨ih obj.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-          { s with expr := obj } sa t (Nat.le_refl _) hsupp.1 h_sub, hsupp.2.1, hsupp.2.2⟩
+        exact ⟨⟨ih obj.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          { s with expr := obj } sa t (Nat.le_refl _) hsupp.1.1 h_sub, hsupp.1.2⟩, hsupp.2⟩
     | some ov =>
       have hlit : obj = .lit ov := by cases obj <;> simp [Core.exprValue?] at hval_o; subst hval_o; rfl
       subst hlit
       cases hval_i : Core.exprValue? idx with
       | none =>
         cases h_sub : Core.step? { s with expr := idx } with
-        | none => simp [Core.step?, Core.exprValue?, hval_i, h_sub] at hstep
+        | none =>
+          have hov : Core.exprValue? (.lit ov) = some ov := rfl
+          simp [Core.step?, hov, hval_i, h_sub] at hstep
         | some p =>
           obtain ⟨t, sa⟩ := p
           have hfwd := Core.step_setIndex_step_idx ov idx value s.env s.heap s.trace s.funcs s.callStack hval_i t sa h_sub
@@ -3887,15 +3891,18 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨-, rfl⟩ := hstep
           simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-          exact ⟨trivial, ih idx.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-            { s with expr := idx } sa t (Nat.le_refl _) hsupp.2.1 h_sub, hsupp.2.2⟩
+          exact ⟨⟨trivial, ih idx.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+            { s with expr := idx } sa t (Nat.le_refl _) hsupp.1.2 h_sub⟩, hsupp.2⟩
       | some iv =>
         have hlit_i : idx = .lit iv := by cases idx <;> simp [Core.exprValue?] at hval_i; subst hval_i; rfl
         subst hlit_i
         cases hval_v : Core.exprValue? value with
         | none =>
           cases h_sub : Core.step? { s with expr := value } with
-          | none => simp [Core.step?, Core.exprValue?, hval_v, h_sub] at hstep
+          | none =>
+            have hov : Core.exprValue? (.lit ov) = some ov := rfl
+            have hiv : Core.exprValue? (.lit iv) = some iv := rfl
+            simp [Core.step?, hov, hiv, hval_v, h_sub] at hstep
           | some p =>
             obtain ⟨t, sa⟩ := p
             have hfwd := Core.step_setIndex_step_value ov iv value s.env s.heap s.trace s.funcs s.callStack hval_v t sa h_sub
@@ -3903,8 +3910,8 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨-, rfl⟩ := hstep
             simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-            exact ⟨trivial, trivial, ih value.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-              { s with expr := value } sa t (Nat.le_refl _) hsupp.2.2 h_sub⟩
+            exact ⟨⟨trivial, trivial⟩, ih value.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+              { s with expr := value } sa t (Nat.le_refl _) hsupp.2 h_sub⟩
         | some vv =>
           have hlit_v : value = .lit vv := by cases value <;> simp [Core.exprValue?] at hval_v; subst hval_v; rfl
           subst hlit_v
@@ -3917,13 +3924,17 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
     rw [state_with_expr_eq hexpr] at hstep
     cases hfnv : Core.firstNonValueProp props with
     | none =>
-      -- All values: step allocates object, result is .lit
-      simp [Core.step?, hfnv] at hstep
-      obtain ⟨-, rfl⟩ := hstep; rfl
+      -- All values: step allocates object on heap, result is .lit (trivially supported)
+      have hstep' := hstep
+      unfold Core.step? at hstep'
+      split at hstep' <;> simp_all [Core.pushTrace]
     | some val =>
       obtain ⟨done, k, target, rest⟩ := val
       cases h_sub : Core.step? { s with expr := target } with
-      | none => simp [Core.step?, hfnv, h_sub] at hstep
+      | none =>
+        have hstep' := hstep
+        unfold Core.step? at hstep'
+        split at hstep' <;> simp_all
       | some p =>
         obtain ⟨t, se⟩ := p
         have hfwd := Core.step_objectLit_step_prop props s.env s.heap s.trace s.funcs s.callStack done k target rest hfnv t se h_sub
@@ -3941,13 +3952,17 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
     rw [state_with_expr_eq hexpr] at hstep
     cases hfnv : Core.firstNonValueExpr elems with
     | none =>
-      -- All values: step allocates array, result is .lit
-      simp [Core.step?, hfnv] at hstep
-      obtain ⟨-, rfl⟩ := hstep; rfl
+      -- All values: step allocates array on heap, result is .lit (trivially supported)
+      have hstep' := hstep
+      unfold Core.step? at hstep'
+      split at hstep' <;> simp_all [Core.pushTrace]
     | some val =>
       obtain ⟨done, target, rest⟩ := val
       cases h_sub : Core.step? { s with expr := target } with
-      | none => simp [Core.step?, hfnv, h_sub] at hstep
+      | none =>
+        have hstep' := hstep
+        unfold Core.step? at hstep'
+        split at hstep' <;> simp_all
       | some p =>
         obtain ⟨t, se⟩ := p
         have hfwd := Core.step_arrayLit_step_elem elems s.env s.heap s.trace s.funcs s.callStack done target rest hfnv t se h_sub
@@ -3965,39 +3980,51 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
     rw [state_with_expr_eq hexpr] at hstep
     cases hval_b : Core.exprValue? body with
     | some v =>
-      -- body is a value
-      simp [Core.step?, hval_b] at hstep
-      split at hstep
+      -- body is a value: tryCatch completes
+      have hstep' := hstep
+      unfold Core.step? at hstep'
+      simp only [hval_b] at hstep'
+      split at hstep'
       · -- isCallFrame
-        simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
+        simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
+        obtain ⟨-, rfl⟩ := hstep'; simp [Core.pushTrace]
       · -- not isCallFrame
         cases finally_ with
         | some fin =>
-          simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep
-          simp [Core.Expr.supported, hsupp.2]
+          simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
+          obtain ⟨-, rfl⟩ := hstep'; simp [Core.pushTrace, Core.Expr.supported, hsupp.2]
         | none =>
-          simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
+          simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
+          obtain ⟨-, rfl⟩ := hstep'; simp [Core.pushTrace]
     | none =>
       -- body is not a value: step body
       cases h_sub : Core.step? { s with expr := body } with
-      | none => simp [Core.step?, hval_b, h_sub] at hstep
+      | none =>
+        have hstep' := hstep
+        unfold Core.step? at hstep'
+        simp only [hval_b, h_sub] at hstep'
       | some p =>
         obtain ⟨te, sb⟩ := p
         cases te with
         | error msg =>
           -- error branch
-          simp [Core.step?, hval_b, h_sub] at hstep
-          split at hstep
+          have hstep' := hstep
+          unfold Core.step? at hstep'
+          simp only [hval_b, h_sub] at hstep'
+          split at hstep'
           · -- isCallFrame && starts with "return:"
-            simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
-          · split at hstep
+            simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
+            obtain ⟨-, rfl⟩ := hstep'; simp [Core.pushTrace]
+          · split at hstep'
             · -- isCallFrame, not return
-              simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
+              obtain ⟨-, rfl⟩ := hstep'; simp [Core.pushTrace]
             · -- regular catch
-              simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
+              obtain ⟨-, rfl⟩ := hstep'
               cases finally_ with
-              | some fin => simp [Core.Expr.supported, hsupp.1.2, hsupp.2]
-              | none => exact hsupp.1.2
+              | some fin => simp [Core.pushTrace, Core.Expr.supported, hsupp.1.2, hsupp.2]
+              | none => simp [Core.pushTrace, Core.Expr.supported, hsupp.1.2]
         | silent =>
           have hfwd := Core.step_tryCatch_step_body_silent body catchParam catchBody finally_ s.env s.heap s.trace s.funcs s.callStack hval_b sb h_sub
           rw [hfwd] at hstep
