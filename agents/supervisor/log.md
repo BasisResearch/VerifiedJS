@@ -1,3 +1,57 @@
+## Run: 2026-04-05T21:30:09+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 + CC 12 = **36 real sorries**
+- **Delta from last run (21:05)**: -1 (37→36). **DOWN — progress!**
+- **Lower**: 0 sorries (DONE)
+
+### Why count went DOWN (-1)
+- ANF: 25→24 (-1). **proof agent closed L8754 (unary_arg)**. The Steps_unary_ctx_b helper worked.
+- CC: 12→12 (same). All 12 remain architecturally blocked.
+
+### Memory Status — CRITICAL
+- **64MB available** — dangerously low
+- wasmspec lean worker: 3.6GB (active since 21:15)
+- proof lean worker: 1.1GB (active since 21:29)
+- Killed 2 supervisor build processes to free memory
+- **NO BUILDS ALLOWED** — all agents instructed to use LSP only
+
+### Agent Status
+1. **proof** (RUNNING since 20:30): Closed unary_arg sorry. Lean worker active since 21:29, working on remaining sorries. Prompt UPDATED: corrected 24 line numbers, redirected to Group B (HasXInHead).
+2. **jsspec** (IDLE since 21:12): Fixed 9 CC compilation errors. Ready for next run to build Steps_X_ctx_b helpers. Prompt UPDATED: emphasized no builds (memory critical).
+3. **wasmspec** (RUNNING since 21:15): Lean worker active (3.6GB!), tackling 4 preservation/exotic sorries. Prompt UPDATED: corrected line numbers, no-build warning.
+
+### Actions Taken
+1. Killed 2 supervisor build processes (freed some memory)
+2. Updated ALL 3 agent prompts with verified line numbers (shifted ~200 lines from last run)
+3. Added CRITICAL memory warnings to all prompts — NO BUILDS, LSP only
+4. proof prompt: removed closed L8754, updated 13 sorry lines, corrected Group F blocked lines
+5. wasmspec prompt: corrected 4 sorry lines (L12222, L12329, L12838, L12945)
+6. jsspec prompt: ready to build missing helpers when memory allows
+7. Logged to time_estimate.csv
+
+### Sorry Classification (36 total)
+**ANF (24):**
+- 1 labeled remnant (L8963) ← proof (needs Steps_X_ctx_b helpers from jsspec)
+- 4 compound HasXInHead (L10210, L10367, L10544, L10702) ← proof
+- 3 compound inner_val/arg (L10361, L10538, L10696) ← proof
+- 3 return/yield/compound (L10758, L10762, L10763) ← proof
+- 2 while condition (L10853, L10865) ← proof
+- 2 preservation (L12222, L12838) ← wasmspec
+- 2 exotic (L12329, L12945) ← wasmspec
+- 3 tryCatch (L13786, L13804, L13807) ← blocked
+- 2 call frame (L14890, L14901) ← blocked
+- 2 break/continue (L15121, L15174) ← blocked
+
+**CC (12):** ALL architecturally blocked
+
+### Expected next run: 34-36
+- proof: if Group B pattern works (same as unary_arg), could close 1-2 HasXInHead sorries
+- wasmspec: if preservation composes mechanically, could close 2 of 4
+- jsspec: idle until memory frees up
+
+---
+
 ## Run: 2026-04-05T21:05:01+00:00
 
 ### Metrics
@@ -6597,3 +6651,7 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 ## Run: 2026-04-05T21:05:01+00:00
 
 2026-04-05T21:11:04+00:00 DONE
+
+## Run: 2026-04-05T21:30:09+00:00
+
+2026-04-05T21:34:43+00:00 DONE

@@ -1,4 +1,4 @@
-# proof — 14 sorries in your zone. Line numbers UPDATED 21:05.
+# proof — 13 sorries in your zone. Line numbers UPDATED 21:30.
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY (and Flat/Semantics.lean for infrastructure)
@@ -10,73 +10,75 @@
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
-## MEMORY: 7.7GB total, NO swap. ~1.6GB available. VERY TIGHT.
-Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count = 0.
-**Do NOT start builds when wasmspec or jsspec are building. Use LSP tools instead.**
+## MEMORY: 7.7GB total, NO swap. **64MB AVAILABLE — EXTREMELY LOW.**
+**DO NOT start ANY builds right now.** wasmspec lean worker is using 3.6GB.
+Use `lean_goal` / `lean_multi_attempt` / `lean_hover_info` via LSP ONLY.
 
 ## BUILD COORDINATION — CRITICAL
-wasmspec is ALSO building ANFConvertCorrect. **Check before building:**
-```bash
-ps aux | grep "lake build" | grep -v grep | wc -l
-```
-If count > 0, WAIT. Do not start a build. Use `lean_goal` / `lean_multi_attempt` via LSP instead.
+wasmspec has a lean worker active on ANFConvertCorrect.lean. **DO NOT build.**
+Use LSP tools for all proof development until wasmspec finishes.
 
 ## CONCURRENCY: wasmspec also edits ANFConvertCorrect.lean
-- wasmspec works on L12000-12750 (trivialChain zone — 4 left)
+- wasmspec works on L12200-12950 (trivialChain zone — 4 left)
 - **YOU** own everything else
-- DO NOT touch lines 12000-12750
+- DO NOT touch lines 12200-12950
 
-## PROGRESS: Sorry count 37 total (25 ANF + 12 CC). You have 14 in your zone.
+## PROGRESS: 36 total (24 ANF + 12 CC). L8754 (unary_arg) CLOSED — nice work!
 
-## YOUR 14 SORRIES — CURRENT LINE NUMBERS (verified 21:05)
+## YOUR 13 SORRIES — CURRENT LINE NUMBERS (verified 21:30)
 
-### GROUP A-remnant: normalizeExpr_labeled_branch_step (2 sorries)
-| L8754 | unary_arg: needs Steps_unary_ctx_b |
-| L8755 | remaining catch-all: seq_right, setProp, binary_rhs, call, newObj, getIndex, setIndex, makeEnv, objectLit, arrayLit |
+### GROUP A-remnant: normalizeExpr_labeled_branch_step (1 sorry)
+| L8963 | remaining catch-all: seq_right, setProp, binary_rhs, call, newObj, getIndex, setIndex, makeEnv, objectLit, arrayLit |
 
-**L8754**: needs `Steps_unary_ctx_b` helper. jsspec may be building this — check if it exists yet.
-**L8755**: needs more eval context helpers (`Steps_X_ctx_b` for each sub-constructor). Build them one at a time.
+**L8963**: needs more `Steps_X_ctx_b` helpers for each sub-constructor. Check if jsspec built any new ones after L2252.
 
 ### GROUP B: compound HasXInHead catch-all (4 sorries)
-| L10002 | compound HasThrowInHead (seq_l, let_init, if_cond, call_callee, etc.) |
-| L10159 | compound HasReturnInHead |
-| L10336 | compound HasAwaitInHead |
-| L10494 | compound HasYieldInHead |
+| L10210 | compound HasThrowInHead (seq_l, let_init, if_cond, call_callee, etc.) |
+| L10367 | compound HasReturnInHead |
+| L10544 | compound HasAwaitInHead |
+| L10702 | compound HasYieldInHead |
 
-These need eval context stepping: for each HasXInHead sub-constructor, one Flat step through the eval context, then IH.
+These need eval context stepping: match on the HasXInHead constructor, apply IH to inner, lift through eval context using Steps_X_ctx_b.
 
 ### GROUP C: compound inner_val/inner_arg (3 sorries)
-| L10153 | throw compound inner_val (non-trivial cases like seq, let, etc.) |
-| L10330 | return compound inner_arg |
-| L10488 | yield compound inner_val |
+| L10361 | throw compound inner_val (non-trivial: seq, let, etc.) |
+| L10538 | return compound inner_arg |
+| L10696 | yield compound inner_val |
 
 ### GROUP D: return/yield/compound (3 sorries)
-| L10550 | return (some val): compound, can produce .let |
-| L10554 | yield (some val): compound, can produce .let |
-| L10555 | compound expressions catch-all |
+| L10758 | return (some val): compound, can produce .let |
+| L10762 | yield (some val): compound, can produce .let |
+| L10763 | compound expressions catch-all |
 
 ### GROUP E: while (2 sorries)
-| L10645 | While condition value case |
-| L10657 | Condition-steps case |
+| L10853 | While condition value case |
+| L10865 | Condition-steps case |
 
 ### GROUP F: tryCatch/call/break (7 sorries) — BLOCKED, do NOT work on these
-| L13578, L13596, L13599, L14682, L14693, L14913, L14966 |
+| L13786, L13804, L13807, L14890, L14901, L15121, L15174 |
 
 ## PRIORITY ORDER
-1. **GROUP B** (4 compound HasXInHead) — highest-value targets. Each one eliminates 1 sorry by case-splitting on HasXInHead constructors and stepping through eval context.
+1. **GROUP B** (4 compound HasXInHead) — highest-value targets. You CLOSED unary_arg using this exact pattern — repeat it.
 2. **GROUP C** (3 inner_val/arg) — similar pattern to Group B
-3. **L8754 + L8755** — needs Steps_X_ctx_b helpers (check if jsspec built any)
+3. **L8963** — needs Steps_X_ctx_b helpers
 4. **GROUP D/E** — later
 
 ## STRATEGY FOR GROUP B (HasXInHead)
-For L10002 (HasThrowInHead), the sorry says "compound HasThrowInHead cases: need eval context stepping through seq/let/call/etc."
+For L10210 (HasThrowInHead), the sorry says "compound HasThrowInHead cases: need eval context stepping through seq/let/call/etc."
 
-Use `lean_goal` at L10002 to see the goal. The pattern is:
+Use `lean_goal` at L10210 to see the goal. The pattern is:
 1. `hthrow : HasThrowInHead e` — gives you the sub-constructor (seq_l, let_init, etc.)
 2. Match on `hthrow` — each case gives an eval context position
 3. For each case, apply IH to the inner expression, then lift through the eval context using existing `Steps_X_ctx_b`
 
-This is the SAME pattern you used successfully for Group A. Repeat it.
+This is the SAME pattern you used for Group A. Repeat it.
+
+## STRATEGY FOR GROUP C (inner_val/inner_arg)
+Same approach as GROUP B. These are the other side of the same coin:
+- GROUP B: top-level compound with HasXInHead
+- GROUP C: inner expression in throw/return/yield is compound
+
+Use `lean_goal` at each sorry line to see what constructors remain and step through them.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

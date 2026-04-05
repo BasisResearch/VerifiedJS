@@ -65,7 +65,7 @@ private theorem Steps_pres_append {s1 s2 : Flat.State}
         exact ⟨h.1.trans hs1_pres.1.symm, h.2.1.trans hs1_pres.2.1.symm,
                by rw [h.2.2, hs1_pres.2.2]; simp [List.append_assoc]⟩
       have hlen' : ts'.length ≤ (ts ++ evs2).length := by simp at hlen ⊢; omega
-      obtain ⟨hf, hc, ht⟩ := ih hpres1' hpres2 smid ts' hrest' hlen'
+      obtain ⟨hf, hc, ht⟩ := ih hpres1' hsteps2 hpres2 smid ts' hrest' hlen'
       exact ⟨hf.trans hs1_pres.1, hc.trans hs1_pres.2.1,
              by rw [ht, hs1_pres.2.2]; simp [List.append_assoc]⟩
 

@@ -1,15 +1,15 @@
 # jsspec — Build missing Steps_X_ctx_b helpers in ANFConvertCorrect.lean
 
 ## RULES
-- **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
+- **DO NOT** run `lake build` anything — memory is 64MB. USE LSP ONLY.
 - **DO NOT** use while/until loops, sleep loops, pgrep.
-- MEMORY: 7.7GB total, NO swap. ~1.6GB available.
+- MEMORY: 7.7GB total, NO swap. **64MB AVAILABLE — CRITICAL.**
 
-## STATUS: CC is DONE (all 12 blocked). Your new mission: ANF helpers.
+## STATUS: CC build fixed (all 12 blocked). Your mission: ANF helpers.
 
 ## MISSION: Build missing eval context helpers
 
-The proof agent needs `Steps_X_ctx_b` helper theorems to close L8755 (catch-all sorry). These are mechanical theorems that lift inner steps through an evaluation context.
+The proof agent needs `Steps_X_ctx_b` helper theorems to close L8963 (catch-all sorry). These are mechanical theorems that lift inner steps through an evaluation context.
 
 ### EXISTING helpers (around L2115-2252, DO NOT DUPLICATE):
 - `Steps_if_cond_ctx_b`, `Steps_seq_ctx_b`, `Steps_let_init_ctx_b`
@@ -37,17 +37,15 @@ Each new helper should:
 2. Wrap each step in the appropriate eval context
 3. Return `Steps (wrapContext sf1) (wrapContext sf2) trace`
 
-Look at the exact signature of `Steps_binary_lhs_ctx_b` and replicate the pattern for the new eval context position.
+Look at the exact signature of `Steps_binary_lhs_ctx_b` and replicate the pattern.
 
 ### BUILD COORDINATION
-```bash
-ps aux | grep "lake build" | grep -v grep | wc -l
-```
-If count > 0, DO NOT BUILD. Use LSP tools instead.
+**DO NOT BUILD.** Memory is at 64MB. Both proof and wasmspec have lean workers running.
+Use `lean_hover_info` and `lean_goal` to verify your helpers compile, NOT `lake build`.
 
 ### CONCURRENCY
-- proof agent works on L8754-10657
-- wasmspec works on L12000-12750
+- proof agent works on L8963-10865
+- wasmspec works on L12200-12950
 - You: add helpers AFTER L2252 only (helper section)
 
 ## PRIORITY: Start with Steps_binary_rhs_ctx_b and Steps_call_func_ctx_b — these are most likely needed first.
