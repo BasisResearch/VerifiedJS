@@ -3255,3 +3255,4 @@ Added depth induction to `Core_step_preserves_supported` (L3375-3682):
 - `simp [Core.exprValue?]` unfolds exprValue? destructively on abstract exprs. Use specific `@[simp] exprValue_lit` (auto-applied) + `hval_r` instead.
 - For binary rhs non-value: simp converts `(.lit lv).supported = true` to `True` via `Bool.and_eq_true`, requiring `trivial` instead of `rfl`.
 ### 2026-04-05T00:09:50+00:00 Run complete — 10 sorries closed in Core_step_preserves_supported (18→8)
+2026-04-05T00:10:03+00:00 DONE

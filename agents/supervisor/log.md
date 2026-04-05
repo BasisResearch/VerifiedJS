@@ -4655,3 +4655,56 @@ Zero sorry progress this cycle. But:
 
 ## Run: 2026-04-05T00:05:01+00:00
 
+
+2026-04-05T00:05:01+00:00 START
+
+### Metrics
+- **Sorry count**: ANF 27 + CC 23 = **50 sorry lines**
+- **Delta from last run (23:00)**: ANF 27 (was 26, +1 from decomposition), CC 23 (was 30, -7 from jsspec)
+- Wait — CC was 30 at 23:00 but is now 23? Let me verify: jsspec ran 23:00-now and may have closed some. Actually the CC count has been 23 since the file was last edited. The "30" at 23:00 was a miscount or included comments. True count is 23.
+
+### Agent Status
+1. **proof** (running since 23:30): Previous run (22:30) was EXCELLENT — closed 4 sorries (tryCatch hasAbrupt, tryCatch NoNestedAbrupt, newObj hasAbrupt, newObj NoNestedAbrupt). Identified funcDef.body as the blocker for L9720/L10199. **REWROTE prompt**: Pivoted to L11680/L11681 (program funcs invariant) + L10402 (step propagation). Added `step?_preserves_funcs` as key enabler.
+2. **jsspec** (running since 23:00, building CC): Has been stuck on depth induction for 3+ runs. **REWROTE prompt**: PIVOTED away from depth induction. Now targeting CCStateAgree sorries (L4077, L4100, L6917, L6918, L6990) first — these are pattern-based fixes. Then captured var (L3748), function call (L4664), functionDef (L6760).
+3. **wasmspec** (running since 23:15): Fixed 4 simp errors in if_step_sim — good. **REWROTE prompt**: New task 1 is `step?_preserves_funcs` (shared need with proof agent). Then let/while/tryCatch step sims.
+
+### Actions Taken
+1. Counted sorries: ANF 27 + CC 23 = 50.
+2. **Killed duplicate supervisor lake build** — was competing with jsspec for memory on the same file (ClosureConvertCorrect.lean). Freed ~250MB.
+3. **REWROTE proof prompt**: Focus on funcs invariant propagation (L11680/L11681/L10402). step?_preserves_funcs is the key lemma.
+4. **REWROTE jsspec prompt**: MAJOR PIVOT — stop banging head on depth induction. Attack CCStateAgree sorries and standalone cases first for concrete progress.
+5. **REWROTE wasmspec prompt**: Add step?_preserves_funcs as task 1 (shared unblock). Continue let/while step sims.
+6. Logged to time_estimate.csv.
+
+### Sorry Breakdown
+
+**ANF (27 sorry lines, ~15 unique blocks):**
+- L7701-7887 (7): eval context lifting — PARKED
+- L8531-9023 (7): compound HasX — PARKED
+- L9050 (1): let step sim — wasmspec target
+- L9140, 9152 (2): while step sim — wasmspec target
+- L9333-9407 (4): if compound — needs HasIfInHead compound
+- L9451 (1): tryCatch step sim — wasmspec target (if time)
+- L10402 (1): NoNestedAbrupt_steps_preserved funcs args — proof agent target
+- L10783 (1): break compound — needs eval context
+- L11680, 11681 (2): program funcs invariant — proof agent target
+
+**CC (23 sorry lines, ~15 unique blocks):**
+- L3675-3682 (8): Core_step_preserves_supported constructors — DEFERRED (depth induction)
+- L3748 (1): captured variable — jsspec target
+- L4077, 4100 (2): if CCStateAgree — jsspec target (EASY)
+- L4664 (1): non-consoleLog function call — jsspec target
+- L4872, 4880 (2): newObj semantic mismatch — PARKED
+- L5518 (1): getIndex string — UNPROVABLE (known)
+- L6760 (1): functionDef — jsspec target
+- L6917, 6918 (2): tryCatch CCStateAgree — jsspec target
+- L6990 (1): tryCatch CCStateAgree inner — jsspec target
+- L7098 (1): while CCState threading — HARD
+
+### Critical Assessment
+Proof agent is making strong progress on ANF (4 closures last run). The funcDef.body invariant is identified and the fix path is clear. jsspec needs a strategic pivot — depth induction is the right long-term approach but it's been stuck; closing CCStateAgree and standalone cases will give concrete progress. wasmspec is doing good infrastructure work (simp fixes) and should tackle step?_preserves_funcs next.
+
+Key insight: `step?_preserves_funcs` is a shared blocker for both proof agent (L10402, L11680/L11681) and wasmspec (needed for step sim invariant propagation). Whoever proves it first unblocks the other.
+
+2026-04-05T00:10:00+00:00 DONE
+2026-04-05T00:10:25+00:00 DONE

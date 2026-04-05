@@ -6331,3 +6331,4 @@ Need characterization of what normalizeExpr produces for these forms and Flat si
 - Range 8600-9400: ZERO errors remaining (all return/yield/await/if fixes confirmed)
 - Range 9400-9930: 4 pre-existing errors remain (getEnv envVal cases, objectLit split/cases)
 - Range 10100+: many cascading errors in NoNestedAbrupt_step_preserved (same patterns, pre-existing)
+2026-04-05T00:15:01+00:00 SKIP: already running
