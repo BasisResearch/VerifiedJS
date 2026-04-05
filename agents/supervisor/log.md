@@ -1,3 +1,73 @@
+## Run: 2026-04-05T15:30:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 56 + CC 12 = **68 real sorries**
+- **Delta from last run (12:00)**: +8 (60→68). **COUNT UP — wasmspec false branch decomposition + proof agent edits.**
+- **Lower**: 0 sorries (DONE)
+
+### Why count went UP (+8): Decomposition + documentation, not regression
+- ANF went from 47→56 (+9): wasmspec expanded false branch of normalizeExpr_if_branch_step_false from 1 sorry into 11 structured sorries (net +10). proof agent documented but didn't close any. Some minor line shifts.
+- CC went from 13→12 (-1): jsspec's prior fixes landed (objectLit/arrayLit/tryCatch). jsspec wrote Core_step_preserves_funcs_supported (690 lines) at 15:28, build running for L4916.
+
+### CRITICAL DISCOVERY: hpres output in normalizeExpr_if_branch_step is UNPROVABLE
+
+The universal hpres `∀ smid evs1, Steps ⟨e, ...⟩ evs1 smid → smid.funcs = funcs ∧ ...` claims ALL step sequences preserve funcs/cs. But after .if branches to then_flat, subsequent steps can change callStack (via .call). This makes 16 hpres sorries impossible as stated.
+
+**FIX**: Weaken to bounded form: add `evs1.length ≤ evs.length →` guard. Within the bound, all steps are condition-evaluation steps through eval context, which DO preserve funcs/cs. This requires changing:
+1. Steps_ctx_lift hpres parameter (L1781)
+2. All Steps_*_ctx wrappers
+3. normalizeExpr_if_branch_step output type (L10708)
+
+### Agent Status
+1. **proof** (RUNNING since 14:30): Documented architectural blockers (callStack propagation, counter alignment, noCallFrameReturn). No sorries closed. All zone sorries blocked. Prompt UPDATED: redirected to UNLOCK sorry analysis (L11211-11336) + lean_goal documentation.
+
+2. **jsspec** (RUNNING since 15:00): Wrote Core_step_preserves_funcs_supported (690 lines). Build running since 15:28 for L4916. Prompt UPDATED: monitor build, then move to L7928 (functionDef).
+
+3. **wasmspec** (RUNNING since 15:00): Group E + false version filled. 22 sorries in zone. hpres identified as key blocker. Prompt UPDATED: **MAJOR** — fix hpres bug by weakening to bounded form. Detailed 7-step plan with concrete Lean code for each change. Expected: 16-20 sorries closed.
+
+### Actions Taken
+1. **Identified hpres bug**: Proved that universal hpres is logically false. Designed bounded fix.
+2. Updated ALL 3 agent prompts:
+   - wasmspec: MAJOR rewrite — 7-step hpres fix plan with concrete Lean code for Steps_ctx_lift modification, bounded output, and proof strategy
+   - proof: Redirected from blocked tryCatch to UNLOCK sorry analysis (lean_goal documentation)
+   - jsspec: Acknowledged great work on Core_step_preserves_funcs_supported, set next targets (L7928 functionDef)
+3. Logged to time_estimate.csv.
+
+### Sorry Classification (68 total)
+**ANF (56):**
+- 7 compound eval context inner (L8364-8550)
+- 7 compound HasX head (L9194-9686)
+- 3 compound return/yield/misc (L9742-9747)
+- 2 while condition (L9837-9849)
+- 16 hpres (L10750-11101) ← **wasmspec fixing**
+- 2 exotic (L10902, L11106) ← wasmspec after hpres
+- 2 seq_right (L10805, L11009) ← wasmspec after hpres
+- 2 trivialChain (L10758, L10964)
+- 8 UNLOCK (L11211-11336) ← blocked on hpres fix
+- 3 tryCatch (L11798-11819) ← architecturally blocked
+- 2 call site (L12902-12913) ← architecturally blocked
+- 2 break/continue compound (L13133-13186) ← architecturally blocked
+
+**CC (12):**
+- 1 closing: L4916 (FuncsSupported — jsspec build running)
+- 1 next: L7928 (functionDef)
+- 1 next: L5832 (FuncsCorr)
+- 1 unprovable: L6686 (getIndex string)
+- 8 architecturally blocked
+
+### Critical Assessment
+**Sorry count UP +8 is ALL decomposition/documentation.** No real regressions.
+
+**hpres fix is THE #1 lever.** If wasmspec lands the bounded hpres change, 16 ANF sorries close immediately. This unblocks 8 UNLOCK sorries too (total potential: 24 sorries). ANF could drop from 56 to 32-36.
+
+**jsspec build for L4916 is imminent.** If it succeeds, CC drops to 11. Then L7928 (functionDef) is next.
+
+**proof agent has no closeable sorries.** All zone work is blocked. Redirected to analysis/documentation of UNLOCK sorries to prepare for wasmspec's hpres fix landing.
+
+**Expected next run: 50-60** (wasmspec might not finish full hpres fix in one cycle; jsspec closes 0-1 CC).
+
+---
+
 ## Run: 2026-04-05T12:00:06+00:00
 
 ### Metrics
@@ -5929,3 +5999,4 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 
 ## Run: 2026-04-05T15:30:02+00:00
 
+2026-04-05T15:56:34+00:00 DONE

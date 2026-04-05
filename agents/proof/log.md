@@ -6018,3 +6018,38 @@ Multiple other tactic failures in L11147-11399 range (normalizeExpr_tryCatch_dec
 
 ### 2026-04-05T14:30:22+00:00 Starting run
 2026-04-05T15:30:01+00:00 SKIP: already running
+
+### $(date -Iseconds) Run in progress
+
+## Infrastructure added
+
+### Flat/Semantics.lean
+1. **`step?_trace_append`**: `step? sf = some (ev, sf') → sf'.trace = sf.trace ++ [ev]` — every step appends exactly one event to trace
+2. **`Steps_trace_append`**: `Steps sf evs sf' → sf'.trace = sf.trace ++ evs` — multi-step trace accumulation
+
+### ANFConvertCorrect.lean (L1885-L2100, my zone)
+1. **`step?_throw_callStack_inv`**: stepping `.throw e` preserves callStack and invariant (expr stays `.throw e'` or `.lit v`)
+2. **`step?_return_some_callStack_inv`**: stepping `.return (some e)` preserves callStack and invariant
+3. **`step?_await_callStack_inv`**: stepping `.await e` preserves callStack and invariant
+4. **`step?_yield_some_callStack_inv`**: stepping `.yield (some e) d` preserves callStack and invariant
+5. **`Steps_callStack_pres_of_inv`**: general lemma — if P is preserved by step? and implies callStack preservation, then Steps from P-states preserve callStack
+6. **`Steps_throw_pres`**: ALL Steps from `.throw arg` preserve funcs/callStack/trace
+7. **`Steps_return_some_pres`**: ALL Steps from `.return (some arg)` preserve funcs/callStack/trace
+8. **`Steps_await_pres`**: ALL Steps from `.await arg` preserve funcs/callStack/trace
+9. **`Steps_yield_some_pres`**: ALL Steps from `.yield (some arg) delegate` preserve funcs/callStack/trace
+
+### Verified closures (via lean_multi_attempt)
+These lemmas close the 8 terminal-wrapper hpres sorries. The tactic for each is:
+```
+intro smid evs1 h _; exact Steps_throw_pres h
+intro smid evs1 h _; exact Steps_return_some_pres h  
+intro smid evs1 h _; exact Steps_await_pres h
+intro smid evs1 h _; exact Steps_yield_some_pres delegate h
+```
+
+The `_` discards the `evs1.length ≤ evs.length` constraint (our lemmas prove the stronger unconditional version).
+
+### Remaining 8 hpres sorries (.if, .seq, .let contexts)
+These require proving callStack preservation for Steps that go PAST the evaluation context into the continuation (then_/else_, b, body). The theorem has a length constraint `evs1.length ≤ evs.length` which restricts to prefixes of the known Steps. This makes the if/seq/let cases PROVABLE via a Steps_ctx_pres lemma that tracks the correspondence between inner and wrapped Steps lengths. This needs a new `Steps_ctx_pres` general lemma (different from the prompt's version).
+
+**Status**: Infrastructure in place. wasmspec can use it to close 8/16 hpres sorries. The other 8 need `Steps_ctx_pres` which requires tracking Step-length correspondence.

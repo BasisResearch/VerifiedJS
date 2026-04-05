@@ -10933,7 +10933,9 @@ private theorem normalizeExpr_if_branch_step :
             hpres_c
         refine ⟨ws, evs_c, hwsteps, hsil_c, hwenv.trans henv_c, hwheap.trans hheap_c,
         hwfuncs, hwcs, by rw [hwtrace, htrace_c], ?_, ?_, ?_⟩
-        · sorry -- hpres for ws: follows from structure of lifted steps
+        · exact Steps_ctx_lift_pres (.if · then_flat else_flat)
+            (fun s inner hv t si hs he => step?_if_cond_step s inner then_flat else_flat hv t si hs he)
+            hsteps_c (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion) hpres_c
         · exact ⟨n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c⟩
         · rw [hwexpr, hwenv, henv_c]; exact fun x hfx => by
             cases hfx with
@@ -10957,7 +10959,9 @@ private theorem normalizeExpr_if_branch_step :
           hpres_c
       refine ⟨ws, evs_c, hwsteps, hsil_c, hwenv.trans henv_c, hwheap.trans hheap_c,
         hwfuncs, hwcs, by rw [hwtrace, htrace_c], ?_, ?_, ?_⟩
-      · sorry -- hpres for ws
+      · exact Steps_ctx_lift_pres (.if · then_flat else_flat)
+          (fun s inner hv t si hs he => step?_if_cond_step s inner then_flat else_flat hv t si hs he)
+          hsteps_c (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion) hpres_c
       · exact ⟨n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c⟩
       · rw [hwexpr, hwenv, henv_c]; exact fun x hfx => by
           cases hfx with
@@ -10979,7 +10983,9 @@ private theorem normalizeExpr_if_branch_step :
           hpres_a
       refine ⟨ws, evs_a, hwsteps, hsil_a, hwenv.trans henv_a, hwheap.trans hheap_a,
         hwfuncs, hwcs, by rw [hwtrace, htrace_a], ?_, ?_, ?_⟩
-      · sorry -- hpres for ws
+      · exact Steps_ctx_lift_pres (.seq · b)
+          (fun s inner hv t si hs he => step?_seq_ctx s inner b hv t si hs he)
+          hsteps_a (fun ev hev msg => by rw [hsil_a ev hev]; exact Core.TraceEvent.noConfusion) hpres_a
       · exact ⟨n_a, m_a, by rw [hwexpr]; simp only [ANF.normalizeExpr_seq']; exact hnorm_a⟩
       · rw [hwexpr, hwenv, henv_a]; exact fun x hfx => by
           cases hfx with
@@ -11003,7 +11009,9 @@ private theorem normalizeExpr_if_branch_step :
           hpres_init
       refine ⟨ws, evs_init, hwsteps, hsil_init, hwenv.trans henv_init, hwheap.trans hheap_init,
         hwfuncs, hwcs, by rw [hwtrace, htrace_init], ?_, ?_, ?_⟩
-      · sorry -- hpres
+      · exact Steps_ctx_lift_pres (.let init · body)
+          (fun s inner hv t si hs he => step?_let_init_ctx s init inner body hv t si hs he)
+          hsteps_init (fun ev hev msg => by rw [hsil_init ev hev]; exact Core.TraceEvent.noConfusion) hpres_init
       · exact ⟨n_init, m_init, by rw [hwexpr]; simp only [ANF.normalizeExpr_let']; exact hnorm_init⟩
       · rw [hwexpr, hwenv, henv_init]; exact fun x hfx => by
           cases hfx with
@@ -11023,7 +11031,9 @@ private theorem normalizeExpr_if_branch_step :
           hpres_arg
       refine ⟨ws, evs_arg, hwsteps, hsil_arg, hwenv.trans henv_arg, hwheap.trans hheap_arg,
         hwfuncs, hwcs, by rw [hwtrace, htrace_arg], ?_, ?_, ?_⟩
-      · sorry -- hpres
+      · exact Steps_ctx_lift_pres .throw
+          (fun s inner hv t si hs he => step?_throw_ctx s inner hv t si hs he)
+          hsteps_arg (fun ev hev msg => by rw [hsil_arg ev hev]; exact Core.TraceEvent.noConfusion) hpres_arg
       · exact ⟨n_arg, m_arg, by rw [hwexpr]; simp only [ANF.normalizeExpr_throw']; exact hnorm_arg⟩
       · rw [hwexpr, hwenv, henv_arg]; exact fun x hfx => by
           cases hfx with
@@ -11042,7 +11052,9 @@ private theorem normalizeExpr_if_branch_step :
           hpres_retv
       refine ⟨ws, evs_retv, hwsteps, hsil_retv, hwenv.trans henv_retv, hwheap.trans hheap_retv,
         hwfuncs, hwcs, by rw [hwtrace, htrace_retv], ?_, ?_, ?_⟩
-      · sorry -- hpres
+      · exact Steps_ctx_lift_pres (fun e => .return (some e))
+          (fun s inner hv t si hs he => step?_return_some_ctx s inner hv t si hs he)
+          hsteps_retv (fun ev hev msg => by rw [hsil_retv ev hev]; exact Core.TraceEvent.noConfusion) hpres_retv
       · exact ⟨n_retv, m_retv, by rw [hwexpr]; simp only [ANF.normalizeExpr_return_some']; exact hnorm_retv⟩
       · rw [hwexpr, hwenv, henv_retv]; exact fun x hfx => by
           cases hfx with
@@ -11061,7 +11073,9 @@ private theorem normalizeExpr_if_branch_step :
           hpres_awarg
       refine ⟨ws, evs_awarg, hwsteps, hsil_awarg, hwenv.trans henv_awarg, hwheap.trans hheap_awarg,
         hwfuncs, hwcs, by rw [hwtrace, htrace_awarg], ?_, ?_, ?_⟩
-      · sorry -- hpres
+      · exact Steps_ctx_lift_pres .await
+          (fun s inner hv t si hs he => step?_await_ctx s inner hv t si hs he)
+          hsteps_awarg (fun ev hev msg => by rw [hsil_awarg ev hev]; exact Core.TraceEvent.noConfusion) hpres_awarg
       · exact ⟨n_awarg, m_awarg, by rw [hwexpr]; simp only [ANF.normalizeExpr_await']; exact hnorm_awarg⟩
       · rw [hwexpr, hwenv, henv_awarg]; exact fun x hfx => by
           cases hfx with
@@ -11080,7 +11094,9 @@ private theorem normalizeExpr_if_branch_step :
           hpres_yv
       refine ⟨ws, evs_yv, hwsteps, hsil_yv, hwenv.trans henv_yv, hwheap.trans hheap_yv,
         hwfuncs, hwcs, by rw [hwtrace, htrace_yv], ?_, ?_, ?_⟩
-      · sorry -- hpres
+      · exact Steps_ctx_lift_pres (fun e => .yield (some e) delegate)
+          (fun s inner hv t si hs he => step?_yield_some_ctx s inner delegate hv t si hs he)
+          hsteps_yv (fun ev hev msg => by rw [hsil_yv ev hev]; exact Core.TraceEvent.noConfusion) hpres_yv
       · exact ⟨n_yv, m_yv, by rw [hwexpr]; simp only [ANF.normalizeExpr_yield_some']; exact hnorm_yv⟩
       · rw [hwexpr, hwenv, henv_yv]; exact fun x hfx => by
           cases hfx with
@@ -11141,7 +11157,9 @@ private theorem normalizeExpr_if_branch_step_false :
             hpres_c
         refine ⟨ws, evs_c, hwsteps, hsil_c, hwenv.trans henv_c, hwheap.trans hheap_c,
         hwfuncs, hwcs, by rw [hwtrace, htrace_c], ?_, ?_, ?_⟩
-        · sorry -- hpres
+        · exact Steps_ctx_lift_pres (.if · then_flat else_flat)
+            (fun s inner hv t si hs he => step?_if_cond_step s inner then_flat else_flat hv t si hs he)
+            hsteps_c (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion) hpres_c
         · exact ⟨n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c⟩
         · rw [hwexpr, hwenv, henv_c]; exact fun x hfx => by
             cases hfx with
@@ -11163,7 +11181,9 @@ private theorem normalizeExpr_if_branch_step_false :
           hpres_c
       refine ⟨ws, evs_c, hwsteps, hsil_c, hwenv.trans henv_c, hwheap.trans hheap_c,
         hwfuncs, hwcs, by rw [hwtrace, htrace_c], ?_, ?_, ?_⟩
-      · sorry -- hpres
+      · exact Steps_ctx_lift_pres (.if · then_flat else_flat)
+          (fun s inner hv t si hs he => step?_if_cond_step s inner then_flat else_flat hv t si hs he)
+          hsteps_c (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion) hpres_c
       · exact ⟨n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c⟩
       · rw [hwexpr, hwenv, henv_c]; exact fun x hfx => by
           cases hfx with
@@ -11184,7 +11204,9 @@ private theorem normalizeExpr_if_branch_step_false :
           hpres_a
       refine ⟨ws, evs_a, hwsteps, hsil_a, hwenv.trans henv_a, hwheap.trans hheap_a,
         hwfuncs, hwcs, by rw [hwtrace, htrace_a], ?_, ?_, ?_⟩
-      · sorry -- hpres
+      · exact Steps_ctx_lift_pres (.seq · b)
+          (fun s inner hv t si hs he => step?_seq_ctx s inner b hv t si hs he)
+          hsteps_a (fun ev hev msg => by rw [hsil_a ev hev]; exact Core.TraceEvent.noConfusion) hpres_a
       · exact ⟨n_a, m_a, by rw [hwexpr]; simp only [ANF.normalizeExpr_seq']; exact hnorm_a⟩
       · rw [hwexpr, hwenv, henv_a]; exact fun x hfx => by
           cases hfx with
@@ -11208,7 +11230,9 @@ private theorem normalizeExpr_if_branch_step_false :
           hpres_init
       refine ⟨ws, evs_init, hwsteps, hsil_init, hwenv.trans henv_init, hwheap.trans hheap_init,
         hwfuncs, hwcs, by rw [hwtrace, htrace_init], ?_, ?_, ?_⟩
-      · sorry -- hpres
+      · exact Steps_ctx_lift_pres (.let init · body)
+          (fun s inner hv t si hs he => step?_let_init_ctx s init inner body hv t si hs he)
+          hsteps_init (fun ev hev msg => by rw [hsil_init ev hev]; exact Core.TraceEvent.noConfusion) hpres_init
       · exact ⟨n_init, m_init, by rw [hwexpr]; simp only [ANF.normalizeExpr_let']; exact hnorm_init⟩
       · rw [hwexpr, hwenv, henv_init]; exact fun x hfx => by
           cases hfx with
@@ -11228,7 +11252,9 @@ private theorem normalizeExpr_if_branch_step_false :
           hpres_arg
       refine ⟨ws, evs_arg, hwsteps, hsil_arg, hwenv.trans henv_arg, hwheap.trans hheap_arg,
         hwfuncs, hwcs, by rw [hwtrace, htrace_arg], ?_, ?_, ?_⟩
-      · sorry -- hpres
+      · exact Steps_ctx_lift_pres .throw
+          (fun s inner hv t si hs he => step?_throw_ctx s inner hv t si hs he)
+          hsteps_arg (fun ev hev msg => by rw [hsil_arg ev hev]; exact Core.TraceEvent.noConfusion) hpres_arg
       · exact ⟨n_arg, m_arg, by rw [hwexpr]; simp only [ANF.normalizeExpr_throw']; exact hnorm_arg⟩
       · rw [hwexpr, hwenv, henv_arg]; exact fun x hfx => by
           cases hfx with
@@ -11247,7 +11273,9 @@ private theorem normalizeExpr_if_branch_step_false :
           hpres_retv
       refine ⟨ws, evs_retv, hwsteps, hsil_retv, hwenv.trans henv_retv, hwheap.trans hheap_retv,
         hwfuncs, hwcs, by rw [hwtrace, htrace_retv], ?_, ?_, ?_⟩
-      · sorry -- hpres
+      · exact Steps_ctx_lift_pres (fun e => .return (some e))
+          (fun s inner hv t si hs he => step?_return_some_ctx s inner hv t si hs he)
+          hsteps_retv (fun ev hev msg => by rw [hsil_retv ev hev]; exact Core.TraceEvent.noConfusion) hpres_retv
       · exact ⟨n_retv, m_retv, by rw [hwexpr]; simp only [ANF.normalizeExpr_return_some']; exact hnorm_retv⟩
       · rw [hwexpr, hwenv, henv_retv]; exact fun x hfx => by
           cases hfx with
@@ -11266,7 +11294,9 @@ private theorem normalizeExpr_if_branch_step_false :
           hpres_awarg
       refine ⟨ws, evs_awarg, hwsteps, hsil_awarg, hwenv.trans henv_awarg, hwheap.trans hheap_awarg,
         hwfuncs, hwcs, by rw [hwtrace, htrace_awarg], ?_, ?_, ?_⟩
-      · sorry -- hpres
+      · exact Steps_ctx_lift_pres .await
+          (fun s inner hv t si hs he => step?_await_ctx s inner hv t si hs he)
+          hsteps_awarg (fun ev hev msg => by rw [hsil_awarg ev hev]; exact Core.TraceEvent.noConfusion) hpres_awarg
       · exact ⟨n_awarg, m_awarg, by rw [hwexpr]; simp only [ANF.normalizeExpr_await']; exact hnorm_awarg⟩
       · rw [hwexpr, hwenv, henv_awarg]; exact fun x hfx => by
           cases hfx with
@@ -11285,7 +11315,9 @@ private theorem normalizeExpr_if_branch_step_false :
           hpres_yv
       refine ⟨ws, evs_yv, hwsteps, hsil_yv, hwenv.trans henv_yv, hwheap.trans hheap_yv,
         hwfuncs, hwcs, by rw [hwtrace, htrace_yv], ?_, ?_, ?_⟩
-      · sorry -- hpres
+      · exact Steps_ctx_lift_pres (fun e => .yield (some e) delegate)
+          (fun s inner hv t si hs he => step?_yield_some_ctx s inner delegate hv t si hs he)
+          hsteps_yv (fun ev hev msg => by rw [hsil_yv ev hev]; exact Core.TraceEvent.noConfusion) hpres_yv
       · exact ⟨n_yv, m_yv, by rw [hwexpr]; simp only [ANF.normalizeExpr_yield_some']; exact hnorm_yv⟩
       · rw [hwexpr, hwenv, henv_yv]; exact fun x hfx => by
           cases hfx with
