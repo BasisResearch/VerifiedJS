@@ -1,3 +1,54 @@
+## Run: 2026-04-05T11:30:07+00:00
+
+### Metrics
+- **Sorry count**: ANF 34 + CC 13 = **47 real sorries**
+- **Delta from last run (11:05)**: +1 (46→47). **COUNT UP — new CC sorry.**
+- **Lower**: 0 sorries (DONE)
+
+### Why count went UP (+1): New CC sorry at L4182
+- ANF unchanged at 34 (proof agent building, no edits landed yet)
+- CC went from 12→13 (+1): L4182 is a new FuncsSupported preservation sorry in the outer wrapper of `closureConvert_step_simulation`. This was likely introduced by jsspec's L3970 fix — the fix closed the inner invariant but exposed the need for an outer invariant.
+- Net: +0 ANF, +1 CC = +1
+
+### Agent Status
+1. **proof** (RUNNING since 10:30): Building ANFConvertCorrect (1.9GB RSS, 20 min in at 11:30). Working on tryCatch body-error (L11150) and body-step (L11163). No sorries closed this cycle. Prompt updated with more concrete approach for body-error decomposition.
+
+2. **jsspec** (RUNNING since 11:00): LSP active, no build running. Introduced L4182 sorry (FuncsSupported outer wrapper). Prompt UPDATED: made L4182 PRIORITY 1 (they created it, they close it). Updated all CC line numbers.
+
+3. **wasmspec** (RUNNING since 11:15): LSP active, no build running (can't build while proof is building). Working on eval context general lemma. Prompt UPDATED: suggested starting with L10609 as concrete case before generalizing. Emphasized lean_multi_attempt for exploration.
+
+### Actions Taken
+1. Updated ALL 3 agent prompts:
+   - proof: Refreshed tryCatch approach, added concrete body-error decomposition steps
+   - jsspec: **MAJOR**: updated CC line numbers (shifted from L3970 closure), made L4182 PRIORITY 1, classified L4209 as architecturally blocked
+   - wasmspec: Suggested concrete-first approach (prove L10609, then generalize), emphasized lean_multi_attempt
+2. Logged to time_estimate.csv.
+
+### Sorry Classification (47 total)
+**ANF (34):**
+- 7 in proof's zone (tryCatch L11150/11163/11166, params L12249/12250, break/continue L12470/12523)
+- 8 in wasmspec's zone (if compound L10599/10607/10609/10610/10711/10718/10720/10721)
+- ~19 systemic compound eval context sorries (L8173-9556 range) — ALL unblocked by wasmspec's general lemma
+
+**CC (13):**
+- 1 NEW closeable: L4182 (FuncsSupported outer — jsspec must close)
+- 1 closeable: L5125 (FuncsCorr)
+- 1 architecturally blocked NEW: L4209 (captured var — multi-step)
+- 1 functionDef: L7221
+- 1 unprovable: L5979 (getIndex string)
+- 8 architecturally blocked: L4538/4561/5333/5341/7378/7379/7451/7559
+
+### Critical Assessment
+**Sorry count UP +1 is a regression, not decomposition.** L4182 is a genuine gap that jsspec needs to close. It's structurally similar to L3970 (which they already proved), so it should be tractable.
+
+**wasmspec's general eval context lemma remains #1 priority.** If it lands, ~20 ANF sorries become closeable. Changed strategy: start with ONE concrete case (L10609) to build understanding before generalizing.
+
+**proof agent is building.** 20 min into a build with 1.9GB RSS. When it completes, tryCatch work can proceed. The concrete approach in the updated prompt should help.
+
+**Expected next run: 45-47** (jsspec closes L4182 to return to 46, proof may close 0-1 tryCatch).
+
+---
+
 ## Run: 2026-04-05T11:05:04+00:00
 
 ### Metrics
@@ -5626,3 +5677,4 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 
 ## Run: 2026-04-05T11:30:07+00:00
 
+2026-04-05T11:35:44+00:00 DONE
