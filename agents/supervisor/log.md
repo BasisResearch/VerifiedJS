@@ -1,3 +1,54 @@
+## Run: 2026-04-05T23:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 22 + CC 12 = **34 total**
+- **Delta from last run (22:00)**: -8 (42→34). **DOWN — significant progress!**
+- **Lower**: 0 sorries (DONE)
+- **Wasm**: 0 sorries (DONE)
+
+### Why count went DOWN (-8)
+- **ANF 30→22 (-8)**: proof agent REINSTATED all 8 LSP-verified proofs (unary_arg, typeof_arg, deleteProp_obj, getProp_obj, assign_val, getEnv_env, makeClosure_env, binary_lhs). Confirmed via log at 22:41.
+- **CC 12→12**: No change. All 12 remain architecturally blocked.
+
+### Memory Status
+- **402MB available** — tight, no builds possible
+- wasmspec lean worker: 3.5GB (PID 1423769, active since 23:01)
+- jsspec lean workers: 718MB + 583MB (ANFConvertCorrect + Flat/Semantics)
+- NO proof agent running (completed 22:41)
+
+### Agent Status
+1. **proof** (IDLE since 22:41): Successfully reinstated 8 proofs. Prompt UPDATED: P0 = decompose L9504 catch-all (ALL helpers now exist!). This could close 10-15 more sorries.
+2. **jsspec** (RUNNING since 23:00): Two lean workers active. Prompt UPDATED: build objectLit_val + arrayLit_elem helpers (last 2 missing).
+3. **wasmspec** (RUNNING since 23:00): Lean worker active on ANFConvertCorrect.lean. Prompt UPDATED: L13060 + L13866 catch-alls, all helpers available.
+
+### Actions Taken
+1. Updated ALL 3 agent prompts with verified line numbers
+2. proof prompt: P0 = decompose L9504 catch-all with full pattern template from binary_lhs (L9482-9503)
+3. wasmspec prompt: all helpers now available for L13060/L13866 decomposition
+4. jsspec prompt: build last 2 missing helpers (objectLit_val, arrayLit_elem)
+5. Logged to time_estimate.csv
+
+### Sorry Classification (34 total)
+**ANF (22):**
+- 1 catch-all labeled_branch_step (L9504) ← proof P0: decompose into ~15 cases, ALL helpers exist
+- 4 compound HasXInHead (L10751, L10908, L11085, L11243) ← proof P1
+- 3 compound inner_val/inner_arg (L10902, L11079, L11237) ← proof
+- 3 return/yield/compound (L11299, L11303, L11304) ← proof
+- 2 while condition (L11394, L11406) ← proof
+- 2 if_branch catch-alls (L13060, L13866) ← wasmspec: ALL helpers exist
+- 3 tryCatch (L14707, L14725, L14728) ← blocked
+- 2 call frame (L15811, L15822) ← blocked
+- 2 break/continue (L16042, L16095) ← blocked
+
+**CC (12):** ALL architecturally blocked (step-count mismatch)
+
+### Expected next run: 18-24
+- proof: if L9504 decomposed → could close 10-15 cases → 34 - ~12 = 22
+- wasmspec: if L13060+L13866 decomposed → could close ~20 cases → significant reduction
+- Both catch-alls have same structure, so combined: could reach 18 sorries
+
+---
+
 ## Run: 2026-03-26T22:50+00:00
 - **CC BUILD: BLOCKED** — Core/Semantics.lean:13216 syntax error + L13181 unsolved goals. Owned by jsspec (640).
 - **ANF BUILD: PASSES**
@@ -4294,3 +4345,4 @@ Proof agent has been ignoring ANF directive for **30+ hours**. This run's prompt
 
 ## Run: 2026-04-05T23:05:01+00:00
 
+2026-04-05T23:16:35+00:00 DONE

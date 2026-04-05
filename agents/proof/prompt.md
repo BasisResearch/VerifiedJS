@@ -1,4 +1,4 @@
-# proof — 28 sorries in ANF. CRITICAL: 8 are LSP-verified, just replace them!
+# proof — 22 ANF sorries. ALL helpers now exist. Decompose the catch-alls!
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY (and Flat/Semantics.lean for infrastructure)
@@ -8,66 +8,100 @@
 ## !! CRITICAL: DO NOT USE WHILE/UNTIL LOOPS !!
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 
-## MEMORY: 7.7GB total, NO swap. ~4.4GB available (supervisor killed its build).
-Use LSP tools only — no `lake build`.
+## MEMORY: 7.7GB total, NO swap. ~400MB free. USE LSP ONLY — no `lake build`.
 
 ## CONCURRENCY: wasmspec also edits ANFConvertCorrect.lean
-- wasmspec works on L12630 and L13436 zones
+- wasmspec works on L13060 and L13866 zones (if_branch catch-alls)
 - **YOU** own everything else
 - DO NOT touch those lines
 
-## PROGRESS: ANF 28 actual sorries + CC 11 = 39 total. BUILD IS FIXED.
+## PROGRESS: 22 ANF sorries remain. You closed 8 last run — great work!
 
-## ===== PRIORITY 0: REINSTATE 8 VERIFIED PROOFS (L9066-9073) =====
+## ===== PRIORITY 0: DECOMPOSE L9504 CATCH-ALL =====
 
-**THIS IS YOUR #1 JOB.** The build is FIXED. You verified 8 proofs via LSP in a previous run but left them as sorry. NOW reinstate them.
+**THIS IS YOUR #1 JOB.** The L9504 catch-all covers ~15 constructor cases. ALL Steps_X_ctx_b helpers NOW EXIST (jsspec built them). You can prove every single one.
 
-The 8 sorry cases at their CURRENT line numbers:
+The catch-all is at L9504 in `normalizeExpr_labeled_branch_step`:
+```
+    | _ => sorry -- remaining: seq_right, setProp_obj/val, binary_rhs, call_func/env/args, ...
+```
 
-| Line | Case | Steps_ctx_b | step?_ctx |
-|------|------|-------------|-----------|
-| L9066 | unary_arg h_arg | Steps_unary_ctx_b | step?_unary_ctx |
-| L9067 | typeof_arg h_arg | Steps_typeof_ctx_b | step?_typeof_ctx |
-| L9068 | deleteProp_obj h_obj | Steps_deleteProp_ctx_b | step?_deleteProp_ctx |
-| L9069 | getProp_obj h_obj | Steps_getProp_ctx_b | step?_getProp_ctx |
-| L9070 | assign_val h_val | Steps_assign_ctx_b | step?_assign_ctx |
-| L9071 | getEnv_env h_env | Steps_getEnv_ctx_b | step?_getEnv_ctx |
-| L9072 | makeClosure_env h_env | Steps_makeClosure_env_ctx_b | step?_makeClosure_env_ctx |
-| L9073 | binary_lhs h_lhs | Steps_binary_lhs_ctx_b | step?_binary_lhs_ctx |
+**Replace it with explicit cases.** Follow the EXACT pattern of `binary_lhs` at L9482-9503:
 
-**KEY INSIGHTS YOU DISCOVERED:**
-- Use `simp only [ANF.normalizeExpr] at hnorm` (NOT specific simp lemmas)
-- `rename_i` order follows LSP goal context order, NOT constructor parameter order
-- Each case follows the EXACT template of the proved cases above (e.g., throw_arg). Copy-paste and adapt.
+### Simple 2-position cases (follow binary_lhs pattern exactly):
+Each needs: (1) rename_i, (2) simp [ANF.normalizeExpr] at hnorm, (3) depth bound, (4) IH, (5) Steps_X_ctx_b, (6) refine, (7) Steps_ctx_lift_pres, (8) normalizeExpr fact, (9) VarFreeIn well-formedness.
 
-**Use lean_goal at each line to see exact goal, then write the proof. Verify with lean_multi_attempt or lean_diagnostic_messages.**
+| Constructor | Steps helper | step? helper | VarFreeIn constructor(s) | normalizeExpr simp |
+|-------------|-------------|-------------|--------------------------|-------------------|
+| binary_rhs h_rhs | Steps_binary_rhs_ctx_b op lv | step?_binary_rhs_ctx | binary_rhs, binary_lhs | ANF.normalizeExpr (needs lv from HasLabeledInHead.binary_rhs — h_rhs proves rhs has labeled, so lhs must be a value) |
+| setProp_obj h_obj | Steps_setProp_obj_ctx_b prop val | step?_setProp_obj_ctx | setProp_obj, setProp_value | ANF.normalizeExpr |
+| setProp_val h_val | Steps_setProp_val_ctx_b ov prop | step?_setProp_val_ctx | setProp_value, setProp_obj | needs ov from val position |
+| getIndex_obj h_obj | Steps_getIndex_obj_ctx_b idx | step?_getIndex_obj_ctx | getIndex_obj, getIndex_idx | ANF.normalizeExpr |
+| getIndex_idx h_idx | Steps_getIndex_idx_ctx_b ov | step?_getIndex_idx_ctx | getIndex_idx, getIndex_obj | needs ov |
+| setIndex_obj h_obj | Steps_setIndex_obj_ctx_b idx val | step?_setIndex_obj_ctx | setIndex_obj, setIndex_idx, setIndex_value | ANF.normalizeExpr |
+| setIndex_idx h_idx | Steps_setIndex_idx_ctx_b ov val | step?_setIndex_idx_ctx | setIndex_idx, setIndex_obj, setIndex_value | needs ov |
+| setIndex_val h_val | Steps_setIndex_val_ctx_b ov iv | step?_setIndex_val_ctx | setIndex_value, setIndex_obj, setIndex_idx | needs ov, iv |
+| call_func h_f | Steps_call_func_ctx_b envExpr args | step?_call_func_ctx | call_func, call_env, call_arg | ANF.normalizeExpr |
+| call_env h_env | Steps_call_env_ctx_b fv args | step?_call_env_ctx | call_env, call_func, call_arg | needs fv |
+| newObj_func h_f | Steps_newObj_func_ctx_b envExpr args | step?_newObj_func_ctx | newObj_func, newObj_env, newObj_arg | ANF.normalizeExpr |
+| newObj_env h_env | Steps_newObj_env_ctx_b fv args | step?_newObj_env_ctx | newObj_env, newObj_func, newObj_arg | needs fv |
 
-## PRIORITY 1: After reinstating 8 proofs, work on GROUP B
+### seq_right case:
+`seq_right h_right` — similar to seq_left which is already proved. Use Steps_seq_ctx_b for the left side, then recurse for the right side via seq structure.
 
-### GROUP B: compound HasXInHead catch-all (4 sorries)
-| L10321 | compound HasThrowInHead |
-| L10478 | compound HasReturnInHead |
-| L10655 | compound HasAwaitInHead |
-| L10813 | compound HasYieldInHead |
+### List-based cases (harder — may need to sorry individually):
+| call_args h_args | Steps_call_arg_ctx_b funcExpr envExpr done remaining | list decomposition |
+| newObj_args h_args | Steps_newObj_arg_ctx_b funcExpr envExpr done remaining | list decomposition |
+| makeEnv_values h_vals | Steps_makeEnv_values_ctx_b done remaining | list decomposition |
+| objectLit_props h_props | (no Steps helper yet) | KEEP AS SORRY |
+| arrayLit_elems h_elems | (no Steps helper yet) | KEEP AS SORRY |
 
-### GROUP C: compound inner_val/inner_arg (3 sorries)
-| L10472 | throw compound inner_val |
-| L10649 | return compound inner_arg |
-| L10807 | yield compound inner_val |
+### APPROACH:
+1. Use `lean_goal` at L9504 to see the exact proof state
+2. Replace `| _ => sorry` with explicit constructor cases
+3. Start with the simple cases (binary_rhs, setProp_obj, call_func, etc.)
+4. For binary_rhs and other "second position" cases: the HasLabeledInHead proof tells you the inner expression has the labeled. The outer expression's first sub-expression was already normalized to a value/trivial. You need to extract that value.
+5. Use `lean_multi_attempt` to test your proofs
+6. For list cases (call_args, newObj_args, makeEnv_values) and objectLit/arrayLit: use `sorry` for now
 
-### GROUP D: return/yield/compound (3 sorries)
-| L10869 | return (some val): compound |
-| L10873 | yield (some val): compound |
-| L10874 | compound expressions catch-all |
+**KEY INSIGHT from binary_lhs proof (L9482-9503):**
+```lean
+    | binary_lhs h_lhs =>
+      rename_i lhs op rhs
+      simp only [ANF.normalizeExpr] at hnorm
+      have hlhs_depth : lhs.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      obtain ⟨sf_lhs, evs_lhs, hsteps_lhs, hsil_lhs, henv_lhs, hheap_lhs, hfuncs_lhs, hcs_lhs,
+        htrace_lhs, hpres_lhs, ⟨n_lhs, m_lhs, hnorm_lhs⟩, hewf_lhs⟩ :=
+        ih lhs hlhs_depth label h_lhs env heap trace funcs cs _ n m body
+          hnorm (fun x hfx => hewf x (VarFreeIn.binary_lhs _ _ _ _ hfx))
+      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        Steps_binary_lhs_ctx_b op rhs hsteps_lhs
+          (fun ev hev msg => by rw [hsil_lhs ev hev]; exact Core.TraceEvent.noConfusion)
+          hpres_lhs
+      refine ⟨ws, evs_lhs, hwsteps, hsil_lhs, hwenv.trans henv_lhs, hwheap.trans hheap_lhs,
+        hwfuncs, hwcs, by rw [hwtrace, htrace_lhs], ?_, ?_, ?_⟩
+      · exact Steps_ctx_lift_pres (.binary op · rhs)
+          (fun s inner hv t si hs he => step?_binary_lhs_ctx s op inner rhs hv t si hs he)
+          hsteps_lhs (fun ev hev msg => by rw [hsil_lhs ev hev]; exact Core.TraceEvent.noConfusion) hpres_lhs
+      · exact ⟨n_lhs, m_lhs, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_lhs⟩
+      · rw [hwexpr, hwenv, henv_lhs]; exact fun x hfx => by
+          cases hfx with
+          | binary_lhs _ _ _ _ h => exact henv_lhs ▸ hewf_lhs x h
+          | binary_rhs _ _ _ _ h => exact hewf x (VarFreeIn.binary_rhs _ _ _ _ h)
+```
 
-### GROUP E: while (2 sorries)
-| L10964 | While condition value case |
-| L10976 | Condition-steps case |
+## PRIORITY 1: Groups B-E (after L9504)
+These are lower priority — only attempt if L9504 is done:
+- L10751 compound HasThrowInHead
+- L10908 compound HasReturnInHead
+- L11085 compound HasAwaitInHead
+- L11243 compound HasYieldInHead
+- L10902, L11079, L11237 compound inner_val/inner_arg
+- L11299, L11303, L11304 return/yield/compound
+- L11394, L11406 while condition
 
-### GROUP F: BLOCKED — do NOT work on these (5 sorries)
-| L14277, L14295, L14298, L15612, L15665 |
-
-### ALSO: L9074 catch-all needs more Steps_X_ctx_b helpers (jsspec building them)
+## DO NOT TOUCH (blocked):
+L14707, L14725, L14728, L15811, L15822, L16042, L16095
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`
