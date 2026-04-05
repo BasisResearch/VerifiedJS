@@ -9966,8 +9966,8 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       | (have := Flat.firstNonValueExpr_depth ‹_›; simp_all [Flat.Expr.depth]; omega)
       | (have := Flat.firstNonValueProp_depth ‹_›; simp_all [Flat.Expr.depth]; omega)
 
-/-- Flat single-step preserves NoNestedAbrupt. -/
 set_option maxHeartbeats 3200000 in
+/-- Flat single-step preserves NoNestedAbrupt. -/
 private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.TraceEvent)
     (hna : NoNestedAbrupt sf.expr)
     (hfuncs_na : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → NoNestedAbrupt fd.body)
