@@ -10867,59 +10867,6 @@ private theorem trivialChain_if_false_sim
         · simp [observableTrace] at hobs ⊢; exact hobs
     | _ => simp [isTrivialChain] at htc
 
-/-- For trivialChain tc, decompose normalizeExpr (.if tc then_flat else_flat) K
-    into its components and connect with the Flat evaluation value. -/
-private theorem trivialChain_if_decomp_with_value :
-    ∀ (d : Nat) (tc : Flat.Expr), tc.depth ≤ d → isTrivialChain tc = true →
-    ∀ (then_flat else_flat : Flat.Expr) (K : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
-    (cond : ANF.Trivial) (then_ else_ : ANF.Expr) (env : Flat.Env),
-    (ANF.normalizeExpr (.if tc then_flat else_flat) K).run n = .ok (.if cond then_ else_, m) →
-    ExprWellFormed tc env →
-    ∃ (v_c : Flat.Value) (n1 : Nat),
-      ANF.evalTrivial env cond = .ok v_c ∧
-      (ANF.normalizeExpr then_flat K).run n = .ok (then_, n1) ∧
-      (ANF.normalizeExpr else_flat K).run n1 = .ok (else_, m) ∧
-      (∀ (heap : Core.Heap) (trace : List Core.TraceEvent) (funcs : Array Flat.FuncDef) (cs : List Flat.Env),
-        ∃ evs,
-          Flat.Steps ⟨tc, env, heap, trace, funcs, cs⟩ evs ⟨.lit v_c, env, heap, trace ++ evs, funcs, cs⟩ ∧
-          (∀ ev ∈ evs, ∀ msg, ev ≠ .error msg) ∧
-          (∀ smid evs1, Flat.Steps ⟨tc, env, heap, trace, funcs, cs⟩ evs1 smid →
-            smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1)) := by
-  intro d; induction d with
-  | zero =>
-    intro tc hd htc then_flat else_flat K n m cond then_ else_ env hnorm hewf
-    cases tc with
-    | lit fv =>
-      obtain ⟨hcond_eq, n1, hthen_r, helse_r⟩ := normalizeExpr_if_lit_decomp fv then_flat else_flat K n cond then_ else_ m hnorm
-      subst hcond_eq
-      refine ⟨fv, n1, evalTrivial_trivialOfValue env fv, hthen_r, helse_r, fun heap trace funcs cs => ?_⟩
-      refine ⟨[], by rw [List.append_nil]; exact .refl _, fun _ h _ => absurd h (by simp), fun smid evs1 hsteps => ?_⟩
-      cases hsteps with
-      | refl => simp
-      | tail hsingle _ => obtain ⟨hstep⟩ := hsingle; simp [Flat.step?, Flat.exprValue?] at hstep
-    | var _ => sorry
-    | «this» => sorry
-    | seq _ _ => simp [Flat.Expr.depth] at hd
-    | _ => simp [isTrivialChain] at htc
-  | succ d ih =>
-    intro tc hd htc then_flat else_flat K n m cond then_ else_ env hnorm hewf
-    cases tc with
-    | lit fv =>
-      obtain ⟨hcond_eq, n1, hthen_r, helse_r⟩ := normalizeExpr_if_lit_decomp fv then_flat else_flat K n cond then_ else_ m hnorm
-      subst hcond_eq
-      refine ⟨fv, n1, evalTrivial_trivialOfValue env fv, hthen_r, helse_r, fun heap trace funcs cs => ?_⟩
-      refine ⟨[], by rw [List.append_nil]; exact .refl _, fun _ h _ => absurd h (by simp), fun smid evs1 hsteps => ?_⟩
-      cases hsteps with
-      | refl => simp
-      | tail hsingle _ => obtain ⟨hstep⟩ := hsingle; simp [Flat.step?, Flat.exprValue?] at hstep
-    | var name_c => sorry
-    | «this» => sorry
-    | seq a b =>
-      simp [isTrivialChain] at htc; obtain ⟨htc_a, htc_b⟩ := htc
-      sorry
-    | «if» => simp [isTrivialChain] at htc
-    | _ => simp [isTrivialChain] at htc
-
 /-- General eval context stepping for compound if (true branch):
     When normalizeExpr e K produces .if cond then_ else_ and HasIfInHead e,
     Flat can step e (all silent) to a state e' where normalizeExpr e' K produces then_.
