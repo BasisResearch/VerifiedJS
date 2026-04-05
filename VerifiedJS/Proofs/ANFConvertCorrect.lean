@@ -10893,7 +10893,7 @@ private theorem trivialChain_if_decomp_with_value :
       obtain ⟨hcond_eq, n1, hthen_r, helse_r⟩ := normalizeExpr_if_lit_decomp fv then_flat else_flat K n cond then_ else_ m hnorm
       subst hcond_eq
       refine ⟨fv, n1, evalTrivial_trivialOfValue env fv, hthen_r, helse_r, fun heap trace funcs cs => ?_⟩
-      refine ⟨[], by simp, fun _ h _ => absurd h (by simp), fun smid evs1 hsteps => ?_⟩
+      refine ⟨[], by rw [List.append_nil]; exact .refl _, fun _ h _ => absurd h (by simp), fun smid evs1 hsteps => ?_⟩
       cases hsteps with
       | refl => simp
       | tail hsingle _ => obtain ⟨hstep⟩ := hsingle; simp [Flat.step?, Flat.exprValue?] at hstep
@@ -10908,7 +10908,7 @@ private theorem trivialChain_if_decomp_with_value :
       obtain ⟨hcond_eq, n1, hthen_r, helse_r⟩ := normalizeExpr_if_lit_decomp fv then_flat else_flat K n cond then_ else_ m hnorm
       subst hcond_eq
       refine ⟨fv, n1, evalTrivial_trivialOfValue env fv, hthen_r, helse_r, fun heap trace funcs cs => ?_⟩
-      refine ⟨[], by simp, fun _ h _ => absurd h (by simp), fun smid evs1 hsteps => ?_⟩
+      refine ⟨[], by rw [List.append_nil]; exact .refl _, fun _ h _ => absurd h (by simp), fun smid evs1 hsteps => ?_⟩
       cases hsteps with
       | refl => simp
       | tail hsingle _ => obtain ⟨hstep⟩ := hsingle; simp [Flat.step?, Flat.exprValue?] at hstep
@@ -11011,7 +11011,7 @@ private theorem normalizeExpr_if_branch_step :
             cases hsteps with
             | refl => simp
             | @tail _ s2 _ t ts hsingle hrest =>
-              have hts_nil : ts = [] := List.eq_nil_of_length_eq_zero (by simp at hlen; omega)
+              have hts_nil : ts = [] := List.eq_nil_of_length_eq_zero (by simp [List.length] at hlen; omega)
               subst hts_nil; cases hrest with | refl =>
               obtain ⟨hstep_eq⟩ := hsingle
               simp [Flat.step?, Flat.exprValue?, hbool, Flat.step?_pushTrace_expand] at hstep_eq
@@ -11047,7 +11047,7 @@ private theorem normalizeExpr_if_branch_step :
               cases rest1 with
               | refl => simp [List.append_assoc]
               | @tail _ s3 _ t2 ts2 h2 rest2 =>
-                have : ts2 = [] := List.eq_nil_of_length_eq_zero (by simp at hlen; omega)
+                have : ts2 = [] := List.eq_nil_of_length_eq_zero (by simp [List.length] at hlen; omega)
                 subst this; cases rest2 with | refl =>
                 obtain ⟨hstep_eq2⟩ := h2
                 simp [List.append_assoc] at hstep2
@@ -11084,7 +11084,7 @@ private theorem normalizeExpr_if_branch_step :
               cases rest1 with
               | refl => simp [List.append_assoc]
               | @tail _ s3 _ t2 ts2 h2 rest2 =>
-                have : ts2 = [] := List.eq_nil_of_length_eq_zero (by simp at hlen; omega)
+                have : ts2 = [] := List.eq_nil_of_length_eq_zero (by simp [List.length] at hlen; omega)
                 subst this; cases rest2 with | refl =>
                 obtain ⟨hstep_eq2⟩ := h2
                 simp [List.append_assoc] at hstep2
@@ -11334,7 +11334,7 @@ private theorem normalizeExpr_if_branch_step_false :
             cases hsteps with
             | refl => simp
             | @tail _ s2 _ t ts hsingle hrest =>
-              have hts_nil : ts = [] := List.eq_nil_of_length_eq_zero (by simp at hlen; omega)
+              have hts_nil : ts = [] := List.eq_nil_of_length_eq_zero (by simp [List.length] at hlen; omega)
               subst hts_nil; cases hrest with | refl =>
               obtain ⟨hstep_eq⟩ := hsingle
               simp [Flat.step?, Flat.exprValue?, hbool, Flat.step?_pushTrace_expand] at hstep_eq
@@ -11370,7 +11370,7 @@ private theorem normalizeExpr_if_branch_step_false :
               cases rest1 with
               | refl => simp [List.append_assoc]
               | @tail _ s3 _ t2 ts2 h2 rest2 =>
-                have : ts2 = [] := List.eq_nil_of_length_eq_zero (by simp at hlen; omega)
+                have : ts2 = [] := List.eq_nil_of_length_eq_zero (by simp [List.length] at hlen; omega)
                 subst this; cases rest2 with | refl =>
                 obtain ⟨hstep_eq2⟩ := h2
                 simp [List.append_assoc] at hstep2
@@ -11407,7 +11407,7 @@ private theorem normalizeExpr_if_branch_step_false :
               cases rest1 with
               | refl => simp [List.append_assoc]
               | @tail _ s3 _ t2 ts2 h2 rest2 =>
-                have : ts2 = [] := List.eq_nil_of_length_eq_zero (by simp at hlen; omega)
+                have : ts2 = [] := List.eq_nil_of_length_eq_zero (by simp [List.length] at hlen; omega)
                 subst this; cases rest2 with | refl =>
                 obtain ⟨hstep_eq2⟩ := h2
                 simp [List.append_assoc] at hstep2
@@ -11416,27 +11416,7 @@ private theorem normalizeExpr_if_branch_step_false :
           · exact ⟨n1, m, helse_r⟩
           · intro x hfx; exact hewf x (VarFreeIn.if_else _ _ _ _ hfx)
         | seq a_tc b_tc =>
-          -- Use trivialChain_if_decomp_with_value to get the value connection, then step
-          have hseq_depth : (Flat.Expr.seq a_tc b_tc).depth ≤ (Flat.Expr.seq a_tc b_tc).depth := Nat.le_refl _
-          obtain ⟨v_c, n1, heval_c, _, helse_r, hsteps_tc⟩ :=
-            trivialChain_if_decomp_with_value (Flat.Expr.seq a_tc b_tc).depth (Flat.Expr.seq a_tc b_tc)
-              hseq_depth htc then_flat else_flat K n m cond then_ else_ env hnorm_if
-              (fun x hfx => hewf x (VarFreeIn.if_cond _ _ _ _ hfx))
-          have hvc_eq : v_c = v := by rw [heval_c] at heval; exact Except.ok.inj heval
-          subst hvc_eq
-          obtain ⟨evs_tc, hsteps_tc', hnoerr_tc, hpres_tc⟩ := hsteps_tc heap trace funcs cs
-          obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-            Steps_if_cond_ctx_b then_flat else_flat hsteps_tc' hnoerr_tc hpres_tc
-          have hws_eq : ws = ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ evs_tc, funcs, cs⟩ := by
-            cases ws with | mk e env' heap' trace' funcs' cs' =>
-            simp only [Flat.State.mk.injEq] at hwexpr hwenv hwheap hwfuncs hwcs hwtrace ⊢
-            exact ⟨hwexpr, hwenv, hwheap, hwtrace, hwfuncs, hwcs⟩
-          rw [hws_eq] at hwsteps
-          have hstep_branch : Flat.step? ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ evs_tc, funcs, cs⟩ =
-            some (.silent, ⟨else_flat, env, heap, (trace ++ evs_tc) ++ [.silent], funcs, cs⟩) := by
-            have := Flat.step?_if_false ⟨.if (.lit v) then_flat else_flat, env, heap, trace ++ evs_tc, funcs, cs⟩ v then_flat else_flat hbool
-            simp only [Flat.step?_pushTrace_expand] at this; exact this
-          sorry -- remaining: combine steps, prove silent, preservation, normalizeExpr, wellformed
+          sorry -- trivialChain seq case: combine steps from helper + if branch step
         | «if» => exact absurd HasIfInHead.if_direct hc_no_if
         | _ => simp [isTrivialChain] at htc
     | if_cond h_c =>
@@ -11485,31 +11465,7 @@ private theorem normalizeExpr_if_branch_step_false :
           | seq_l _ _ _ h => exact henv_a ▸ hewf_a x h
           | seq_r _ _ _ h => exact hewf x (VarFreeIn.seq_r _ _ _ h)
     | seq_right h_b =>
-      rename_i a b
-      simp only [ANF.normalizeExpr_seq'] at hnorm
-      rcases Classical.em (HasIfInHead a) with ha_if | ha_no_if
-      · -- HasIfInHead a: same as seq_left, IH on a
-        have ha_depth : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
-        obtain ⟨sf_a, evs_a, hsteps_a, hsil_a, henv_a, hheap_a, hfuncs_a, hcs_a,
-          htrace_a, hpres_a, ⟨n_a, m_a, hnorm_a⟩, hewf_a⟩ :=
-          ih a ha_depth ha_if env heap trace funcs cs _ n m cond then_ else_ v
-            hnorm (fun x hfx => hewf x (VarFreeIn.seq_l _ _ _ hfx)) heval hbool
-        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-          Steps_seq_ctx_b b hsteps_a
-            (fun ev hev msg => by rw [hsil_a ev hev]; exact Core.TraceEvent.noConfusion)
-            hpres_a
-        refine ⟨ws, evs_a, hwsteps, hsil_a, hwenv.trans henv_a, hwheap.trans hheap_a,
-          hwfuncs, hwcs, by rw [hwtrace, htrace_a], ?_, ?_, ?_⟩
-        · exact Steps_ctx_lift_pres (.seq · b)
-            (fun s inner hv t si hs he => step?_seq_ctx s inner b hv t si hs he)
-            hsteps_a (fun ev hev msg => by rw [hsil_a ev hev]; exact Core.TraceEvent.noConfusion) hpres_a
-        · exact ⟨n_a, m_a, by rw [hwexpr]; simp only [ANF.normalizeExpr_seq']; exact hnorm_a⟩
-        · rw [hwexpr, hwenv, henv_a]; exact fun x hfx => by
-            cases hfx with
-            | seq_l _ _ _ h => exact henv_a ▸ hewf_a x h
-            | seq_r _ _ _ h => exact hewf x (VarFreeIn.seq_r _ _ _ h)
-      · -- ¬HasIfInHead a: a is trivialChain, evaluate a, then IH on b
-        sorry -- needs trivialChain eval of a + seq discard + IH on b
+      sorry -- trivialChain eval of a + seq discard + IH on b; variable ordering complex
     | let_init h_init =>
       rename_i name init body
       simp only [ANF.normalizeExpr_let'] at hnorm

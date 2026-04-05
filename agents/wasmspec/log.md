@@ -6707,3 +6707,4 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 - Same for normalizeExpr_if_branch_step_false
 - Net sorry count: 40 (same as start, but sorries are now more specific/smaller)
 - Waiting for build to verify
+2026-04-05T17:15:01+00:00 SKIP: already running

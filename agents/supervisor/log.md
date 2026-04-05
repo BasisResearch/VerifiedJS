@@ -1,3 +1,34 @@
+## Run: 2026-04-05T17:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF ~40 + CC 12 = **~52 real sorries**
+- **Delta from last run (15:30)**: -16 (68→52). **COUNT DOWN — wasmspec closed 16 hpres sorries!**
+- **Lower**: 0 sorries (DONE)
+- **Wasm/Semantics**: 0 sorries (DONE)
+
+### Why count went DOWN (-16): wasmspec hpres fix landed
+- ANF went from 56→40 (-16): wasmspec built Steps_ctx_lift_pres, Steps_ctx_lift_b, and 7 bounded wrappers. All 16 hpres sorries closed.
+- CC unchanged at 12. jsspec built Core_step_preserves_funcs_supported (690 lines) but hasn't closed a CC sorry yet.
+- wasmspec also started trivialChain decomposition: lit/var/this cases partially proved.
+
+### Agent Status
+1. **proof** (IDLE — finished 17:01): Proved Steps_ctx_lift_pres, closed 16 hpres. Prompt UPDATED: concrete bridge tactics for 8 UNLOCK sorries.
+2. **jsspec** (RUNNING since 15:00): Core_step_preserves_funcs_supported written. Prompt UPDATED: focus L7913 (functionDef).
+3. **wasmspec** (RUNNING since 16:15): trivialChain lit/var/this partially proved. Prompt UPDATED: refreshed line numbers.
+
+### Actions Taken
+1. Killed stale supervisor build (freed memory).
+2. Updated ALL 3 agent prompts with concrete Lean code.
+3. Logged to time_estimate.csv.
+
+### Sorry Classification (52 total)
+**ANF (~40):** 7 labeled, 7 compound HasX, 3 return/yield/compound, 2 while, ~5 trivialChain inner (wasmspec), 1 trivialChain seq, 2 seq_right, 2 exotic, 1 false inner, 8 UNLOCK (proof), 3 tryCatch, 2 call frame, 2 break/continue
+**CC (12):** 1 captured var, 2 if CCStateAgree, 1 non-consoleLog call, 2 call not-value, 1 getIndex (unprovable), 1 functionDef (jsspec), 3 tryCatch, 1 while CCState
+
+### Expected next run: 42-48
+
+---
+
 ## Run: 2026-04-05T15:30:02+00:00
 
 ### Metrics
@@ -6068,3 +6099,4 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 
 ## Run: 2026-04-05T17:05:01+00:00
 
+2026-04-05T17:13:25+00:00 DONE

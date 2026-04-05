@@ -1,4 +1,4 @@
-# jsspec — Close CC sorries: L4910 build, then L7922 (functionDef)
+# jsspec — Close CC sorries: L7913 (functionDef) priority
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -19,63 +19,52 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 ```
 If count > 1, wait 60s then check again. Only ONE build at a time or everything OOMs.
 
-## STATUS: Build running for L4910 (FuncsSupported)
+## CURRENT CC STATE: 12 sorries
 
-Your Core_step_preserves_funcs_supported theorem (690 lines) is building. Build started ~15:54. Monitor:
-```bash
-ps aux | grep "lake build" | grep -v grep
-```
+| Line | Category | Status |
+|------|----------|--------|
+| L4901 | captured var multi-step | architecturally blocked |
+| L5230 | if-true CCStateAgree | architecturally blocked |
+| L5253 | if-false CCStateAgree | architecturally blocked |
+| L5817 | non-consoleLog function call | needs FuncsCorr |
+| L6025 | call f not value | architecturally blocked |
+| L6033 | call arg not value | architecturally blocked |
+| L6671 | getIndex string | UNPROVABLE |
+| **L7913** | **functionDef** | **YOUR TARGET** |
+| L8070 | tryCatch body-value CCStateAgree | blocked |
+| L8071 | tryCatch body-value with finally | blocked |
+| L8143 | tryCatch inner | blocked |
+| L8251 | while_ CCState threading | architecturally blocked |
 
-Check if it finished:
-```bash
-grep -n 'sorry' VerifiedJS/Proofs/ClosureConvertCorrect.lean | head -20
-```
+## PRIMARY TARGET: L7913 (functionDef)
 
-## CC 12 sorries (current lines):
-- **L4910**: FuncsSupported preservation ← YOUR BUILD CLOSING THIS
-- L5239: if CCStateAgree (architecturally blocked)
-- L5262: if CCStateAgree (architecturally blocked)
-- L5826: non-consoleLog function call (FuncsCorr needed)
-- L6034: semantic mismatch call f (architecturally blocked)
-- L6042: semantic mismatch call arg (architecturally blocked)
-- L6680: getIndex string (UNPROVABLE)
-- L7922: functionDef ← NEXT TARGET
-- L8079: tryCatch body-value CCStateAgree
-- L8080: tryCatch body-value with finally
-- L8152: tryCatch inner
-- L8260: while_ CCState threading
+This is one of the few sorries that is NOT architecturally blocked.
 
-## IF L4910 BUILD SUCCEEDS → go to L7922 (functionDef)
+Use `lean_goal` at L7913 column 50 to see what's needed.
 
-Use `lean_goal` at L7922 column 50 to see what's needed.
+Both sides allocate a new function/closure:
+1. Core: `step? (.functionDef fname params body ...) = some (.silent, ⟨.lit (.closure idx), ...⟩)` where idx = funcs.push(...)
+2. Flat: `step? (.functionDef fname params body' ...) = some (.silent, ⟨.lit (.closure idx'), ...⟩)` where body' = convertExpr body
 
-Both sides push a new closure/FuncDef. The proof should be structural:
+The proof should show:
 1. Both sides push a new FuncDef via `Array.push`
-2. The pushed body is `convertExpr body` for Flat vs `body` for Core
-3. SimRel extends to the new function list
-4. The main expression continues to the next statement
+2. The resulting closure indices match (same funcs.size before push)
+3. SimRel is maintained with the new function list
+4. The next expression (whatever follows) remains in SimRel
 
 Try:
 ```
-lean_multi_attempt at L7922
-["simp [Flat.step?, Core.step?]; sorry", "unfold Flat.step? Core.step? at *; sorry"]
+lean_multi_attempt at L7913 column 50
+["simp [Flat.step?, Core.step?] at hstep ⊢; sorry", "unfold Flat.step? at hstep; sorry"]
 ```
 
-## IF L4910 BUILD FAILS → fix and rebuild
+## SECONDARY: L5817 (non-consoleLog function call)
 
-Check with `lean_diagnostic_messages`. Common issues:
-- Wrong argument types
-- Missing simp lemmas for function push
-- Heartbeat limit (try `set_option maxHeartbeats 16000000`)
+After functionDef, this is the next potentially closeable sorry. It needs `sf.funcs[idx] ↔ sc.funcs[idx]` correspondence. Your Core_step_preserves_funcs_supported theorem may help.
 
-## AFTER functionDef → L5826 (non-consoleLog function call)
-
-This needs `sf.funcs[idx] ↔ sc.funcs[idx]` correspondence. Check if your Core_step_preserves_funcs_supported helps here.
-
-## PRIORITY ORDER
-1. Monitor build for L4910
-2. If success: L7922 (functionDef)
-3. If fail: fix and rebuild
+## DO NOT ATTEMPT
+- L4901, L5230, L5253, L6025, L6033, L8070, L8071, L8143, L8251 — all architecturally blocked
+- L6671 — proven unprovable
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

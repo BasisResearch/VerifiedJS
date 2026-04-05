@@ -1482,9 +1482,7 @@ private theorem closureConvert_init_related
   case funcs_supp =>
     -- FuncsSupported: initial funcs = #[logBuiltin], body = .lit .undefined
     intro i fd hi
-    dsimp at hi
-    simp at hi
-    cases hi; rfl
+    dsimp at hi; simp at hi; simp [hi]
   case conv =>
     unfold Flat.closureConvert at h
     simp only [Except.ok.injEq] at h
@@ -4093,8 +4091,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         | some fin =>
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
           obtain ⟨-, rfl⟩ := hstep'
-          simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-          exact ⟨hsup_catch, by simpa using hsup_fin⟩
+          simp only [Core.pushTrace]; unfold Core.Expr.supported; simp [hsup_catch, hsup_fin]
         | none =>
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
           obtain ⟨-, rfl⟩ := hstep'; simp [Core.pushTrace, Core.Expr.supported]
@@ -4119,26 +4116,24 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
               obtain ⟨-, rfl⟩ := hstep'
               cases finally_ with
               | some fin =>
-                simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-                exact ⟨hsup_catch, by simpa using hsup_fin⟩
+                simp only [Core.pushTrace]; unfold Core.Expr.supported; simp [hsup_catch, hsup_fin]
               | none =>
-                simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-                exact hsup_catch
+                simp only [Core.pushTrace]; unfold Core.Expr.supported; simp [hsup_catch]
         | silent =>
           have hfwd := Core.step_tryCatch_step_body_silent body catchParam catchBody finally_ s.env s.heap s.trace s.funcs s.callStack hval_b sb h_sub
           rw [hfwd] at hstep
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨-, rfl⟩ := hstep
-          simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-          refine ⟨⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          simp only [Core.pushTrace]; unfold Core.Expr.supported; simp only [Bool.and_eq_true]
+          exact ⟨⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
             { s with expr := body } sb .silent (Nat.le_refl _) hsup_body hfuncs_supp h_sub, hsup_catch⟩, hsup_fin⟩
         | log msg =>
           have hfwd := Core.step_tryCatch_step_body_log body catchParam catchBody finally_ s.env s.heap s.trace s.funcs s.callStack hval_b msg sb h_sub
           rw [hfwd] at hstep
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨-, rfl⟩ := hstep
-          simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-          refine ⟨⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          simp only [Core.pushTrace]; unfold Core.Expr.supported; simp only [Bool.and_eq_true]
+          exact ⟨⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
             { s with expr := body } sb (.log msg) (Nat.le_refl _) hsup_body hfuncs_supp h_sub, hsup_catch⟩, hsup_fin⟩
 
 set_option maxHeartbeats 8000000 in
