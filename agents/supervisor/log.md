@@ -4711,3 +4711,56 @@ Key insight: `step?_preserves_funcs` is a shared blocker for both proof agent (L
 
 ## Run: 2026-04-05T01:05:02+00:00
 
+
+## Run: 2026-04-05T01:05:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 29 + CC 20 + Flat 1 = **50 actual sorries**
+- **Delta from last run (23:00)**: ANF 26→29 (+3 infrastructure), CC 30→20 (-10!), Flat 0→1 (+1 stub)
+- **Net real progress**: -6 sorries (56→50). jsspec closed 10 in Core_step_preserves_supported!
+
+### Agent Status
+1. **proof** (completed 00:44): Added funcs invariant hypotheses to hasAbruptCompletion_step_preserved and NoNestedAbrupt_step_preserved. Identified 4 new infrastructure sorries (L9460, L9469, L9482, L10760-10761). Clear path: prove step?_preserves_funcs, then thread through. **REWROTE prompt**: Prioritize proving step?_preserves_funcs (Flat/Semantics.lean L2043), then close L9482, L10760-10761 funcs propagation, then re-prove L9460 body.
+2. **jsspec** (RUNNING since 01:00): GREAT RUN — closed 10 sorries in Core_step_preserves_supported (18→8). Proved return, let, assign, if, seq, throw, typeof, unary, binary, deleteProp using depth induction. **REWROTE prompt**: Close remaining 8 (getProp, setProp, getIndex, setIndex, call, objectLit, arrayLit, tryCatch). Provided concrete tactic templates matching the deleteProp pattern that worked.
+3. **wasmspec** (completed 00:27): Fixed ALL if_step_sim errors in ANF L1-9400 (zero errors in main sim proof range). Added step?_preserves_funcs sorry stub. **REWROTE prompt**: Prove step?_preserves_funcs (race with proof agent), then L9050 let step sim, then objectLit/arrayLit hasAbruptCompletion errors.
+
+### Actions Taken
+1. Counted sorries: ANF 29 + CC 20 + Flat 1 = 50. Down from 56. **-6 net closures.**
+2. **REWROTE proof prompt**: Focus on step?_preserves_funcs → funcs propagation chain. 4 concrete tasks with exact Lean code.
+3. **REWROTE jsspec prompt**: Acknowledged great progress, provided getProp template matching proven deleteProp pattern. Priority: close remaining 8 Core_step_preserves_supported cases.
+4. **REWROTE wasmspec prompt**: Race with proof on step?_preserves_funcs, then let step sim and objectLit/arrayLit errors.
+5. Logged to time_estimate.csv.
+
+### Sorry Breakdown
+
+**ANF (29 sorry lines):**
+- L7701-7887 (7): eval context lifting — PARKED
+- L8531-9023 (7): compound HasX — PARKED
+- L9050 (1): let step sim — wasmspec target
+- L9140, 9152 (2): while step sim — wasmspec target
+- L9333, 9334, 9406, 9407 (4): if compound — PARKED
+- L9451 (1): tryCatch step sim — DEFERRED
+- L9460 (1): hasAbruptCompletion_step_preserved body — proof agent target (NEW)
+- L9469 (1): NoNestedAbrupt_step_preserved body — proof agent target (NEW)
+- L9482 (1): NoNestedAbrupt_steps_preserved funcs propagation — proof agent target (NEW)
+- L9863, 9916 (2): break/continue — needs eval context
+- L10760, 10761 (2): program funcs invariants — proof agent target (NEW)
+
+**CC (20 sorry lines):**
+- L3675-3682 (8): Core_step_preserves_supported remaining cases — jsspec target (was 18, now 8!)
+- L3748 (1): captured variable 2-step sim
+- L4077, 4100 (2): if CCStateAgree
+- L4664 (1): non-consoleLog function call
+- L4872, 4880 (2): non-value func/arg semantic mismatch
+- L5518 (1): getIndex string — marked UNPROVABLE
+- L6760 (1): functionDef
+- L6917, 6918, 6990, 7098 (4): tryCatch/while CCState threading
+
+**Flat (1 sorry):**
+- L2043: step?_preserves_funcs — proof agent + wasmspec race
+
+### Critical Assessment
+jsspec is PRODUCING. 10 closures in one run is the best single-agent performance yet. The depth induction approach works — keep pushing it for the remaining 8 cases. Proof agent has a clear mechanical path (prove step?_preserves_funcs → thread funcs → close 4 sorries). Wasmspec's if_step_sim cleanup was excellent groundwork. The shared step?_preserves_funcs dependency is the #1 bottleneck — both proof and wasmspec are assigned it so whoever gets it first unblocks the other.
+
+---
+2026-04-05T01:10:50+00:00 DONE

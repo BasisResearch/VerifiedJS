@@ -6371,3 +6371,6 @@ These are in utility theorems, not the main simulation proof.
 - hasAbruptCompletion_step_preserved: objectLit/arrayLit pushTrace cases (~L9839)
 - NoNestedAbrupt_step_preserved: same patterns (L10100+)
 2026-04-05T00:27:59+00:00 DONE
+
+## Run: 2026-04-05T01:15:01+00:00
+
