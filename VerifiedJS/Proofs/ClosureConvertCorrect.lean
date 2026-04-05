@@ -4108,7 +4108,8 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
     | none =>
       -- body is not a value: step body
       cases h_sub : Core.step? { s with expr := body } with
-      | none => simp [Core.step?, hval_b, h_sub] at hstep
+      | none =>
+        exfalso; revert hstep; rw [state_with_expr_eq hexpr]; unfold Core.step?; simp [hval_b, h_sub]
       | some p =>
         obtain ⟨te, sb⟩ := p
         cases te with
@@ -4784,7 +4785,8 @@ private theorem Core_step_preserves_funcs_supported (s s' : Core.State) (ev : Co
           { s with expr := target } se t (Nat.le_refl _) htgt_supp hfuncs_supp h_sub i fd
           (by simpa [Core.pushTrace] using hfd)
   | tryCatch body catchParam catchBody finally_ =>
-    simp only [hexpr, Core.Expr.supported, Bool.and_eq_true] at hsupp
+    rw [hexpr] at hsupp
+    have hsup_body : body.supported = true := by simp [Core.Expr.supported] at hsupp; exact hsupp.1.1
     rw [state_with_expr_eq hexpr] at hstep
     cases hval_b : Core.exprValue? body with
     | some v =>
@@ -4806,11 +4808,10 @@ private theorem Core_step_preserves_funcs_supported (s s' : Core.State) (ev : Co
           exact hfuncs_supp i fd (by simpa [Core.pushTrace] using hfd)
     | none =>
       cases h_sub : Core.step? { s with expr := body } with
-      | none => simp [Core.step?, hval_b, h_sub] at hstep
+      | none =>
+        exfalso; revert hstep; rw [state_with_expr_eq hexpr]; unfold Core.step?; simp [hval_b, h_sub]
       | some p =>
         obtain ⟨te, sb⟩ := p
-        have hsup_body : body.supported = true := by
-          rcases hsupp with ⟨⟨h, _⟩, _⟩; exact h
         have ih_body : ∀ j fj, sb.funcs[j]? = some fj → fj.body.supported = true :=
           ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
             { s with expr := body } sb te (Nat.le_refl _) hsup_body hfuncs_supp h_sub
