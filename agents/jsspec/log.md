@@ -3327,3 +3327,4 @@ The only sorry is at L3970: closure body supported. Requires `∀ i c, s.funcs[i
 - All pre-existing errors in closureConvert_step_simulation remain (L7372+)
 - No new errors introduced in Core_step_preserves_supported call case
 ### 2026-04-05T09:39:14+00:00 Run complete — Call case expanded (7 subcases, 6 closed), objectLit/arrayLit fixed with forward lemmas, tryCatch fix attempted with change tactic. 9 forward lemmas added to Core/Semantics.lean. Pre-existing errors in closureConvert_step_simulation remain.
+2026-04-05T10:00:01+00:00 SKIP: already running
