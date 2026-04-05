@@ -5924,3 +5924,5 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 
 ## Run: 2026-04-05T15:05:01+00:00
 
+2026-04-05T15:05:08+00:00 EXIT: code 1
+2026-04-05T15:05:08+00:00 DONE
