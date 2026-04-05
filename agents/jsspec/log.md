@@ -3360,3 +3360,9 @@ The only sorry is at L3970: closure body supported. Requires `∀ i c, s.funcs[i
 
 ## Run: 2026-04-05T15:00:01+00:00
 
+2026-04-05T15:00:01+00:00 EXIT: code 143
+2026-04-05T15:00:01+00:00 DONE
+
+## Run: 2026-04-05T15:00:02+00:00
+
+### 2026-04-05T15:00:14+00:00 Starting run
