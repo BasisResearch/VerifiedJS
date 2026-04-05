@@ -8076,7 +8076,7 @@ private theorem closureConvert_step_simulation
     | none =>
       -- Body is not a value; step the body via IH
       have hfnv : Flat.exprValue? fbody = none :=
-        convertExpr_not_value_supported body hbv (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> (first | exact h.1.1 | exact h.1 | exact h)) scope envVar envMap st
+        convertExpr_not_value_supported body hbv (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> (first | exact h.1.1 | exact h.1 | exact h | exact (fun _ => h) | exact (fun _ _ => h))) scope envVar envMap st
       have hexprwf_body : ExprAddrWF body sc.heap.objects.size := by
         cases finally_ <;> simp [ExprAddrWF] at hexprwf <;> exact hexprwf.1
       have hsf_eta : sf = { sf with expr := .tryCatch fbody catchParam fcatch ffin } := by
@@ -8099,7 +8099,7 @@ private theorem closureConvert_step_simulation
               { sf with expr := fbody }
               { sc with expr := body }
               (.error msg) sb scope st st1
-              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> (first | exact h.1.1 | exact h.1 | exact h))
+              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> (first | exact h.1.1 | exact h.1 | exact h | exact (fun _ => h) | exact (fun _ _ => h)))
               (by simp [fbody, st1])
               ⟨hm⟩
           let handler := match finally_ with | some fin => Core.Expr.seq catchBody fin | none => catchBody
@@ -8159,7 +8159,7 @@ private theorem closureConvert_step_simulation
               { sf with expr := fbody }
               { sc with expr := body }
               t sb scope st st1
-              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> (first | exact h.1.1 | exact h.1 | exact h))
+              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> (first | exact h.1.1 | exact h.1 | exact h | exact (fun _ => h) | exact (fun _ _ => h)))
               (by simp [fbody, st1])
               ⟨hm⟩
           let sc' : Core.State :=
@@ -8518,7 +8518,7 @@ private theorem closureConvert_step_simulation
       | none =>
         -- Sub-expression not a value; Flat steps the sub-expression
         have hfnv : Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none :=
-          convertExpr_not_value_supported e hcev (by simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp ⊢; first | exact hsupp | exact hsupp.1 | exact hsupp.2 | exact hsupp.1.1 | exact hsupp.1.2 | (simp only [Bool.and_eq_true] at hsupp; first | exact hsupp.1 | exact hsupp.2 | exact hsupp.2.1 | exact hsupp.2.2)) scope envVar envMap st
+          convertExpr_not_value_supported e hcev (by simp only [Core.Expr.supported] at hsupp; exact absurd hsupp (by decide)) scope envVar envMap st
         have hsf_eta : sf = { sf with expr := .yield (some (Flat.convertExpr e scope envVar envMap st).fst) delegate } := by
           cases sf; simp_all
         rw [hsf_eta] at hstep
@@ -8548,7 +8548,7 @@ private theorem closureConvert_step_simulation
             { sf with expr := (Flat.convertExpr e scope envVar envMap st).fst }
             { sc with expr := e }
             ev sa scope st (Flat.convertExpr e scope envVar envMap st).snd
-            (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_val hexprwf_val (by simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp ⊢; first | exact hsupp | exact hsupp.1 | exact hsupp.2 | exact hsupp.1.1 | exact hsupp.1.2 | (simp only [Bool.and_eq_true] at hsupp; first | exact hsupp.1 | exact hsupp.2 | exact hsupp.2.1 | exact hsupp.2.2))
+            (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_val hexprwf_val (by simp only [Core.Expr.supported] at hsupp; exact absurd hsupp (by decide))
             (by simp)
             ⟨hsubstep⟩
         -- Reconstruct Core step on yield
@@ -8607,7 +8607,7 @@ private theorem closureConvert_step_simulation
     | none =>
       -- Sub-expression not a value; Flat steps the sub-expression
       have hfnv : Flat.exprValue? (Flat.convertExpr arg scope envVar envMap st).fst = none :=
-        convertExpr_not_value_supported arg hcev (by simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp ⊢; first | exact hsupp | exact hsupp.1 | exact hsupp.2 | exact hsupp.1.1 | exact hsupp.1.2 | (simp only [Bool.and_eq_true] at hsupp; first | exact hsupp.1 | exact hsupp.2 | exact hsupp.2.1 | exact hsupp.2.2)) scope envVar envMap st
+        convertExpr_not_value_supported arg hcev (by simp only [Core.Expr.supported] at hsupp; exact absurd hsupp (by decide)) scope envVar envMap st
       have hsf_eta : sf = { sf with expr := .await (Flat.convertExpr arg scope envVar envMap st).fst } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
@@ -8637,7 +8637,7 @@ private theorem closureConvert_step_simulation
           { sf with expr := (Flat.convertExpr arg scope envVar envMap st).fst }
           { sc with expr := arg }
           ev sa scope st (Flat.convertExpr arg scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_val hexprwf_val (by simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp ⊢; first | exact hsupp | exact hsupp.1 | exact hsupp.2 | exact hsupp.1.1 | exact hsupp.1.2 | (simp only [Bool.and_eq_true] at hsupp; first | exact hsupp.1 | exact hsupp.2 | exact hsupp.2.1 | exact hsupp.2.2))
+          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_val hexprwf_val (by simp only [Core.Expr.supported] at hsupp; exact absurd hsupp (by decide))
           (by simp)
           ⟨hsubstep⟩
       -- Reconstruct Core step on await
