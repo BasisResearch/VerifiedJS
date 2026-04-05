@@ -3264,3 +3264,6 @@ Added depth induction to `Core_step_preserves_supported` (L3375-3682):
 2026-04-05T03:00:01+00:00 SKIP: already running
 ### 2026-04-05T03:09:22+00:00 Run complete — proved getProp, setProp (step_preserves_supported); getIndex/setIndex/call/objectLit/arrayLit/tryCatch written but sorry'd due to simp/step? expansion issues; added helper lemmas (listSupported_append, propListSupported_append, etc.); Flat.Semantics step?_preserves_funcs sorry'd due to yield/await OOM issue and competing agent
 2026-04-05T03:09:43+00:00 DONE
+
+## Run: 2026-04-05T04:00:47+00:00
+

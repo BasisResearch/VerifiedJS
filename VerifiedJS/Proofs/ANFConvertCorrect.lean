@@ -9047,7 +9047,24 @@ private theorem normalizeExpr_let_step_sim
   obtain ⟨rfl, rfl⟩ := hstep_eq
   -- Now sa'.expr = body, sa'.env = (evalComplex rhs).env.extend name (evalComplex rhs).value
   -- Need: sf.expr has .let or bindComplex form at eval head, flat steps matching
-  sorry -- Need characterization of what produces .let, flat simulation
+  -- Case analysis on sf.expr: atoms can't produce .let (k is trivial-preserving)
+  cases sf with
+  | mk e env heap trace funcs cs =>
+  cases e with
+  | lit v =>
+    exfalso; simp only [ANF.normalizeExpr] at hnorm
+    cases htv : ANF.trivialOfFlatValue v with
+    | error msg => simp [htv, throw, throwThe, MonadExceptOf.throw, StateT.run, StateT.lift, Functor.map, Except.map] at hnorm
+    | ok triv => simp only [htv] at hnorm; obtain ⟨m', hm'⟩ := hk triv n; simp only [StateT.run] at hm' hnorm; rw [hm'] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+  | var nm =>
+    exfalso; simp only [ANF.normalizeExpr, StateT.run] at hnorm; obtain ⟨m', hm'⟩ := hk (.var nm) n; simp only [StateT.run] at hm'; rw [hm'] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+  | «this» =>
+    exfalso; simp only [ANF.normalizeExpr, StateT.run] at hnorm; obtain ⟨m', hm'⟩ := hk (.var "this") n; simp only [StateT.run] at hm'; rw [hm'] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+  | «break» _ =>
+    exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+  | «continue» _ =>
+    exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
+  | _ => sorry -- compound expression: needs structural induction on Flat.Expr
 
 /-- When normalizeExpr on a .while_ cond body produces .seq (.while_ c d) b,
     we can decompose it into the normalization of the condition, body, and continuation. -/
@@ -9871,45 +9888,66 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
             (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac heq)
         · exact absurd hstep (by simp)
       · exact absurd hstep (by simp)
-  -- tryCatch: complex case
+  -- tryCatch: case split on finally_ to decompose hac
   | tryCatch body catchParam catchBody finally_ =>
-    simp only [hasAbruptCompletion] at hac
-    unfold Flat.step? at hstep; dsimp only [] at hstep
-    split at hstep
-    · -- body is value
-      split at hstep
-      · -- isCallFrame
-        split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion])
-      · -- not isCallFrame
-        split at hstep
-        · -- finally = some fin
+    cases finally_ with
+    | none =>
+      simp only [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? body
+      · -- body is value
+        split at hstep  -- isCallFrame?
+        · split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion])
+        · obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion]
+      · -- body not value
+        split at hstep  -- step? body = (.error, ..) or (t, ..) or none
+        · -- error event
+          split at hstep  -- isCallFrame && return?
+          · split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion])
+          · split at hstep  -- isCallFrame?
+            · split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion])
+            · obtain ⟨_, rfl⟩ := hstep
+              simp only [Flat.pushTrace, hasAbruptCompletion]; exact hac.2
+        · -- non-error: wrap in tryCatch
           obtain ⟨_, rfl⟩ := hstep
           simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          -- hac for tryCatch (some fin): body || catch || fin
-          -- After body is a value, result is seq fin (lit v)
-          -- hasAbruptCompletion (seq fin (lit v)) = hasAbruptCompletion fin || false
-          sorry
-        · -- finally = none
-          obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion]
-    · -- body not value, step body
-      split at hstep
-      · -- error event
-        split at hstep
-        · -- isCallFrame and return
-          split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion])
-        · -- isCallFrame and not return
-          split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion])
-        · -- not isCallFrame: dispatch to handler
+          rename_i _ _ _ heq
+          exact ⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.1 hfuncs_ac heq, hac.2⟩
+        · exact absurd hstep (by simp)
+    | some fin =>
+      simp only [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
+      obtain ⟨⟨hac_body, hac_catch⟩, hac_fin⟩ := hac
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? body
+      · -- body is value
+        split at hstep  -- isCallFrame?
+        · split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion])
+        · obtain ⟨_, rfl⟩ := hstep
+          simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
+          exact ⟨hac_fin, trivial⟩
+      · -- body not value
+        split at hstep  -- step? body
+        · -- error event
+          split at hstep  -- isCallFrame && return?
+          · split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion])
+          · split at hstep  -- isCallFrame?
+            · split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion])
+            · obtain ⟨_, rfl⟩ := hstep
+              simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
+              exact ⟨hac_catch, hac_fin⟩
+        · -- non-error: wrap in tryCatch
           obtain ⟨_, rfl⟩ := hstep
           simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          sorry
-      · -- non-error event: wrap in tryCatch
-        obtain ⟨_, rfl⟩ := hstep
-        simp only [Flat.pushTrace, hasAbruptCompletion]
-        sorry
-      · exact absurd hstep (by simp)
+          rename_i _ _ _ heq
+          exact ⟨⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_body hfuncs_ac heq,
+                 hac_catch⟩, hac_fin⟩
+        · exact absurd hstep (by simp)
   termination_by e.depth
-  decreasing_by all_goals (simp_all [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth]; omega)
+  decreasing_by
+    all_goals first
+      | (simp_all [Flat.Expr.depth]; omega)
+      | (have := Flat.firstNonValueExpr_depth ‹_›; simp_all [Flat.Expr.depth]; omega)
+      | (have := Flat.firstNonValueProp_depth ‹_›; simp_all [Flat.Expr.depth]; omega)
 
 /-- Flat single-step preserves NoNestedAbrupt. -/
 private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.TraceEvent)
