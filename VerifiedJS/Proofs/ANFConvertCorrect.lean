@@ -11546,6 +11546,7 @@ private theorem normalizeExpr_if_compound_true_sim
       ANF_SimRel s t ⟨then_, env, heap, sa_trace ++ [.silent]⟩ sf' ∧
       ExprWellFormed sf'.expr sf'.env := by
   have hif := ANF.normalizeExpr_if_implies_hasIfInHead sf_expr k hk cond then_ else_ n m hnorm
+  have hif_copy := hif
   cases hif
   case if_direct c_flat then_flat else_flat =>
     cases c_flat with
@@ -11636,7 +11637,22 @@ private theorem normalizeExpr_if_compound_true_sim
     | _ =>
       sorry -- UNLOCK: normalizeExpr_if_branch_step on condition + Steps_if_cond_ctx lift
   -- non-if_direct HasIfInHead: use normalizeExpr_if_branch_step directly on sf_expr
-  all_goals sorry -- UNLOCK: normalizeExpr_if_branch_step directly on sf_expr (no context lift needed)
+  all_goals (
+    obtain ⟨sf', evs, hsteps, hsil, henv, hheap, hfuncs, hcs, htrace_sf, hpres, ⟨n', m', hnorm'⟩, hewf'⟩ :=
+      normalizeExpr_if_branch_step _ _ (Nat.le_refl _) hif_copy
+        env heap trace funcs cs k n m cond then_ else_ v hnorm hewf heval hbool
+    have h_obs_nil : observableTrace evs = [] := by
+      clear hewf' hnorm' hpres htrace_sf henv hheap hfuncs hcs hsteps sf'
+      induction evs with
+      | nil => rfl
+      | cons ev rest ih =>
+        simp [observableTrace, hsil ev (List.mem_cons_self _ _)]
+        exact ih (fun e he => hsil e (List.mem_cons_of_mem _ he))
+    refine ⟨sf', evs, hsteps, by simp [observableTrace, h_obs_nil], ?_, hewf'⟩
+    exact ⟨hheap.symm, henv.symm,
+      by rw [htrace_sf]; simp [observableTrace_append, observableTrace_silent, observableTrace_nil, h_obs_nil]; exact htrace,
+      k, n', m', hnorm', hk⟩
+  )
 
 /-- Infrastructure: multi-step Flat simulation for compound if-expressions (false branch).
     Same as normalizeExpr_if_compound_true_sim but for the false/else branch.
@@ -11661,6 +11677,7 @@ private theorem normalizeExpr_if_compound_false_sim
       ANF_SimRel s t ⟨else_, env, heap, sa_trace ++ [.silent]⟩ sf' ∧
       ExprWellFormed sf'.expr sf'.env := by
   have hif := ANF.normalizeExpr_if_implies_hasIfInHead sf_expr k hk cond then_ else_ n m hnorm
+  have hif_copy := hif
   cases hif
   case if_direct c_flat then_flat else_flat =>
     cases c_flat with
