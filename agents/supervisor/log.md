@@ -1,3 +1,52 @@
+## Run: 2026-04-05T19:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 32 + CC 12 = **44 real sorries**
+- **Delta from last run (18:30)**: 0 (44→44). **FLAT — no change.**
+- **Lower**: 0 sorries (DONE)
+- **Wasm/Semantics**: 0 real sorries (DONE)
+
+### Why count is FLAT (0 change)
+- ANF stayed at 32. proof agent completed its last run at 18:49 (closed 8 UNLOCK sorries in previous cycle). Not running since.
+- CC stayed at 12. jsspec closed L4197 (FuncsSupported) at 18:55. Currently running since 19:00 on L7917 (functionDef).
+- wasmspec completed at 18:35 with 0 net reduction (expanded trivialChain structure but no sorry closures). Not running since.
+
+### Memory Status
+- 3.7GB available. Only jsspec lean worker running (CC build). No memory crisis.
+
+### Agent Status
+1. **proof** (IDLE since 18:49): Closed 8 UNLOCK sorries last cycle. Prompt UPDATED: redirected to build `normalizeExpr_labeled_or_k` infrastructure (analogous to existing `normalizeExpr_tryCatch_or_k` at L8054) to unlock ALL 7 Group A labeled sorries. Detailed strategy for exfalso + IH approach.
+2. **jsspec** (RUNNING since 19:00): Working on L7917 (functionDef) — the only closeable CC sorry. Has `Core_step_preserves_funcs_supported` infrastructure from last run. Prompt unchanged (still correct).
+3. **wasmspec** (IDLE since 18:35): Proved trivialChain lit/var/this inline but seq still sorry. Prompt UPDATED: wrote concrete proof sketch for L11053 (trivialChain seq) using `trivialChain_eval_value` + `Steps_if_cond_ctx_b`. Also detailed L11104 (seq_right) approach mirroring existing seq_left at L11080.
+
+### Actions Taken
+1. Updated proof agent prompt: new priority on `normalizeExpr_labeled_or_k` infrastructure, detailed strategy
+2. Updated wasmspec prompt: concrete proof sketch for L11053/L11376 with exact helper lemma names
+3. jsspec prompt unchanged (running, on track)
+4. Logged to time_estimate.csv
+
+### Sorry Classification (44 total)
+**ANF (32):**
+- 7 normalizeExpr_labeled_step_sim (L8557-8743) ← proof agent, needs labeled_or_k infrastructure
+- 4 compound HasXInHead catch-all (L9387, 9544, 9721, 9879) ← proof agent
+- 3 compound inner_val/arg (L9538, 9715, 9873) ← proof agent
+- 3 return/yield/compound (L9935-9940) ← proof agent
+- 2 while condition (L10030-10042) ← proof agent
+- 4 trivialChain seq/seq_right (L11053, 11104, 11376, 11425) ← wasmspec
+- 2 exotic catch-all (L11211, 11532) ← wasmspec
+- 3 tryCatch (L12373-12394) ← blocked
+- 2 call frame (L13477-13488) ← blocked
+- 2 break/continue (L13708-13761) ← blocked
+
+**CC (12):** L4905, L5234, L5257, L5821, L6029, L6037, L6675, L7917 (jsspec target), L8074, L8075, L8147, L8255
+
+### Expected next run: 40-42
+- proof: if it builds normalizeExpr_labeled_or_k, could close 3-5 Group A exfalso cases
+- wasmspec: 1-2 trivialChain seq closes possible with concrete sketch
+- jsspec: 0-1 functionDef if L7917 lands
+
+---
+
 ## Run: 2026-04-05T18:30:03+00:00
 
 ### Metrics
@@ -6333,3 +6382,4 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 
 ## Run: 2026-04-05T19:05:01+00:00
 
+2026-04-05T19:15:24+00:00 DONE
