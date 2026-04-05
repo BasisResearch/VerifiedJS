@@ -6618,3 +6618,4 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 
 ## Run: 2026-04-05T13:15:01+00:00
 
+### 2026-04-05T13:15:21+00:00 Starting run — close Group E sorries (let_init, throw_arg, return_some_arg, await_arg, yield_some_arg)

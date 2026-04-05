@@ -11323,24 +11323,59 @@ private theorem normalizeExpr_tryCatch_step_sim
         obtain ⟨rfl, rfl⟩ := hstep_eq
         -- ANF catches the error: sa' = { handler, sb.env.extend catchParam (.string msg), sb.heap, sa_trace ++ [.error msg] }
         -- where handler = match finally_ with | some fin => .seq catchBody fin | none => catchBody
-        -- Approach: use body_sim to get Flat body steps, decompose into non-error prefix + error step,
-        -- lift non-error steps through tryCatch via Steps_tryCatch_body_ctx,
-        -- then show Flat tryCatch catches the error step and transitions to catch handler.
-        -- Remaining gap: counter alignment for SimRel reconstruction of catch handler.
-        sorry -- tryCatch body-error: body_sim + Steps_tryCatch_body_ctx + error catch + SimRel recon
+        --
+        -- APPROACH: Use body_sim → Flat body steps, lift non-error prefix through tryCatch,
+        -- then tryCatch catches the error step. SimRel for catch handler uses hcatch_norm.
+        --
+        -- BLOCKERS (proof agent 2026-04-05):
+        -- 1. CallStack propagation: Steps_tryCatch_body_ctx requires body steps to preserve
+        --    callStack, but body expressions containing .call change callStack during execution.
+        --    The tryCatch body-advance step uses the OUTER tryCatch's callStack (fixed),
+        --    while body_sim's Flat.Steps use the BODY's callStack (changes with calls).
+        --    FIX: Either (a) prove body steps don't change callStack for the relevant cases,
+        --    or (b) redesign Steps_tryCatch_body_ctx to not require callStack preservation
+        --    (the tryCatch result always uses the outer callStack regardless).
+        -- 2. Error-is-last: Need error event to be the last event in body_sim's Flat.Steps
+        --    so that sf_b'.env = env at error point (for catch handler SimRel).
+        --    Empirically true for all cases of anfConvert_step_star, but not in body_sim's spec.
+        -- 3. Finally case (finally_ = some): normalizeExpr (.seq cb_f fin_flat) k ≠
+        --    .seq catchBody fin_anf due to CPS transformation. Needs k-independence lemma
+        --    or alternative SimRel formulation for the handler.
+        --
+        -- Step 1: Construct body SimRel
+        have hrel_body : ANF_SimRel s t ⟨body, env, heap, sa_trace⟩
+            ⟨body_f, env, heap, trace, funcs, cs⟩ :=
+          ⟨rfl, rfl, htrace, k, n, n1, hbody_norm, hk⟩
+        -- Step 2: ExprWellFormed for body_f
+        have hewf_body : ExprWellFormed body_f env :=
+          fun x hfx => hewf x (VarFreeIn.tryCatch_body _ _ _ _ _ hfx)
+        -- Step 3: Invoke body_sim
+        obtain ⟨sf_b', evs_b, hsteps_b, hobs_b, hrel_b, hewf_b⟩ :=
+          body_sim ⟨body, env, heap, sa_trace⟩ ⟨body_f, env, heap, trace, funcs, cs⟩
+            (.error msg) sb hrel_body hewf_body ⟨hstep_body⟩
+        -- Step 4: Extract SimRel components from hrel_b
+        obtain ⟨hheap_b, henv_b, htrace_b, k_b, n_b, m_b, hnorm_b, hk_b⟩ := hrel_b
+        -- Step 5: Need to lift body steps through tryCatch and catch the error.
+        -- Blocked by callStack propagation + error-is-last (see BLOCKERS above).
+        sorry -- tryCatch body-error: remaining gap is lifting body steps through tryCatch context
       · -- Case 2b: step? body = some (t_body, sb) — body took a normal step
         rename_i t_body sb hstep_body
         obtain ⟨rfl, rfl⟩ := hstep_eq
         -- ANF wraps: sa' = { .tryCatch sb.expr catchParam catchBody finally_, sb.env, sb.heap, sa_trace ++ [t_body] }
-        -- Approach: use body_sim to get Flat body steps (all non-error since t_body is not .error),
-        -- lift through tryCatch via Steps_tryCatch_body_ctx.
-        -- Remaining gap: SimRel reconstruction requires normalizeExpr (.tryCatch sf_b'.expr cp cb_f fin?) k_tc
-        -- to equal .tryCatch sb.expr cp catchBody finally_. This requires:
-        --   1. normalizeExpr sf_b'.expr k_tc = sb.expr (from body SimRel with k')
-        --   2. normalizeExpr cb_f k_tc = catchBody (from original decomp with k)
-        --   3. A lemma that normalizeExpr e k1 ≈ normalizeExpr e k2 for trivial-preserving k1, k2
-        --      (modulo fresh name counter alignment).
-        sorry -- tryCatch body-step: body_sim + Steps_tryCatch_body_ctx + SimRel recon
+        --
+        -- BLOCKERS (proof agent 2026-04-05):
+        -- 1. CallStack propagation: Same as body-error case — Steps_tryCatch_body_ctx
+        --    requires callStack preservation which body steps with .call don't guarantee.
+        -- 2. Counter alignment: SimRel reconstruction needs
+        --    normalizeExpr (.tryCatch sf_b'.expr cp cb_f fin_f) k_tc at counter n_tc
+        --    = .tryCatch sb.expr cp catchBody finally_
+        --    This requires normalizeExpr cb_f and normalizeExpr fin_flat to produce
+        --    the SAME results as hcatch_norm/hfin_norm, but with a DIFFERENT starting
+        --    counter (n_b instead of n1). Since normalizeExpr uses fresh names (_anfN),
+        --    different counters produce different variable names → different expressions.
+        --    FIX: Either (a) prove normalizeExpr is counter-independent up to alpha-equiv,
+        --    or (b) restructure SimRel to track counter offsets rather than exact expressions.
+        sorry -- tryCatch body-step: blocked by callStack propagation + counter alignment
       · -- Case 2c: step? body = none — contradicts hstep_eq = some
         simp at hstep_eq
   | _ => sorry -- compound cases: deferred
@@ -12426,7 +12461,17 @@ private theorem anfConvert_step_star
     simp only [ANF.State.env] at henv
     simp only [ANF.State.trace] at htrace
     exact normalizeExpr_tryCatch_step_sim sf s t k n m body catchParam catchBody finally_ hnorm hk_triv hewf
-      (sorry /- noCallFrameReturn: source tryCatch params are never "__call_frame_return__" -/)
+      (sorry /- noCallFrameReturn: Need catchParam ≠ "__call_frame_return__".
+         The ANF catchParam = source Flat catchParam (from normalizeExpr_tryCatch_decomp).
+         Source programs never use "__call_frame_return__" — it's only introduced by
+         Flat.step? for function calls. But during simulation, sf.expr could temporarily
+         be a __call_frame_return__ tryCatch (from a call step). The invariant that sf.expr
+         has no __call_frame_return__ catch params is maintained by the SimRel reconstruction
+         (call case handles the entire function execution internally).
+         FIX: Add NoCallFrameParam predicate to anfConvert_step_star preconditions,
+         prove it for initial state and preservation through simulation steps.
+         Cannot add to NoNestedAbrupt because function call stepping creates
+         __call_frame_return__ tryCatch wrappers (L12115 constructs .tryCatch_none). -/)
       (sorry /- body_sim: inner simulation IH, needs anfConvert_step_star to be proved by strong induction -/)
       sa_env sa_heap sa_trace hheap henv htrace _ _ hstep_eq
   | «return» arg =>

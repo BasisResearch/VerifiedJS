@@ -1483,10 +1483,11 @@ private theorem closureConvert_init_related
     -- FuncsSupported: initial funcs = #[logBuiltin], body = .lit .undefined
     intro i fd hi
     dsimp at hi
-    have : i = 0 ∧ fd = ⟨some "log", ["__arg__"], .lit .undefined, []⟩ := by
-      simp [Array.getElem?] at hi
-      split at hi <;> simp_all
-    subst this.2; rfl
+    have hlt : i < 1 := by
+      by_contra h; simp at h
+      simp [Array.getElem?, h] at hi
+    interval_cases i
+    simp [Array.getElem?] at hi; subst hi; rfl
   case conv =>
     unfold Flat.closureConvert at h
     simp only [Except.ok.injEq] at h
@@ -3981,7 +3982,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
               obtain ⟨-, rfl⟩ := hstep
               simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
               -- closure.body.supported follows from the FuncsSupported invariant
-              exact ⟨hfuncs_supp idx closure hfunc, trivial⟩
+              exact ⟨⟨hfuncs_supp idx closure hfunc, trivial⟩, trivial⟩
             | none =>
               have hfwd := Core.step_call_func_none idx args argVals s.env s.heap s.trace s.funcs s.callStack
                 hallv hcl hfunc
