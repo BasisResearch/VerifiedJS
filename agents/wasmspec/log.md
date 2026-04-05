@@ -6619,3 +6619,28 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 ## Run: 2026-04-05T13:15:01+00:00
 
 ### 2026-04-05T13:15:21+00:00 Starting run — close Group E sorries (let_init, throw_arg, return_some_arg, await_arg, yield_some_arg)
+
+### 2026-04-05T13:45:00+00:00 Progress update
+
+**Group E (5 cases): COMPLETE** (modulo hpres sorries)
+- Filled in let_init, throw_arg, return_some_arg, await_arg, yield_some_arg cases
+- Each follows IH + Steps_*_ctx lift pattern from seq_left template
+- normalizeExpr goal: proved via rw [hwexpr] + simp + hnorm_*
+- ExprWellFormed goal: proved via VarFreeIn case analysis
+- hpres: left as sorry (design issue — shared across all cases)
+
+**Group C (ExprWellFormed): COMPLETE** for all Group E + seq_left
+- seq_left ExprWellFormed at old L10607: PROVED
+
+**Infrastructure added:**
+- Steps_unary_ctx: multi-step lifting through .unary op [·]
+- Steps_binary_lhs_ctx: multi-step lifting through .binary op [·] rhs
+
+**False version (normalizeExpr_if_branch_step_false):**
+- Expanded single sorry at L10768 into full case structure (symmetric to true version)
+- All cases filled in: if_direct, if_cond, seq_left, let_init, throw_arg, return_some_arg, await_arg, yield_some_arg
+- Same hpres/trivialChain/seq_right/exotic sorries as true version
+
+**Build status:** No errors in my zone (10500-10920). Errors at L11412+ are in proof agent's zone.
+
+**Sorry count change:** Was ~25 → now 22 in range (but 1 massive sorry replaced with 11 structured sorries in false version, net improvement in proof structure)
