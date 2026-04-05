@@ -6253,3 +6253,9 @@ Infrastructure ready for next run to close 9 additional sorries in normalizeExpr
 
 ## Run: 2026-04-05T22:30:01+00:00
 
+2026-04-05T22:30:13+00:00 EXIT: code 1
+2026-04-05T22:30:13+00:00 DONE
+
+## Run: 2026-04-05T22:30:16+00:00
+
+### 2026-04-05T22:30:33+00:00 Starting run

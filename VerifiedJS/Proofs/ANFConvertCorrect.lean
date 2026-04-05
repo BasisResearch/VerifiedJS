@@ -9063,14 +9063,174 @@ private theorem normalizeExpr_labeled_branch_step :
       · rw [hwexpr, hwenv, henv_arg]; exact fun x hfx => by
           cases hfx with
           | await_arg _ _ h => exact henv_arg ▸ hewf_arg x h
-    | unary_arg h_arg => sorry -- closed via Steps_unary_ctx_b (LSP verified)
-    | typeof_arg h_arg => sorry -- closed via Steps_typeof_ctx_b (LSP verified)
-    | deleteProp_obj h_obj => sorry -- closed via Steps_deleteProp_ctx_b (LSP verified)
-    | getProp_obj h_obj => sorry -- closed via Steps_getProp_ctx_b (LSP verified)
-    | assign_val h_val => sorry -- closed via Steps_assign_ctx_b (LSP verified)
-    | getEnv_env h_env => sorry -- closed via Steps_getEnv_ctx_b (LSP verified)
-    | makeClosure_env h_env => sorry -- closed via Steps_makeClosure_env_ctx_b (LSP verified)
-    | binary_lhs h_lhs => sorry -- closed via Steps_binary_lhs_ctx_b (LSP verified)
+    | unary_arg h_arg =>
+      rename_i arg op
+      simp only [ANF.normalizeExpr] at hnorm
+      have harg_depth : arg.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      obtain ⟨sf_arg, evs_arg, hsteps_arg, hsil_arg, henv_arg, hheap_arg, hfuncs_arg, hcs_arg,
+        htrace_arg, hpres_arg, ⟨n_arg, m_arg, hnorm_arg⟩, hewf_arg⟩ :=
+        ih arg harg_depth label h_arg env heap trace funcs cs _ n m body
+          hnorm (fun x hfx => hewf x (VarFreeIn.unary_arg _ _ _ hfx))
+      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        Steps_unary_ctx_b op hsteps_arg
+          (fun ev hev msg => by rw [hsil_arg ev hev]; exact Core.TraceEvent.noConfusion)
+          hpres_arg
+      refine ⟨ws, evs_arg, hwsteps, hsil_arg, hwenv.trans henv_arg, hwheap.trans hheap_arg,
+        hwfuncs, hwcs, by rw [hwtrace, htrace_arg], ?_, ?_, ?_⟩
+      · exact Steps_ctx_lift_pres (.unary op ·)
+          (fun s inner hv t si hs he => step?_unary_ctx s op inner hv t si hs he)
+          hsteps_arg (fun ev hev msg => by rw [hsil_arg ev hev]; exact Core.TraceEvent.noConfusion) hpres_arg
+      · exact ⟨n_arg, m_arg, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_arg⟩
+      · rw [hwexpr, hwenv, henv_arg]; exact fun x hfx => by
+          cases hfx with
+          | unary_arg _ _ _ h => exact henv_arg ▸ hewf_arg x h
+    | typeof_arg h_arg =>
+      rename_i arg
+      simp only [ANF.normalizeExpr] at hnorm
+      have harg_depth : arg.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      obtain ⟨sf_arg, evs_arg, hsteps_arg, hsil_arg, henv_arg, hheap_arg, hfuncs_arg, hcs_arg,
+        htrace_arg, hpres_arg, ⟨n_arg, m_arg, hnorm_arg⟩, hewf_arg⟩ :=
+        ih arg harg_depth label h_arg env heap trace funcs cs _ n m body
+          hnorm (fun x hfx => hewf x (VarFreeIn.typeof_arg _ _ hfx))
+      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        Steps_typeof_ctx_b hsteps_arg
+          (fun ev hev msg => by rw [hsil_arg ev hev]; exact Core.TraceEvent.noConfusion)
+          hpres_arg
+      refine ⟨ws, evs_arg, hwsteps, hsil_arg, hwenv.trans henv_arg, hwheap.trans hheap_arg,
+        hwfuncs, hwcs, by rw [hwtrace, htrace_arg], ?_, ?_, ?_⟩
+      · exact Steps_ctx_lift_pres .typeof
+          (fun s inner hv t si hs he => step?_typeof_ctx s inner hv t si hs he)
+          hsteps_arg (fun ev hev msg => by rw [hsil_arg ev hev]; exact Core.TraceEvent.noConfusion) hpres_arg
+      · exact ⟨n_arg, m_arg, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_arg⟩
+      · rw [hwexpr, hwenv, henv_arg]; exact fun x hfx => by
+          cases hfx with
+          | typeof_arg _ _ h => exact henv_arg ▸ hewf_arg x h
+    | deleteProp_obj h_obj =>
+      rename_i obj prop
+      simp only [ANF.normalizeExpr] at hnorm
+      have hobj_depth : obj.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      obtain ⟨sf_obj, evs_obj, hsteps_obj, hsil_obj, henv_obj, hheap_obj, hfuncs_obj, hcs_obj,
+        htrace_obj, hpres_obj, ⟨n_obj, m_obj, hnorm_obj⟩, hewf_obj⟩ :=
+        ih obj hobj_depth label h_obj env heap trace funcs cs _ n m body
+          hnorm (fun x hfx => hewf x (VarFreeIn.deleteProp_obj _ _ _ hfx))
+      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        Steps_deleteProp_ctx_b prop hsteps_obj
+          (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion)
+          hpres_obj
+      refine ⟨ws, evs_obj, hwsteps, hsil_obj, hwenv.trans henv_obj, hwheap.trans hheap_obj,
+        hwfuncs, hwcs, by rw [hwtrace, htrace_obj], ?_, ?_, ?_⟩
+      · exact Steps_ctx_lift_pres (.deleteProp · prop)
+          (fun s inner hv t si hs he => step?_deleteProp_ctx s inner prop hv t si hs he)
+          hsteps_obj (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion) hpres_obj
+      · exact ⟨n_obj, m_obj, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_obj⟩
+      · rw [hwexpr, hwenv, henv_obj]; exact fun x hfx => by
+          cases hfx with
+          | deleteProp_obj _ _ _ h => exact henv_obj ▸ hewf_obj x h
+    | getProp_obj h_obj =>
+      rename_i obj prop
+      simp only [ANF.normalizeExpr] at hnorm
+      have hobj_depth : obj.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      obtain ⟨sf_obj, evs_obj, hsteps_obj, hsil_obj, henv_obj, hheap_obj, hfuncs_obj, hcs_obj,
+        htrace_obj, hpres_obj, ⟨n_obj, m_obj, hnorm_obj⟩, hewf_obj⟩ :=
+        ih obj hobj_depth label h_obj env heap trace funcs cs _ n m body
+          hnorm (fun x hfx => hewf x (VarFreeIn.getProp_obj _ _ _ hfx))
+      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        Steps_getProp_ctx_b prop hsteps_obj
+          (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion)
+          hpres_obj
+      refine ⟨ws, evs_obj, hwsteps, hsil_obj, hwenv.trans henv_obj, hwheap.trans hheap_obj,
+        hwfuncs, hwcs, by rw [hwtrace, htrace_obj], ?_, ?_, ?_⟩
+      · exact Steps_ctx_lift_pres (.getProp · prop)
+          (fun s inner hv t si hs he => step?_getProp_ctx s inner prop hv t si hs he)
+          hsteps_obj (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion) hpres_obj
+      · exact ⟨n_obj, m_obj, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_obj⟩
+      · rw [hwexpr, hwenv, henv_obj]; exact fun x hfx => by
+          cases hfx with
+          | getProp_obj _ _ _ h => exact henv_obj ▸ hewf_obj x h
+    | assign_val h_val =>
+      rename_i val name
+      simp only [ANF.normalizeExpr_assign'] at hnorm
+      have hval_depth : val.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      obtain ⟨sf_val, evs_val, hsteps_val, hsil_val, henv_val, hheap_val, hfuncs_val, hcs_val,
+        htrace_val, hpres_val, ⟨n_val, m_val, hnorm_val⟩, hewf_val⟩ :=
+        ih val hval_depth label h_val env heap trace funcs cs _ n m body
+          hnorm (fun x hfx => hewf x (VarFreeIn.assign_value _ _ _ hfx))
+      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        Steps_assign_ctx_b name hsteps_val
+          (fun ev hev msg => by rw [hsil_val ev hev]; exact Core.TraceEvent.noConfusion)
+          hpres_val
+      refine ⟨ws, evs_val, hwsteps, hsil_val, hwenv.trans henv_val, hwheap.trans hheap_val,
+        hwfuncs, hwcs, by rw [hwtrace, htrace_val], ?_, ?_, ?_⟩
+      · exact Steps_ctx_lift_pres (.assign name ·)
+          (fun s inner hv t si hs he => step?_assign_ctx s name inner hv t si hs he)
+          hsteps_val (fun ev hev msg => by rw [hsil_val ev hev]; exact Core.TraceEvent.noConfusion) hpres_val
+      · exact ⟨n_val, m_val, by rw [hwexpr]; simp only [ANF.normalizeExpr_assign']; exact hnorm_val⟩
+      · rw [hwexpr, hwenv, henv_val]; exact fun x hfx => by
+          cases hfx with
+          | assign_value _ _ _ h => exact henv_val ▸ hewf_val x h
+    | getEnv_env h_env =>
+      rename_i env_e idx
+      simp only [ANF.normalizeExpr] at hnorm
+      have henv_depth : env_e.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      obtain ⟨sf_e, evs_e, hsteps_e, hsil_e, henv_e, hheap_e, hfuncs_e, hcs_e,
+        htrace_e, hpres_e, ⟨n_e, m_e, hnorm_e⟩, hewf_e⟩ :=
+        ih env_e henv_depth label h_env env heap trace funcs cs _ n m body
+          hnorm (fun x hfx => hewf x (VarFreeIn.getEnv_env _ _ _ hfx))
+      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        Steps_getEnv_ctx_b idx hsteps_e
+          (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion)
+          hpres_e
+      refine ⟨ws, evs_e, hwsteps, hsil_e, hwenv.trans henv_e, hwheap.trans hheap_e,
+        hwfuncs, hwcs, by rw [hwtrace, htrace_e], ?_, ?_, ?_⟩
+      · exact Steps_ctx_lift_pres (.getEnv · idx)
+          (fun s inner hv t si hs he => step?_getEnv_ctx s inner idx hv t si hs he)
+          hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
+      · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_e⟩
+      · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
+          cases hfx with
+          | getEnv_env _ _ _ h => exact henv_e ▸ hewf_e x h
+    | makeClosure_env h_env =>
+      rename_i env_e funcIdx
+      simp only [ANF.normalizeExpr] at hnorm
+      have henv_depth : env_e.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      obtain ⟨sf_e, evs_e, hsteps_e, hsil_e, henv_e, hheap_e, hfuncs_e, hcs_e,
+        htrace_e, hpres_e, ⟨n_e, m_e, hnorm_e⟩, hewf_e⟩ :=
+        ih env_e henv_depth label h_env env heap trace funcs cs _ n m body
+          hnorm (fun x hfx => hewf x (VarFreeIn.makeClosure_env _ _ _ hfx))
+      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        Steps_makeClosure_env_ctx_b funcIdx hsteps_e
+          (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion)
+          hpres_e
+      refine ⟨ws, evs_e, hwsteps, hsil_e, hwenv.trans henv_e, hwheap.trans hheap_e,
+        hwfuncs, hwcs, by rw [hwtrace, htrace_e], ?_, ?_, ?_⟩
+      · exact Steps_ctx_lift_pres (.makeClosure funcIdx ·)
+          (fun s inner hv t si hs he => step?_makeClosure_env_ctx s funcIdx inner hv t si hs he)
+          hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
+      · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_e⟩
+      · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
+          cases hfx with
+          | makeClosure_env _ _ _ h => exact henv_e ▸ hewf_e x h
+    | binary_lhs h_lhs =>
+      rename_i lhs op rhs
+      simp only [ANF.normalizeExpr] at hnorm
+      have hlhs_depth : lhs.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      obtain ⟨sf_lhs, evs_lhs, hsteps_lhs, hsil_lhs, henv_lhs, hheap_lhs, hfuncs_lhs, hcs_lhs,
+        htrace_lhs, hpres_lhs, ⟨n_lhs, m_lhs, hnorm_lhs⟩, hewf_lhs⟩ :=
+        ih lhs hlhs_depth label h_lhs env heap trace funcs cs _ n m body
+          hnorm (fun x hfx => hewf x (VarFreeIn.binary_lhs _ _ _ _ hfx))
+      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        Steps_binary_lhs_ctx_b op rhs hsteps_lhs
+          (fun ev hev msg => by rw [hsil_lhs ev hev]; exact Core.TraceEvent.noConfusion)
+          hpres_lhs
+      refine ⟨ws, evs_lhs, hwsteps, hsil_lhs, hwenv.trans henv_lhs, hwheap.trans hheap_lhs,
+        hwfuncs, hwcs, by rw [hwtrace, htrace_lhs], ?_, ?_, ?_⟩
+      · exact Steps_ctx_lift_pres (.binary op · rhs)
+          (fun s inner hv t si hs he => step?_binary_lhs_ctx s op inner rhs hv t si hs he)
+          hsteps_lhs (fun ev hev msg => by rw [hsil_lhs ev hev]; exact Core.TraceEvent.noConfusion) hpres_lhs
+      · exact ⟨n_lhs, m_lhs, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_lhs⟩
+      · rw [hwexpr, hwenv, henv_lhs]; exact fun x hfx => by
+          cases hfx with
+          | binary_lhs _ _ _ _ h => exact henv_lhs ▸ hewf_lhs x h
     | _ => sorry -- remaining: seq_right, setProp_obj/val, binary_rhs, call_func/env/args, newObj_func/env/args, getIndex_obj/idx, setIndex_obj/idx/val, makeEnv_values, objectLit_props, arrayLit_elems
 
 /-- When normalizeExpr sf.expr k produces .labeled label body, there exist Flat steps

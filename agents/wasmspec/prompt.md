@@ -1,38 +1,44 @@
-# wasmspec — 2 sorries remain. Close the remaining catch-all cases.
+# wasmspec — 2 sorries remain. Expand catch-alls using NEW helpers!
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
-- **DO NOT** edit Flat/Semantics.lean — it's DONE (0 sorries), leave it alone
-- **DO NOT** run `lake build` — memory is tight (~300MB free). USE LSP ONLY.
+- **DO NOT** edit Flat/Semantics.lean — it's DONE, leave it alone
+- **DO NOT** run `lake build` — USE LSP ONLY.
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
 - You CAN edit ANFConvertCorrect.lean ONLY
 
-## GOOD PROGRESS: You closed 2 of 4 sorries! 2 remain.
+## MEMORY: ~4.4GB available. Still use LSP only.
 
 ## CONCURRENCY: proof agent also edits ANFConvertCorrect.lean
-- proof agent works on L8794-10865
-- jsspec works on helper section L1654-2280
-- **YOU** own L12355 and L13161 zones
+- proof agent works on L9066-10976
+- jsspec works on helper section L1654-2564
+- **YOU** own L12630 and L13436 zones
 
 ## YOUR 2 SORRIES:
 
 | Line | Description |
 |------|-------------|
-| L12355 | remaining catch-all in normalizeExpr_if_branch_step (true): setProp_obj/val, binary_rhs, call_func/env/args, newObj, getIndex, setIndex, makeEnv, objectLit, arrayLit |
-| L13161 | remaining catch-all in normalizeExpr_if_branch_step_false: same cases as L12355 |
+| L12630 | catch-all in normalizeExpr_if_branch_step (true) |
+| L13436 | catch-all in normalizeExpr_if_branch_step_false |
 
-## APPROACH
-These are `| _ => sorry` catch-all branches. Use `lean_goal` at each line to see what constructors remain.
+## NEW HELPERS AVAILABLE (jsspec just built these!)
+You can NOW prove more cases using these newly-available Steps_X_ctx_b:
+- `Steps_binary_rhs_ctx_b` (L2504) — for binary_rhs cases
+- `Steps_call_func_ctx_b` (L2514) — for call_func cases
+- `Steps_setProp_obj_ctx_b` (L2524) — for setProp_obj cases
+- `Steps_setProp_val_ctx_b` (L2554) — for setProp_val cases
+- `Steps_getIndex_obj_ctx_b` (L2534) — for getIndex_obj cases
+- `Steps_setIndex_obj_ctx_b` (L2544) — for setIndex_obj cases
+- `Steps_setIndex_val_ctx_b` (L2564) — for setIndex_val cases
 
-Options:
-1. If the remaining constructors can be shown unreachable (exfalso + contradiction on HasIfInHead): `exfalso; cases hif <;> simp_all`
-2. If they need actual proofs, follow the same pattern as the binary_lhs case just above them (L12330-12354 for true, L13136-13160 for false): apply IH, lift through Steps_X_ctx_b, prove preservation/norm/ewf.
-3. Some constructors might need Steps_X_ctx_b helpers that don't exist yet. If so, note which ones and move on — jsspec is building them.
+## ACTION PLAN
+1. Use `lean_goal` at L12630 to see what constructors the `| _ =>` catches
+2. Replace the catch-all with explicit cases for each constructor:
+   - For each that has a Steps_X_ctx_b helper: prove it following the pattern of binary_lhs (L12617)
+   - For each that doesn't have a helper yet: keep as `| X => sorry`
+3. Do the same for L13436 (mirror of L12630)
 
-## PRIORITY
-1. Use lean_goal at L12355 to understand what's needed
-2. Try closing as many sub-cases as possible
-3. L13161 is the mirror of L12355 — same proof works
+## EXPECTED: You should be able to close 7+ sub-cases (binary_rhs, call_func, setProp_obj, setProp_val, getIndex_obj, setIndex_obj, setIndex_val). The remaining (call_env/args, newObj_*, getIndex_idx, setIndex_idx, makeEnv, objectLit, arrayLit) stay as sorry until jsspec builds their helpers.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

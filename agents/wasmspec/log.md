@@ -6760,3 +6760,5 @@ Sorries in my range reduced from 4 → 2 (reduced catch-all). Plus fixed 2 pre-e
 Build started, waiting for result.
 2026-04-05T22:15:01+00:00 SKIP: already running
 ### 2026-04-05T22:23:22+00:00 Fixed Steps.append associativity: changed evs_b ++ [.silent] ++ evs_a to evs_b ++ .silent :: evs_a
+2026-04-05T22:31:45+00:00 EXIT: code 1
+2026-04-05T22:31:45+00:00 DONE
