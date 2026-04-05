@@ -1602,60 +1602,6 @@ private theorem propListSupported_append (a b : List (Core.PropName × Core.Expr
   | nil => simp [Core.Expr.propListSupported]
   | cons p ps ih => obtain ⟨pn, pe⟩ := p; simp [Core.Expr.propListSupported, ih, Bool.and_assoc]
 
-/-- If firstNonValueExpr decomposes a list and all elements are supported,
-    then done values are supported and rest is supported. -/
-private theorem listSupported_firstNonValue_parts {es : List Core.Expr}
-    {done target rest}
-    (h : Core.firstNonValueExpr es = some (done, target, rest))
-    (hsupp : Core.Expr.listSupported es = true) :
-    Core.Expr.listSupported done = true ∧ Core.Expr.listSupported rest = true := by
-  have hdecomp := firstNonValueExpr_decompose h
-  rw [hdecomp, listSupported_append, listSupported_append] at hsupp
-  simp [Bool.and_eq_true, Core.Expr.listSupported] at hsupp
-  exact ⟨hsupp.1, hsupp.2.2⟩
-
-/-- Replacing the target with a supported expr preserves listSupported. -/
-private theorem listSupported_replace_target {done rest : List Core.Expr}
-    (e : Core.Expr) (hd_supp : Core.Expr.listSupported done = true)
-    (he_supp : e.supported = true)
-    (hr_supp : Core.Expr.listSupported rest = true) :
-    Core.Expr.listSupported (done ++ [e] ++ rest) = true := by
-  rw [listSupported_append, listSupported_append]
-  simp [Bool.and_eq_true, Core.Expr.listSupported, hd_supp, he_supp, hr_supp]
-
-/-- If firstNonValueProp decomposes a prop list and all elements are supported,
-    then done values are supported and rest is supported. -/
-private theorem propListSupported_firstNonValue_parts {ps : List (Core.PropName × Core.Expr)}
-    {done name target rest}
-    (h : Core.firstNonValueProp ps = some (done, name, target, rest))
-    (hsupp : Core.Expr.propListSupported ps = true) :
-    Core.Expr.propListSupported done = true ∧ Core.Expr.propListSupported rest = true := by
-  have hdecomp : ps = done ++ [(name, target)] ++ rest := by
-    induction ps generalizing done with
-    | nil => simp [Core.firstNonValueProp] at h
-    | cons p ps' ih =>
-      obtain ⟨pn, pe⟩ := p; unfold Core.firstNonValueProp at h; split at h
-      · match hrest : Core.firstNonValueProp ps' with
-        | some (d, n, t, r) =>
-          simp only [hrest, Option.some.injEq, Prod.mk.injEq] at h
-          obtain ⟨rfl, rfl, rfl, rfl⟩ := h
-          have := ih hrest; simp [this]
-        | none => simp [hrest] at h
-      · simp at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h; simp
-  rw [hdecomp, propListSupported_append, propListSupported_append] at hsupp
-  simp [Bool.and_eq_true, Core.Expr.propListSupported] at hsupp
-  exact ⟨hsupp.1, hsupp.2.2⟩
-
-/-- Replacing the target with a supported expr preserves propListSupported. -/
-private theorem propListSupported_replace_target {done rest : List (Core.PropName × Core.Expr)}
-    (name : Core.PropName) (e : Core.Expr)
-    (hd_supp : Core.Expr.propListSupported done = true)
-    (he_supp : e.supported = true)
-    (hr_supp : Core.Expr.propListSupported rest = true) :
-    Core.Expr.propListSupported (done ++ [(name, e)] ++ rest) = true := by
-  rw [propListSupported_append, propListSupported_append]
-  simp [Bool.and_eq_true, Core.Expr.propListSupported, hd_supp, he_supp, hr_supp]
-
 -- Helper lemmas for Core.step? on simple expressions (Core.step? is too large for simp in context)
 private theorem Core_step?_this_found (s : Core.State) (v : Core.Value)
     (h : s.env.lookup "this" = some v) :
@@ -3008,6 +2954,49 @@ private theorem firstNonValueProp_decompose {l : List (Core.PropName × Core.Exp
       | none => simp [hrest] at h
     · simp only [Option.some.injEq, Prod.mk.injEq] at h
       obtain ⟨rfl, rfl, rfl, rfl⟩ := h; simp
+
+/-- If firstNonValueExpr decomposes a list and all elements are supported,
+    then done values are supported and rest is supported. -/
+private theorem listSupported_firstNonValue_parts {es : List Core.Expr}
+    {done target rest}
+    (h : Core.firstNonValueExpr es = some (done, target, rest))
+    (hsupp : Core.Expr.listSupported es = true) :
+    Core.Expr.listSupported done = true ∧ Core.Expr.listSupported rest = true := by
+  have hdecomp := firstNonValueExpr_decompose h
+  rw [hdecomp, listSupported_append, listSupported_append] at hsupp
+  simp [Bool.and_eq_true, Core.Expr.listSupported] at hsupp
+  exact ⟨hsupp.1, hsupp.2.2⟩
+
+/-- Replacing the target with a supported expr preserves listSupported. -/
+private theorem listSupported_replace_target {done rest : List Core.Expr}
+    (e : Core.Expr) (hd_supp : Core.Expr.listSupported done = true)
+    (he_supp : e.supported = true)
+    (hr_supp : Core.Expr.listSupported rest = true) :
+    Core.Expr.listSupported (done ++ [e] ++ rest) = true := by
+  rw [listSupported_append, listSupported_append]
+  simp [Bool.and_eq_true, Core.Expr.listSupported, hd_supp, he_supp, hr_supp]
+
+/-- If firstNonValueProp decomposes a prop list and all elements are supported,
+    then done values are supported and rest is supported. -/
+private theorem propListSupported_firstNonValue_parts {ps : List (Core.PropName × Core.Expr)}
+    {done name target rest}
+    (h : Core.firstNonValueProp ps = some (done, name, target, rest))
+    (hsupp : Core.Expr.propListSupported ps = true) :
+    Core.Expr.propListSupported done = true ∧ Core.Expr.propListSupported rest = true := by
+  have hdecomp := firstNonValueProp_decompose h
+  rw [hdecomp, propListSupported_append, propListSupported_append] at hsupp
+  simp [Bool.and_eq_true, Core.Expr.propListSupported] at hsupp
+  exact ⟨hsupp.1, hsupp.2.2⟩
+
+/-- Replacing the target with a supported expr preserves propListSupported. -/
+private theorem propListSupported_replace_target {done rest : List (Core.PropName × Core.Expr)}
+    (name : Core.PropName) (e : Core.Expr)
+    (hd_supp : Core.Expr.propListSupported done = true)
+    (he_supp : e.supported = true)
+    (hr_supp : Core.Expr.propListSupported rest = true) :
+    Core.Expr.propListSupported (done ++ [(name, e)] ++ rest) = true := by
+  rw [propListSupported_append, propListSupported_append]
+  simp [Bool.and_eq_true, Core.Expr.propListSupported, hd_supp, he_supp, hr_supp]
 
 private theorem listNoCallFrameReturn_append (a b : List Core.Expr) :
     listNoCallFrameReturn (a ++ b) = (listNoCallFrameReturn a && listNoCallFrameReturn b) := by

@@ -1,4 +1,4 @@
-# proof — Prove step?_preserves_funcs + close funcs propagation sorries
+# proof — Close hasAbruptCompletion_step_preserved + NoNestedAbrupt_step_preserved
 
 ## RULES
 - Edit: ANFConvertCorrect.lean, Flat/Semantics.lean, AND EndToEnd.lean
@@ -14,94 +14,84 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 ## MEMORY: 7.7GB total, NO swap. ~3.8GB available.
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
-## STATUS: You added funcs hypotheses to theorems. Now PROVE the lemma and close the sorries.
+## STATUS: step?_preserves_funcs is PROVED! Steps_preserves_funcs also proved. Now close the two big case-split theorems.
 
-You added `hfuncs_ac`/`hfuncs_na` hypotheses to hasAbruptCompletion_step_preserved (L9453) and NoNestedAbrupt_step_preserved (L9462). Both bodies are sorry'd. You also added step?_preserves_funcs as a sorry stub at Flat/Semantics.lean L2041. This is your CRITICAL PATH.
+The Flat/Semantics.lean infrastructure is DONE (0 sorries). Your job now: close the two sorry'd theorem bodies at L9460 and L9469 in ANFConvertCorrect.lean. These are the HIGHEST IMPACT targets — they unblock NoNestedAbrupt_steps_preserved which chains into anfConvert_steps_star.
 
-## TASK 1: PROVE step?_preserves_funcs (Flat/Semantics.lean L2041-2043) — HIGHEST PRIORITY
+## TASK 1: PROVE hasAbruptCompletion_step_preserved (L9460) — HIGHEST PRIORITY
 
-This is at L2041-2043:
+At L9453-9460:
 ```lean
-theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Flat.State)
-    (h : step? sf = some (ev, sf')) : sf'.funcs = sf.funcs := by
+private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env) (ev : Core.TraceEvent) (sf' : Flat.State)
+    (hac : hasAbruptCompletion e = false)
+    (hfuncs_ac : ∀ (i : Nat) (fd : Flat.FuncDef), funcs[i]? = some fd → hasAbruptCompletion fd.body = false)
+    (hstep : Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf')) :
+    hasAbruptCompletion sf'.expr = false := by
   sorry
 ```
 
-**HOW TO PROVE**: step? is a big match on `sf.expr`. Every branch constructs the result state with `{s with ...}` which copies funcs. The proof:
+**HOW TO PROVE**: This is a big case split on `e`. Use `lean_goal` at L9460 to see the state. Then:
 
 ```lean
-  unfold step? at h
-  -- Try: split on expr, then in each branch extract that funcs is unchanged
-  -- The key insight: every branch either returns none (contradiction with h)
-  -- or returns some (ev, {s with expr := ..., heap := ..., ...}) where funcs is not set
-  -- So sf'.funcs = sf.funcs by the {s with ...} update
-  split at h
-  all_goals (try simp_all [pushTrace])
-  -- If simp_all doesn't close all goals, handle remaining manually:
-  -- each remaining case: extract sf' from h, show .funcs field is unchanged
-  all_goals (try { simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h; rfl })
+  unfold Flat.step? at hstep
+  -- Case split on e
+  cases e with
+  | lit v => simp at hstep  -- lit doesn't step (step? returns none)
+  | var name => simp [Flat.step?] at hstep; ... -- var steps to lit, hasAbruptCompletion lit = false
+  | seq a b => ...
+  | let_ name init body => ...
+  -- etc. for each Flat.Expr constructor
 ```
 
-If `split at h` creates too many goals and times out, try `lean_multi_attempt` with:
-- `["simp [step?, pushTrace] at h ⊢; split at h <;> simp_all"]`
-- `["unfold step? at h; cases sf.expr <;> simp_all [pushTrace]"]`
+For each constructor:
+1. The step? match tells you what sf'.expr is
+2. Show hasAbruptCompletion sf'.expr = false using:
+   - hac (the input doesn't have abrupt completion, so sub-exprs don't either)
+   - hfuncs_ac (for call/funcDef cases where a function body is looked up)
+   - simp [hasAbruptCompletion] to reduce
 
-Use `set_option maxHeartbeats 800000 in` if needed.
+**Key patterns:**
+- `seq a b` stepping a: result is `seq a' b` — hasAbruptCompletion propagates from a and b
+- `let_ name init body` stepping init: result is `let_ name init' body`
+- `call` with all values and funcs lookup: result is the function body — use hfuncs_ac
+- `if cond then_ else_`: if cond is value, result is then_ or else_ — both have hasAbruptCompletion = false from hac
 
-Once proved, build Flat: `lake build VerifiedJS.Flat.Semantics`
+Use `set_option maxHeartbeats 1600000 in` before the theorem if needed. The case split will be large but each case should be straightforward.
 
-## TASK 2: Close L9482 (NoNestedAbrupt_steps_preserved funcs propagation)
+Try `lean_multi_attempt` at L9460 with:
+```
+["unfold Flat.step? at hstep; cases e <;> simp_all [hasAbruptCompletion, Flat.pushTrace, Flat.allocFreshObject]",
+ "simp [Flat.step?] at hstep; split at hstep <;> simp_all [hasAbruptCompletion, Flat.pushTrace]"]
+```
 
-At L9482:
+## TASK 2: PROVE NoNestedAbrupt_step_preserved (L9469) — SECOND PRIORITY
+
+At L9462-9469:
 ```lean
-exact ih (NoNestedAbrupt_step_preserved _ _ _ hna hfuncs_na hfuncs_ac hstep_eq) sorry sorry
+private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.TraceEvent)
+    (hna : NoNestedAbrupt sf.expr)
+    (hfuncs_na : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → NoNestedAbrupt fd.body)
+    (hfuncs_ac : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → hasAbruptCompletion fd.body = false)
+    (hstep : Flat.step? sf = some (ev, sf')) :
+    NoNestedAbrupt sf'.expr := by
+  sorry
 ```
 
-The two `sorry` args need `hfuncs_na` and `hfuncs_ac` for the stepped state. With step?_preserves_funcs proved:
-```lean
-    have hfuncs_eq := step?_preserves_funcs _ _ _ hstep_eq
-    exact ih (NoNestedAbrupt_step_preserved _ _ _ hna hfuncs_na hfuncs_ac hstep_eq)
-      (fun i fd h => hfuncs_na i fd (hfuncs_eq ▸ h))
-      (fun i fd h => hfuncs_ac i fd (hfuncs_eq ▸ h))
-```
+Same structure as Task 1 but for NoNestedAbrupt. Case split on sf.expr:
+- Each eval-context case (seq, let, if stepping sub-expr): NoNestedAbrupt of wrapper from NoNestedAbrupt of sub-result + original parts
+- Value-producing cases: lit values are trivially NoNestedAbrupt
+- Call cases: use hfuncs_na for function body lookup
 
-## TASK 3: Close L10760-10761 (program funcs invariants in anfConvert_steps_star)
+## TASK 3: Close L9866 + L9919 (break/continue compound eval context)
 
-At L10760-10761:
-```lean
-have hfuncs_na_sf : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → NoNestedAbrupt fd.body := sorry
-have hfuncs_ac_sf : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → hasAbruptCompletion fd.body = false := sorry
-```
-
-These should come from `hrel : ANF_SimRel s t sa sf`. Check what ANF_SimRel says about funcs. Use `lean_hover_info` on ANF_SimRel. If it has a funcs field, extract it.
-
-If ANF_SimRel doesn't carry funcs invariants, add them as hypotheses to anfConvert_steps_star's caller and thread through. The key insight: sf.funcs is set during ANF.convert from the source program, and step? preserves funcs (Task 1). So the invariant holds throughout.
-
-**Approach**: Add hypotheses to anfConvert_steps_star (L9487):
-```lean
-(hfuncs_na : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → NoNestedAbrupt fd.body)
-(hfuncs_ac : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → hasAbruptCompletion fd.body = false)
-```
-Then in the `| tail` case, propagate using step?_preserves_funcs through hfsteps1. You may need a Steps_preserves_funcs wrapper:
-```lean
-theorem Steps_preserves_funcs {sf sf' : Flat.State} {evs : List Core.TraceEvent}
-    (h : Flat.Steps sf evs sf') : sf'.funcs = sf.funcs := by
-  induction h with
-  | refl => rfl
-  | tail hstep _ ih => obtain ⟨h⟩ := hstep; exact (step?_preserves_funcs _ _ _ h).symm ▸ ih
-```
-
-## TASK 4: Re-prove hasAbruptCompletion_step_preserved body (L9460)
-
-The body is sorry'd. It was previously proved but needs re-proof with `hfuncs_ac` threaded through. This is a large case split on the expr. Use `lean_goal` at L9460 to see what's needed.
-
-**Pattern**: unfold step? at hstep, split on expr cases, in each case show hasAbruptCompletion of the result expr is false. The hfuncs_ac hypothesis handles the funcDef/call cases where a function body might be looked up.
+These need Flat.step? error propagation through eval contexts. Pattern: if the expression has a break/continue in eval context position, Flat.step? steps the inner sub-expression, producing a new state where break/continue is still in eval context. Use the same case-split technique.
 
 ## PRIORITY ORDER
-1. step?_preserves_funcs — unblocks everything
-2. L9482 — quick 2-line fix once Task 1 done
-3. L10760-10761 — threading hypotheses
-4. L9460 — re-prove hasAbruptCompletion_step_preserved
+1. hasAbruptCompletion_step_preserved (L9460) — most impactful
+2. NoNestedAbrupt_step_preserved (L9469) — same technique, second biggest
+3. L9866 + L9919 — break/continue compound
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

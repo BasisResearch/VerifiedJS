@@ -1,4 +1,4 @@
-# jsspec — Close remaining 8 Core_step_preserves_supported + CC sorries
+# jsspec — Close remaining CC sorries: FuncsSupported + CCStateAgree + functionDef
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -12,97 +12,78 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 ## MEMORY: 7.7GB total, NO swap. ~3.8GB available.
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
-## STATUS: GREAT WORK! You closed 10 sorries last run (18→8 in Core_step_preserves_supported).
+## STATUS: AMAZING WORK! You closed ALL 8 Core_step_preserves_supported cases! CC down from 30→13 real sorries.
 
-The depth induction + suffices + Nat.strongRecOn approach WORKS. You proved return, let, assign, if, seq, throw, typeof, unary, binary, deleteProp. 8 remaining.
+Remaining 13 sorries in ClosureConvertCorrect.lean:
 
-## TASK 1: Close remaining 8 in Core_step_preserves_supported (L3675-3682)
+| Line | Category | Description |
+|------|----------|-------------|
+| L3930 | FuncsSupported | closure.body.supported needs FuncsSupported invariant |
+| L4146 | HeapInj staging | proof temporarily sorry'd during HeapInj refactor |
+| L4475 | CCStateAgree | if-true: st' vs then_-only state |
+| L4498 | CCStateAgree | if-false: CCStateAgree |
+| L5062 | funcs correspondence | non-consoleLog function call: sf.funcs[idx] ↔ sc.funcs[idx] |
+| L5270 | semantic mismatch | f not a value: Core allocates vs Flat steps |
+| L5278 | semantic mismatch | non-value arg: Core allocates vs Flat steps |
+| L5916 | UNPROVABLE | getIndex string both-values |
+| L7158 | functionDef | entire functionDef case sorry'd |
+| L7315 | tryCatch | body-value: CCStateAgree |
+| L7316 | tryCatch | with finally: CCStateAgree blocked |
+| L7388 | tryCatch | (check context) |
+| L7496 | while_ | CCState threading: duplicated sub-expressions |
 
-Remaining cases:
+## TASK 1: Close L3930 (FuncsSupported invariant) — HIGHEST PRIORITY
+
+This is in the call case of Core_step_preserves_supported. When `callee = .lit (.function idx)` and `s.funcs[idx] = some closure`, the result is `tryCatch closure.body ...`. You need `closure.body.supported`.
+
+**Approach**: Add a `FuncsSupported` hypothesis to Core_step_preserves_supported:
 ```lean
-| getProp => sorry
-| setProp => sorry
-| getIndex => sorry
-| setIndex => sorry
-| call => sorry
-| objectLit => sorry
-| arrayLit => sorry
-| tryCatch => sorry
+(hfuncs : ∀ (i : Nat) (c : Core.Closure), s.funcs[i]? = some c → c.body.supported = true)
 ```
 
-### getProp (L3675)
-Pattern: `getProp obj prop`. If obj is a value, Core.step? does heap lookup → result is a value (lit) → supported by rfl. If obj is not a value, step steps obj → IH on obj.depth.
+Then at L3930:
 ```lean
-| getProp obj prop =>
-  cases hval : Core.exprValue? obj with
-  | some v =>
-    -- obj is a value, step? does heap lookup, result is .lit something
-    simp [Core.step?, hval] at hstep
-    split at hstep <;> simp_all [Core.pushTrace, Core.Expr.supported]
-  | none =>
-    -- obj not a value, step? steps obj
-    cases h_sub : Core.step? { s with expr := obj } with
-    | none => simp [Core.step?, hval, h_sub] at hstep
-    | some p =>
-      obtain ⟨t, sa⟩ := p
-      have hfwd := Core.step_getProp_step_obj obj prop s.env s.heap s.trace s.funcs s.callStack hval t sa h_sub
-      rw [hfwd] at hstep
-      simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-      obtain ⟨-, rfl⟩ := hstep
-      simp only [Core.pushTrace, Core.Expr.supported]
-      exact ih obj.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-        { s with expr := obj } sa t (Nat.le_refl _) hsupp h_sub
+have hcl := hfuncs idx closure ‹_›
+simp [Core.Expr.supported, Bool.and_eq_true]; exact hcl
 ```
 
-Check if `Core.step_getProp_step_obj` exists with `lean_local_search`. If not, you need to write a forward lemma first.
+You'll also need to update the call site at L4119 to provide this hypothesis. Check what the caller has available — it likely needs to thread a funcs invariant from the simulation relation.
 
-### setProp (L3676)
-Similar 3-level pattern: obj not value → step obj; obj value, val not value → step val; both values → heap write → .lit result.
+## TASK 2: Close L7158 (functionDef case) — HIGH PRIORITY
 
-### getIndex / setIndex (L3677-3678)
-Same pattern as getProp/setProp but with index expressions.
+This is the entire `functionDef` constructor in the main CC simulation theorem. Use `lean_goal` at L7158 to see what's needed. Pattern:
+- Source: `functionDef fname params body isAsync isGen` steps to allocate a closure
+- CC: convertExpr produces the closure conversion, Flat should step similarly
+- Key: show the converted expression steps to the right state
 
-### call (L3679)
-More complex: has func expr, optional env, args list. When func not value → step func. When func value but env not value → step env. When both value but args has non-value → step first non-value arg. When all values → call invocation.
+## TASK 3: Address CCStateAgree sorries (L4475, L4498, L7315, L7316, L7496)
 
-Use `lean_goal` to see the exact state. The key is `Core.firstNonValue` for the args list. You may need separate lemmas or `List.induction`.
+These are all the same root cause: CCStateAgree fails when a resolution step discards a branch whose conversion advanced nextId/funcs.size.
 
-### objectLit / arrayLit (L3680-3681)
-These use `firstNonValue` on a list of expressions. Pattern:
-- If all values: step? allocates on heap → .lit (.object addr) → supported
-- If has non-value: step? steps it → IH on depth
+**For L4475/L4498 (if-true/false):** The witness state `st_a` needs to account for both branches' conversion. Try:
+- Use `lean_goal` to see the exact obligation
+- Check if `convertExpr_state_determined` can help select the right witness
+- If the obligation is `st_a.nextId = st'.nextId` where st' went through both branches but we only took one: you may need to show the other branch's conversion has zero effect (no functionDef nodes)
 
-You may need induction on the list or a `firstNonValue_depth_lt` lemma.
+**For L7315/L7316 (tryCatch):** Similar CCStateAgree issue with catch/finally branches.
 
-### tryCatch (L3682)
-`tryCatch body catch_ finally_`. If body not value → step body. If body is error → catch path. If body is value → result.
+**For L7496 (while_):** While_ lowering duplicates sub-expressions → CCState diverges.
 
-### Strategy
-- Do getProp first — it's closest to deleteProp which you already proved
-- setProp/getIndex/setIndex follow the same pattern
-- Use `lean_multi_attempt` to test tactic sequences before editing
-- For each case, check if the relevant `Core.step_X_step_Y` forward lemma exists
+If these are architecturally blocked (as jsspec log from 2026-03-31 analyzed), consider:
+1. Adding a `NoFunctionDef` predicate and proving it for the discarded branch
+2. Or relaxing the sim relation to not require CCStateAgree on output
 
-## TASK 2: Other CC sorries (IF TIME after Task 1)
+## TASK 4: L5916 (UNPROVABLE) — Consider removing or axiomatizing
 
-After Core_step_preserves_supported is fully proved, these remain:
-- L3748: captured variable simulation (2-step Flat)
-- L4077, L4100: if CCStateAgree
-- L4664: non-consoleLog function call
-- L4872, L4880: non-value func/arg semantic mismatch
-- L5518: getIndex string (marked UNPROVABLE — consider removing or axiomatizing)
-- L6760: functionDef
-- L6917, L6918, L6990, L7098: tryCatch/while CCState threading
-
-For L4077/L4100, use `lean_goal` to see what's needed — these are often fixable by choosing the right witness state.
+If this is truly unprovable (getIndex string mismatch), add a `sorry` comment explaining why and move on. Don't waste time here.
 
 ## PRIORITY ORDER
-1. getProp, setProp (closest to proven deleteProp pattern)
-2. getIndex, setIndex (same pattern)
-3. call (harder, needs args list handling)
-4. objectLit, arrayLit (needs list induction)
-5. tryCatch (needs error path analysis)
-6. Other CC sorries if time
+1. L3930 — FuncsSupported (quick, finishes Core_step_preserves_supported)
+2. L7158 — functionDef (large but tractable)
+3. L4475/L4498 — if CCStateAgree (may need architectural change)
+4. L7315/L7316/L7496 — tryCatch/while CCStateAgree
+5. L4146 — HeapInj staging (deferred)
+6. Skip L5916 (unprovable)
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

@@ -1,4 +1,4 @@
-# wasmspec — Prove step?_preserves_funcs + close ANF step sim sorries
+# wasmspec — Close ANF step sim sorries: let, while, if compound
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -12,72 +12,73 @@
 ## MEMORY WARNING
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
-## STATUS: GREAT WORK fixing all if_step_sim errors! Zero errors in L1-9400 of ANF. You also added step?_preserves_funcs stub.
+## STATUS: step?_preserves_funcs and Steps_preserves_funcs are PROVED (0 sorries in Flat/Semantics.lean). Focus entirely on ANF step sim sorries.
 
-## TASK 1: PROVE step?_preserves_funcs (Flat/Semantics.lean L2041-2043) — HIGHEST PRIORITY
+## CURRENT ANF SORRY MAP (26 sorries)
 
-**NOTE**: proof agent is ALSO assigned this. Whoever gets it first wins. Check if it's still sorry before starting:
-```bash
-grep -n "step?_preserves_funcs" VerifiedJS/Flat/Semantics.lean
-```
+**Eval context / compound (14 sorries — PARKED, hard):**
+- L7701, 7734, 7745, 7826, 7859, 7870, 7887: normalizeExpr_labeled_step_sim
+- L8531, 8682, 8688, 8859, 8865, 9017, 9023: HasThrow/Return/Await/Yield compound
 
-If still sorry, prove it:
-```lean
-theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Flat.State)
-    (h : step? sf = some (ev, sf')) : sf'.funcs = sf.funcs := by
-  unfold step? at h
-  -- step? is a big match on sf.expr. Every branch either returns none or
-  -- constructs {s with expr := ..., env := ..., heap := ..., trace := ...}
-  -- without setting funcs. So sf'.funcs = sf.funcs.
-  --
-  -- Try these approaches in order:
-  -- 1. simp + split:
-  split at h <;> simp_all [pushTrace, allocFreshObject]
-  -- 2. If goals remain after split, each one is: extract sf' from h, show .funcs unchanged
-  all_goals { try { simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h; rfl } }
-```
+**Step sim (6 sorries — YOUR TARGETS):**
+- L9050: let step sim
+- L9140, 9152: while step sim (condition value + condition-steps)
+- L9333, 9334: if compound condition + HasIfInHead (first if)
+- L9406, 9407: if compound condition + HasIfInHead (second if)
 
-Use `lean_multi_attempt` at L2043 with:
-```
-["unfold step? at h; split at h <;> simp_all [pushTrace, allocFreshObject]",
- "unfold step? at h; cases sf.expr <;> simp_all [pushTrace, allocFreshObject]",
- "simp [step?] at h; aesop"]
-```
+**Other (6 sorries — proof agent targets):**
+- L9451: tryCatch step sim (deferred)
+- L9460: hasAbruptCompletion_step_preserved (proof agent)
+- L9469: NoNestedAbrupt_step_preserved (proof agent)
+- L9866, 9919: break/continue compound (proof agent)
 
-Add `set_option maxHeartbeats 800000 in` before the theorem if needed.
+## TASK 1: Close L9050 (let step sim) — HIGHEST PRIORITY
 
-Build: `lake build VerifiedJS.Flat.Semantics`
-
-## TASK 2: Close L9050 (let step sim in ANF)
-
-```lean
-sorry -- Need characterization of what produces .let, flat simulation
-```
-
-Use `lean_goal` at L9050 to see the exact proof state. The pattern:
+Use `lean_goal` at L9050 to see the exact state. The pattern:
 - ANF has `.let name init body` with `exprValue? init = none`
 - ANF.step? steps init to get sa'
-- Flat should also step the normalized init
+- Need: find flat steps that simulate this
 
-Key: `lean_hover_info` on normalizeExpr for the `.let` case. The normalization of `.let name init body k` should produce something like `normalizeExpr init (fun init' => .let name init' (normalizeExpr body k))`.
+Check how normalizeExpr handles `.let`:
+```bash
+grep -n "| let_\|| .let" VerifiedJS/ANF/Normalize.lean | head -20
+```
 
-## TASK 3: Fix hasAbruptCompletion_step_preserved objectLit/arrayLit (pre-existing errors ~L9839+)
+The normalization of `.let name init body k` should produce something like:
+`normalizeExpr init (fun init_triv => .let name (trivialToExpr init_triv) (normalizeExpr body k))`
 
-wasmspec log says these are pre-existing errors in hasAbruptCompletion_step_preserved. The break/continue compound cases at L9851-9859 (eval context list) + L9863/9916 have issues with pushTrace patterns.
+So when ANF steps init → init', the flat version should step the normalized init sub-expression. This follows the same eval-context simulation pattern used for seq/assign/binary/etc.
 
-Use `lean_diagnostic_messages` at line 9860 to see what the actual errors are. Likely needs the same fix pattern you used for the earlier cases: replace `by simp [hasAbruptCompletion]` with hypothesis names + pushTrace_expand.
+Use `lean_hover_info` on normalizeExpr at the let_ case to confirm the structure, then construct the flat step proof.
 
-## TASK 4: Close L9140, L9152 (while step sim) — IF TIME
+## TASK 2: Close L9333/9334 + L9406/9407 (if compound condition + HasIfInHead)
 
-These need multi-step Flat simulation:
-- L9140: while condition value — transient form not normalizeExpr-compatible
-- L9152: condition-steps — Flat desugars while→if, needs 2-step simulation
+These are in the if step simulation. L9333/9406 handle compound (non-value, non-labeled) conditions. L9334/9407 handle HasIfInHead cases.
+
+Use `lean_goal` at L9333 to understand what's needed. Pattern:
+- ANF has `.if cond then_ else_` where cond is compound
+- ANF.step? steps within cond
+- Need: flat steps within normalizeExpr of the if
+
+For HasIfInHead: this means the if itself is in head position of another if. The outer if's condition evaluated to the inner if. Check what HasIfInHead constructors exist:
+```bash
+grep -n "HasIfInHead" VerifiedJS/Proofs/ANFConvertCorrect.lean | head -20
+```
+
+## TASK 3: Close L9140/L9152 (while step sim) — IF TIME
+
+These are harder:
+- L9140: while condition value — transient state that doesn't match normalizeExpr directly
+- L9152: condition stepping in while — needs multi-step flat simulation because while desugars to if+seq+while
+
+For L9140, check if the value case can be handled by showing the flat while also reduces (condition is already a value → if-true/false branch).
+
+For L9152, this may need a `while_condition_step_sim` helper that shows: if flat while condition steps, the normalized form also steps.
 
 ## PRIORITY ORDER
-1. step?_preserves_funcs (check if still sorry first) — quick, unblocks proof agent
-2. L9050 (let step sim)
-3. L9839+ (objectLit/arrayLit hasAbruptCompletion errors)
-4. L9140, L9152 (while, harder)
+1. L9050 (let step sim) — most tractable
+2. L9333/9334 + L9406/9407 (if compound) — medium difficulty
+3. L9140/L9152 (while) — hardest, may need multi-step
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

@@ -2037,23 +2037,16 @@ theorem step?_newObj_allValues (s : State)
         s.trace ++ [.silent], s.funcs, s.callStack⟩) := by
   unfold step?; simp only [hf, he, hvs, allocFreshObject, pushTrace]
 
-set_option maxHeartbeats 4000000 in
+set_option maxHeartbeats 3200000 in
 /-- step? never modifies the funcs field. -/
 theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Flat.State)
     (h : step? sf = some (ev, sf')) : sf'.funcs = sf.funcs := by
-  unfold step? at h
-  split at h
-  all_goals (repeat (first | contradiction | split at h))
-  all_goals (first
-    | (simp only [Option.some.injEq, Prod.mk.injEq] at h;
-       obtain ⟨-, rfl⟩ := h; try rfl;
-       simp [pushTrace, allocFreshObject, allocEnvObject, allocObjectWithProps])
-    | (revert h; generalize step? _ = result; intro h;
-       rcases result with _ | ⟨t, si⟩;
-       · simp at h
-       · simp only [Option.some.injEq, Prod.mk.injEq] at h;
-         obtain ⟨-, rfl⟩ := h; rfl)
-    | simp_all [pushTrace, allocFreshObject, allocEnvObject, allocObjectWithProps])
+  induction sf using step?.induct
+  all_goals (unfold step? at h)
+  all_goals (repeat split at h)
+  all_goals (try contradiction)
+  all_goals (try (simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h; rfl))
+  all_goals (try simp_all)
 
 /-- Multi-step execution preserves the funcs field. -/
 theorem Steps_preserves_funcs {sf sf' : Flat.State} {evs : List Core.TraceEvent}
