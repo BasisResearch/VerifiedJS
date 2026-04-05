@@ -9270,6 +9270,57 @@ private theorem Flat_step?_if_cond_step (s : Flat.State) (cond then_ else_ : Fla
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
   simp [Flat.step?, hstep]; split <;> simp_all [Flat.exprValue?]
 
+/-- Infrastructure: multi-step Flat simulation for compound if-expressions (true branch).
+    When normalizeExpr sf_expr k produces .if cond then_ else_, and the condition evaluates
+    to a value v with Flat.toBoolean v = true, the Flat machine can simulate the ANF if-step
+    even when sf_expr requires multi-step condition evaluation.
+    Covers: if_direct with compound c_flat (not lit/var/this) AND HasIfInHead cases.
+    TODO: prove via strong induction on sf_expr.depth + Flat evaluation context lifting. -/
+private theorem normalizeExpr_if_compound_true_sim
+    (sf_expr : Flat.Expr)
+    (s : Flat.Program) (t : ANF.Program)
+    (env : Flat.Env) (heap : Core.Heap) (trace sa_trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Frame)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (cond : ANF.Trivial) (then_ else_ : ANF.Expr)
+    (v : Flat.Value)
+    (hnorm : (ANF.normalizeExpr sf_expr k).run n = .ok (.«if» cond then_ else_, m))
+    (hk : ∀ t' n', ∃ m', (k t').run n' = .ok (.trivial t', m'))
+    (hewf : ExprWellFormed sf_expr env)
+    (heval : ANF.evalTrivial env cond = .ok v)
+    (htrace : observableTrace sa_trace = observableTrace trace)
+    (hbool : Flat.toBoolean v = true) :
+    ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
+      Flat.Steps ⟨sf_expr, env, heap, trace, funcs, cs⟩ evs sf' ∧
+      observableTrace [.silent] = observableTrace evs ∧
+      ANF_SimRel s t ⟨then_, env, heap, sa_trace ++ [.silent]⟩ sf' ∧
+      ExprWellFormed sf'.expr sf'.env := by
+  sorry
+
+/-- Infrastructure: multi-step Flat simulation for compound if-expressions (false branch).
+    Same as normalizeExpr_if_compound_true_sim but for the false/else branch.
+    TODO: prove via strong induction on sf_expr.depth + Flat evaluation context lifting. -/
+private theorem normalizeExpr_if_compound_false_sim
+    (sf_expr : Flat.Expr)
+    (s : Flat.Program) (t : ANF.Program)
+    (env : Flat.Env) (heap : Core.Heap) (trace sa_trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Frame)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (cond : ANF.Trivial) (then_ else_ : ANF.Expr)
+    (v : Flat.Value)
+    (hnorm : (ANF.normalizeExpr sf_expr k).run n = .ok (.«if» cond then_ else_, m))
+    (hk : ∀ t' n', ∃ m', (k t').run n' = .ok (.trivial t', m'))
+    (hewf : ExprWellFormed sf_expr env)
+    (heval : ANF.evalTrivial env cond = .ok v)
+    (htrace : observableTrace sa_trace = observableTrace trace)
+    (hbool : Flat.toBoolean v = false) :
+    ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
+      Flat.Steps ⟨sf_expr, env, heap, trace, funcs, cs⟩ evs sf' ∧
+      observableTrace [.silent] = observableTrace evs ∧
+      ANF_SimRel s t ⟨else_, env, heap, sa_trace ++ [.silent]⟩ sf' ∧
+      ExprWellFormed sf'.expr sf'.env := by
+  sorry
+
 /-- If normalizeExpr sf.expr k produces .if cond then_ else_ (with trivial-preserving k),
     then one ANF step on the if can be simulated by Flat steps. -/
 private theorem normalizeExpr_if_step_sim
@@ -9960,11 +10011,11 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
                  hac_catch⟩, hac_fin⟩
         · exact absurd hstep (by simp)
   termination_by e.depth
-  decreasing_by all_goals {
-    try { have := Flat.firstNonValueExpr_depth ‹_› }
-    try { have := Flat.firstNonValueProp_depth ‹_› }
-    simp_all [Flat.Expr.depth]
-    omega }
+  decreasing_by
+    all_goals first
+      | { simp_all [Flat.Expr.depth]; omega }
+      | { have := Flat.firstNonValueExpr_depth ‹_›; simp_all [Flat.Expr.depth]; omega }
+      | { have := Flat.firstNonValueProp_depth ‹_›; simp_all [Flat.Expr.depth]; omega }
 
 set_option maxHeartbeats 3200000 in
 /-- Flat single-step preserves NoNestedAbrupt. -/
@@ -10381,11 +10432,11 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
           hbody hfuncs_na hfuncs_ac heq) hcatch hfin
       · exact absurd hstep (by simp)
   termination_by sf.expr.depth
-  decreasing_by all_goals {
-    try { have := Flat.firstNonValueExpr_depth ‹_› }
-    try { have := Flat.firstNonValueProp_depth ‹_› }
-    simp_all [Flat.Expr.depth]
-    omega }
+  decreasing_by
+    all_goals first
+      | { simp_all [Flat.Expr.depth]; omega }
+      | { have := Flat.firstNonValueExpr_depth ‹_›; simp_all [Flat.Expr.depth]; omega }
+      | { have := Flat.firstNonValueProp_depth ‹_›; simp_all [Flat.Expr.depth]; omega }
 
 /-- Flat multi-step preserves NoNestedAbrupt. -/
 private theorem NoNestedAbrupt_steps_preserved {sf sf' : Flat.State} {evs : List Core.TraceEvent}
