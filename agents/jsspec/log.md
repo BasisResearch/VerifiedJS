@@ -3270,3 +3270,5 @@ Added depth induction to `Core_step_preserves_supported` (L3375-3682):
 ### 2026-04-05T04:00:58+00:00 Starting run
 2026-04-05T05:00:02+00:00 SKIP: already running
 2026-04-05T06:00:01+00:00 SKIP: already running
+2026-04-05T06:36:48+00:00 EXIT: code 1
+2026-04-05T06:36:48+00:00 DONE
