@@ -51,6 +51,15 @@ theorem observableTrace_error (s : String) (rest : List Core.TraceEvent) :
     Flat.Env.lookup env name = ANF.Env.lookup env name := by
   unfold Flat.Env.lookup ANF.Env.lookup; rfl
 
+theorem observableTrace_all_silent {evs : List Core.TraceEvent}
+    (h : ∀ ev ∈ evs, ev = Core.TraceEvent.silent) :
+    observableTrace evs = [] := by
+  induction evs with
+  | nil => rfl
+  | cons ev rest ih =>
+    simp [observableTrace, h ev (List.mem_cons_self _ _)]
+    exact ih (fun e he => h e (List.mem_cons_of_mem _ he))
+
 theorem observableTrace_append (a b : List Core.TraceEvent) :
     observableTrace (a ++ b) = observableTrace a ++ observableTrace b := by
   simp [observableTrace, List.filter_append]
@@ -11641,16 +11650,10 @@ private theorem normalizeExpr_if_compound_true_sim
     obtain ⟨sf', evs, hsteps, hsil, henv, hheap, hfuncs, hcs, htrace_sf, hpres, ⟨n', m', hnorm'⟩, hewf'⟩ :=
       normalizeExpr_if_branch_step _ _ (Nat.le_refl _) hif_copy
         env heap trace funcs cs k n m cond then_ else_ v hnorm hewf heval hbool
-    have h_obs_nil : observableTrace evs = [] := by
-      clear hewf' hnorm' hpres htrace_sf henv hheap hfuncs hcs hsteps sf'
-      induction evs with
-      | nil => rfl
-      | cons ev rest ih =>
-        simp [observableTrace, hsil ev (List.mem_cons_self _ _)]
-        exact ih (fun e he => hsil e (List.mem_cons_of_mem _ he))
+    have h_obs_nil := observableTrace_all_silent hsil
     refine ⟨sf', evs, hsteps, by simp [observableTrace, h_obs_nil], ?_, hewf'⟩
     exact ⟨hheap.symm, henv.symm,
-      by rw [htrace_sf]; simp [observableTrace_append, observableTrace_silent, observableTrace_nil, h_obs_nil]; exact htrace,
+      by rw [htrace_sf]; simp [observableTrace_append, h_obs_nil, observableTrace_silent, observableTrace_nil]; exact htrace,
       k, n', m', hnorm', hk⟩
   )
 
@@ -11770,16 +11773,10 @@ private theorem normalizeExpr_if_compound_false_sim
     obtain ⟨sf', evs, hsteps, hsil, henv, hheap, hfuncs, hcs, htrace_sf, hpres, ⟨n', m', hnorm'⟩, hewf'⟩ :=
       normalizeExpr_if_branch_step_false _ _ (Nat.le_refl _) hif_copy
         env heap trace funcs cs k n m cond then_ else_ v hnorm hewf heval hbool
-    have h_obs_nil : observableTrace evs = [] := by
-      clear hewf' hnorm' hpres htrace_sf henv hheap hfuncs hcs hsteps sf'
-      induction evs with
-      | nil => rfl
-      | cons ev rest ih =>
-        simp [observableTrace, hsil ev (List.mem_cons_self _ _)]
-        exact ih (fun e he => hsil e (List.mem_cons_of_mem _ he))
+    have h_obs_nil := observableTrace_all_silent hsil
     refine ⟨sf', evs, hsteps, by simp [observableTrace, h_obs_nil], ?_, hewf'⟩
     exact ⟨hheap.symm, henv.symm,
-      by rw [htrace_sf]; simp [observableTrace_append, observableTrace_silent, observableTrace_nil, h_obs_nil]; exact htrace,
+      by rw [htrace_sf]; simp [observableTrace_append, h_obs_nil, observableTrace_silent, observableTrace_nil]; exact htrace,
       k, n', m', hnorm', hk⟩
   )
 

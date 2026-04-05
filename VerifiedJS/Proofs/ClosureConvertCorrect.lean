@@ -4125,21 +4125,17 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           rw [hfwd] at hstep
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨-, rfl⟩ := hstep
-          simp only [Core.pushTrace]
-          unfold Core.Expr.supported
-          simp only [Bool.and_eq_true]
-          refine ⟨⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-            { s with expr := body } sb .silent (Nat.le_refl _) hsup_body hfuncs_supp h_sub, hsup_catch⟩, hsup_fin⟩
+          have hih := ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+            { s with expr := body } sb .silent (Nat.le_refl _) hsup_body hfuncs_supp h_sub
+          simp [Core.pushTrace, Core.Expr.supported, hih, hsup_catch, hsup_fin]
         | log msg =>
           have hfwd := Core.step_tryCatch_step_body_log body catchParam catchBody finally_ s.env s.heap s.trace s.funcs s.callStack hval_b msg sb h_sub
           rw [hfwd] at hstep
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨-, rfl⟩ := hstep
-          simp only [Core.pushTrace]
-          unfold Core.Expr.supported
-          simp only [Bool.and_eq_true]
-          refine ⟨⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-            { s with expr := body } sb (.log msg) (Nat.le_refl _) hsup_body hfuncs_supp h_sub, hsup_catch⟩, hsup_fin⟩
+          have hih := ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+            { s with expr := body } sb (.log msg) (Nat.le_refl _) hsup_body hfuncs_supp h_sub
+          simp [Core.pushTrace, Core.Expr.supported, hih, hsup_catch, hsup_fin]
 
 set_option maxHeartbeats 8000000 in
 private theorem Core_step_preserves_funcs_supported (s s' : Core.State) (ev : Core.TraceEvent)
@@ -4801,8 +4797,10 @@ private theorem Core_step_preserves_funcs_supported (s s' : Core.State) (ev : Co
         exfalso; revert hstep; rw [state_with_expr_eq hexpr]; unfold Core.step?; simp [hval_b, h_sub]
       | some p =>
         obtain ⟨te, sb⟩ := p
+        have h_depth_lt : body.depth < n := by
+          have hd' := hd; rw [hexpr] at hd'; simp [Core.Expr.depth] at hd'; omega
         have ih_body : ∀ j fj, sb.funcs[j]? = some fj → fj.body.supported = true :=
-          ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          ih body.depth h_depth_lt
             { s with expr := body } sb te (Nat.le_refl _) hsup_body hfuncs_supp h_sub
         cases te with
         | error msg =>
