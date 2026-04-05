@@ -10101,6 +10101,58 @@ private theorem normalizeExpr_if_step_sim
     | litNull | litUndefined | litBool _ | litNum _ | litStr _ | litObject _ | litClosure _ _ =>
       simp only [ANF.evalTrivial, ANF.trivialValue?] at herr; exact nomatch herr
 
+/-- Decompose normalizeExpr (.tryCatch body_f cp cb_f fin_f) k into its components. -/
+private theorem normalizeExpr_tryCatch_decomp
+    (body_f : Flat.Expr) (cp : Flat.VarName) (cb_f : Flat.Expr) (fin_f : Option Flat.Expr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (body : ANF.Expr) (catchParam : ANF.VarName) (catchBody : ANF.Expr) (finally_ : Option ANF.Expr)
+    (hnorm : (ANF.normalizeExpr (.tryCatch body_f cp cb_f fin_f) k).run n =
+      .ok (.tryCatch body catchParam catchBody finally_, m)) :
+    catchParam = cp ∧
+    ∃ n1 n2, (ANF.normalizeExpr body_f k).run n = .ok (body, n1) ∧
+              (ANF.normalizeExpr cb_f k).run n1 = .ok (catchBody, n2) ∧
+              ((fin_f = none ∧ finally_ = none ∧ m = n2) ∨
+               (∃ fin_flat fin_anf, fin_f = some fin_flat ∧ finally_ = some fin_anf ∧
+                (ANF.normalizeExpr fin_flat (fun _ => pure (.trivial .litUndefined))).run n2 = .ok (fin_anf, m))) := by
+  simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
+  cases hb : (ANF.normalizeExpr body_f k).run n with
+  | error msg => simp [hb] at hnorm
+  | ok vb =>
+    obtain ⟨body', n1⟩ := vb; simp [hb] at hnorm
+    cases hc : (ANF.normalizeExpr cb_f k).run n1 with
+    | error msg => simp [hc] at hnorm
+    | ok vc =>
+      obtain ⟨catch', n2⟩ := vc; simp [hc] at hnorm
+      cases fin_f with
+      | none =>
+        simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
+        obtain ⟨htc, hm⟩ := hnorm
+        injection htc with hb' hcp' hcb' hfin'
+        subst hb' hcp' hm
+        exact ⟨hcb' ▸ rfl, n1, n2, hb, hc, Or.inl ⟨rfl, hfin'.symm, rfl⟩⟩
+      | some fin_flat =>
+        simp only [Functor.map, StateT.map, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
+        cases hf : (ANF.normalizeExpr fin_flat (fun _ => pure (.trivial .litUndefined))).run n2 with
+        | error msg => simp [hf] at hnorm
+        | ok vf =>
+          obtain ⟨fin', n3⟩ := vf; simp [hf] at hnorm
+          simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
+          obtain ⟨htc, hm⟩ := hnorm
+          injection htc with hb' hcp' hcb' hfin'
+          subst hb' hcp' hm
+          exact ⟨hcb' ▸ rfl, n1, n2, hb, hc, Or.inr ⟨fin_flat, fin', rfl, hfin'.symm, hf⟩⟩
+
+/-- normalizeExpr (.lit v) k with trivial-preserving k gives .trivial (trivialOfValue v). -/
+private theorem normalizeExpr_lit_trivial_k
+    (v : Flat.Value) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (hk : ∀ t' n', ∃ m', (k t').run n' = .ok (.trivial t', m'))
+    (n : Nat) :
+    ∃ m, (ANF.normalizeExpr (.lit v) k).run n = .ok (.trivial (ANF.trivialOfValue v), m) := by
+  simp only [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue,
+    bind, Bind.bind, StateT.bind, StateT.run, Except.bind,
+    pure, Pure.pure, StateT.pure, Except.pure, StateT.lift, Functor.map, Except.map]
+  exact hk (ANF.trivialOfValue v) n
+
 /-- If normalizeExpr sf.expr k produces .tryCatch body catchParam catchBody finally_
     (with trivial-preserving k), then one ANF step can be simulated by Flat steps. -/
 private theorem normalizeExpr_tryCatch_step_sim
@@ -10124,7 +10176,50 @@ private theorem normalizeExpr_tryCatch_step_sim
   have htc_head := ANF.normalizeExpr_tryCatch_implies_hasTryCatchInHead sf.expr k hk body catchParam catchBody finally_ n m hnorm
   generalize hsfe : sf.expr = sfe at htc_head hnorm hewf
   cases htc_head with
-  | tryCatch_direct => sorry -- MAIN CASE: direct tryCatch simulation
+  | tryCatch_direct =>
+    -- After case: sfe = .tryCatch body_f cp_f cb_f fin_f (Flat sub-expressions)
+    rename_i body_f cp_f cb_f fin_f
+    -- Decompose hnorm into component normalizations
+    obtain ⟨hcp_eq, n1, n2, hbody_norm, hcatch_norm, hfin_norm⟩ :=
+      normalizeExpr_tryCatch_decomp body_f cp_f cb_f fin_f k n m body catchParam catchBody finally_ hnorm
+    subst hcp_eq
+    -- Destructure sf to access fields
+    cases sf with
+    | mk e env heap trace funcs cs =>
+    simp only [Flat.State.expr, Flat.State.env, Flat.State.heap, Flat.State.trace,
+               Flat.State.funcs, Flat.State.callStack] at hsfe hbody_norm hcatch_norm hewf htrace ⊢
+    subst hsfe
+    -- Unfold ANF.step? on tryCatch
+    unfold ANF.step? at hstep_eq
+    simp only [ANF.pushTrace] at hstep_eq
+    -- Case split on whether the ANF body is already a value
+    split at hstep_eq
+    · -- Case 1: exprValue? body = some v (body is a value)
+      rename_i v hval
+      -- Since body = normalizeExpr body_f k and exprValue? body = some v,
+      -- body must be .trivial t (non-var). This means body_f = .lit v_f.
+      split at hstep_eq
+      · -- Case 1a: finally_ = some fin — ev = .silent, sa' = .seq fin (.trivial (trivialOfValue v))
+        rename_i fin hfin_eq
+        obtain ⟨rfl, rfl⟩ := hstep_eq
+        sorry -- tryCatch body-value with finally: Flat steps .tryCatch (.lit v) cp cb (some fin_f) → .seq fin_f (.lit v)
+      · -- Case 1b: finally_ = none — ev = .silent, sa' = .trivial (trivialOfValue v)
+        rename_i hfin_eq
+        obtain ⟨rfl, rfl⟩ := hstep_eq
+        sorry -- tryCatch body-value without finally: Flat steps .tryCatch (.lit v) cp cb none → .lit v
+    · -- Case 2: exprValue? body = none (body is not a value)
+      rename_i hnval
+      split at hstep_eq
+      · -- Case 2a: step? body = some (.error msg, sb) — error caught by tryCatch
+        rename_i p hstep_body_err
+        obtain ⟨msg, sb⟩ := p
+        sorry -- tryCatch body-error: needs inner body step simulation + catch handler SimRel
+      · -- Case 2b: step? body = some (t_body, sb) — body took a normal step
+        rename_i p hstep_body
+        obtain ⟨t_body, sb⟩ := p
+        sorry -- tryCatch body-step: needs inner body step simulation + tryCatch wrapping SimRel
+      · -- Case 2c: step? body = none — contradicts hstep_eq = some
+        simp at hstep_eq
   | _ => sorry -- compound cases: deferred
 
 set_option maxHeartbeats 3200000 in
