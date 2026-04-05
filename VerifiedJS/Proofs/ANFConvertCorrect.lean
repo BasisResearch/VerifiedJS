@@ -10244,8 +10244,10 @@ private theorem trivialChain_if_true_sim
           | if_cond _ _ _ _ h => exact hewf x (VarFreeIn.if_cond _ _ _ _ (VarFreeIn.seq_r _ _ _ h))
           | if_then _ _ _ _ h => exact hewf x (VarFreeIn.if_then _ _ _ _ h)
           | if_else _ _ _ _ h => exact hewf x (VarFreeIn.if_else _ _ _ _ h)
+        have htrace' : observableTrace sa_trace = observableTrace (trace ++ [.silent]) := by
+          simp [observableTrace_append, observableTrace_silent, observableTrace_nil]; exact htrace
         obtain ⟨sf', evs, hsteps, hobs, hsim, hwf'⟩ := ih b (trace ++ [.silent]) sa_trace n m cond then_ else_ v
-          htc_b hcost_b hnorm_b hewf_b heval htrace hbool
+          htc_b hcost_b hnorm_b hewf_b heval htrace' hbool
         refine ⟨sf', .silent :: evs, .tail ⟨hstep_if⟩ hsteps, ?_, hsim, hwf'⟩
         · simp [observableTrace] at hobs ⊢; exact hobs
       | none =>
@@ -10296,8 +10298,10 @@ private theorem trivialChain_if_true_sim
             | seq_r _ _ _ h => exact hewf x (VarFreeIn.if_cond _ _ _ _ (VarFreeIn.seq_r _ _ _ h))
           | if_then _ _ _ _ h => exact hewf x (VarFreeIn.if_then _ _ _ _ h)
           | if_else _ _ _ _ h => exact hewf x (VarFreeIn.if_else _ _ _ _ h)
-        obtain ⟨sf', evs, hsteps, hobs, hsim, hwf'⟩ := ih (.seq a' b) (trace ++ [.silent]) sa_trace cond then_ else_ v n m
-          htc_a'b hcost_a'b hnorm_a'b hk hewf_a'b heval htrace hbool
+        have htrace' : observableTrace sa_trace = observableTrace (trace ++ [.silent]) := by
+          simp [observableTrace_append, observableTrace_silent, observableTrace_nil]; exact htrace
+        obtain ⟨sf', evs, hsteps, hobs, hsim, hwf'⟩ := ih (.seq a' b) (trace ++ [.silent]) sa_trace n m cond then_ else_ v
+          htc_a'b hcost_a'b hnorm_a'b hewf_a'b heval htrace' hbool
         refine ⟨sf', .silent :: evs, .tail ⟨hstep_if⟩ hsteps, ?_, hsim, hwf'⟩
         · simp [observableTrace] at hobs ⊢; exact hobs
     | _ => simp [isTrivialChain] at htc
