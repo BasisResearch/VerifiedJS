@@ -9712,6 +9712,157 @@ private theorem Flat_step?_if_cond_step (s : Flat.State) (cond then_ else_ : Fla
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
   simp [Flat.step?, hstep]; split <;> simp_all [Flat.exprValue?]
 
+/-- A trivial chain evaluates to a .lit value, preserving env/heap/funcs/cs. -/
+private theorem trivialChain_eval_value
+    (fuel : Nat) (tc : Flat.Expr)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+    (htc : isTrivialChain tc = true)
+    (hcost : trivialChainCost tc ≤ fuel)
+    (hwf : ∀ x, VarFreeIn x tc → env.lookup x ≠ none) :
+    ∃ v evs,
+      Flat.Steps ⟨tc, env, heap, trace, funcs, cs⟩ evs ⟨.lit v, env, heap, trace ++ evs, funcs, cs⟩ ∧
+      (∀ ev ∈ evs, ∀ msg, ev ≠ .error msg) ∧
+      observableTrace evs = [] ∧
+      (∀ smid evs1, Flat.Steps ⟨tc, env, heap, trace, funcs, cs⟩ evs1 smid →
+         smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1) := by
+  induction fuel generalizing tc trace with
+  | zero =>
+    cases tc with
+    | lit v =>
+      exact ⟨v, [], .refl _, fun _ h _ => absurd h (List.not_mem_nil _),
+        rfl, fun smid evs1 hsteps => by
+          cases hsteps with
+          | refl => simp
+          | tail hsingle _ =>
+            obtain ⟨hstep⟩ := hsingle
+            simp [Flat.step?, Flat.exprValue?] at hstep⟩
+    | var _ => simp [trivialChainCost] at hcost
+    | «this» => simp [trivialChainCost] at hcost
+    | seq _ _ => simp [trivialChainCost] at hcost
+    | _ => simp [isTrivialChain] at htc
+  | succ fuel ih =>
+    cases tc with
+    | lit v =>
+      exact ⟨v, [], .refl _, fun _ h _ => absurd h (List.not_mem_nil _),
+        rfl, fun smid evs1 hsteps => by
+          cases hsteps with
+          | refl => simp
+          | tail hsingle _ =>
+            obtain ⟨hstep⟩ := hsingle
+            simp [Flat.step?, Flat.exprValue?] at hstep⟩
+    | var name =>
+      have hbound := hwf name (.var _)
+      obtain ⟨val, hval⟩ := Option.ne_none_iff_exists'.mp hbound
+      obtain ⟨s_i, hstep, hexpr, henv, hheap, hfuncs, hcs, htrace⟩ :=
+        step?_var_bound ⟨.var name, env, heap, trace, funcs, cs⟩ name val hval
+      have hs_i : s_i = ⟨.lit val, env, heap, trace ++ [Core.TraceEvent.silent], funcs, cs⟩ := by
+        cases s_i; simp_all
+      rw [hs_i] at hstep
+      exact ⟨val, [.silent], .tail ⟨hstep⟩ (.refl _),
+        fun ev hev msg hmsg => by simp at hev; subst hev; exact Core.TraceEvent.noConfusion hmsg,
+        by simp [observableTrace],
+        fun smid evs1 hsteps => by
+          cases hsteps with
+          | refl => simp
+          | tail hsingle hrest =>
+            obtain ⟨hstep'⟩ := hsingle
+            rw [hstep] at hstep'; obtain rfl := Option.some.inj hstep'
+            cases hrest with
+            | refl => simp [List.append_assoc]
+            | tail hsingle2 _ =>
+              obtain ⟨hstep2⟩ := hsingle2
+              simp [Flat.step?, Flat.exprValue?] at hstep2⟩
+    | «this» =>
+      have hbound := hwf "this" .this_var
+      obtain ⟨val, hval⟩ := Option.ne_none_iff_exists'.mp hbound
+      have hstep : Flat.step? ⟨.this, env, heap, trace, funcs, cs⟩ =
+        some (.silent, ⟨.lit val, env, heap, trace ++ [Core.TraceEvent.silent], funcs, cs⟩) := by
+        simp only [Flat.step?, hval]; rfl
+      exact ⟨val, [.silent], .tail ⟨hstep⟩ (.refl _),
+        fun ev hev msg hmsg => by simp at hev; subst hev; exact Core.TraceEvent.noConfusion hmsg,
+        by simp [observableTrace],
+        fun smid evs1 hsteps => by
+          cases hsteps with
+          | refl => simp
+          | tail hsingle hrest =>
+            obtain ⟨hstep'⟩ := hsingle
+            rw [hstep] at hstep'; obtain rfl := Option.some.inj hstep'
+            cases hrest with
+            | refl => simp [List.append_assoc]
+            | tail hsingle2 _ =>
+              obtain ⟨hstep2⟩ := hsingle2
+              simp [Flat.step?, Flat.exprValue?] at hstep2⟩
+    | seq a b =>
+      simp [isTrivialChain] at htc; obtain ⟨htc_a, htc_b⟩ := htc
+      cases ha_val : Flat.exprValue? a with
+      | some v_a =>
+        have ha_lit : a = .lit v_a := by
+          match a, ha_val with | .lit _, h => simp [Flat.exprValue?] at h; subst h; rfl
+        subst ha_lit
+        obtain ⟨s_i, hstep_seq, hexpr, henv, hheap, hfuncs, hcs, htrace_s⟩ :=
+          step?_seq_lit ⟨.seq (.lit v_a) b, env, heap, trace, funcs, cs⟩ v_a b
+        have hs_i : s_i = ⟨b, env, heap, trace ++ [Core.TraceEvent.silent], funcs, cs⟩ := by
+          cases s_i; simp_all
+        rw [hs_i] at hstep_seq
+        have hcost_b : trivialChainCost b ≤ fuel := by simp [trivialChainCost] at hcost; omega
+        obtain ⟨v, evs, hsteps_b, hnoerr, hobs, hpres⟩ := ih b (trace ++ [.silent]) htc_b hcost_b
+          (fun x hfx => hwf x (.seq_r _ _ _ hfx))
+        exact ⟨v, .silent :: evs,
+          .tail ⟨hstep_seq⟩ hsteps_b,
+          fun ev hev msg hmsg => by
+            simp at hev; rcases hev with rfl | hev
+            · exact Core.TraceEvent.noConfusion hmsg
+            · exact hnoerr ev hev msg hmsg,
+          by simp [observableTrace] at hobs ⊢; exact hobs,
+          fun smid evs1 hsteps => by
+            cases hsteps with
+            | refl => simp
+            | tail hsingle hrest =>
+              obtain ⟨hstep'⟩ := hsingle
+              rw [hstep_seq] at hstep'; obtain rfl := Option.some.inj hstep'
+              have ⟨hf, hc, ht⟩ := hpres smid _ hrest
+              exact ⟨hf, hc, by simp [List.append_assoc] at ht ⊢; exact ht⟩⟩
+      | none =>
+        have hwf_a : ∀ x, VarFreeIn x a → env.lookup x ≠ none :=
+          fun x hfx => hwf x (.seq_l _ _ _ hfx)
+        obtain ⟨a', ha'_step, ha'_tc, ha'_cost, ha'_wf⟩ :=
+          trivialChain_inner_step (trivialChainCost a - 1) a env heap trace funcs cs
+            htc_a (by omega) ha_val hwf_a
+        obtain ⟨s_seq, hstep_seq, hexpr_seq, henv_seq, hheap_seq, hfuncs_seq, hcs_seq, htrace_seq⟩ :=
+          step?_seq_ctx ⟨.seq a b, env, heap, trace, funcs, cs⟩ a b ha_val .silent
+            ⟨a', env, heap, trace ++ [Core.TraceEvent.silent], funcs, cs⟩ ha'_step
+            (fun _ h => Core.TraceEvent.noConfusion h)
+        have hs_seq_eq : s_seq = ⟨.seq a' b, env, heap, trace ++ [.silent], funcs, cs⟩ := by
+          cases s_seq; simp_all
+        rw [hs_seq_eq] at hstep_seq
+        have hcost_e' : trivialChainCost (.seq a' b) ≤ fuel := by
+          simp [trivialChainCost] at hcost ⊢; omega
+        have htc_e' : isTrivialChain (.seq a' b) = true := by
+          simp [isTrivialChain, ha'_tc, htc_b]
+        have hwf_e' : ∀ x, VarFreeIn x (.seq a' b) → env.lookup x ≠ none := by
+          intro x hfx; cases hfx with
+          | seq_l _ _ _ h => exact ha'_wf x h
+          | seq_r _ _ _ h => exact hwf x (.seq_r _ _ _ h)
+        obtain ⟨v, evs, hsteps_ab, hnoerr, hobs, hpres⟩ := ih (.seq a' b) (trace ++ [.silent])
+          htc_e' hcost_e' hwf_e'
+        exact ⟨v, .silent :: evs,
+          .tail ⟨hstep_seq⟩ hsteps_ab,
+          fun ev hev msg hmsg => by
+            simp at hev; rcases hev with rfl | hev
+            · exact Core.TraceEvent.noConfusion hmsg
+            · exact hnoerr ev hev msg hmsg,
+          by simp [observableTrace] at hobs ⊢; exact hobs,
+          fun smid evs1 hsteps => by
+            cases hsteps with
+            | refl => simp
+            | tail hsingle hrest =>
+              obtain ⟨hstep'⟩ := hsingle
+              rw [hstep_seq] at hstep'; obtain rfl := Option.some.inj hstep'
+              have ⟨hf, hc, ht⟩ := hpres smid _ hrest
+              exact ⟨hf, hc, by simp [List.append_assoc] at ht ⊢; exact ht⟩⟩
+    | _ => simp [isTrivialChain] at htc
+
 /-- If normalizeExpr e k produces .if and e has no HasIfInHead, then e is a trivial chain. -/
 private theorem no_if_head_implies_trivial_chain :
     ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
@@ -10030,6 +10181,14 @@ private theorem normalizeExpr_if_compound_true_sim
     | tryCatch body' cp cb fin =>
       exfalso; simp only [ANF.normalizeExpr_if'] at hnorm
       exact ANF.normalizeExpr_tryCatch_not_if body' cp cb fin _ cond then_ else_ n m hnorm
+    | «return» none =>
+      exfalso; simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_return_none', pure, Pure.pure,
+        StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hnorm
+      exact ANF.Expr.noConfusion hnorm.1
+    | yield none _ =>
+      exfalso; simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_yield_none', pure, Pure.pure,
+        StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hnorm
+      exact ANF.Expr.noConfusion hnorm.1
     | _ => sorry -- compound c_flat with HasIfInHead: needs eval context lifting / strong induction
   all_goals sorry -- non-if_direct HasIfInHead: requires structural induction on depth
 
@@ -10128,6 +10287,14 @@ private theorem normalizeExpr_if_compound_false_sim
     | tryCatch body' cp cb fin =>
       exfalso; simp only [ANF.normalizeExpr_if'] at hnorm
       exact ANF.normalizeExpr_tryCatch_not_if body' cp cb fin _ cond then_ else_ n m hnorm
+    | «return» none =>
+      exfalso; simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_return_none', pure, Pure.pure,
+        StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hnorm
+      exact ANF.Expr.noConfusion hnorm.1
+    | yield none _ =>
+      exfalso; simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_yield_none', pure, Pure.pure,
+        StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hnorm
+      exact ANF.Expr.noConfusion hnorm.1
     | _ => sorry -- compound c_flat with HasIfInHead: needs eval context lifting / strong induction
   all_goals sorry -- non-if_direct HasIfInHead: requires structural induction on depth
 
