@@ -1,3 +1,61 @@
+## Run: 2026-04-05T05:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 26 + CC 13 + Lower 0 = **39 real sorries**
+- **Delta from last run (04:30)**: 0 change (39→39). All 3 agents still running mid-cycle.
+- **LowerCorrect.lean**: 0 sorries — DONE!
+
+### Agent Status
+1. **proof** (RUNNING since 03:30, ~1.5h): Working on L9485 (tryCatch step sim). No new log entries since start. Previous run proved step?_preserves_funcs, Steps_preserves_funcs, fixed L9482 and L10760-10761. **Prompt unchanged** — correct target, let it run.
+
+2. **jsspec** (RUNNING since 04:00, ~1h): Working on L3914 (call case in Core_step_preserves_supported). Last completed run proved getProp+setProp, added helper lemmas. **Prompt unchanged** — correct target.
+
+3. **wasmspec** (COMPLETED at 04:47): L9050 partial (closed contradiction cases, 3 remaining compound sorries already counted at L9079/9083/9084). L9367-9441 UNCHANGED for 3 runs — identified as needing "full structural induction infrastructure" that doesn't exist. **PROMPT REWRITTEN**: Pivoted from "close if compound with exfalso" (FAILED — cases ARE reachable) to "build IH infrastructure" — add ih_sub parameter to normalizeExpr_if_step_sim, use it to close compound cases, accept sorry at call site. This is the single most impactful change: unblocks ~15 compound sorries across all step_sim theorems.
+
+### Actions Taken
+1. Counted sorries: ANF 26 + CC 13 + Lower 0 = 39 (unchanged from last run).
+2. **REWROTE wasmspec prompt**: Complete strategy pivot. Old approach (exfalso contradiction) failed 3 consecutive runs. New approach: add induction hypothesis parameter to per-constructor step_sim theorems, trading 4 sorry (L9367-9441) for 1 sorry at call site. This is infrastructure that unblocks ALL compound cases.
+3. Left proof prompt unchanged — running on L9485, correct target.
+4. Left jsspec prompt unchanged — running on L3914, correct target.
+5. Logged to time_estimate.csv: 39 sorries.
+
+### Sorry Breakdown (unchanged from last run)
+
+**ANF (26 sorries):**
+- L7701-7887 (7): normalizeExpr_labeled eval context — PARKED
+- L8531-9023 (7): compound HasThrow/Return/Await/Yield — PARKED
+- L9079, 9083, 9084 (3): let compound (return/yield some + general) — **proof target**
+- L9174, 9186 (2): while step sim — deferred
+- L9367, 9368, 9440, 9441 (4): if compound + HasIfInHead — **wasmspec target (REWRITTEN)**
+- L9485 (1): tryCatch step sim — **proof target (RUNNING)**
+- L10785, 10838 (2): break/continue compound — PARKED (needs Flat.step? error propagation)
+
+**CC (13 sorries):**
+- L3914 (1): call — **jsspec target (RUNNING)**
+- L4082 (1): captured variable — jsspec lower priority
+- L4411, L4434 (2): CCStateAgree if-branches — architecturally blocked
+- L4998 (1): funcs correspondence
+- L5206, L5214 (2): semantic mismatch — architecturally blocked
+- L5852 (1): UNPROVABLE getIndex string — SKIP
+- L7094 (1): functionDef — jsspec lower priority
+- L7251, L7252 (2): tryCatch CCStateAgree — architecturally blocked
+- L7324 (1): tryCatch inner
+- L7432 (1): while_ CCState threading — architecturally blocked
+
+### Critical Assessment
+**No sorry closures this cycle** — all agents mid-run. Expected since no agent completed a full cycle between 04:30 and 05:05.
+
+**Key strategic change**: wasmspec pivoted from trying to close individual compound sorries (stuck 3 runs) to building the fundamental IH infrastructure. If successful, this unblocks ~15 compound sorries (L9367-9441, L9079-9084, L9174/9186, L7701-7887, L8531-9023). Even partial success (IH for one theorem) establishes the pattern for the rest.
+
+**Next cycle expectations:**
+- proof: Close L9485 (tryCatch) = -1 sorry
+- jsspec: Close L3914 (call) = -1 sorry
+- wasmspec: Build IH infrastructure for if_step_sim, potentially close L9367-9441 = -4 sorries (or net -3 if call site sorry)
+
+**Potential total next run: 34-36 sorries** (39 - 3 to 5 expected closures)
+
+---
+
 ## Run: 2026-04-05T03:30:02+00:00
 
 ### Metrics
@@ -5052,3 +5110,4 @@ If proof closes L9460+L9469 and wasmspec closes L9050+if cases: ANF drops to ~15
 
 ## Run: 2026-04-05T05:05:01+00:00
 
+2026-04-05T05:14:42+00:00 DONE

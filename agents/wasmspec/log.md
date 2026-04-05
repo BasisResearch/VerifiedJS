@@ -6462,3 +6462,8 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 - Both need infrastructure that doesn't exist yet: "if normalizeExpr e k produces form X, flat machine can step e to match"
 ### 2026-04-05T04:32:35+00:00 Run complete — L9050 partial: closed 10+ contradiction cases (atoms, break, continue, while_, labeled, tryCatch, return none, yield none), remaining sorry covers compound expressions. L9333/9334/9406/9407 unchanged — require full structural induction infrastructure.
 ### 2026-04-05T04:47:16+00:00 Build started for verification. Changes at L9050: expanded from 1 sorry to structured proof with 10 contradiction cases proved and 3 remaining sorries (compound, return some, yield some).
+### 2026-04-05T05:14:18+00:00 Build verified — my L9050 changes compile clean. Errors at L9967/10388 are from proof agent's concurrent edits, not mine.
+2026-04-05T05:14:25+00:00 DONE
+
+## Run: 2026-04-05T05:15:01+00:00
+
