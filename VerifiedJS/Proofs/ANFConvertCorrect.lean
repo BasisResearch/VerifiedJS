@@ -1923,6 +1923,100 @@ private theorem step?_setIndex_val_ctx (s : Flat.State)
     | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩)
 
+/-- Context stepping: if envExpr is not a value and steps (non-error),
+    .call (.lit fv) envExpr args steps with the env result wrapped. -/
+private theorem step?_call_env_ctx (s : Flat.State)
+    (fv : Flat.Value) (envExpr : Flat.Expr) (args : List Flat.Expr)
+    (hnotval : Flat.exprValue? envExpr = none)
+    (t : Core.TraceEvent) (se : Flat.State)
+    (hstep : Flat.step? { s with expr := envExpr } = some (t, se))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    ∃ s', Flat.step? { s with expr := .call (.lit fv) envExpr args } = some (t, s') ∧
+      s'.expr = .call (.lit fv) se.expr args ∧ s'.env = se.env ∧ s'.heap = se.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  have hfv : Flat.exprValue? (Flat.Expr.lit fv) = some fv := rfl
+  simp only [Flat.step?, hfv, hnotval, hstep]
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Context stepping: if funcExpr is not a value and steps (non-error),
+    .newObj funcExpr envExpr args steps with the result wrapped. -/
+private theorem step?_newObj_func_ctx (s : Flat.State)
+    (funcExpr envExpr : Flat.Expr) (args : List Flat.Expr)
+    (hnotval : Flat.exprValue? funcExpr = none)
+    (t : Core.TraceEvent) (sf : Flat.State)
+    (hstep : Flat.step? { s with expr := funcExpr } = some (t, sf))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    ∃ s', Flat.step? { s with expr := .newObj funcExpr envExpr args } = some (t, s') ∧
+      s'.expr = .newObj sf.expr envExpr args ∧ s'.env = sf.env ∧ s'.heap = sf.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  simp only [Flat.step?, hnotval, hstep]
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Context stepping: if envExpr is not a value and steps (non-error),
+    .newObj (.lit fv) envExpr args steps with the env result wrapped. -/
+private theorem step?_newObj_env_ctx (s : Flat.State)
+    (fv : Flat.Value) (envExpr : Flat.Expr) (args : List Flat.Expr)
+    (hnotval : Flat.exprValue? envExpr = none)
+    (t : Core.TraceEvent) (se : Flat.State)
+    (hstep : Flat.step? { s with expr := envExpr } = some (t, se))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    ∃ s', Flat.step? { s with expr := .newObj (.lit fv) envExpr args } = some (t, s') ∧
+      s'.expr = .newObj (.lit fv) se.expr args ∧ s'.env = se.env ∧ s'.heap = se.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  have hfv : Flat.exprValue? (Flat.Expr.lit fv) = some fv := rfl
+  simp only [Flat.step?, hfv, hnotval, hstep]
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Context stepping: if idx is not a value and steps (non-error),
+    .getIndex (.lit ov) idx steps with the idx result wrapped. -/
+private theorem step?_getIndex_idx_ctx (s : Flat.State)
+    (ov : Flat.Value) (idx : Flat.Expr)
+    (hnotval : Flat.exprValue? idx = none)
+    (t : Core.TraceEvent) (si : Flat.State)
+    (hstep : Flat.step? { s with expr := idx } = some (t, si))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    ∃ s', Flat.step? { s with expr := .getIndex (.lit ov) idx } = some (t, s') ∧
+      s'.expr = .getIndex (.lit ov) si.expr ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  have hov : Flat.exprValue? (Flat.Expr.lit ov) = some ov := rfl
+  cases ov <;> simp only [Flat.step?, hov, hnotval, hstep] <;> (
+    cases t with
+    | error msg => exact absurd rfl (hnoerr msg)
+    | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+    | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩)
+
+/-- Context stepping: if idx is not a value and steps (non-error),
+    .setIndex (.lit ov) idx val steps with the idx result wrapped. -/
+private theorem step?_setIndex_idx_ctx (s : Flat.State)
+    (ov : Flat.Value) (idx : Flat.Expr) (val : Flat.Expr)
+    (hnotval : Flat.exprValue? idx = none)
+    (t : Core.TraceEvent) (si : Flat.State)
+    (hstep : Flat.step? { s with expr := idx } = some (t, si))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    ∃ s', Flat.step? { s with expr := .setIndex (.lit ov) idx val } = some (t, s') ∧
+      s'.expr = .setIndex (.lit ov) si.expr val ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  have hov : Flat.exprValue? (Flat.Expr.lit ov) = some ov := rfl
+  cases ov <;> simp only [Flat.step?, hov, hnotval, hstep] <;> (
+    cases t with
+    | error msg => exact absurd rfl (hnoerr msg)
+    | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+    | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩)
+
 /-- If all elements of done are .lit values and inner is not a value,
     then valuesFromExprList? on the combined list is none. -/
 private theorem valuesFromExprList?_none_of_nonvalue
@@ -1991,6 +2085,83 @@ private theorem step?_call_arg_ctx (s : Flat.State)
   have hfirst := firstNonValueExpr_of_done_lit done remaining inner hdone hnotlit
   rw [Flat.step?.eq_1]
   simp only [hfv, hev, hvnone, hfirst, hstep]
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Context stepping: newObj arg position — when funcExpr and envExpr are values,
+    done elements are all literals, and inner is not a value, stepping inner
+    produces a step of the full newObj expression. -/
+private theorem step?_newObj_arg_ctx (s : Flat.State)
+    (funcExpr envExpr : Flat.Expr) (done remaining : List Flat.Expr) (inner : Flat.Expr)
+    (hfv : ∃ fv, Flat.exprValue? funcExpr = some fv)
+    (hev : ∃ ev, Flat.exprValue? envExpr = some ev)
+    (hdone : ∀ e ∈ done, ∃ v, e = .lit v)
+    (hnotval : Flat.exprValue? inner = none)
+    (t : Core.TraceEvent) (sa : Flat.State)
+    (hstep : Flat.step? { s with expr := inner } = some (t, sa))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    ∃ s', Flat.step? { s with expr := .newObj funcExpr envExpr (done ++ [inner] ++ remaining) } = some (t, s') ∧
+      s'.expr = .newObj funcExpr envExpr (done ++ [sa.expr] ++ remaining) ∧
+      s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  obtain ⟨fv, hfv⟩ := hfv
+  obtain ⟨ev, hev⟩ := hev
+  have hnotlit : ∀ v, inner ≠ .lit v := fun v h => by subst h; simp [Flat.exprValue?] at hnotval
+  have hvnone := valuesFromExprList?_none_of_nonvalue done remaining inner hdone hnotval
+  have hfirst := firstNonValueExpr_of_done_lit done remaining inner hdone hnotlit
+  rw [Flat.step?.eq_1]
+  simp only [hfv, hev, hvnone, hfirst, hstep]
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Context stepping: makeEnv value position — when done elements are all literals
+    and inner is not a value, stepping inner produces a step of the full makeEnv. -/
+private theorem step?_makeEnv_values_ctx (s : Flat.State)
+    (done remaining : List Flat.Expr) (inner : Flat.Expr)
+    (hdone : ∀ e ∈ done, ∃ v, e = .lit v)
+    (hnotval : Flat.exprValue? inner = none)
+    (t : Core.TraceEvent) (sa : Flat.State)
+    (hstep : Flat.step? { s with expr := inner } = some (t, sa))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    ∃ s', Flat.step? { s with expr := .makeEnv (done ++ [inner] ++ remaining) } = some (t, s') ∧
+      s'.expr = .makeEnv (done ++ [sa.expr] ++ remaining) ∧
+      s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  have hnotlit : ∀ v, inner ≠ .lit v := fun v h => by subst h; simp [Flat.exprValue?] at hnotval
+  have hvnone := valuesFromExprList?_none_of_nonvalue done remaining inner hdone hnotval
+  have hfirst := firstNonValueExpr_of_done_lit done remaining inner hdone hnotlit
+  rw [Flat.step?.eq_1]
+  simp only [hvnone, hfirst, hstep]
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Context stepping: arrayLit element position — when done elements are all literals
+    and inner is not a value, stepping inner produces a step of the full arrayLit. -/
+private theorem step?_arrayLit_elem_ctx (s : Flat.State)
+    (done remaining : List Flat.Expr) (inner : Flat.Expr)
+    (hdone : ∀ e ∈ done, ∃ v, e = .lit v)
+    (hnotval : Flat.exprValue? inner = none)
+    (t : Core.TraceEvent) (sa : Flat.State)
+    (hstep : Flat.step? { s with expr := inner } = some (t, sa))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    ∃ s', Flat.step? { s with expr := .arrayLit (done ++ [inner] ++ remaining) } = some (t, s') ∧
+      s'.expr = .arrayLit (done ++ [sa.expr] ++ remaining) ∧
+      s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  have hnotlit : ∀ v, inner ≠ .lit v := fun v h => by subst h; simp [Flat.exprValue?] at hnotval
+  have hvnone := valuesFromExprList?_none_of_nonvalue done remaining inner hdone hnotval
+  have hfirst := firstNonValueExpr_of_done_lit done remaining inner hdone hnotlit
+  rw [Flat.step?.eq_1]
+  simp only [hvnone, hfirst, hstep]
   cases t with
   | error msg => exact absurd rfl (hnoerr msg)
   | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
