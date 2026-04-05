@@ -1927,7 +1927,8 @@ private theorem Steps_ctx_lift_pres
     | cons ev evs1' =>
       simp at hlen
       cases hmid with
-      | @tail _ ws_mid _ _ _ ⟨hstep_mid⟩ hrest_mid =>
+      | @tail _ ws_mid _ _ _ hstep_obj hrest_mid =>
+        have hstep_mid := hstep_obj.1
         have h_eq : (ev, ws_mid) = (t, ws2) := by
           have : Flat.step? ⟨wrap s1'.expr, s1'.env, s1'.heap, s1'.trace, s1'.funcs, s1'.callStack⟩
             = some (t, ws2) := hwstep
@@ -1944,7 +1945,7 @@ private theorem Steps_ctx_lift_pres
         have hws2_eq : ws2 = ⟨wrap s2.expr, s2.env, s2.heap, s2.trace, s2.funcs, s2.callStack⟩ := by
           cases ws2 with | mk e env heap trace funcs cs =>
           simp only [Flat.State.mk.injEq] at hwexpr hwenv hwheap hwfuncs hwcs hwtrace ⊢
-          exact ⟨hwexpr, hwenv, hwheap, hwfuncs.trans hs2f.symm, hwcs.trans hs2c.symm, hwtrace.trans hs2t.symm⟩
+          exact ⟨hwexpr, hwenv, hwheap, hwtrace.trans hs2t.symm, hwfuncs.trans hs2f.symm, hwcs.trans hs2c.symm⟩
         rw [hws2_eq] at hrest_mid
         have ⟨hf, hc, ht⟩ := ih hnoerr_rest hpres_s2 smid evs1' hrest_mid (by omega)
         exact ⟨hf.trans hs2f, hc.trans hs2c, by rw [ht, hs2t]; simp [List.append_assoc]⟩
@@ -1997,7 +1998,7 @@ private theorem Steps_ctx_lift_b
     have hws2 : ws2 = ⟨wrap s2.expr, s2.env, s2.heap, s2.trace, s2.funcs, s2.callStack⟩ := by
       cases ws2 with | mk e env heap trace funcs cs =>
       simp only [Flat.State.mk.injEq] at hwexpr hwenv hwheap hwfuncs hwcs hwtrace ⊢
-      exact ⟨hwexpr, hwenv, hwheap, hwfuncs.trans hs2f.symm, hwcs.trans hs2c.symm, hwtrace.trans hs2t.symm⟩
+      exact ⟨hwexpr, hwenv, hwheap, hwtrace.trans hs2t.symm, hwfuncs.trans hs2f.symm, hwcs.trans hs2c.symm⟩
     refine ⟨ws3, .tail ⟨hwstep⟩ (hws2 ▸ hwsteps3), hwexpr3, hwenv3, hwheap3,
       hwfuncs3.trans hs2f, hwcs3.trans hs2c, hwtrace3⟩
 
@@ -2065,6 +2066,141 @@ private def Steps_yield_some_ctx_b (delegate : Bool)
     (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
        smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
   Steps_ctx_lift_b (fun e => .yield (some e) delegate)
+    (fun s inner hv t si hs he => step?_yield_some_ctx s inner delegate hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded preservation through evaluation context:
+    If inner Steps preserve funcs/callStack/trace (bounded),
+    then the lifted wrapped Steps also preserve them (bounded).
+    This closes all 16 hpres sorries in normalizeExpr_if_branch_step.
+    Usage: `intro smid evs1 h hlen; exact Steps_ctx_pres ... hsteps hnoerr hpres_inner smid evs1 h hlen` -/
+private theorem Steps_ctx_pres
+    (wrap : Flat.Expr → Flat.Expr)
+    (single_step : ∀ (s : Flat.State) (inner : Flat.Expr)
+      (hnotval : Flat.exprValue? inner = none)
+      (t : Core.TraceEvent) (si : Flat.State)
+      (hstep : Flat.step? { s with expr := inner } = some (t, si))
+      (hnoerr : ∀ msg, t ≠ .error msg),
+      ∃ s', Flat.step? { s with expr := wrap inner } = some (t, s') ∧
+        s'.expr = wrap si.expr ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+        s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+        s'.trace = s.trace ++ [t])
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3)
+    (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres_inner : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+      smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :
+    ∀ smid evs1, Flat.Steps ⟨wrap s1.expr, s1.env, s1.heap, s1.trace, s1.funcs, s1.callStack⟩ evs1 smid →
+      evs1.length ≤ evs.length →
+      smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1 := by
+  induction hsteps with
+  | refl =>
+    intro smid evs1 hsteps_w hlen
+    have hnil : evs1 = [] := List.length_eq_zero.mp (by omega)
+    subst hnil; cases hsteps_w; exact ⟨rfl, rfl, by simp⟩
+  | @tail s1 s2 s3 t ts hstep hrest ih =>
+    intro smid evs1 hsteps_w hlen
+    cases hsteps_w with
+    | refl => exact ⟨rfl, rfl, by simp⟩
+    | @tail _ ws2 _ t' ts' hstep_w hrest_w =>
+      have hstep_eq := hstep.1
+      have hnotval := step?_some_implies_not_value hstep_eq
+      have hnoerr_t : ∀ msg, t ≠ .error msg := fun msg => hnoerr t (List.Mem.head ts) msg
+      obtain ⟨ws2_exp, hwstep, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        single_step s1 s1.expr hnotval t s2 hstep_eq hnoerr_t
+      -- Determinism: t' = t, ws2 = ws2_exp
+      have hstep_w_eq := hstep_w.1; rw [hwstep] at hstep_w_eq
+      simp only [Option.some.injEq, Prod.mk.injEq] at hstep_w_eq
+      obtain ⟨rfl, rfl⟩ := hstep_w_eq
+      -- Inner preservation for s2
+      have hs2_pres := hpres_inner s2 [t] (.tail hstep (.refl _)) (by simp)
+      obtain ⟨hs2f, hs2c, hs2t⟩ := hs2_pres
+      -- ws2_exp = canonical wrapped s2 state
+      have hws2 : ws2_exp = ⟨wrap s2.expr, s2.env, s2.heap, s2.trace, s2.funcs, s2.callStack⟩ := by
+        cases ws2_exp with | mk e env heap trace funcs cs =>
+        simp only [Flat.State.mk.injEq] at hwexpr hwenv hwheap hwfuncs hwcs hwtrace ⊢
+        exact ⟨hwexpr, hwenv, hwheap, hwfuncs.trans hs2f.symm, hwcs.trans hs2c.symm, hwtrace.trans hs2t.symm⟩
+      rw [hws2] at hrest_w
+      -- Build bounded inner pres for s2
+      have hnoerr_ts : ∀ ev ∈ ts, ∀ msg, ev ≠ .error msg :=
+        fun ev hev msg => hnoerr ev (List.mem_cons_of_mem t hev) msg
+      have hpres_s2 : ∀ smid evs1, Flat.Steps s2 evs1 smid → evs1.length ≤ ts.length →
+          smid.funcs = s2.funcs ∧ smid.callStack = s2.callStack ∧ smid.trace = s2.trace ++ evs1 := by
+        intro smid' evs1' hsteps_s2 hlen2
+        have h := hpres_inner smid' (t :: evs1') (.tail hstep hsteps_s2) (by simp; omega)
+        exact ⟨h.1.trans hs2f.symm, h.2.1.trans hs2c.symm,
+               by rw [h.2.2, hs2t, List.append_assoc]; rfl⟩
+      have hlen_ts : ts'.length ≤ ts.length := by simp at hlen; omega
+      have ⟨hf, hc, ht⟩ := ih hnoerr_ts hpres_s2 smid ts' hrest_w hlen_ts
+      exact ⟨hf.trans hs2f, hc.trans hs2c, by rw [ht, hs2t]; simp [List.append_assoc]⟩
+
+/-- Bounded preservation for .if [·] then_ else_ context. -/
+private def Steps_if_cond_pres (then_ else_ : Flat.Expr)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_pres (.«if» · then_ else_)
+    (fun s inner hv t si hs he => step?_if_cond_step s inner then_ else_ hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded preservation for .seq [·] b context. -/
+private def Steps_seq_pres (b : Flat.Expr)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_pres (.seq · b)
+    (fun s inner hv t si hs he => step?_seq_ctx s inner b hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded preservation for .let name [·] body context. -/
+private def Steps_let_init_pres (name : String) (body : Flat.Expr)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_pres (.«let» name · body)
+    (fun s inner hv t si hs he => step?_let_init_ctx s name inner body hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded preservation for .throw [·] context. -/
+private def Steps_throw_ctx_pres
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_pres .throw
+    (fun s inner hv t si hs he => step?_throw_ctx s inner hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded preservation for .return (some [·]) context. -/
+private def Steps_return_some_ctx_pres
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_pres (fun e => .«return» (some e))
+    (fun s inner hv t si hs he => step?_return_some_ctx s inner hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded preservation for .await [·] context. -/
+private def Steps_await_ctx_pres
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_pres .await
+    (fun s inner hv t si hs he => step?_await_ctx s inner hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded preservation for .yield (some [·]) delegate context. -/
+private def Steps_yield_some_ctx_pres (delegate : Bool)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_pres (fun e => .yield (some e) delegate)
     (fun s inner hv t si hs he => step?_yield_some_ctx s inner delegate hv t si hs he)
     hsteps hnoerr hpres
 

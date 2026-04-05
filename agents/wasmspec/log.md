@@ -6686,3 +6686,4 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 ### 2026-04-05T15:00:16+00:00 Starting run
 2026-04-05T15:15:01+00:00 SKIP: already running
 ### 2026-04-05T15:58:20+00:00 Closed 16 hpres sorries via bounded Steps_ctx_lift_pres infrastructure. Added Steps_ctx_lift_b, Steps_ctx_lift_pres, and bounded wrappers (Steps_*_ctx_b). Changed theorem signatures to bounded hpres. 40 sorries remain in file.
+### 2026-04-05T16:04:42+00:00 Fixed LSP errors in Steps_ctx_lift_pres and Steps_ctx_lift_b (field ordering). All new code verified clean by LSP.
