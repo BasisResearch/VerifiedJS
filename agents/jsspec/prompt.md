@@ -1,4 +1,4 @@
-# jsspec — Close L4188 (FuncsSupported) THEN L5131, L7227
+# jsspec — Close L4197 (FuncsSupported) THIS RUN or explain EXACTLY why not
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -19,42 +19,68 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 ```
 If count > 1, wait 60s then check again. Only ONE build at a time or everything OOMs.
 
-## STATUS: CC has 13 sorries. You've been running 11+ runs with 0 CC sorry closures.
+## STATUS: YOU'VE BEEN RUNNING SINCE 11:00 WITH NO SORRY CLOSURES. 3+ HOURS.
 
-**THIS IS NOT ACCEPTABLE.** Close L4188 this run or explain EXACTLY what blocks you.
+Your lean worker (PID on CC) has been running 3.5 hours elaborating. Either it's stuck in infinite heartbeats or it's actually making progress. **Check immediately:**
 
-## CC 13 sorries (CURRENT LINE NUMBERS — VERIFIED 13:05):
-- **L4188**: FuncsSupported preservation ← CLOSE THIS NOW
-- L4215: captured variable (architecturally blocked)
-- L4544, L4567: if CCStateAgree (architecturally blocked)
-- **L5131**: non-consoleLog function call (FuncsCorr needed)
-- L5339, L5347: semantic mismatch call (architecturally blocked)
-- L5985: getIndex string (UNPROVABLE)
-- **L7227**: functionDef
-- L7384: tryCatch body-value (blocked)
-- L7385: tryCatch with finally (blocked)
-- L7457: tryCatch inner
-- L7565: while_ CCState threading (blocked)
-
-### TASK 1: L4188 — FuncsSupported preservation (DO THIS FIRST)
-```lean
-have hfuncs_supp' : ∀ i (fd : Core.FuncClosure), sc'.funcs[i]? = some fd → fd.body.supported = true :=
-    sorry -- FuncsSupported preservation: step? either preserves funcs or pushes supported body
+```bash
+ps aux | grep lean | grep ClosureConvertCorrect | grep -v grep
 ```
 
-**Strategy**: Case split on the Core step. Most cases preserve `sc.funcs` so `hfuncs_supp i fd h` closes immediately. The `functionDef` case adds a new closure whose body comes from source (supported by `hsupp`).
+If it's still churning at 100%+ CPU with no output, **KILL IT** and restart with a targeted approach.
 
-1. `lean_goal` at L4188 to see exact context
-2. Try: `fun i fd hfd => by cases hcstep <;> (try exact hfuncs_supp i fd hfd) <;> sorry`
-3. For the functionDef case: the new closure body is the function body from source, which is supported. Check `Array.push` indexing — `Array.getElem?_push` should help.
+## CC 13 sorries (VERIFIED LINE NUMBERS 14:05):
+- **L4197**: FuncsSupported preservation ← CLOSE THIS NOW
+- L4224: captured variable (architecturally blocked)
+- L4553, L4576: if CCStateAgree (architecturally blocked)
+- **L5140**: non-consoleLog function call (FuncsCorr needed)
+- L5348, L5356: semantic mismatch call (architecturally blocked)
+- L5994: getIndex string (UNPROVABLE)
+- **L7236**: functionDef
+- L7393, L7394: tryCatch body-value (blocked)
+- L7466: tryCatch inner
+- L7574: while_ CCState threading (blocked)
 
-### TASK 2: L5131 — non-consoleLog function call
-Once L4188 is done, this needs flat funcs ↔ core funcs correspondence.
+### TASK 1: L4197 — FuncsSupported preservation (CONCRETE APPROACH)
 
-### TASK 3: L7227 — functionDef case
-Both sides push new closure to funcs. Should follow from closureConvert on body.
+```lean
+have hfuncs_supp' : ∀ (i : Nat) (fd : Core.FuncClosure), sc'.funcs[i]? = some fd → fd.body.supported = true :=
+    sorry
+```
 
-## PRIORITY: L4188 ONLY until it's closed. Nothing else matters.
+**The proof**: Core.step? either (a) preserves `sc.funcs` (most cases) or (b) pushes a new FuncClosure (functionDef case).
+
+1. First, `lean_goal` at L4197 to see what's in scope. You have `hcstep` (the Core step) and `hfuncs_supp` (old invariant).
+
+2. Try this EXACT tactic sequence:
+```lean
+fun i fd hfd => by
+  -- hcstep : Core.Steps sc [ev] sc'
+  -- Get the single step
+  obtain ⟨hstep_eq⟩ := hcstep
+  -- Case split on what the step was
+  cases hsc : sc.expr <;> simp [hsc, Core.step?] at hstep_eq
+  all_goals sorry
+```
+
+3. For each case, most will show `sc'.funcs = sc.funcs` so `hfuncs_supp i fd (hfd ▸ rfl)` or `exact hfuncs_supp i fd hfd` closes it.
+
+4. For `functionDef`: `sc'.funcs = sc.funcs.push ⟨params, body, ...⟩`. Use:
+```lean
+simp [Array.getElem?_push] at hfd
+cases Nat.lt_or_eq_of_le (Array.getElem?_push_le hfd) with
+| inl h => exact hfuncs_supp i fd (by rwa [Array.getElem?_push_lt (by exact h)] at hfd)
+| inr h => -- i = sc.funcs.size, fd = new closure, body from source → supported from hsupp
+  sorry
+```
+
+5. USE `lean_multi_attempt` BEFORE editing. Try 3-5 different tactics and see which one makes progress.
+
+### IF L4197 IS TRULY BLOCKED: explain WHY in your log and move to L7236 (functionDef)
+
+L7236 should be simpler — both sides push a new closure. The convertExpr of the function body gives the converted body.
+
+## PRIORITY: L4197 ONLY until it's closed. Nothing else matters.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

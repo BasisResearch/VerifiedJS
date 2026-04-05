@@ -1,4 +1,4 @@
-# proof — Close L12429 (noCallFrameReturn) then L11330 (body-error)
+# proof — Add Steps_ctx_pres infrastructure (UNBLOCKS 16 hpres sorries)
 
 ## RULES
 - Edit: ANFConvertCorrect.lean, Flat/Semantics.lean, AND EndToEnd.lean
@@ -21,54 +21,87 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 If count > 0, WAIT. Do not start a build. Use `lean_goal` / `lean_multi_attempt` via LSP instead.
 
 ## CONCURRENCY: wasmspec also edits ANFConvertCorrect.lean
-- wasmspec works on L8000-10912 (if compound/eval context lifting)
-- **YOU** own L11200-11360 (tryCatch) and L12400-12717 (break/continue/return)
+- wasmspec works on L8000-10933 (if compound/eval context lifting)
+- **YOU** own L1600-1895 (Steps_ctx infrastructure) AND L11200-11650 (tryCatch) AND L12700-13015
 - DO NOT touch lines outside your range
 
-## CURRENT STATE — 47 ANF sorries. Your zone has 7 sorries:
-- L11330: tryCatch body-error
-- L11343: tryCatch body-step
-- L11346: tryCatch compound (deferred)
-- L12429: noCallFrameReturn
-- L12430: body_sim IH
-- L12650: break compound
-- L12703: continue compound
+## REDIRECT: Your tryCatch work is architecturally blocked. NEW TASK:
 
-### TASK 1: L12429 — noCallFrameReturn (EASIEST — DO FIRST)
+Your documented blockers (callStack propagation, counter alignment, noCallFrameReturn) are real but deep. Meanwhile, **16 hpres sorries** are blocking wasmspec's entire zone. You can unblock them by adding infrastructure.
+
+### TASK 1: Add `Steps_ctx_pres` lemma (after L1884, before L1886)
+
+The problem: `Steps_ctx_lift` returns wrapped steps but does NOT return a preservation proof for ALL intermediate states. wasmspec needs:
 ```lean
-(sorry /- noCallFrameReturn: source tryCatch params are never "__call_frame_return__" -/)
+∀ smid evs1, Flat.Steps ⟨wrap e, env, heap, trace, funcs, cs⟩ evs1 smid →
+    smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1
 ```
-"__call_frame_return__" is a synthetic name from closure conversion — never in source JS.
-The `hsupp` hypothesis or `hewf` should establish this. Try:
+
+**Approach**: Prove by induction on the Steps. Key facts:
+- Each single wrapped step (from `step?_*_ctx`) preserves funcs/cs because it only changes expr
+- `step?_seq_ctx`, `step?_if_cond_step`, etc. all have the form: if inner steps, return `{s with expr := wrap inner_result}` — funcs/cs unchanged
+
+Add this between L1884 and L1886:
 ```lean
-lean_goal at L12429 column 7
-lean_multi_attempt at L12429 column 7
-["by simp [noCallFrameReturn]", "by intro h; exact absurd h (by decide)", "by exact hncf"]
+/-- Steps through eval context preserve funcs/callStack/trace. -/
+private theorem Steps_ctx_pres
+    (wrap : Flat.Expr → Flat.Expr)
+    (single_step : ∀ (s : Flat.State) (inner : Flat.Expr), ¬Flat.Value inner →
+      ∀ (t : Core.TraceEvent) (si : Flat.State),
+      Flat.step? { s with expr := inner } = some (t, si) →
+      ∀ (msg : String), t ≠ .error msg →
+      ∃ (t' : Core.TraceEvent) (so : Flat.State),
+        Flat.step? { s with expr := wrap inner } = some (t', so) ∧
+        so.expr = wrap si.expr ∧ so.env = si.env ∧ so.heap = si.heap ∧
+        so.funcs = si.funcs ∧ so.callStack = si.callStack ∧
+        so.trace = si.trace)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3)
+    (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres_inner : ∀ smid evs1, Flat.Steps s1 evs1 smid →
+      smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :
+    ∀ smid evs1, Flat.Steps ⟨wrap s1.expr, s1.env, s1.heap, s1.trace, s1.funcs, s1.callStack⟩ evs1 smid →
+      smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1 := by
+  intro smid evs1 hsteps_wrapped
+  induction hsteps_wrapped with
+  | refl _ => exact ⟨rfl, rfl, by simp⟩
+  | tail hstep ih =>
+    sorry -- Use single_step to relate wrapped step to inner step, then apply hpres_inner
 ```
-If no precondition exists, add `noCallFrameReturn` as a predicate on source programs and propagate.
 
-### TASK 2: L11330 — tryCatch body-error (PRIORITY 1)
+Then add specific instantiations:
 ```lean
-sorry -- tryCatch body-error: body_sim + Steps_tryCatch_body_ctx + error catch + SimRel recon
+private theorem Steps_if_cond_pres (then_ else_ : Flat.Expr)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid →
+      smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_pres (.«if» · then_ else_)
+    (fun s inner hv t si hs he => step?_if_cond_step s inner then_ else_ hv t si hs he)
+    hsteps hnoerr hpres
 ```
-KEY INSIGHT: After body errors, tryCatch CATCHES and transitions to catch handler. The catch handler is a FRESH normalizeExpr — you DON'T need counter alignment!
 
-**Approach:**
-1. Get Flat body steps from `body_sim`
-2. Split into non-error prefix + final error event
-3. Lift non-error prefix through tryCatch via `Steps_tryCatch_body_ctx`
-4. Final error: `.tryCatch (.error msg ..) cp cb fin` catches → `cb[cp := msg]`
-5. SimRel for catch: use `hcatch_norm` with error value substituted
+Do the same for `Steps_seq_pres`, `Steps_let_init_pres`, `Steps_throw_pres`, etc.
 
-### TASK 3: L11343 — tryCatch body-step (defer if counter alignment blocks it)
+### TASK 2 (if time): Check `lean_goal` at each hpres sorry
+Verify that the `Steps_*_pres` lemma signature matches what's needed, then use it.
 
-### DO NOT TOUCH: L12650, L12703 (break/continue — architecturally blocked)
+For L10577:
+```lean
+lean_goal at L10577 column 8
+```
+Then try:
+```lean
+lean_multi_attempt at L10577 column 8
+["exact Steps_if_cond_pres then_flat else_flat hsteps_c hsil_c hpres_c"]
+```
+
+### DO NOT WORK ON: tryCatch (L11625, L11643, L12729, L12740) — still blocked
 
 ## PRIORITY ORDER
-1. L12429 (noCallFrameReturn) — likely 5 min
-2. L11330 (body-error) — fresh catch handler avoids counter alignment
-3. L11343 (body-step) — defer if stuck
-4. L12430 (body_sim IH) — needs strong induction, defer
+1. Steps_ctx_pres general lemma + instantiations (~L1885)
+2. Verify with lean_goal that it matches hpres sorry goals
+3. If time: L12960/L13013 (break/continue compound) — analyze if these are actually closeable
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

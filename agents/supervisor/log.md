@@ -5861,3 +5861,63 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 
 ## Run: 2026-04-05T14:05:01+00:00
 
+
+## Run: 2026-04-05T14:07:00+00:00
+
+### Metrics
+- **Sorry count**: ANF 56 + CC 13 = **69 sorry mentions** (~54 ANF real + 13 CC real = **67 real sorries**)
+- **Delta from last run (13:08)**: reported 60 → now ~67. **COUNT UP +7.**
+- **Lower**: 0 sorries (DONE)
+
+### Why count went UP (+7): wasmspec Group E decomposition + proof decomposition
+- ANF went from ~47→~54 (+7): wasmspec filled in Group E cases (let_init, throw_arg, return_some_arg, await_arg, yield_some_arg) — each case now fully structured with only `sorry -- hpres` remaining. This is GOOD decomposition. proof agent also added body-error decomposition steps.
+- CC unchanged at 13.
+- wasmspec Group E is DONE: 5 cases (let_init, throw_arg, return_some_arg, await_arg, yield_some_arg) all follow the proven seq_left pattern with only hpres sorry remaining.
+
+### Agent Status
+1. **proof** (completed 13:41): Documented 3 architectural blockers for tryCatch (callStack propagation, counter alignment, noCallFrameReturn invariant). Net 0 closures. Prompt UPDATED: **REDIRECTED** to add Steps_ctx_pres infrastructure (~L1885) which unblocks 16 hpres sorries for wasmspec.
+
+2. **jsspec** (running since 11:00, SKIP'd at 12/13/14): Lean worker on CC running 3.5+ hours at 127% CPU, 944MB RSS. Likely stuck in elaboration. NO CC sorries closed in 11+ runs. Prompt UPDATED: told to check/kill stale worker, gave more concrete tactic sequence for L4197.
+
+3. **wasmspec** (running since 13:15): Active, working on Group E (now completed). Prompt UPDATED: redirected to hpres (16 sorries, #1 priority), then exotic cases, seq_right, trivialChain.
+
+### Actions Taken
+1. **Killed stale supervisor build** (PID 233545, was building CC — not needed)
+2. Updated ALL 3 agent prompts:
+   - **proof**: MAJOR REDIRECT — stop banging on blocked tryCatch, add Steps_ctx_pres infrastructure to unblock 16 hpres sorries
+   - **jsspec**: Escalated urgency, added process check, more concrete tactic sequence
+   - **wasmspec**: Redirected from Group E (done!) to hpres as #1 priority, with concrete approach
+3. Expanded wasmspec's line range to include L1795-1895 (Steps_ctx infrastructure) — actually assigned to proof since wasmspec's changes there could conflict
+
+### Sorry Classification (67 real total)
+**ANF (54):**
+- 7 inner eval context (L8191-8377) — systemic, blocked
+- 10 compound head cases (L9021-9574) — systemic, blocked
+- 2 while (L9664-9676) — blocked
+- 16 hpres (L10577-10928, both branches) — **UNBLOCKABLE by Steps_ctx_pres**
+- 2 exotic cases (L10729, 10933) — likely contradictions
+- 2 trivialChain eval (L10585, 10791) — closeable with proven lemmas
+- 2 seq_right (L10632, 10836) — closeable with Classical.em
+- 8 UNLOCK (L11038-11163) — depends on branch_step completion
+- 3 tryCatch (L11625-11646) — architecturally blocked
+- 2 call site (L12729, 12740) — architecturally blocked
+- 2 break/continue compound (L12960, 13013) — needs error propagation
+
+**CC (13):**
+- 1 closeable: L4197 (FuncsSupported — jsspec must close)
+- 1 closeable: L7236 (functionDef)
+- 1 closeable: L5140 (FuncsCorr needed)
+- 1 unprovable: L5994 (getIndex string)
+- 9 architecturally blocked: L4224/4553/4576/5348/5356/7393/7394/7466/7574
+
+### Critical Assessment
+**Sorry count UP +7 is ALL decomposition — wasmspec's Group E work.** No regressions. Each new sorry is a focused `sorry -- hpres` replacing a broad sorry.
+
+**hpres is the #1 lever.** 16 sorries share one pattern. If proof adds Steps_ctx_pres and wasmspec wires it in, ANF drops by 16 in one cycle. Combined with exotic (2) + trivialChain (2) + seq_right (2), that's potentially -22 in the next 1-2 cycles.
+
+**jsspec is the bottleneck on CC.** 3.5 hours of elaboration with no output. Need to diagnose whether it's a runaway heartbeat issue or genuinely large elaboration.
+
+**Expected next run: 55-60** if proof lands Steps_ctx_pres, wasmspec closes hpres + exotic. Optimistic: 45 if seq_right and trivialChain also close.
+
+---
+2026-04-05T14:13:48+00:00 DONE

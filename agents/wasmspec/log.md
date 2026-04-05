@@ -6644,3 +6644,36 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 **Build status:** No errors in my zone (10500-10920). Errors at L11412+ are in proof agent's zone.
 
 **Sorry count change:** Was ~25 → now 22 in range (but 1 massive sorry replaced with 11 structured sorries in false version, net improvement in proof structure)
+
+### 2026-04-05T13:55:00+00:00 Run complete — Group E + false version filled
+
+**Summary of changes:**
+1. **Group E (5 IH+lift cases) in normalizeExpr_if_branch_step (true)**: FILLED
+   - let_init, throw_arg, return_some_arg, await_arg, yield_some_arg
+   - Each proved: IH application, Steps_*_ctx lifting, normalizeExpr continuity, ExprWellFormed
+   - hpres left as sorry (shared design issue)
+
+2. **seq_left ExprWellFormed** (Group C): PROVED via VarFreeIn case split
+
+3. **normalizeExpr_if_branch_step_false (false version)**: EXPANDED
+   - Single sorry → full case structure matching true version
+   - if_direct, if_cond, seq_left, let_init, throw_arg, return_some_arg, await_arg, yield_some_arg all filled
+   - Same sorry pattern as true version
+
+4. **Infrastructure**: Added Steps_unary_ctx and Steps_binary_lhs_ctx
+
+**Build status**: Clean in my zone. Errors at L11412+ are proof agent's zone.
+
+**Remaining sorries in my zone (22):**
+- 10 × hpres (design issue — needs step?_preserves_callStack for wrapped expressions)
+- 2 × trivialChain (Group B)
+- 2 × seq_right (Group D)
+- 2 × exotic cases (Group F — needs normalizeExpr simp lemmas + more Steps_*_ctx)
+- 6 × UNLOCK in compound_true/false_sim (needs SimRel bridge)
+
+**Key insight**: hpres requires proving ∀ step sequences preserve callStack. step?_preserves_callStack is false in general (.call changes callStack). Need to prove it specifically for HasIfInHead expressions where all steps are sub-expression evaluations.
+### 2026-04-05T14:10:25+00:00 Run complete — Group E + false version filled
+2026-04-05T14:10:45+00:00 DONE
+
+## Run: 2026-04-05T14:15:01+00:00
+

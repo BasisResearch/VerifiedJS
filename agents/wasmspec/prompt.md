@@ -1,4 +1,4 @@
-# wasmspec — Close normalizeExpr_if_branch_step sorries (L10559-10629)
+# wasmspec — CLOSE hpres sorries (16 of them!) then exotic/seq_right/trivialChain
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -17,68 +17,105 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 If count > 0, DO NOT BUILD. Use `lean_goal` / `lean_multi_attempt` via LSP instead.
 
 ## CONCURRENCY: proof agent also edits ANFConvertCorrect.lean
-- proof agent works on L11200-11360 (tryCatch) and L12400-12717 (break/continue/return)
-- **YOU** own L8000-10912 (normalizeExpr step sim infrastructure)
+- proof agent works on L11200-11650 (tryCatch) and L12700-13015 (break/continue/return)
+- **YOU** own L1795-1895 (Steps_ctx_lift infrastructure) AND L8000-10933 (normalizeExpr step sim)
 - DO NOT touch lines outside your range
 
-## YOUR ZONE: 36 sorries in L8000-10898. CLOSE THEM.
+## YOUR ZONE: ~28 sorries. GROUP E IS DONE — GREAT WORK!
 
-## IMMEDIATE TARGETS — GROUP E FIRST (5 sorries, L10615-10628)
+## PRIORITY 1: hpres (16 sorries — L10577, 10601, 10623, 10647, 10667, 10686, 10705, 10724 + 8 symmetric in false branch)
 
-These all follow the EXACT same pattern as the proven `seq_left` case (L10590-10607). Copy that pattern:
-
-### TEMPLATE (from seq_left at L10590):
+ALL hpres sorries have the SAME pattern. The goal at each is:
 ```lean
-    | let_init h_init =>
-      rename_i name init body
-      simp only [ANF.normalizeExpr_let'] at hnorm
-      have hinit_depth : init.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sf_init, evs_init, hsteps_init, hsil_init, henv_init, hheap_init, hfuncs_init, hcs_init,
-        htrace_init, hpres_init, ⟨n_init, m_init, hnorm_init⟩, hewf_init⟩ :=
-        ih init hinit_depth h_init env heap trace funcs cs _ n m cond then_ else_ v
-          hnorm (fun x hfx => hewf x (VarFreeIn.let_init _ _ _ _ hfx)) heval hbool
-      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-        Steps_let_init_ctx name body hsteps_init
-          (fun ev hev msg => by rw [hsil_init ev hev]; exact Core.TraceEvent.noConfusion)
-          hpres_init
-      refine ⟨ws, evs_init, hwsteps, hsil_init, hwenv.trans henv_init, hwheap.trans hheap_init,
-        hwfuncs, hwcs, by rw [hwtrace, htrace_init], ?_, ?_, ?_⟩
-      · sorry -- hpres (same as all other hpres sorries)
-      · exact ⟨n_init, m_init, by rw [hwexpr]; simp only [ANF.normalizeExpr_let']; exact hnorm_init⟩
-      · sorry -- ExprWellFormed (same pattern)
+∀ smid evs1, Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs1 smid →
+    smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1
 ```
 
-For each case, adapt:
-- **L10615 let_init**: `Steps_let_init_ctx name body`, `VarFreeIn.let_init`, `normalizeExpr_let'`
-- **L10619 throw_arg**: `Steps_throw_ctx`, `VarFreeIn.throw_arg`, `normalizeExpr_throw'`
-- **L10622 return_some_arg**: `Steps_return_some_ctx`, `VarFreeIn.return_some_arg`, `normalizeExpr_return_some'`
-- **L10625 await_arg**: `Steps_await_ctx`, `VarFreeIn.await_arg`, `normalizeExpr_await'`
-- **L10628 yield_some_arg**: `Steps_yield_some_ctx delegate`, `VarFreeIn.yield_some_arg`, `normalizeExpr_yield_some'`
+### THE APPROACH — Add `Steps_ctx_lift_pres` helper (~L1895):
 
-Check signatures with `lean_hover_info` at each `Steps_*_ctx` before writing. The key is matching the argument order.
+The key insight: `Steps_ctx_lift` produces wrapped steps from inner steps. The inner steps preserve funcs/cs/trace (via `hpres_c`/`hpres_a` from IH). The wrapping context (`.if · then else`, `.seq · b`, etc.) only changes `.expr`, not funcs/cs. Therefore the wrapped steps ALSO preserve funcs/cs/trace.
 
-## AFTER GROUP E: GROUP F (L10629 exotic cases)
-Binary, unary, getProp, etc. should be contradictions — these can't have HasIfInHead:
+**Step 1**: Add a general preservation lemma right after `Steps_await_ctx` (after L1884):
 ```lean
-lean_multi_attempt at L10629
-["next => cases hif", "next h => cases h"]
+/-- Steps through a eval context preserve funcs/callStack when inner steps preserve them. -/
+private theorem Steps_pres_from_inner
+    {e : Flat.Expr} {env : Flat.Env} {heap : Core.Heap} {trace : List Core.TraceEvent}
+    {funcs : Array Flat.FuncDef} {cs : List Flat.Env} {evs : List Core.TraceEvent}
+    {sf' : Flat.State}
+    (hsteps : Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs sf')
+    (hall_silent : ∀ ev ∈ evs, ev = .silent) :
+    ∀ smid evs1, Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs1 smid →
+      smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+  intro smid evs1 hmid
+  induction hmid with
+  | refl _ => simp
+  | tail hstep ih_steps =>
+    -- Single step preserves funcs/cs when step is silent
+    -- Use that Flat.step? for non-error, non-call-frame steps preserves funcs/cs
+    sorry
 ```
 
-## AFTER GROUP F: GROUP A (hpres, L10559/10583/10605) + GROUP C (ExprWellFormed L10607)
-These repeat across all cases. Once you prove one, copy it everywhere.
-For hpres: the Steps_*_ctx lemmas should give preservation directly. Check the `hpres_a` and `hpres_init` structures.
+Actually, this is hard to prove generally. SIMPLER APPROACH — prove it by case:
 
-## AFTER hpres: GROUP D (L10611 seq_right) and GROUP B (L10567 trivialChain)
-- L10611: `Classical.em (HasIfInHead a)` → true: IH on a; false: trivialChain_eval_value on a + IH on b
-- L10567: `trivialChain_if_true_sim` directly
+**Step 1 (SIMPLE)**: At each hpres sorry, the wrapped steps `hwsteps` come from `Steps_*_ctx` which uses `Steps_ctx_lift`. The input `hpres_c` (or `hpres_a`, etc.) says inner steps preserve funcs/cs. Each wrapping step?_*_ctx preserves funcs/cs because it only changes expr. So:
 
-## FINALLY: L10668 (false version) — mechanically copy true → false substitutions
-Then UNLOCK sorries (L10773-10898) cascade.
+```lean
+· -- hpres
+  intro smid evs1 hsteps_mid
+  -- The steps from ⟨e, env, heap, trace, funcs, cs⟩ go through the eval context.
+  -- Each single step either wraps an inner step (preserves funcs/cs) or is the refl step.
+  -- Since all events are silent and inner steps preserve funcs/cs, so do outer steps.
+  exact Steps_ctx_lift_preserves _ hsteps_mid
+```
+
+Actually, the simplest approach: USE `hpres_c` (the IH-provided preservation) directly.
+
+**Check** `lean_goal` at L10577 to see what exactly is needed. Then try:
+```lean
+lean_multi_attempt at L10577 column 8
+["intro smid evs1 h; exact Steps_if_cond_pres then_flat else_flat hpres_c h",
+ "intro smid evs1 h; induction h with | refl _ => simp | tail hs ih => sorry",
+ "exact fun smid evs1 h => ⟨(Steps_if_cond_ctx_pres hpres_c h).1, (Steps_if_cond_ctx_pres hpres_c h).2.1, (Steps_if_cond_ctx_pres hpres_c h).2.2⟩"]
+```
+
+### CONCRETE APPROACH for hpres:
+
+1. `lean_goal` at L10577 to see the exact goal type
+2. The goal is about steps from the OUTER expression (e.g., `.if c_flat then_ else_`).
+3. Every step through `.if [·] then_ else_` corresponds to an inner step of `c_flat`.
+4. The inner step preserves funcs/cs (from `hpres_c`).
+5. Wrapping in `.if · then_ else_` doesn't change funcs/cs.
+6. So each outer step preserves funcs/cs.
+
+You need to prove this by induction on the steps, using `step?_if_cond_step` to relate outer steps to inner steps.
+
+**If this is too complex, add a general `Steps_ctx_pres` lemma near L1885 that proves:**
+```lean
+∀ (wrap : Flat.Expr → Flat.Expr)
+  (single_step_pres : ...) -- each ctx step preserves funcs/cs
+  (hpres_inner : ...) -- inner steps preserve funcs/cs
+  → wrapped steps also preserve funcs/cs
+```
+
+## PRIORITY 2: Exotic cases (L10729, L10933) — likely contradictions
+```lean
+lean_multi_attempt at L10729
+["next hif => cases hif", "intro hif; cases hif"]
+```
+If HasIfInHead doesn't apply to binary/unary/getProp/etc., `cases hif` closes the goal.
+
+## PRIORITY 3: seq_right (L10632, L10836)
+Use `Classical.em (HasIfInHead a)`:
+- HasIfInHead a: IH on a
+- ¬HasIfInHead a: `trivialChain_eval_value` on a, then IH on b
+
+## PRIORITY 4: trivialChain eval (L10585, L10791)
+Use `trivialChain_if_true_sim` / `trivialChain_if_false_sim` directly.
 
 ## USE lean_multi_attempt AGGRESSIVELY
 Before editing, test tactics at each sorry. This avoids rebuilds.
 
-## PRIORITY ORDER: E → F → A → C → B → D → false → UNLOCKs
+## PRIORITY ORDER: hpres → exotic → seq_right → trivialChain → false mirror
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
