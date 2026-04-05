@@ -3348,3 +3348,6 @@ The only sorry is at L3970: closure body supported. Requires `∀ i c, s.funcs[i
 1. Fix tryCatch downstream proof at L4077 (adjust hsupp projections to match new conjunction order)
 2. Consider adding FuncsSupported invariant to close the final call sorry
 2026-04-05T10:12:38+00:00 DONE
+
+## Run: 2026-04-05T11:00:03+00:00
+

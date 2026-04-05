@@ -1607,15 +1607,6 @@ private theorem step?_tryCatch_body_ctx (s : Flat.State) (body : Flat.Expr)
   | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
-/-- Multi-step lifting through .tryCatch [·] cp cb fin context. -/
-private def Steps_tryCatch_body_ctx (catchParam : String) (catchBody : Flat.Expr) (finally_ : Option Flat.Expr)
-    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
-    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
-    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid →
-       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
-  Steps_ctx_lift (.tryCatch · catchParam catchBody finally_)
-    (fun s inner hv t si hs he => step?_tryCatch_body_ctx s inner catchParam catchBody finally_ hv t si hs he)
-    hsteps hnoerr hpres
 
 /-- Context stepping: if arg is not a value and steps (non-error),
     .unary op arg steps with the result wrapped. -/
@@ -1890,6 +1881,16 @@ private def Steps_await_ctx
     (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid →
        smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
   Steps_ctx_lift .await (fun s inner hv t si hs he => step?_await_ctx s inner hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Multi-step lifting through .tryCatch [·] cp cb fin context. -/
+private def Steps_tryCatch_body_ctx (catchParam : String) (catchBody : Flat.Expr) (finally_ : Option Flat.Expr)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift (.tryCatch · catchParam catchBody finally_)
+    (fun s inner hv t si hs he => step?_tryCatch_body_ctx s inner catchParam catchBody finally_ hv t si hs he)
     hsteps hnoerr hpres
 
 /-- Build left-associated seq spine: wrapSeqCtx e [a,b,c] = .seq (.seq (.seq e a) b) c -/
@@ -10404,7 +10405,25 @@ private theorem normalizeExpr_if_compound_true_sim
     | tryCatch body' cp cb fin =>
       exfalso; simp only [ANF.normalizeExpr_if'] at hnorm
       exact ANF.normalizeExpr_tryCatch_not_if body' cp cb fin _ cond then_ else_ n m hnorm
-    | _ => sorry -- compound c_flat with HasIfInHead: needs eval context lifting / strong induction
+    | seq a_c b_c =>
+      -- c_flat = .seq a_c b_c in the if condition position
+      simp only [ANF.normalizeExpr_if'] at hnorm
+      by_cases hif_seq : HasIfInHead (.seq a_c b_c)
+      · sorry -- HasIfInHead inside seq condition: needs eval context stepping
+      · -- ¬HasIfInHead: .seq a_c b_c is a trivial chain
+        have htc := no_if_head_implies_trivial_chain (.seq a_c b_c).depth (.seq a_c b_c) (Nat.le_refl _)
+          _ cond then_ else_ n m (by simp only [ANF.normalizeExpr_if']; exact hnorm) hif_seq
+        exact trivialChain_if_true_sim (trivialChainCost (.seq a_c b_c)) (.seq a_c b_c)
+          then_flat else_flat s t env heap trace sa_trace funcs cs k n m cond then_ else_ v
+          htc (Nat.le_refl _) (by simp only [ANF.normalizeExpr_if']; exact hnorm)
+          hk hewf heval htrace hbool
+    | «if» c' t' e' =>
+      sorry -- nested if in condition: always HasIfInHead, needs eval context stepping
+    | _ =>
+      -- All remaining compound constructors: HasIfInHead must hold
+      -- (by no_if_head_implies_trivial_chain, ¬HasIfInHead → isTrivialChain = true,
+      -- but isTrivialChain is false for these → contradiction).
+      sorry -- compound c_flat with HasIfInHead: needs eval context lifting
   all_goals sorry -- non-if_direct HasIfInHead: requires structural induction on depth
 
 /-- Infrastructure: multi-step Flat simulation for compound if-expressions (false branch).
