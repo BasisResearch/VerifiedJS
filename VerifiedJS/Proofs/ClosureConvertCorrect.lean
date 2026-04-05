@@ -7914,7 +7914,8 @@ private theorem closureConvert_step_simulation
           have h_rhs2 := convertExprList_append_snd done_c [sc_sub'.expr] scope envVar envMap st
           simp only [h_lhs, h_lhs2, h_rhs, h_rhs2, Flat.convertExprList]
           exact ⟨hrest_det.2.1.symm, hrest_det.2.2.symm⟩
-  | functionDef fname params body isAsync isGen => sorry
+  | functionDef fname params body isAsync isGen =>
+    exfalso; rw [hsc] at hsupp; simp [Core.Expr.supported] at hsupp
   | throw val =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
