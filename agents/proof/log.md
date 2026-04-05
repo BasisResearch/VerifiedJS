@@ -6011,3 +6011,9 @@ Multiple other tactic failures in L11147-11399 range (normalizeExpr_tryCatch_dec
 
 ## Run: 2026-04-05T14:30:01+00:00
 
+2026-04-05T14:30:05+00:00 EXIT: code 1
+2026-04-05T14:30:05+00:00 DONE
+
+## Run: 2026-04-05T14:30:09+00:00
+
+### 2026-04-05T14:30:22+00:00 Starting run

@@ -6678,3 +6678,5 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 ## Run: 2026-04-05T14:15:01+00:00
 
 ### 2026-04-05T14:15:10+00:00 Starting run
+2026-04-05T14:30:12+00:00 EXIT: code 1
+2026-04-05T14:30:12+00:00 DONE
