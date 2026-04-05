@@ -10186,8 +10186,7 @@ private theorem normalizeExpr_tryCatch_step_sim
     -- Destructure sf to access fields
     cases sf with
     | mk e env heap trace funcs cs =>
-    simp only [Flat.State.expr, Flat.State.env, Flat.State.heap, Flat.State.trace,
-               Flat.State.funcs, Flat.State.callStack] at hsfe hbody_norm hcatch_norm hewf htrace ⊢
+    simp only [] at hsfe hbody_norm hcatch_norm hewf htrace ⊢
     subst hsfe
     -- Unfold ANF.step? on tryCatch
     unfold ANF.step? at hstep_eq
@@ -10211,12 +10210,10 @@ private theorem normalizeExpr_tryCatch_step_sim
       rename_i hnval
       split at hstep_eq
       · -- Case 2a: step? body = some (.error msg, sb) — error caught by tryCatch
-        rename_i p hstep_body_err
-        obtain ⟨msg, sb⟩ := p
+        obtain ⟨rfl, rfl⟩ := hstep_eq
         sorry -- tryCatch body-error: needs inner body step simulation + catch handler SimRel
       · -- Case 2b: step? body = some (t_body, sb) — body took a normal step
-        rename_i p hstep_body
-        obtain ⟨t_body, sb⟩ := p
+        obtain ⟨rfl, rfl⟩ := hstep_eq
         sorry -- tryCatch body-step: needs inner body step simulation + tryCatch wrapping SimRel
       · -- Case 2c: step? body = none — contradicts hstep_eq = some
         simp at hstep_eq

@@ -3318,3 +3318,4 @@ The only sorry is at L3970: closure body supported. Requires `∀ i c, s.funcs[i
 - Core/Semantics.lean forward lemmas compile cleanly
 ### 2026-04-05T08:14:33+00:00 Run complete — Call case expanded (1 broad sorry → 1 targeted sorry), 5 forward lemmas added to Core/Semantics.lean, no new errors
 ### 2026-04-05T08:48:46+00:00 Fixing objectLit/arrayLit all-values cases that broke after Semantics.lean recompilation. Added step_objectLit_allValues_result_supported, step_arrayLit_allValues_result_supported, step_objectLit_prop_stuck, step_arrayLit_elem_stuck. Increased maxHeartbeats to 8000000.
+2026-04-05T09:00:01+00:00 SKIP: already running
