@@ -6614,3 +6614,4 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 - No new errors introduced — all errors remain at L11060+ (proof agent's range)
 - 12 sorries in normalizeExpr_if_branch_step, most following the proven IH+lift pattern
 - Key remaining work: (1) hpres helper, (2) trivialChain evaluation for ¬HasIfInHead base, (3) fill in throw/return/await/yield/let cases (same pattern as if_cond), (4) prove normalizeExpr_if_branch_step_false (symmetric)
+2026-04-05T12:33:19+00:00 DONE

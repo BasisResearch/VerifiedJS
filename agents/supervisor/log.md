@@ -5737,3 +5737,63 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 
 2026-04-05T12:05:01+00:00 SKIP: already running
 2026-04-05T12:05:54+00:00 DONE
+
+## Run: 2026-04-05T12:30:15+00:00
+
+
+### Metrics
+- **Sorry count**: ANF 47 + CC 13 = **60 sorries**
+- **Delta from last run (10:00)**: +17 (43→60). COUNT UP — wasmspec decomposition of if compound.
+- **Lower**: 0 sorries (DONE)
+
+### Why count went UP (+17): wasmspec decomposition is PROGRESS
+- wasmspec created `normalizeExpr_if_branch_step` and `normalizeExpr_if_branch_step_false` scaffolding
+- 12 new sorries in branch_step + 1 false_version + 8 UNLOCK sorries = 21 new
+- Offset by 4 closed cases (seq ¬HasIfInHead proved in both branches)
+- Net +17 is expected — these are narrower, more tractable targets
+- 4 proved infrastructure lemmas: trivialChain_eval_value, no_if_head_implies_trivial_chain, trivialChain_if_true_sim, trivialChain_if_false_sim
+
+### Agent Status
+1. **proof** (RUNNING since 12:30): Just started. Working on L12429 (noCallFrameReturn) → L11330 (body-error). Prompt updated with counter-alignment workaround for body-error.
+
+2. **jsspec** (RUNNING since 11:00): 90+ min runtime. 0 CC sorry closures in 10+ runs. SCREAMED at it in prompt. Must close L4185 (FuncsSupported) or it's wasting time.
+
+3. **wasmspec** (RUNNING since 11:15): 75+ min runtime. Excellent infrastructure work — 4 lemmas proved, scaffolding for branch_step. 12 branch_step sorries are the immediate target. Prompt updated with concrete tactics for each group.
+
+### Actions Taken
+1. Killed supervisor lake build (~400MB freed). Memory: 1.4GB available.
+2. Updated ALL 3 agent prompts:
+   - proof: Updated line numbers, noCallFrameReturn as easiest target first, counter-alignment workaround for body-error
+   - jsspec: ESCALATED — 0 closures in 10 runs is unacceptable, focus ONLY on L4185
+   - wasmspec: Grouped 12 branch_step sorries into A-F categories with specific tactics for each
+3. Logged to time_estimate.csv.
+
+### Sorry Classification (60 total)
+
+| Category | Count | Lines | Owner |
+|----------|-------|-------|-------|
+| Eval context lifting | 7 | L8173-8359 | wasmspec (depth induction) |
+| Compound throw/return/await/yield | 9 | L9003-9556 | wasmspec (eval context) |
+| While simulation | 2 | L9646, 9658 | unowned (blocked) |
+| normalizeExpr_if_branch_step | 12 | L10559-10629 | wasmspec (ACTIVE) |
+| if_branch_step_false | 1 | L10668 | wasmspec (symmetric) |
+| UNLOCK true | 4 | L10773-10785 | wasmspec (cascading) |
+| UNLOCK false | 4 | L10887-10898 | wasmspec (cascading) |
+| TryCatch subcases | 3 | L11330-11346 | proof |
+| Call site params | 2 | L12429-12430 | proof |
+| Break/continue | 2 | L12650-12703 | proof (blocked) |
+| CC closeable | 3 | L4185, L5128, L7224 | jsspec |
+| CC blocked | 10 | various | architecturally blocked |
+
+### Critical Assessment
+**Sorry count +17 is decomposition, not regression.** wasmspec is on the right track — 4 infrastructure lemmas proved, if_branch_step scaffolded. The 12 branch_step sorries should cascade: once Groups A+B+E are closed (~6 sorries), the false version copies (~1 sorry → 0) and UNLOCKs cascade (~8 sorries → 0). Potential: 60 → ~33 in 2-3 runs.
+
+**jsspec is the weak link.** 10+ runs, 0 closures. L4185 should be a case split on Core step + one functionDef subcase. If jsspec doesn't close it this run, consider replacing its approach entirely.
+
+**proof agent:** noCallFrameReturn (L12429) should be quick. body-error (L11330) is the real value — catch handler avoids counter alignment.
+
+**Expected next run: 53-57** (wasmspec closes 3-7 branch_step sorries, proof closes noCallFrameReturn, jsspec hopefully closes L4185)
+
+---
+2026-04-05T12:34:19+00:00 DONE
+2026-04-05T12:34:27+00:00 DONE

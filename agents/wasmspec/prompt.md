@@ -1,11 +1,11 @@
-# wasmspec — Close normalizeExpr_if_branch_step sorries, then tackle compound eval context
+# wasmspec — Close normalizeExpr_if_branch_step sorries (L10559-10629)
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
 - **DO NOT** edit Flat/Semantics.lean — it's DONE (0 sorries), leave it alone
 - **DO NOT** run `lake build` anything large
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
-- MEMORY: 7.7GB total, NO swap. ~2.4GB available.
+- MEMORY: 7.7GB total, NO swap. ~1.4GB available.
 - You CAN edit ANFConvertCorrect.lean ONLY
 - Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
@@ -14,69 +14,72 @@ proof agent is ALSO building ANFConvertCorrect. Check before building:
 ```bash
 ps aux | grep "lake build" | grep -v grep | wc -l
 ```
-If count > 0, DO NOT BUILD. Use `lean_goal` / `lean_multi_attempt` via LSP instead. Wait 60s then check again.
+If count > 0, DO NOT BUILD. Use `lean_goal` / `lean_multi_attempt` via LSP instead.
 
 ## CONCURRENCY: proof agent also edits ANFConvertCorrect.lean
 - proof agent works on L11200-11360 (tryCatch) and L12400-12717 (break/continue/return)
 - **YOU** own L8000-10912 (normalizeExpr step sim infrastructure)
 - DO NOT touch lines outside your range
 
-## GREAT PROGRESS LAST RUN! 4 lemmas proved:
-- `trivialChain_eval_value` (proved)
-- `no_if_head_implies_trivial_chain` (proved)
-- `trivialChain_if_true_sim` (proved)
-- `trivialChain_if_false_sim` (proved)
-- Seq ¬HasIfInHead closed in both branches
+## YOUR ZONE: 36 sorries. You built great infrastructure — now close the sorries!
 
-## CURRENT STATE: Your zone has 28 sorries (decomposed from 8). This is fine — they're narrower and more tractable.
+### Proved infrastructure (USE THESE):
+- `trivialChain_eval_value` — eval trivial chain to value, preserves state
+- `no_if_head_implies_trivial_chain` — ¬HasIfInHead → trivial chain
+- `trivialChain_if_true_sim` — true branch simulation
+- `trivialChain_if_false_sim` — false branch simulation
+- `step?_tryCatch_body_ctx` — tryCatch body context stepping
+- `Steps_tryCatch_body_ctx` — multi-step tryCatch body context
+- `Steps_if_cond_ctx` (L1828) — multi-step if condition context
 
-### IMMEDIATE TARGETS — normalizeExpr_if_branch_step (L10563-10643, 12 sorries)
+## IMMEDIATE TARGETS — normalizeExpr_if_branch_step (12 sorries, L10559-10629)
 
-These were created by YOUR decomposition. Close them using YOUR proven infrastructure:
-
-**L10563, L10591, L10619** (3 sorries): `hpres for ws` — State preservation through lifted steps.
-These should follow from `trivialChain_eval_value` which proves env/heap/funcs/cs preservation.
-Try: `lean_multi_attempt` with `["exact trivialChain_eval_value ...", "simp [trivialChain_eval_value]"]`
-
-**L10571** (1 sorry): trivialChain evaluation → value → branch `.if` → then_flat.
-This IS what `trivialChain_if_true_sim` proves! Wire it in directly.
-
-**L10621** (1 sorry): ExprWellFormed for ws.expr = .seq sf_a.expr b.
-Should follow from ExprWellFormed composition.
-
-**L10625** (1 sorry): ¬HasIfInHead a → trivialChain eval → IH on b; or HasIfInHead a → IH on a.
-This is the core recursion. Use strong induction on depth + your proven infrastructure.
-
-**L10629-10642** (5 sorries): IH on init/arg/v with different K (let/throw/return/await/yield).
-These all follow the same pattern — apply IH through the appropriate `Steps_*_ctx` lemma.
-
-**L10643** (1 sorry): remaining exotic cases (binary, unary, getProp, etc.).
-Case split — most should be contradictions (no HasIfInHead for these).
-
-### THEN: L10682 — normalizeExpr_if_branch_step_false (symmetric)
-```lean
-sorry -- TODO: symmetric to normalizeExpr_if_branch_step
+### GROUP A: hpres sorries (L10559, L10583, L10605) — 3 sorries
+State preservation after lifted steps. Should follow from `trivialChain_eval_value` which proves env/heap/funcs/cs preservation. Try:
 ```
-Once normalizeExpr_if_branch_step is done, copy it with `true_sim` → `false_sim` substitutions.
-
-### THEN: L10787-10799 and L10901-10912 (8 sorries)
-These are "UNLOCK" sorries that depend on normalizeExpr_if_branch_step being proved. Once Step 1 lands, try:
-```lean
-lean_multi_attempt at L10787 column 7
-["exact normalizeExpr_if_branch_step ...", "apply normalizeExpr_if_branch_step"]
+lean_multi_attempt at L10559
+["exact ⟨rfl, rfl, rfl, rfl⟩", "exact trivialChain_eval_value ... |>.2.2"]
 ```
 
-### USE lean_multi_attempt AGGRESSIVELY
+### GROUP B: L10567 — trivialChain → value → branch .if → then_flat (1 sorry)
+This IS what `trivialChain_if_true_sim` proves. Wire it in:
+```
+lean_multi_attempt at L10567
+["exact trivialChain_if_true_sim ...", "apply trivialChain_if_true_sim"]
+```
+
+### GROUP C: L10607 — ExprWellFormed (1 sorry)
+ExprWellFormed for `ws.expr = .seq sf_a.expr b`. Should follow from ExprWellFormed composition.
+
+### GROUP D: L10611 — core recursion (1 sorry)
+¬HasIfInHead a → trivialChain eval → IH on b; or HasIfInHead a → IH on a.
+Use `Classical.em (HasIfInHead a)` then apply IH in each branch.
+
+### GROUP E: L10615-10628 — IH through eval contexts (5 sorries)
+All follow the SAME pattern: apply IH + lift through `Steps_*_ctx`.
+```lean
+-- L10615: IH on init + Steps_let_init_ctx
+-- L10619: IH on arg + Steps_throw_ctx
+-- L10622: IH on v + Steps_return_some_ctx
+-- L10625: IH on arg + Steps_await_ctx
+-- L10628: IH on v + Steps_yield_some_ctx
+```
+
+### GROUP F: L10629 — exotic cases (1 sorry)
+Binary, unary, getProp, etc. Most should be contradictions (no HasIfInHead for these).
+```
+lean_multi_attempt at L10629
+["next => cases hif", "next => simp [HasIfInHead] at hif"]
+```
+
+### AFTER branch_step: L10668 (false version) — copy with true→false substitutions
+
+### AFTER both: UNLOCK sorries (L10773-10898, 8 sorries) cascade automatically
+
+## USE lean_multi_attempt AGGRESSIVELY
 Before editing, test tactics at each sorry. This avoids rebuilds.
 
-## PRIORITY ORDER
-1. L10563/10591/10619 (hpres — should be easy with trivialChain_eval_value)
-2. L10571 (wire in trivialChain_if_true_sim)
-3. L10621 (ExprWellFormed)
-4. L10625 (core recursion with IH)
-5. L10629-10643 (IH applications + exotic contradictions)
-6. L10682 (symmetric false case)
-7. L10787-10912 (UNLOCK sorries)
+## PRIORITY: Groups A→B→E→F→D→C, then false version, then UNLOCKs
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
