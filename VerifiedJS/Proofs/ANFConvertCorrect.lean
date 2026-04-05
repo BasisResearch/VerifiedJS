@@ -1916,7 +1916,8 @@ private theorem step?_setIndex_val_ctx (s : Flat.State)
       s'.expr = .setIndex (.lit ov) (.lit iv) sv.expr ∧ s'.env = sv.env ∧ s'.heap = sv.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [t] := by
-  cases ov <;> cases iv <;> simp [Flat.step?, hnotval, hstep] <;> (
+  have lit_val : ∀ v, Flat.exprValue? (Flat.Expr.lit v) = some v := fun _ => rfl
+  cases ov <;> cases iv <;> simp only [Flat.step?, lit_val, hnotval, hstep] <;> (
     cases t with
     | error msg => exact absurd rfl (hnoerr msg)
     | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
@@ -2474,6 +2475,26 @@ private def Steps_setIndex_obj_ctx_b (idx val : Flat.Expr)
        smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
   Steps_ctx_lift_b (fun e => .setIndex e idx val)
     (fun s inner hv t si hs he => step?_setIndex_obj_ctx s inner idx val hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded multi-step lifting through .setProp (.lit ov) prop [·] context. -/
+private def Steps_setProp_val_ctx_b (ov : Flat.Value) (prop : Flat.PropName)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b (fun e => .setProp (.lit ov) prop e)
+    (fun s inner hv t si hs he => step?_setProp_val_ctx s ov prop inner hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded multi-step lifting through .setIndex (.lit ov) (.lit iv) [·] context. -/
+private def Steps_setIndex_val_ctx_b (ov iv : Flat.Value)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b (fun e => .setIndex (.lit ov) (.lit iv) e)
+    (fun s inner hv t si hs he => step?_setIndex_val_ctx s ov iv inner hv t si hs he)
     hsteps hnoerr hpres
 
 /-! ## Steps preservation for terminal wrappers
@@ -12230,7 +12251,7 @@ private theorem normalizeExpr_if_branch_step :
           htrace_a, hpres_a, hnorm_a', hewf_a⟩ :=
           ih a ha_depth h_b env heap ((trace ++ evs_b) ++ [.silent]) funcs cs K n m cond then_ else_ v
             hnorm_a (fun x hfx => hewf x (VarFreeIn.seq_r _ _ _ hfx)) heval hbool
-        refine ⟨sf_a, evs_b ++ [.silent] ++ evs_a,
+        refine ⟨sf_a, evs_b ++ .silent :: evs_a,
           Flat.Steps.append hwsteps (.tail ⟨hdisc⟩ hsteps_a), ?_, henv_a, hheap_a, hfuncs_a, hcs_a, ?_, ?_, hnorm_a', hewf_a⟩
         · intro ev hev; simp [List.mem_append] at hev
           rcases hev with hev | hev | hev
@@ -13036,7 +13057,7 @@ private theorem normalizeExpr_if_branch_step_false :
           htrace_a, hpres_a, hnorm_a', hewf_a⟩ :=
           ih a ha_depth h_b env heap ((trace ++ evs_b) ++ [.silent]) funcs cs K n m cond then_ else_ v
             hnorm_a (fun x hfx => hewf x (VarFreeIn.seq_r _ _ _ hfx)) heval hbool
-        refine ⟨sf_a, evs_b ++ [.silent] ++ evs_a,
+        refine ⟨sf_a, evs_b ++ .silent :: evs_a,
           Flat.Steps.append hwsteps (.tail ⟨hdisc⟩ hsteps_a), ?_, henv_a, hheap_a, hfuncs_a, hcs_a, ?_, ?_, hnorm_a', hewf_a⟩
         · intro ev hev; simp [List.mem_append] at hev
           rcases hev with hev | hev | hev
