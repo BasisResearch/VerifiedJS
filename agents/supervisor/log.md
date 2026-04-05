@@ -6494,3 +6494,58 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 ## Run: 2026-04-05T20:30:02+00:00
 
 2026-04-05T20:35:00+00:00 DONE
+
+## Run: 2026-04-05T21:00:09+00:00
+
+
+### Metrics
+- **Sorry count**: ANF 24 + CC 12 = **36 real sorries**
+- **Delta from last run (20:30)**: -1 (37→36). **DOWN — slow but moving.**
+- **Lower**: 0 sorries (DONE)
+
+### Why count went DOWN (-1)
+- ANF: 25→24 (-1). proof agent closed 1 labeled infrastructure sorry (L8573/8574 merged to L8915 catch-all — 2→1). Building ANF now.
+- CC: 12→12 (0). jsspec confirmed ALL 12 CC sorries architecturally blocked. L7917 (functionDef) has Core 1-step vs Flat multi-step mismatch. No more CC work possible.
+
+### Memory Status
+- 1.6GB available. TIGHT. Killed supervisor lean builds (freed ~500MB).
+- proof: lake build ANF (PID 1061824) + lean worker (PID 1061930) — 900MB
+- jsspec: lean worker on CC (PID 1017441) — 2.9GB. **Should redirect to ANF helpers.**
+- wasmspec: NOT running (last finished 20:16)
+
+### Agent Status
+1. **proof** (RUNNING since 20:30): Building ANF. Working on Groups B-E. Currently has 13 sorries in zone.
+2. **jsspec** (RUNNING since 19:00): Confirmed ALL 12 CC sorries blocked. L7917=architectural block. **REDIRECTED to build ANF eval context helpers** (Steps_binary_rhs_ctx_b, Steps_call_func_ctx_b, etc.) to unblock proof agent's L8915.
+3. **wasmspec** (IDLE since 20:16): Closed 2 trivialChain seq, has 4 remaining (L12174, L12281, L12790, L12897). Prompt UPDATED with new line numbers.
+
+### Actions Taken
+1. Killed supervisor lean builds (freed memory)
+2. Updated ALL 3 agent prompts with verified line numbers
+3. **KEY CHANGE**: Redirected jsspec from CC (all blocked) to building ANF eval context helpers
+4. Updated proof agent: prioritize Group B (HasXInHead) over L8915 catch-all
+5. Logged to time_estimate.csv
+
+### Sorry Classification (36 total)
+**ANF (24):**
+- 1 labeled catch-all (L8915) ← proof agent (needs more Steps_X_ctx_b helpers ← jsspec now building)
+- 4 compound HasXInHead (L10162, L10319, L10496, L10654) ← proof agent
+- 3 compound inner_val/arg (L10313, L10490, L10648) ← proof agent
+- 3 return/yield/compound (L10710, L10714, L10715) ← proof agent
+- 2 while condition (L10805, L10817) ← proof agent
+- 4 preservation+exotic (L12174, L12281, L12790, L12897) ← wasmspec
+- 3 tryCatch (L13738, L13756, L13759) ← blocked
+- 2 call frame (L14842, L14853) ← blocked
+- 2 end-to-end (L15073, L15126) ← blocked
+
+**CC (12):** ALL architecturally blocked. No more CC work possible.
+
+### Expected next run: 33-35
+- proof: Group B (4 HasXInHead) are highest-value; even 1-2 closes = good
+- jsspec: if eval context helpers land, unblocks L8915 + accelerates proof agent
+- wasmspec: 2-4 closes possible if preservation goals are mechanical
+
+2026-04-05T21:05:00+00:00 DONE
+2026-04-05T21:03:47+00:00 DONE
+
+## Run: 2026-04-05T21:05:01+00:00
+

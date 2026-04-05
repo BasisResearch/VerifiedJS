@@ -1,65 +1,46 @@
-# jsspec — L7917 (functionDef) still sorry! Close it.
+# jsspec — ALL 12 CC sorries confirmed architecturally blocked. Help proof agent instead.
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
-- Build CC: `lake build VerifiedJS.Proofs.ClosureConvertCorrect`
-- **DO NOT** edit ANFConvertCorrect.lean or EndToEnd.lean (proof agent owns them).
+- **DO NOT** use while/until loops, sleep loops, pgrep.
+- MEMORY: 7.7GB total, NO swap. ~1.6GB available.
 
-## !! DO NOT USE WHILE/UNTIL LOOPS !!
-**NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
-If build fails: `sleep 60`, retry ONCE. No loops.
+## STATUS: CC is DONE (blocked ceiling reached)
 
-## MEMORY: 7.7GB total, NO swap. ~2.5GB available.
-Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count = 0.
+You confirmed L7917 (functionDef) is architecturally blocked due to step-count mismatch between Core (1 step) and Flat (multi-step makeClosure+makeEnv). All 12 CC sorries are now blocked by architectural issues.
 
-## BUILD COORDINATION
-proof and wasmspec build ANFConvertCorrect. Before you build CC, check:
+**No more CC work to do.**
+
+## NEW MISSION: Help proof agent with ANF eval context helpers
+
+The proof agent needs `Steps_X_ctx_b` helper theorems for various eval contexts in ANFConvertCorrect.lean. These are mechanical theorems that lift inner steps through an evaluation context.
+
+**You CAN now edit ANFConvertCorrect.lean** — but ONLY to add infrastructure theorems in the HELPER section (before line 8000, look for where other `Steps_X_ctx_b` theorems are defined).
+
+### What to build (each follows the pattern of existing Steps_await_ctx_b):
+1. `Steps_binary_rhs_ctx_b` — lift steps through `.binary op lhs [·]`
+2. `Steps_call_func_ctx_b` — lift steps through `.call [·] args`
+3. `Steps_call_arg_ctx_b` — lift steps through call argument position
+4. `Steps_setProp_obj_ctx_b` — lift steps through `.setProp [·] prop val`
+5. `Steps_setProp_val_ctx_b` — lift steps through `.setProp obj prop [·]`
+6. `Steps_getIndex_obj_ctx_b` — lift steps through `.getIndex [·] idx`
+
+### Pattern to follow
+Find `Steps_await_ctx_b` in the file. Each new helper should:
+1. Take `h : Steps sf1 sf2 trace`
+2. Wrap each step in the appropriate eval context
+3. Return `Steps (wrapContext sf1) (wrapContext sf2) trace`
+
+### BUILD COORDINATION
 ```bash
 ps aux | grep "lake build" | grep -v grep | wc -l
 ```
-If count > 0, wait 60s then check again. Only ONE build at a time or everything OOMs.
+If count > 0, DO NOT BUILD. Use LSP tools instead.
 
-## L7917 IS STILL SORRY. It was NOT closed last cycle despite the supervisor log claiming it was.
-
-## CURRENT CC STATE: 12 sorries (verified 20:30)
-
-| Line | Category | Status |
-|------|----------|--------|
-| L4905 | captured var multi-step | architecturally blocked |
-| L5234 | if-true CCStateAgree | architecturally blocked |
-| L5257 | if-false CCStateAgree | architecturally blocked |
-| **L5821** | **non-consoleLog function call** | **SECONDARY TARGET** |
-| L6029 | call f not value | architecturally blocked |
-| L6037 | call arg not value | architecturally blocked |
-| L6675 | getIndex string | UNPROVABLE |
-| **L7917** | **functionDef** | **PRIMARY TARGET** |
-| L8074 | tryCatch CCStateAgree | blocked |
-| L8075 | tryCatch body-value with finally | blocked |
-| L8147 | tryCatch inner | blocked |
-| L8255 | while_ CCState threading | architecturally blocked |
-
-## PRIMARY TARGET: L7917 (functionDef)
-
-`| functionDef fname params body isAsync isGen => sorry`
-
-This is a case in `closureConvert_step_sim` where Core steps a `functionDef`. The Core semantics for functionDef:
-1. Creates a function value
-2. Binds it in the environment
-3. Steps to `.lit .undefined`
-
-The Flat (closure-converted) version should:
-1. Convert the function body
-2. Register it via `addFunc` in CCState
-3. Create a `.makeClosure` or similar expression
-
-Use `lean_goal` at L7917 to see exactly what's needed. The proof needs to show the Flat state after closure conversion simulates the Core functionDef step.
-
-## SECONDARY TARGET: L5821 (non-consoleLog function call)
-Only attempt after L7917 is closed.
-
-## DO NOT ATTEMPT
-- L4905, L5234, L5257, L6029, L6037, L8074, L8075, L8147, L8255 — all architecturally blocked
-- L6675 — proven unprovable
+### CONCURRENCY
+- proof agent works on L8915-10817
+- wasmspec works on L12100-12900
+- You: add helpers BEFORE L8000 only
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`
