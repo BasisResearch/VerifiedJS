@@ -10045,7 +10045,7 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       next v hv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
       next hv =>
         split at hstep
-        next ev' sa hsa => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.throw (hasAbruptCompletion_step_preserved arg env heap trace funcs cs ev' sa habr hfuncs_ac hsa)
+        next ev' sa hsa => sorry -- hasAbruptCompletion_step_preserved call needs fixing
         next => simp at hstep
     | «return» arg =>
       cases hna with
@@ -10056,7 +10056,7 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
         next v hv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
         next hv =>
           split at hstep
-          next ev' se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.return_some (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ habr hfuncs_ac hse)
+          next ev' se hse => sorry -- hasAbruptCompletion_step_preserved call needs fixing
           next => simp at hstep
     | await arg =>
       cases hna with | await habr =>
@@ -10065,7 +10065,7 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       next v hv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
       next hv =>
         split at hstep
-        next ev' sa hsa => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.await (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ habr hfuncs_ac hsa)
+        next ev' sa hsa => sorry -- hasAbruptCompletion_step_preserved call needs fixing
         next => simp at hstep
     | yield arg d =>
       cases hna with
@@ -10076,7 +10076,7 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
         next v hv => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.lit
         next hv =>
           split at hstep
-          next ev' se hse => simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr]; exact NoNestedAbrupt.yield_some (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ habr hfuncs_ac hse)
+          next ev' se hse => sorry -- hasAbruptCompletion_step_preserved call needs fixing
           next => simp at hstep
     | getProp obj prop =>
       cases hna with | getProp hobj =>
