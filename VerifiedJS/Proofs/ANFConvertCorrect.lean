@@ -2123,7 +2123,7 @@ private theorem step?_objectLit_val_ctx (s : Flat.State)
   have hvnone := valuesFromExprList?_none_of_props_nonvalue done remaining propName inner hdone hnotval
   have hfirst := firstNonValueProp_of_done_lit done remaining propName inner hdone hnotlit
   rw [Flat.step?.eq_1]
-  simp only [hvnone, hfirst, hstep]
+  simp only [hvnone]; rw [hfirst]; simp only [hstep]
   cases t with
   | error msg => exact absurd rfl (hnoerr msg)
   | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
