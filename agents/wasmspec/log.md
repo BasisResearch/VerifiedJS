@@ -6332,3 +6332,19 @@ Need characterization of what normalizeExpr produces for these forms and Flat si
 - Range 9400-9930: 4 pre-existing errors remain (getEnv envVal cases, objectLit split/cases)
 - Range 10100+: many cascading errors in NoNestedAbrupt_step_preserved (same patterns, pre-existing)
 2026-04-05T00:15:01+00:00 SKIP: already running
+### 2026-04-05T00:19:51+00:00 Run complete — TASK 1 DONE: Zero errors in L1-9400
+Fixed all if_step_sim errors and related issues:
+- Return var/this: hv_anf + step?_pushTrace_expand
+- Await var: hv_anf
+- Yield var/this: hv_anf + step?_pushTrace_expand  
+- getProp/deleteProp: added missing split cases (string, other value)
+- setProp/getIndex/setIndex: replaced 'by simp [hasAbruptCompletion]' with hypothesis names + pushTrace_expand
+- Binary lhs-value step: trivial instead of simp
+- call/newObj/getEnv: replaced rw with eq_1+simp approach for step? lemmas
+- Fixed all GetElem? typeclass issues with (i : Nat) annotations
+- getEnv some envVal: proper split on object/non-object with heapObjectAt?/find?
+
+Remaining errors (pre-existing, not in scope):
+- hasAbruptCompletion_step_preserved: objectLit/arrayLit pushTrace cases (9839-9857)
+- NoNestedAbrupt_step_preserved: same patterns repeated (10100+)
+These are in utility theorems, not the main simulation proof.
