@@ -2063,4 +2063,30 @@ theorem Steps_preserves_funcs {sf sf' : Flat.State} {evs : List Core.TraceEvent}
   | refl => rfl
   | tail hstep _ ih => obtain ⟨h⟩ := hstep; exact (step?_preserves_funcs _ _ _ h) ▸ ih
 
+set_option maxHeartbeats 8000000 in
+/-- step? always sets trace to s.trace ++ [t]. -/
+theorem step?_trace_append (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Flat.State)
+    (h : step? sf = some (ev, sf')) : sf'.trace = sf.trace ++ [ev] := by
+  unfold step? at h
+  split at h
+  all_goals (try (dsimp only [] at h)); all_goals (try (split at h))
+  all_goals (try (dsimp only [] at h)); all_goals (try (split at h))
+  all_goals (try (dsimp only [] at h)); all_goals (try (split at h))
+  all_goals (try (dsimp only [] at h)); all_goals (try (split at h))
+  all_goals (try (dsimp only [] at h)); all_goals (try (split at h))
+  all_goals (try (dsimp only [] at h)); all_goals (try (split at h))
+  all_goals (try (dsimp only [] at h)); all_goals (try (split at h))
+  all_goals (try contradiction)
+  all_goals (try { obtain ⟨-, rfl⟩ := h; simp [pushTrace] })
+  all_goals (try { simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h; simp [pushTrace] })
+
+/-- Multi-step execution accumulates trace: sf'.trace = sf.trace ++ evs. -/
+theorem Steps_trace_append {sf sf' : Flat.State} {evs : List Core.TraceEvent}
+    (h : Flat.Steps sf evs sf') : sf'.trace = sf.trace ++ evs := by
+  induction h with
+  | refl => simp
+  | tail hstep _ ih =>
+    obtain ⟨h⟩ := hstep
+    rw [ih, step?_trace_append _ _ _ h]; simp [List.append_assoc]
+
 end VerifiedJS.Flat
