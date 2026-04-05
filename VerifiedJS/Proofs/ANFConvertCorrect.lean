@@ -10407,16 +10407,14 @@ private theorem normalizeExpr_if_compound_true_sim
       exact ANF.normalizeExpr_tryCatch_not_if body' cp cb fin _ cond then_ else_ n m hnorm
     | seq a_c b_c =>
       -- c_flat = .seq a_c b_c in the if condition position
-      simp only [ANF.normalizeExpr_if'] at hnorm
-      by_cases hif_seq : HasIfInHead (.seq a_c b_c)
+      by_cases hif_seq : HasIfInHead (Flat.Expr.seq a_c b_c)
       · sorry -- HasIfInHead inside seq condition: needs eval context stepping
       · -- ¬HasIfInHead: .seq a_c b_c is a trivial chain
-        have htc := no_if_head_implies_trivial_chain (.seq a_c b_c).depth (.seq a_c b_c) (Nat.le_refl _)
-          _ cond then_ else_ n m (by simp only [ANF.normalizeExpr_if']; exact hnorm) hif_seq
-        exact trivialChain_if_true_sim (trivialChainCost (.seq a_c b_c)) (.seq a_c b_c)
+        have htc := no_if_head_implies_trivial_chain (Flat.Expr.seq a_c b_c).depth (Flat.Expr.seq a_c b_c) (Nat.le_refl _)
+          _ cond then_ else_ n m hnorm hif_seq
+        exact trivialChain_if_true_sim (trivialChainCost (Flat.Expr.seq a_c b_c)) (Flat.Expr.seq a_c b_c)
           then_flat else_flat s t env heap trace sa_trace funcs cs k n m cond then_ else_ v
-          htc (Nat.le_refl _) (by simp only [ANF.normalizeExpr_if']; exact hnorm)
-          hk hewf heval htrace hbool
+          htc (Nat.le_refl _) hnorm hk hewf heval htrace hbool
     | «if» c' t' e' =>
       sorry -- nested if in condition: always HasIfInHead, needs eval context stepping
     | _ =>
@@ -10943,11 +10941,28 @@ private theorem normalizeExpr_tryCatch_step_sim
       rename_i hnval
       split at hstep_eq
       · -- Case 2a: step? body = some (.error msg, sb) — error caught by tryCatch
+        rename_i msg sb hstep_body
         obtain ⟨rfl, rfl⟩ := hstep_eq
-        sorry -- tryCatch body-error: needs inner body step simulation + catch handler SimRel
+        -- ANF catches the error: sa' = { handler, sb.env.extend catchParam (.string msg), sb.heap, sa_trace ++ [.error msg] }
+        -- where handler = match finally_ with | some fin => .seq catchBody fin | none => catchBody
+        -- Approach: use body_sim to get Flat body steps, decompose into non-error prefix + error step,
+        -- lift non-error steps through tryCatch via Steps_tryCatch_body_ctx,
+        -- then show Flat tryCatch catches the error step and transitions to catch handler.
+        -- Remaining gap: counter alignment for SimRel reconstruction of catch handler.
+        sorry -- tryCatch body-error: body_sim + Steps_tryCatch_body_ctx + error catch + SimRel recon
       · -- Case 2b: step? body = some (t_body, sb) — body took a normal step
+        rename_i t_body sb hstep_body
         obtain ⟨rfl, rfl⟩ := hstep_eq
-        sorry -- tryCatch body-step: needs inner body step simulation + tryCatch wrapping SimRel
+        -- ANF wraps: sa' = { .tryCatch sb.expr catchParam catchBody finally_, sb.env, sb.heap, sa_trace ++ [t_body] }
+        -- Approach: use body_sim to get Flat body steps (all non-error since t_body is not .error),
+        -- lift through tryCatch via Steps_tryCatch_body_ctx.
+        -- Remaining gap: SimRel reconstruction requires normalizeExpr (.tryCatch sf_b'.expr cp cb_f fin?) k_tc
+        -- to equal .tryCatch sb.expr cp catchBody finally_. This requires:
+        --   1. normalizeExpr sf_b'.expr k_tc = sb.expr (from body SimRel with k')
+        --   2. normalizeExpr cb_f k_tc = catchBody (from original decomp with k)
+        --   3. A lemma that normalizeExpr e k1 ≈ normalizeExpr e k2 for trivial-preserving k1, k2
+        --      (modulo fresh name counter alignment).
+        sorry -- tryCatch body-step: body_sim + Steps_tryCatch_body_ctx + SimRel recon
       · -- Case 2c: step? body = none — contradicts hstep_eq = some
         simp at hstep_eq
   | _ => sorry -- compound cases: deferred
@@ -12033,6 +12048,8 @@ private theorem anfConvert_step_star
     simp only [ANF.State.env] at henv
     simp only [ANF.State.trace] at htrace
     exact normalizeExpr_tryCatch_step_sim sf s t k n m body catchParam catchBody finally_ hnorm hk_triv hewf
+      (sorry /- noCallFrameReturn: source tryCatch params are never "__call_frame_return__" -/)
+      (sorry /- body_sim: inner simulation IH, needs anfConvert_step_star to be proved by strong induction -/)
       sa_env sa_heap sa_trace hheap henv htrace _ _ hstep_eq
   | «return» arg =>
     cases sa with
