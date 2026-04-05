@@ -2037,18 +2037,16 @@ theorem step?_newObj_allValues (s : State)
         s.trace ++ [.silent], s.funcs, s.callStack⟩) := by
   unfold step?; simp only [hf, he, hvs, allocFreshObject, pushTrace]
 
-set_option maxHeartbeats 3200000 in
+set_option maxHeartbeats 4000000 in
 /-- step? never modifies the funcs field. -/
 theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Flat.State)
     (h : step? sf = some (ev, sf')) : sf'.funcs = sf.funcs := by
-  unfold step? at h
-  split at h <;>
-    (simp_all [pushTrace, allocFreshObject, allocEnvObject, allocObjectWithProps]; done) <;>
-    (split at h <;> (simp_all [pushTrace]; done) <;>
-      (split at h <;> (simp_all [pushTrace]; done) <;>
-        -- yield/await non-value cases: step? recursive call preserves funcs
-        -- The result state explicitly has `funcs := sf.funcs` but split can't reach through step? match
-        sorry))
+  induction sf using step?.induct <;> unfold step? at h <;>
+    (repeat split at h) <;> (try contradiction) <;>
+    (try { simp only [Option.some.injEq, Prod.mk.injEq] at h
+           obtain ⟨-, rfl⟩ := h
+           simp [pushTrace, allocFreshObject, allocEnvObject, allocObjectWithProps] }) <;>
+    simp_all [pushTrace, allocFreshObject, allocEnvObject, allocObjectWithProps]
 
 /-- Multi-step execution preserves the funcs field. -/
 theorem Steps_preserves_funcs {sf sf' : Flat.State} {evs : List Core.TraceEvent}
