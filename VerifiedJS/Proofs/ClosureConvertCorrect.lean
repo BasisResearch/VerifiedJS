@@ -3955,7 +3955,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
             obtain ⟨msg, hfwd⟩ := Core.step_call_consoleLog args argVals s.env s.heap s.trace s.funcs s.callStack hallv
             rw [hfwd] at hstep
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-            obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
+            obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace, Core.Expr.supported]
           | false =>
             -- not consoleLog
             cases hfunc : s.funcs[idx]? with
@@ -3973,25 +3973,25 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
                 hallv (by simp [hcl]) hfunc
               rw [hfwd] at hstep
               simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-              obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
+              obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace, Core.Expr.supported]
         | null =>
           have hfwd := Core.step_call_nonfunc_exact Core.Value.null args argVals s.env s.heap s.trace s.funcs s.callStack (fun idx h => Core.Value.noConfusion h) hallv
-          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
+          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace, Core.Expr.supported]
         | undefined =>
           have hfwd := Core.step_call_nonfunc_exact Core.Value.undefined args argVals s.env s.heap s.trace s.funcs s.callStack (fun idx h => Core.Value.noConfusion h) hallv
-          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
+          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace, Core.Expr.supported]
         | bool b =>
           have hfwd := Core.step_call_nonfunc_exact (Core.Value.bool b) args argVals s.env s.heap s.trace s.funcs s.callStack (fun idx h => Core.Value.noConfusion h) hallv
-          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
+          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace, Core.Expr.supported]
         | number n =>
           have hfwd := Core.step_call_nonfunc_exact (Core.Value.number n) args argVals s.env s.heap s.trace s.funcs s.callStack (fun idx h => Core.Value.noConfusion h) hallv
-          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
+          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace, Core.Expr.supported]
         | string str =>
           have hfwd := Core.step_call_nonfunc_exact (Core.Value.string str) args argVals s.env s.heap s.trace s.funcs s.callStack (fun idx h => Core.Value.noConfusion h) hallv
-          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
+          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace, Core.Expr.supported]
         | object addr =>
           have hfwd := Core.step_call_nonfunc_exact (Core.Value.object addr) args argVals s.env s.heap s.trace s.funcs s.callStack (fun idx h => Core.Value.noConfusion h) hallv
-          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
+          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace, Core.Expr.supported]
       | none =>
         -- Not all args are values: step first non-value arg
         cases hfnv : Core.firstNonValueExpr args with
