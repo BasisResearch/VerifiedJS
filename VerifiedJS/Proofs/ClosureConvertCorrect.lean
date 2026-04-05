@@ -1482,8 +1482,11 @@ private theorem closureConvert_init_related
   case funcs_supp =>
     -- FuncsSupported: initial funcs = #[logBuiltin], body = .lit .undefined
     intro i fd hi
-    simp [Core.initialState] at hi
-    simp_all [Core.Expr.supported]
+    dsimp at hi
+    have : i = 0 ∧ fd = ⟨some "log", ["__arg__"], .lit .undefined, []⟩ := by
+      simp [Array.getElem?] at hi
+      split at hi <;> simp_all
+    subst this.2; rfl
   case conv =>
     unfold Flat.closureConvert at h
     simp only [Except.ok.injEq] at h
