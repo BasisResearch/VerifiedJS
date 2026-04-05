@@ -1483,11 +1483,10 @@ private theorem closureConvert_init_related
     -- FuncsSupported: initial funcs = #[logBuiltin], body = .lit .undefined
     intro i fd hi
     dsimp at hi
-    have hlt : i < 1 := by
-      by_contra h; simp at h
-      simp [Array.getElem?, h] at hi
-    interval_cases i
-    simp [Array.getElem?] at hi; subst hi; rfl
+    simp only [Array.getElem?_eq_getElem, Array.size] at hi
+    split at hi
+    · simp at hi; subst hi; rfl
+    · exact absurd hi (by simp)
   case conv =>
     unfold Flat.closureConvert at h
     simp only [Except.ok.injEq] at h
