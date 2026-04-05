@@ -6448,3 +6448,15 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 
 ### 2026-04-05T03:15:08+00:00 Starting run
 2026-04-05T04:15:01+00:00 SKIP: already running
+
+### Progress on L9050 (normalizeExpr_let_step_sim)
+- Added case analysis on sf.expr: eliminated atoms (lit, var, this) via contradiction (k is trivial-preserving → produces .trivial not .let)
+- Eliminated non-compound-producing cases: break, continue, while_, labeled, tryCatch via contradiction (normalization produces wrong constructor)
+- Eliminated return none, yield none via contradiction
+- Remaining sorry covers: seq, let, assign, if, call, newObj, getProp, setProp, getIndex, setIndex, deleteProp, typeof, getEnv, makeEnv, makeClosure, objectLit, arrayLit, throw, return (some), yield (some), await, unary, binary — all compound cases that CAN produce .let
+
+### Analysis of L9333/9334/9406/9407 (if compound condition + HasIfInHead)
+- These need full structural induction on Flat.Expr depth with multi-step Flat simulation
+- The compound condition case in if_direct requires stepping through compound conditions in .if context
+- The HasIfInHead compound cases require evaluation context stepping through outer expressions
+- Both need infrastructure that doesn't exist yet: "if normalizeExpr e k produces form X, flat machine can step e to match"
