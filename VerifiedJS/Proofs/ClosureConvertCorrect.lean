@@ -3936,8 +3936,84 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         have hse_supp := ih target.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; have := Core.firstNonValueProp_depth hfnv; omega)
           { s with expr := target } se t (Nat.le_refl _) htgt_supp h_sub
         exact propListSupported_replace_target k se.expr hd_supp hse_supp hr_supp
-  | arrayLit => sorry -- arrayLit: simp can't reduce step? for elem stepping
-  | tryCatch => sorry -- tryCatch: simp failures on error branch decomposition
+  | arrayLit elems =>
+    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+    rw [state_with_expr_eq hexpr] at hstep
+    cases hfnv : Core.firstNonValueExpr elems with
+    | none =>
+      -- All values: step allocates array, result is .lit
+      simp [Core.step?, hfnv] at hstep
+      obtain ⟨-, rfl⟩ := hstep; rfl
+    | some val =>
+      obtain ⟨done, target, rest⟩ := val
+      cases h_sub : Core.step? { s with expr := target } with
+      | none => simp [Core.step?, hfnv, h_sub] at hstep
+      | some p =>
+        obtain ⟨t, se⟩ := p
+        have hfwd := Core.step_arrayLit_step_elem elems s.env s.heap s.trace s.funcs s.callStack done target rest hfnv t se h_sub
+        rw [hfwd] at hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep
+        simp only [Core.pushTrace, Core.Expr.supported]
+        have htgt_supp := listSupported_firstNonValueExpr_target hfnv hsupp
+        have ⟨hd_supp, hr_supp⟩ := listSupported_firstNonValue_parts hfnv hsupp
+        have hse_supp := ih target.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; have := Core.firstNonValueExpr_depth hfnv; omega)
+          { s with expr := target } se t (Nat.le_refl _) htgt_supp h_sub
+        exact listSupported_replace_target se.expr hd_supp hse_supp hr_supp
+  | tryCatch body catchParam catchBody finally_ =>
+    rw [hexpr] at hsupp; simp [Core.Expr.supported, Bool.and_eq_true] at hsupp
+    rw [state_with_expr_eq hexpr] at hstep
+    cases hval_b : Core.exprValue? body with
+    | some v =>
+      -- body is a value
+      simp [Core.step?, hval_b] at hstep
+      split at hstep
+      · -- isCallFrame
+        simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
+      · -- not isCallFrame
+        cases finally_ with
+        | some fin =>
+          simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep
+          simp [Core.Expr.supported, hsupp.2]
+        | none =>
+          simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
+    | none =>
+      -- body is not a value: step body
+      cases h_sub : Core.step? { s with expr := body } with
+      | none => simp [Core.step?, hval_b, h_sub] at hstep
+      | some p =>
+        obtain ⟨te, sb⟩ := p
+        cases te with
+        | error msg =>
+          -- error branch
+          simp [Core.step?, hval_b, h_sub] at hstep
+          split at hstep
+          · -- isCallFrame && starts with "return:"
+            simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
+          · split at hstep
+            · -- isCallFrame, not return
+              simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
+            · -- regular catch
+              simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep
+              cases finally_ with
+              | some fin => simp [Core.Expr.supported, hsupp.1.2, hsupp.2]
+              | none => exact hsupp.1.2
+        | silent =>
+          have hfwd := Core.step_tryCatch_step_body_silent body catchParam catchBody finally_ s.env s.heap s.trace s.funcs s.callStack hval_b sb h_sub
+          rw [hfwd] at hstep
+          simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+          obtain ⟨-, rfl⟩ := hstep
+          simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
+          exact ⟨⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+            { s with expr := body } sb .silent (Nat.le_refl _) hsupp.1.1 h_sub, hsupp.1.2⟩, hsupp.2⟩
+        | log msg =>
+          have hfwd := Core.step_tryCatch_step_body_log body catchParam catchBody finally_ s.env s.heap s.trace s.funcs s.callStack hval_b msg sb h_sub
+          rw [hfwd] at hstep
+          simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+          obtain ⟨-, rfl⟩ := hstep
+          simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
+          exact ⟨⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+            { s with expr := body } sb (.log msg) (Nat.le_refl _) hsupp.1.1 h_sub, hsupp.1.2⟩, hsupp.2⟩
 
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)

@@ -1,4 +1,4 @@
-# proof — Close hasAbruptCompletion_step_preserved + NoNestedAbrupt_step_preserved
+# proof — hasAbrupt + NoNestedAbrupt DONE! Now close remaining ANF sorries.
 
 ## RULES
 - Edit: ANFConvertCorrect.lean, Flat/Semantics.lean, AND EndToEnd.lean
@@ -14,72 +14,55 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 ## MEMORY: 7.7GB total, NO swap. ~3.8GB available.
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
-## STATUS: Infrastructure DONE. Now close L9460 + L9469.
+## STATUS: hasAbruptCompletion_step_preserved + NoNestedAbrupt_step_preserved PROVED! GREAT WORK.
 
-step?_preserves_funcs, Steps_preserves_funcs, L9482, L10760-10761 are ALL PROVED. The only remaining work is the two big case-split theorems.
+Current ANF sorry count: 24
+- L7701-7887 (7): eval context lifting — PARKED (needs Flat.step? error propagation)
+- L8531-9023 (7): compound HasX — PARKED (same blocker)
+- L9067 (1): let compound in let_step_sim — needs structural induction
+- L9157, 9169 (2): while step sim — needs multi-step simulation
+- L9350, 9351, 9423, 9424 (4): if compound — wasmspec is working on these, DON'T TOUCH
+- L9468 (1): tryCatch step sim
+- L10768, 10821 (2): break/continue compound — PARKED (same Flat.step? error propagation blocker)
 
-## TASK 1: PROVE hasAbruptCompletion_step_preserved (L9460) — HIGHEST PRIORITY
+## TASK 1: Close L9468 (tryCatch step sim) — HIGHEST PRIORITY
 
-Signature at L9453-9460. This is a case split on ALL 31 Flat.Expr constructors.
+This is in `tryCatch_step_sim`. The ANF step on `.tryCatch body catchParam catchBody finally_` involves:
+- body value case: body done, step to continuation (with/without finally)
+- body error case: body threw, step to catch handler (with/without finally)
+- body stepping: body takes a step, wrap result back in tryCatch
 
-**EXACT APPROACH — use lean_multi_attempt first:**
+Use `lean_goal` at L9468 to see the exact proof state.
 
-At L9460, try this tactic block:
+Pattern:
 ```lean
-  cases e with
-  | lit => simp [Flat.step?] at hstep
-  | var => simp [Flat.step?] at hstep; obtain ⟨_, rfl⟩ := hstep; simp [hasAbruptCompletion]
-  | this => simp [Flat.step?] at hstep; obtain ⟨_, rfl⟩ := hstep; simp [hasAbruptCompletion]
-  | seq a b =>
-    simp [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
-    simp [Flat.step?] at hstep
-    split at hstep
-    · -- a is value: step to b. Use hac.2
-      obtain ⟨_, rfl⟩ := hstep; exact hac.2
-    · -- a steps: result is seq a' b
-      obtain ⟨_, _, _, rfl⟩ := hstep
-      simp [hasAbruptCompletion, Bool.or_eq_false_iff]
-      sorry -- may need IH pattern
-  | «break» => simp [hasAbruptCompletion] at hac
-  | «continue» => simp [hasAbruptCompletion] at hac
-  | «return» => simp [hasAbruptCompletion] at hac
-  | throw => simp [hasAbruptCompletion] at hac
-  | _ => sorry
+  simp only [ANF.step?, ANF.pushTrace] at hstep_eq
+  split at hstep_eq -- exprValue? body
+  · -- body is value: step to continuation
+    sorry
+  · -- body not value
+    split at hstep_eq -- step? body
+    · sorry -- step? body = some (ev, sa')
+    · -- step? body = none: contradiction
+      simp at hstep_eq
 ```
 
-The key pattern for each eval-context constructor (seq, let, if, assign, etc.):
-1. `simp [hasAbruptCompletion, Bool.or_eq_false_iff] at hac` to decompose hac
-2. `simp [Flat.step?] at hstep` then `split at hstep` for value/non-value sub-cases
-3. Value case: result expr has hasAbruptCompletion = false from hac components
-4. Step case: result wraps sub-result in same constructor, hasAbruptCompletion propagates
+For the body-steps sub-case, you need to show the Flat form also steps within the body. Use the `normalizeExpr` structure.
 
-For `call` with all values + funcs lookup: `exact hfuncs_ac _ _ ‹_›` or similar.
+## TASK 2: Close L9067 (let compound expression) — IF TIME
 
-**IMPORTANT**: Use `set_option maxHeartbeats 3200000 in` before the theorem. This will be large.
+At L9067: `| _ => sorry -- compound expression: needs structural induction on Flat.Expr`
 
-If the full case split is too big, decompose into helper lemmas per constructor group.
+This is in `let_step_sim` after lit/var/this/break/continue are dispatched. The remaining cases are compound expressions (seq, let, if, etc.) that appear in the let-init position. Need to show Flat can simulate the ANF step within the compound init.
 
-## TASK 2: PROVE NoNestedAbrupt_step_preserved (L9469)
-
-Same structure as Task 1 but cases on `sf.expr` with `NoNestedAbrupt` inversion.
-
-```lean
-  obtain ⟨e, env, heap, trace, funcs, cs⟩ := sf
-  simp at hna hstep ⊢
-  cases hna with
-  | lit => simp [Flat.step?] at hstep; ...
-  | seq hna_a hna_b => ...
-  -- etc for each NoNestedAbrupt constructor
-```
-
-For each case, show sf'.expr is still NoNestedAbrupt. Use hfuncs_na for call/funcDef.
-
-## TASK 3: Close L9866 + L9919 (break/continue) — IF TIME
+## CONCURRENCY: wasmspec also edits ANFConvertCorrect.lean
+- wasmspec works on L9350-9424 (if compound) ONLY
+- You work on L9468 and L9067 ONLY
+- DO NOT touch lines 9300-9430
 
 ## PRIORITY ORDER
-1. hasAbruptCompletion_step_preserved (L9460) — most impactful
-2. NoNestedAbrupt_step_preserved (L9469) — same technique
-3. L9866 + L9919 — break/continue
+1. L9468 (tryCatch step sim) — most tractable remaining sorry
+2. L9067 (let compound) — harder, if time permits
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

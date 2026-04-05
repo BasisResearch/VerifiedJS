@@ -12,89 +12,75 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 ## MEMORY: 7.7GB total, NO swap. ~3.8GB available.
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
-## STATUS: 6 Core_step_preserves_supported cases STILL OPEN (L3806-3811)
+## STATUS: getIndex + setIndex CLOSED! Great. 4 cases remain in Core_step_preserves_supported.
 
-You closed getProp and setProp last run — great. But getIndex/setIndex/call/objectLit/arrayLit/tryCatch are STILL SORRY. Fix them first before moving to other tasks.
+CC has 16 real sorries total:
+- L3914-3917 (4): Core_step_preserves_supported: call, objectLit, arrayLit, tryCatch
+- L3983 (1): captured variable (multi-step sim)
+- L4312, L4335 (2): CCStateAgree if-branches (architecturally blocked)
+- L4899 (1): funcs correspondence
+- L5107, L5115 (2): semantic mismatch (architecturally blocked)
+- L5753 (1): UNPROVABLE getIndex string
+- L6995 (1): functionDef
+- L7152, L7153 (2): tryCatch CCStateAgree (architecturally blocked)
+- L7225 (1): tryCatch inner
+- L7333 (1): while_ CCState threading (architecturally blocked)
 
-CC has 20 sorries total:
-- L2965, L2983: helper lemma sorries (listSupported_firstNonValue_parts, propListSupported_firstNonValue_parts)
-- L3806-3811: 6 Core_step_preserves_supported remaining cases
-- L3877: captured variable sorry
-- L4206, L4229: CCStateAgree if-branches
-- L4793: funcs correspondence
-- L5001, L5009: semantic mismatch (Core alloc vs Flat step)
-- L5647: UNPROVABLE getIndex string
-- L6889: functionDef case
-- L7046, L7047: tryCatch CCStateAgree
-- L7119: tryCatch inner
-- L7227: while_ CCState threading
+## TASK 1: Close L3914 (call) — HIGHEST PRIORITY
 
-## TASK 1: Close L3806 (getIndex with value obj) — HIGHEST PRIORITY
-
-The obj is already `.lit ov` (subst done). You need to handle idx value/non-value, EXACTLY like setProp (L3766-3786) does.
-
-```lean
--- Replace the sorry at L3806 with:
-      cases hval_i : Core.exprValue? idx with
-      | none =>
-        cases h_sub : Core.step? { s with expr := idx } with
-        | none => simp [Core.step?, Core.exprValue?, hval_i, h_sub] at hstep
-        | some p =>
-          obtain ⟨t, sa⟩ := p
-          have hfwd := Core.step_getIndex_step_idx (.lit ov) idx s.env s.heap s.trace s.funcs s.callStack hval_i t sa h_sub
-          rw [hfwd] at hstep
-          simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-          obtain ⟨-, rfl⟩ := hstep
-          simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-          exact ⟨trivial, ih idx.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-            { s with expr := idx } sa t (Nat.le_refl _) hsupp.2 h_sub⟩
-      | some iv =>
-        have hlit_i : idx = .lit iv := by cases idx <;> simp [Core.exprValue?] at hval_i; subst hval_i; rfl
-        subst hlit_i
-        cases ov <;> simp [Core.step?, Core.exprValue?, Core.pushTrace] at hstep <;>
-          (try (obtain ⟨-, rfl⟩ := hstep; rfl)) <;>
-          (try (split at hstep <;> (try split at hstep) <;> (obtain ⟨-, rfl⟩ := hstep; rfl)))
-```
-
-**If `step_getIndex_step_idx` doesn't exist**, use `lean_local_search` to find the correct helper name, or create it following the pattern of `Core.step_setProp_step_value`.
-
-## TASK 2: Close L3807 (setIndex) — same pattern as setProp
-
-setIndex has 3 sub-expressions (obj, idx, value). Follow the exact 3-level pattern from setProp (L3742-3786), with one more nesting level for the third argument. Use `lean_local_search` for forward lemma names.
-
-## TASK 3: Close L3808 (call) — needs FuncsSupported
-
-This needs a `FuncsSupported` hypothesis. Add it to Core_step_preserves_supported:
+The call case needs a FuncsSupported invariant. Add to Core_step_preserves_supported signature:
 ```lean
 (hfuncs : ∀ (i : Nat) (c : Core.Closure), s.funcs[i]? = some c → c.body.supported = true)
 ```
 
-Then at the call case when callee and args are all values:
+Then in the call case when callee and args are all values and it's a function call:
+- The step produces `.tryCatch funcDef.body "__call_frame_return__" ...`
+- funcDef.body.supported comes from `hfuncs`
+- Thread hfuncs through the IH calls (step? preserves funcs)
+
+**IMPORTANT**: After adding hfuncs, update the `hsupp'` derivation at L3956 to also derive `hfuncs'` from `hfuncs` (since Core.step? preserves funcs).
+
+## TASK 2: Close L3915/L3916 (objectLit/arrayLit)
+
+These need list induction via firstNonValue helpers.
+
+Pattern for objectLit:
 ```lean
-have hcl := hfuncs idx closure ‹_›
--- use hcl : closure.body.supported = true
+| objectLit =>
+  -- split on firstNonValueProp props
+  cases hfnv : Core.firstNonValueProp props with
+  | none =>
+    -- all values: step? produces .lit (.object addr)
+    simp [Core.step?, Core.exprValue?, Core.firstNonValueProp, hfnv, Core.pushTrace] at hstep
+    obtain ⟨-, rfl⟩ := hstep; rfl
+  | some ⟨pre, name, target, post⟩ =>
+    -- stepping target in the prop list
+    cases h_sub : Core.step? { s with expr := target } with
+    | none => simp [Core.step?, hfnv, h_sub] at hstep
+    | some p =>
+      obtain ⟨t, sa⟩ := p
+      -- forward lemma for objectLit stepping
+      -- reconstruct: result is objectLit (pre ++ [(name, sa.expr)] ++ post)
+      -- use IH on target, then propListSupported_append
+      sorry -- fill in with exact tactic sequence
 ```
 
-Update the IH calls to thread hfuncs (step? preserves funcs, so the same hypothesis propagates).
+Use `lean_local_search` for helper lemma names like `propListSupported_append`, `Core.step_objectLit_step_prop`.
 
-## TASK 4: Close L3809/L3810 (objectLit/arrayLit)
+## TASK 3: Close L3917 (tryCatch)
 
-These need list induction. First prove L2965 (listSupported_firstNonValue_parts) and L2983 (propListSupported_firstNonValue_parts) — these are straightforward inductions on the list with case analysis on firstNonValueExpr/firstNonValueProp.
+Pattern: case split on body value/error. In each branch, show supported is preserved.
 
-Then objectLit/arrayLit follow the pattern: decompose via firstNonValue*, use IH on the target element, reassemble via replace_target.
+## TASK 4: Close L3983 (captured variable) — IF TIME
 
-## TASK 5: Close L3811 (tryCatch)
-
-Use `lean_goal` at L3811 to see what's needed. Pattern: case split on body value/error, then show supported is preserved through each branch.
+This is `| some idx =>` in the var case. Flat produces `.getEnv (.var envVar) idx` which takes 2 steps (var lookup + getEnv), while Core takes 1 step. This needs a multi-step simulation or a different approach.
 
 ## PRIORITY ORDER
-1. L3806 (getIndex) — template code above, paste and adjust
-2. L3807 (setIndex) — copy-adapt from setProp
-3. L2965, L2983 (helper lemmas) — unblock objectLit/arrayLit
-4. L3809, L3810 (objectLit/arrayLit) — use helpers
-5. L3808 (call) — needs FuncsSupported change
-6. L3811 (tryCatch)
-7. Other CC sorries (lower priority)
+1. L3914 (call) — with FuncsSupported invariant
+2. L3915 (objectLit) — list induction
+3. L3916 (arrayLit) — same pattern as objectLit
+4. L3917 (tryCatch) — case split
+5. L3983 (captured variable) — if time
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

@@ -4940,4 +4940,54 @@ If proof closes L9460+L9469 and wasmspec closes L9050+if cases: ANF drops to ~15
 
 ## Run: 2026-04-05T04:00:49+00:00
 
+### Metrics
+- **Sorry count**: ANF 24 + CC 16 = **40 real sorries**
+- **Delta from last run (03:30)**: **-6 sorries** (46→40). ANF 26→24 (-2), CC 20→16 (-4).
+- **Lower**: 0. **Flat**: 0. **EndToEnd**: 0.
+
+### Agent Status
+1. **proof** (RUNNING since 03:30): MASSIVE WIN — **hasAbruptCompletion_step_preserved FULLY PROVED** (L9471-9950, no sorry in entire range). **NoNestedAbrupt_step_preserved FULLY PROVED** (L9952-10371, no sorry). These were the critical path theorems. The -2 ANF sorries are these two. **REWROTE prompt**: Redirected to L9468 (tryCatch step sim) and L9067 (let compound). L10768/10821 are architecturally PARKED (need Flat.step? error propagation).
+
+2. **jsspec** (just started at 04:00): Closed **getIndex + setIndex** in Core_step_preserves_supported (was L3806/3807, now gone). Also closed **L2965 + L2983** (helper lemmas). That's -4 CC sorries. 4 cases remain: call, objectLit, arrayLit, tryCatch (L3914-3917). **REWROTE prompt**: FuncsSupported invariant approach for call (L3914), list induction for objectLit/arrayLit, case split for tryCatch.
+
+3. **wasmspec** (RUNNING since 03:15): Expanded L9050 (let step sim) into case analysis (lit/var/this/break/continue proved as exfalso, compound left as sorry at L9067). Fixed all if_step_sim simp errors. **REWROTE prompt**: Focus on L9350/9351/9423/9424 (if compound). Clear concurrency boundaries with proof agent.
+
+### Actions Taken
+1. Counted sorries: ANF 24 + CC 16 = 40 real sorries. **Down 6 from last run.**
+2. **REWROTE proof prompt**: hasAbrupt + NoNestedAbrupt DONE. Redirected to L9468 (tryCatch step sim) and L9067 (let compound). Clear concurrency zone: don't touch L9300-9430 (wasmspec).
+3. **REWROTE jsspec prompt**: Acknowledged getIndex/setIndex/helper closures. Updated CC sorry list (16 remaining). Gave FuncsSupported approach for call case, list induction for objectLit/arrayLit.
+4. **REWROTE wasmspec prompt**: Updated target list to just L9350-9424 (if compound, 4 sorries). Clear concurrency zone: don't touch L9060-9070 or L9440-9470 (proof agent).
+5. Logged to time_estimate.csv: 40 sorries.
+
+### Sorry Breakdown
+
+**ANF (24 sorries):**
+- L7701-7887 (7): normalizeExpr_labeled eval context — PARKED
+- L8531-9023 (7): compound HasThrow/Return/Await/Yield — PARKED
+- L9067 (1): let compound expr — **proof agent target**
+- L9157, 9169 (2): while step sim — deferred
+- L9350, 9351, 9423, 9424 (4): if compound + HasIfInHead — **wasmspec target**
+- L9468 (1): tryCatch step sim — **proof agent target**
+- L10768, 10821 (2): break/continue compound — PARKED (Flat.step? error propagation)
+
+**CC (16 sorries):**
+- L3914-3917 (4): Core_step_preserves_supported (call/objectLit/arrayLit/tryCatch) — **jsspec target (PRIORITY 1)**
+- L3983 (1): captured variable multi-step sim
+- L4312, 4335 (2): CCStateAgree if-branches — architecturally blocked
+- L4899 (1): funcs correspondence
+- L5107, 5115 (2): semantic mismatch — architecturally blocked
+- L5753 (1): UNPROVABLE getIndex string
+- L6995 (1): functionDef
+- L7152, 7153 (2): tryCatch CCStateAgree — architecturally blocked
+- L7225 (1): tryCatch inner
+- L7333 (1): while_ CCState threading — architecturally blocked
+
+### Critical Assessment
+**MAJOR MILESTONE**: hasAbruptCompletion_step_preserved and NoNestedAbrupt_step_preserved are FULLY PROVED. These were the critical path theorems blocking NoNestedAbrupt_steps_preserved → anfConvert_steps_star → end-to-end composition. The proof agent delivered on 5+ days of stalling.
+
+**Architectural blockers**: 16 ANF sorries (eval context + compound HasX + break/continue compound) all need the same Flat.step? change: error propagation through compound expressions. This is a DESIGN CHANGE that would close 16 sorries at once but requires coordinated work across agents. Should be planned for next cycle.
+
+**Tractable sorries**: 8 sorries are actively targeted (proof: L9468+L9067, wasmspec: L9350-9424, jsspec: L3914-3917). If all close, we drop to 32 sorries. The CC architectural blockers (CCStateAgree, semantic mismatch) account for another 8 and need the path-based naming change proposed by jsspec.
+
 2026-04-05T04:05:01+00:00 SKIP: already running
+2026-04-05T04:07:14+00:00 DONE
