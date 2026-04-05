@@ -8076,7 +8076,7 @@ private theorem closureConvert_step_simulation
     | none =>
       -- Body is not a value; step the body via IH
       have hfnv : Flat.exprValue? fbody = none :=
-        convertExpr_not_value_supported body hbv (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> (first | exact h.1.1 | exact h.1)) scope envVar envMap st
+        convertExpr_not_value_supported body hbv (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> (first | exact h.1.1 | exact h.1 | exact h)) scope envVar envMap st
       have hexprwf_body : ExprAddrWF body sc.heap.objects.size := by
         cases finally_ <;> simp [ExprAddrWF] at hexprwf <;> exact hexprwf.1
       have hsf_eta : sf = { sf with expr := .tryCatch fbody catchParam fcatch ffin } := by
@@ -8099,7 +8099,7 @@ private theorem closureConvert_step_simulation
               { sf with expr := fbody }
               { sc with expr := body }
               (.error msg) sb scope st st1
-              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> (first | exact h.1.1 | exact h.1))
+              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> (first | exact h.1.1 | exact h.1 | exact h))
               (by simp [fbody, st1])
               ⟨hm⟩
           let handler := match finally_ with | some fin => Core.Expr.seq catchBody fin | none => catchBody
@@ -8159,7 +8159,7 @@ private theorem closureConvert_step_simulation
               { sf with expr := fbody }
               { sc with expr := body }
               t sb scope st st1
-              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> (first | exact h.1.1 | exact h.1))
+              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_body hexprwf_body (by revert hsupp; cases finally_ <;> simp [Core.Expr.supported, Bool.and_eq_true] <;> intro h <;> (first | exact h.1.1 | exact h.1 | exact h))
               (by simp [fbody, st1])
               ⟨hm⟩
           let sc' : Core.State :=
@@ -8202,7 +8202,7 @@ private theorem closureConvert_step_simulation
                 ExprAddrWF_mono fin (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.2) hmono⟩
           · -- CCStateAgree: thread IH result through tryCatch sub-conversions
             have hconv'_fst : sb.expr = (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst :=
-              congrArg Prod.fst hconv'.symm
+              congrArg Prod.fst hconv'
             have hconv'_snd : (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' :=
               congrArg Prod.snd hconv'.symm
             have hAgreeOut_sym : st_a'.nextId = st1.nextId ∧ st_a'.funcs.size = st1.funcs.size :=
