@@ -6267,3 +6267,69 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 ## Run: 2026-04-05T18:30:03+00:00
 
 2026-04-05T18:37:56+00:00 DONE
+
+## Run: 2026-04-05T19:00:02+00:00
+
+
+## Run: 2026-04-05T19:00:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 22 + CC 12 = **34 real sorries**
+- **Delta from last run (18:30)**: -10 (44→34). **COUNT DOWN — proof closed 8, wasmspec closed 2!**
+- **Lower**: 0 sorries (DONE)
+- **Wasm/Semantics**: 0 real sorries (DONE)
+
+### Why count went DOWN (-10): proof agent + wasmspec delivering
+
+**Proof agent closed 8 ANF sorries:**
+- L8601, L8726, L8743 (compound/bindComplex — Group A partial)
+- L9387 (HasThrowInHead compound — Group B)
+- L9544 (HasReturnInHead compound — Group B)
+- L9721 (HasAwaitInHead compound — Group B)
+- L9879 (HasYieldInHead compound — Group B)
+- L12394 (compound deferred — Group F partial)
+
+**Wasmspec closed 2 ANF sorries:**
+- L11211 (exotic catch-all true)
+- L11532 (exotic catch-all false)
+
+**jsspec**: Closed L4197 FuncsSupported (13→12 CC sorries, net 0 since last supervisor run).
+
+### Memory Management
+- Killed supervisor lake build PIDs 830136, 830429, 830431 (freed ~500MB)
+- Memory: 5.3GB available after cleanup
+- jsspec has LSP running for CC
+
+### Agent Status
+1. **proof** (completed run at 18:49, new run expected): Closed 8 sorries! Redirected to Group A eval ctx (4 sorries) + Group B compound inner_val (3 sorries). 18 sorries in proof agent's zone.
+2. **jsspec** (running since 19:00): Closed L4197 FuncsSupported. Working on L7917 (functionDef). 12 CC sorries, 1 closeable.
+3. **wasmspec** (completed at 18:35, new run expected): Closed 2 exotic catch-alls! Down to 4 sorries: trivialChain seq + seq_right pairs.
+
+### Actions Taken
+1. Killed supervisor builds (freed ~500MB RAM)
+2. Updated ALL 3 agent prompts with verified line numbers and fresh targets
+3. Congratulated all agents on progress, redirected to next targets
+4. Logged to time_estimate.csv
+
+### Sorry Classification (34 total)
+**ANF (22):**
+- 4 eval context (L8557, 8590, 8682, 8715) ← proof agent GROUP A
+- 3 compound inner_val/arg (L9538, 9715, 9873) ← proof agent GROUP B
+- 3 return/yield/compound (L9935, 9939, 9940) ← proof agent GROUP C
+- 2 while condition (L10030, 10042) ← proof agent GROUP D
+- 4 trivialChain seq/seq_right (L11053, 11104, 11376, 11425) ← wasmspec
+- 2 tryCatch (L12373, 12391) ← blocked
+- 2 call frame (L13477, 13488) ← blocked
+- 2 break/continue (L13708, 13761) ← blocked
+
+**CC (12):** L4905 (captured var), L5234 (if-true), L5257 (if-false), L5821 (non-consoleLog call), L6029/6037 (call not-value), L6675 (UNPROVABLE), L7917 (functionDef — jsspec target), L8074/8075 (tryCatch), L8147 (tryCatch inner), L8255 (while CCState)
+
+### Expected next run: 28-32
+- proof: 3-5 closes (eval ctx + compound inner_val — same patterns as what just worked)
+- wasmspec: 1-2 trivialChain seq closes possible
+- jsspec: 0-1 functionDef if proof goes well
+
+2026-04-05T19:04:01+00:00 DONE
+
+## Run: 2026-04-05T19:05:01+00:00
+

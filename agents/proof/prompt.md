@@ -1,4 +1,4 @@
-# proof — Close compound HasXInHead sorries (7 targets) + eval context (7 targets)
+# proof — Close remaining 22 ANF sorries: compound inner_val (3) + eval ctx (4) FIRST
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY (and Flat/Semantics.lean for infrastructure)
@@ -10,7 +10,7 @@
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
-## MEMORY: 7.7GB total, NO swap. ~3.6GB available.
+## MEMORY: 7.7GB total, NO swap. ~5GB available.
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
 ## BUILD COORDINATION — CRITICAL
@@ -21,62 +21,58 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 If count > 0, WAIT. Do not start a build. Use `lean_goal` / `lean_multi_attempt` via LSP instead.
 
 ## CONCURRENCY: wasmspec also edits ANFConvertCorrect.lean
-- wasmspec works on L11053-11532 (trivialChain/exotic sorries)
-- **YOU** own L8557-9940 (labeled/compound HasXInHead) AND L12375-13763 (tryCatch/call/break)
-- DO NOT touch lines outside your range
+- wasmspec works on L11053-11425 (trivialChain seq sorries — only 4 left)
+- **YOU** own everything else
+- DO NOT touch lines 11053-11425
 
-## YOUR 32 SORRIES — CURRENT LINE NUMBERS (verified 18:30)
+## GREAT WORK — 10 sorries closed this cycle!
+You closed 8: compound/bindComplex (8601, 8726, 8743), HasThrowInHead (9387), HasReturnInHead (9544), HasAwaitInHead (9721), HasYieldInHead (9879), compound deferred (12394). Wasmspec closed 2 exotic catch-alls.
 
-### GROUP A: eval context lifting (7 sorries, L8557-8743)
+## YOUR 18 SORRIES — CURRENT LINE NUMBERS (verified 19:00)
+
+### GROUP A: eval context lifting (4 sorries) — ATTACK THESE FIRST
 | L8557 | non-labeled inner value, eval ctx |
 | L8590 | non-labeled inner value, eval ctx |
-| L8601 | compound/bindComplex |
 | L8682 | non-labeled inner value, eval ctx |
 | L8715 | non-labeled inner value, eval ctx |
-| L8726 | compound/bindComplex |
-| L8743 | compound/bindComplex/throw/await |
 
-### GROUP B: compound HasXInHead (7 sorries, L9387-9879) — PRIMARY TARGET
-| L9387 | HasThrowInHead compound |
+These need `Steps_*_ctx` infrastructure to lift inner steps through evaluation contexts. You already have `Steps_seq_left_ctx_b`, `Steps_if_cond_ctx_b`, etc. Apply the same pattern you used for compound/bindComplex.
+
+### GROUP B: compound inner_val/inner_arg (3 sorries) — HIGH PRIORITY
 | L9538 | return compound inner_val |
-| L9544 | HasReturnInHead compound |
 | L9715 | await compound inner_arg |
-| L9721 | HasAwaitInHead compound |
 | L9873 | yield compound inner_val |
-| L9879 | HasYieldInHead compound |
 
-### GROUP C: return/yield/compound (3 sorries, L9935-9940)
+These follow the SAME pattern as the HasXInHead sorries you just closed. The expression isn't a direct value — it's compound (seq, let, etc.). Decompose by outer expression constructor, use eval context stepping + IH.
+
+### GROUP C: return/yield/compound (3 sorries)
 | L9935 | return (some val) |
 | L9939 | yield (some val) |
 | L9940 | compound |
 
-### GROUP D: while (2 sorries, L10030-10042)
-### GROUP E: trivialChain/exotic (6 sorries, L11053-11532) — WASMSPEC OWNS THESE
-### GROUP F: tryCatch/call/break (7 sorries, L12375-13763)
+### GROUP D: while (2 sorries)
+| L10030 | While condition value case |
+| L10042 | Condition-steps case |
 
-## STRATEGY FOR GROUP B (compound HasXInHead)
+### GROUP E: trivialChain (4 sorries) — WASMSPEC OWNS THESE
+| L11053 | trivialChain seq (true) |
+| L11104 | seq_right (true) |
+| L11376 | trivialChain seq (false) |
+| L11425 | seq_right (false) |
 
-These all follow the SAME pattern. The expression `sf_expr` has `HasXInHead` but isn't a direct X — it's compound (seq, let, assign, if, call, etc.).
+### GROUP F: tryCatch/call/break (6 sorries)
+| L12373 | tryCatch body-error |
+| L12391 | tryCatch body-step |
+| L13477 | noCallFrameReturn |
+| L13488 | body_sim IH |
+| L13708 | break |
+| L13761 | continue |
 
-**For each case:**
-1. The compound expression MUST step (one of its sub-expressions evaluates)
-2. After stepping, HasXInHead is PRESERVED (the head still contains X)
-3. Apply the normalizeExpr IH on the stepped state
-4. Bridge to SimRel
-
-**Start with L9387 (HasThrowInHead)**:
-```
-lean_goal at line 9387 column 4
-```
-Then try decomposing by the outer expression constructor:
-```
-lean_multi_attempt at line 9387 column 4
-["cases sf_expr <;> simp_all [ANF.normalizeExpr] <;> sorry"]
-```
-Many sub-cases should be contradictions (exfalso via HasThrowInHead). For real cases (seq, let, call), use eval context stepping + IH.
-
-## AFTER GROUP B: attack Group A (eval context lifting)
-Group A cases need `Steps_*_ctx` infrastructure to lift inner steps through evaluation contexts. You already have `Steps_seq_left_ctx_b`, `Steps_if_cond_ctx_b`, etc. Apply the same pattern.
+## PRIORITY ORDER
+1. **GROUP A** (4 eval ctx) — you have the infrastructure, these should be mechanical
+2. **GROUP B** (3 compound inner_val) — same pattern as HasXInHead you just proved
+3. **GROUP C** (3 return/yield/compound) — after A+B
+4. Everything else later
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`
