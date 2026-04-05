@@ -2037,10 +2037,27 @@ theorem step?_newObj_allValues (s : State)
         s.trace ++ [.silent], s.funcs, s.callStack⟩) := by
   unfold step?; simp only [hf, he, hvs, allocFreshObject, pushTrace]
 
-/-- step? never modifies the funcs field. Result funcs = input funcs by construction. -/
+set_option maxHeartbeats 4000000 in
+/-- step? never modifies the funcs field. -/
 theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Flat.State)
     (h : step? sf = some (ev, sf')) : sf'.funcs = sf.funcs := by
-  sorry -- yield/await cases need >3GB; all branches set funcs := sf.funcs by inspection
+  induction sf using step?.induct
+  all_goals (unfold step? at h)
+  all_goals (repeat split at h)
+  all_goals (try contradiction)
+  -- 1) Direct injection: h is some = some → rfl
+  all_goals (try (simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h; rfl))
+  -- 2) Conjunction from split (recursive await/yield): h is a ∧ b
+  all_goals (try { obtain ⟨-, rfl⟩ := h; rfl })
+  -- 3) Let-binding cases (pushTrace in step?): dsimp + inject + pushTrace
+  all_goals (try { dsimp only [] at h;
+    simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h;
+    simp only [pushTrace, allocFreshObject, allocEnvObject, allocObjectWithProps] })
+  -- 4) tryCatch error: funcs := sb.funcs needs IH. Hypothesis has step? ... = some (_, sb)
+  all_goals (try { dsimp only [] at h;
+    simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h;
+    simp only [pushTrace];
+    assumption })
 
 /-- Multi-step execution preserves the funcs field. -/
 theorem Steps_preserves_funcs {sf sf' : Flat.State} {evs : List Core.TraceEvent}
