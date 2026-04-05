@@ -1484,7 +1484,7 @@ private theorem closureConvert_init_related
     intro i fd hi
     dsimp at hi
     simp at hi
-    obtain rfl := hi; rfl
+    cases hi; rfl
   case conv =>
     unfold Flat.closureConvert at h
     simp only [Except.ok.injEq] at h
@@ -4078,10 +4078,8 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         exact listSupported_replace_target se.expr hd_supp hse_supp hr_supp
   | tryCatch body catchParam catchBody finally_ =>
     rw [hexpr] at hsupp; unfold Core.Expr.supported at hsupp
-    have hsup_body : body.supported = true := by revert hsupp; cases body.supported <;> simp
-    have hsup_catch : catchBody.supported = true := by revert hsupp; simp [hsup_body]; intro h; exact (Bool.and_eq_true.mp h).1
-    have hsup_fin : (match finally_ with | some x => x.supported | none => true) = true := by
-      revert hsupp; simp [hsup_body, hsup_catch]
+    simp only [Bool.and_eq_true] at hsupp
+    obtain ⟨⟨hsup_body, hsup_catch⟩, hsup_fin⟩ := hsupp
     rw [state_with_expr_eq hexpr] at hstep
     cases hval_b : Core.exprValue? body with
     | some v =>
@@ -4776,7 +4774,8 @@ private theorem Core_step_preserves_funcs_supported (s s' : Core.State) (ev : Co
           (by simpa [Core.pushTrace] using hfd)
   | tryCatch body catchParam catchBody finally_ =>
     rw [hexpr] at hsupp; unfold Core.Expr.supported at hsupp
-    have hsup_body : body.supported = true := by revert hsupp; cases body.supported <;> simp
+    simp only [Bool.and_eq_true] at hsupp
+    obtain ⟨⟨hsup_body, _⟩, _⟩ := hsupp
     rw [state_with_expr_eq hexpr] at hstep
     cases hval_b : Core.exprValue? body with
     | some v =>
