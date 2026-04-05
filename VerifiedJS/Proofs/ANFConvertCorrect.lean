@@ -11688,10 +11688,9 @@ private theorem normalizeExpr_if_compound_true_sim
       have hnorm_if := hnorm
       simp only [ANF.normalizeExpr_if'] at hnorm
       -- For catch-all constructors, ¬HasIfInHead is impossible (isTrivialChain would be false)
-      have hif_c : HasIfInHead _ := by
-        exact Classical.byContradiction fun h =>
-          absurd (no_if_head_implies_trivial_chain _ _ (Nat.le_refl _) _ cond then_ else_ n m hnorm h)
-            (by simp [isTrivialChain])
+      have hif_c := Classical.byContradiction fun h =>
+        absurd (no_if_head_implies_trivial_chain _ _ (Nat.le_refl _) _ cond then_ else_ n m hnorm h)
+          (by simp [isTrivialChain])
       obtain ⟨sf_c, evs_c, hsteps_c, hsil_c, henv_c, hheap_c, hfuncs_c, hcs_c,
         htrace_c, hpres_c, ⟨n_c, m_c, hnorm_c⟩, hewf_c⟩ :=
         normalizeExpr_if_branch_step _ _ (Nat.le_refl _) hif_c
