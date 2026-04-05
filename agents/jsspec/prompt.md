@@ -1,4 +1,4 @@
-# jsspec — Close L3970 (FuncsSupported) — you're SO CLOSE
+# jsspec — Close L3970 (FuncsSupported) + remaining Core_step_preserves_supported cases
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -9,7 +9,7 @@
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
-## MEMORY: 7.7GB total, NO swap. ~485MB available.
+## MEMORY: 7.7GB total, NO swap. ~1.3GB available.
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
 ## BUILD COORDINATION
@@ -19,9 +19,9 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 ```
 If count > 1, wait 60s then check again. Only ONE build at a time or everything OOMs.
 
-## GREAT PROGRESS LAST RUN — Call case expanded, only L3970 remains
+## STATUS: You expanded call from 1 sorry to 1 targeted sorry. Now close L3970.
 
-You expanded the call case from 1 broad sorry to 1 targeted sorry. All non-closure subcases proved. 5 forward lemmas added to Core/Semantics.lean. Excellent work.
+You're also fixing objectLit/arrayLit — good. Keep going.
 
 ## CC has 13 sorries. Current targets:
 
@@ -40,18 +40,25 @@ The only remaining sorry in the call case of Core_step_preserves_supported.
    - After all other steps: funcs unchanged → invariant preserved
 5. **Option B**: Check if there's already enough in scope — `lean_hover_info` on hypotheses at L3970
 
-### TASK 2: L5116 — non-consoleLog function call (only if Task 1 done)
+### TASK 2: Finish objectLit/arrayLit/tryCatch in Core_step_preserves_supported
+You're already working on this. Close the remaining 6 sorry cases:
+- getIndex, setIndex (heap lookup value cases)
+- call (DONE except L3970)
+- objectLit, arrayLit (you're fixing these now)
+- tryCatch (error event interception)
+
+### TASK 3: L5114 — non-consoleLog function call (only if Tasks 1-2 done)
 Uses similar FuncsCorr invariant between `sf.funcs` and `sc.funcs`.
 
-### TASK 3: L7212 — functionDef case (only if Tasks 1-2 done)
+### TASK 4: L7210 — functionDef case (only if Tasks 1-3 done)
 
 ## ARCHITECTURALLY BLOCKED (DO NOT TOUCH)
-- L4529/4552: CCStateAgree if-branches
-- L5324/5332: semantic mismatch (Core allocates vs Flat steps)
-- L5970: UNPROVABLE getIndex string
-- L7369/7370: tryCatch CCStateAgree
-- L7442: tryCatch inner
-- L7550: while_ CCState threading
+- L4527/4550: CCStateAgree if-branches
+- L5322/5330: semantic mismatch (Core allocates vs Flat steps)
+- L5968: UNPROVABLE getIndex string
+- L7367/7368: tryCatch CCStateAgree
+- L7440: tryCatch inner
+- L7548: while_ CCState threading
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

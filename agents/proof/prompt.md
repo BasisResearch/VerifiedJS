@@ -1,4 +1,4 @@
-# proof — Close tryCatch_direct (L10127) — infrastructure is DONE, now PROVE IT
+# proof — Close tryCatch subcases (L10204, L10272, L10275) — you're INSIDE the proof now
 
 ## RULES
 - Edit: ANFConvertCorrect.lean, Flat/Semantics.lean, AND EndToEnd.lean
@@ -10,7 +10,7 @@
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
-## MEMORY: 7.7GB total, NO swap. ~485MB available.
+## MEMORY: 7.7GB total, NO swap. ~1.3GB available.
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
 ## BUILD COORDINATION — CRITICAL
@@ -20,43 +20,60 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 ```
 If count > 0, WAIT. Do not start a build. Use `lean_goal` / `lean_multi_attempt` via LSP instead.
 
-## STATUS: ANF has 27 sorries. Your HasTryCatchInHead infrastructure is DONE. Now close the sorry.
-
-## TASK 1: Close tryCatch_direct (L10127) — YOU BUILT THE INFRA, NOW CLOSE IT
-
-Line 10127: `| tryCatch_direct => sorry -- MAIN CASE: direct tryCatch simulation`
-
-You already proved in last run:
-- HasTryCatchInHead definition + HasTryCatchInHead_not_value
-- normalizeExpr_tryCatch_or_k (via strong induction on depth)
-- normalizeExpr_tryCatch_implies_hasTryCatchInHead
-- Wired into normalizeExpr_tryCatch_step_sim with generalize hsfe trick
-- Split into tryCatch_direct + compound
-
-Now for tryCatch_direct:
-1. `lean_goal` at L10127 to see exact proof state
-2. sf.expr = .tryCatch body_flat cp_flat cb_flat fin_flat (from HasTryCatchInHead.tryCatch_direct)
-3. **ANF.step? on .tryCatch**: pushes catch handler to callStack, steps into body
-4. **Flat.step? on .tryCatch**: same — pushes catch handler, steps into body
-5. Construct ANF_SimRel between resulting states (body with catch frame on stack)
-6. This should be STRUCTURALLY STRAIGHTFORWARD since both Flat and ANF handle tryCatch the same way
-
-**Key**: Use `lean_multi_attempt` at L10127 to try: `simp [Flat.step?, ANF.step?] at *`, `unfold Flat.step? ANF.step? at hstep_eq ⊢`, etc.
-
-## TASK 2: Close compound tryCatch (L10128)
-After L10127 is done: `| _ => sorry -- compound cases`
-These are expressions where tryCatch is nested in head (via seq/let/etc). May need eval context lifting like the if compound cases.
-
-## TASK 3: break/continue compound (L11430, L11483) — ONLY if Tasks 1-2 done
-
 ## CONCURRENCY: wasmspec also edits ANFConvertCorrect.lean
-- wasmspec works on L9800-9912 (if compound) AND may work on general eval context lifting
-- You work on L10127-10128. DON'T touch L9800-9912.
+- wasmspec works on L7700-9912 (if compound/eval context lifting)
+- **YOU** own L10190-10278 (tryCatch) and L11560-11633 (break/continue)
+- DO NOT touch lines outside your range
+
+## GREAT PROGRESS — tryCatch lit-body/no-finally is PROVED
+
+You decomposed tryCatch_direct beautifully. The lit-body no-finally case (L10206-10266) is fully proved. Now close the remaining 5 sorry subcases:
+
+### TASK 1: L10272 — tryCatch body-error (PRIORITY 1)
+```
+sorry -- tryCatch body-error: needs inner body step simulation + catch handler SimRel
+```
+The ANF step? returned an error from the body. You need to:
+1. `lean_goal` at L10272
+2. The body is NOT a value, and step? body returned (.error msg, sb)
+3. Show Flat.step? on the tryCatch also steps the body
+4. When body errors, tryCatch catches it → steps to catch handler with error bound
+5. Both ANF and Flat should do the same thing here
+6. Use inner SimRel to get Flat stepping body → error, then tryCatch catches
+
+### TASK 2: L10275 — tryCatch body-step (normal step)
+```
+sorry -- tryCatch body-step: needs inner body step simulation + tryCatch wrapping SimRel
+```
+1. Body takes a normal step (not error, not value)
+2. ANF wraps stepped body back in tryCatch
+3. Show Flat also steps body, wraps back in tryCatch
+4. SimRel preserved because inner step preserves it
+
+### TASK 3: L10204 — tryCatch body-value with finally
+```
+sorry -- tryCatch body-value with finally: Flat steps .tryCatch (.lit v) cp cb (some fin_f) → .seq fin_f (.lit v)
+```
+1. Body is a value, finally = some fin
+2. ANF produces .seq fin (.trivial v)
+3. Flat produces .seq fin_f (.lit v)
+4. Construct SimRel between these
+
+### TASK 4: L10232 — call frame case
+This is likely contradictory in well-formed source programs. Try:
+1. `lean_goal` at L10232
+2. Show catchParam = "__call_frame_return__" contradicts source program well-formedness
+3. If no well-formedness hyp available, add one or use `exfalso`
+
+### TASK 5 (only if 1-4 done): L10278 — compound tryCatch cases
+Deferred — needs eval context lifting (same blocker as ~17 other sorries).
 
 ## PRIORITY ORDER
-1. tryCatch_direct (L10127) — CLOSE IT THIS RUN
-2. compound tryCatch (L10128)
-3. break/continue compound (L11430/11483)
+1. L10272 (body-error) — should be most straightforward
+2. L10275 (body-step) — similar pattern
+3. L10204 (finally case)
+4. L10232 (call frame contradiction)
+5. L10278 (compound — only if time permits)
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`
