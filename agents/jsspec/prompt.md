@@ -1,4 +1,4 @@
-# jsspec — CLOSE 18 sorries via depth induction on Core_step_preserves_supported
+# jsspec — PIVOT: Close easy CC sorries FIRST, then depth induction
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -9,92 +9,75 @@
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
-## MEMORY: 7.7GB total, NO swap. ~2.6GB available.
+## MEMORY: 7.7GB total, NO swap. ~3.8GB available.
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
-## STATUS: You ran 4.5 hours with ZERO closures last run. UNACCEPTABLE.
+## STATUS: Depth induction has been stuck for 3+ runs. PIVOTING to easier wins.
 
-## TASK: Add depth induction to Core_step_preserves_supported (L3375)
+The depth induction on Core_step_preserves_supported (L3675-3682) is important but you've been stuck on it. Instead, close OTHER CC sorries first for concrete progress, then return to depth induction.
 
-The current proof uses `cases hexpr : s.expr` — no induction hypothesis available. The 7 `| none => sorry` cases (L3426, L3456, L3466, L3478, L3488, L3498, L3508) and the 11 constructor cases (L3509-3519) ALL need an IH because Core.step? on a compound with non-value sub-expression steps that sub-expression, and we need `supported` preserved on the stepped sub.
+## TASK 1: CCStateAgree sorries (L4077, L4100, L6917, L6918, L6990) — EASIEST
 
-### EXACT APPROACH — wrap with `suffices`:
+These all say "CCStateAgree" — the CCState (nextId, funcs list) after converting one branch may differ from the state expected by the proof. Look at what CCStateAgree requires:
 
+At L4077 (if-true branch):
 ```lean
-private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.TraceEvent)
-    (hsupp : s.expr.supported = true) (hstep : Core.step? s = some (ev, s')) :
-    s'.expr.supported = true := by
-  suffices h : ∀ (n : Nat) (e : Core.Expr), e.depth ≤ n →
-    ∀ (s s' : Core.State) (ev : Core.TraceEvent),
-      s.expr = e → e.supported = true → Core.step? s = some (ev, s') →
-      s'.expr.supported = true from
-    h s.expr.depth s.expr (Nat.le_refl _) s s' ev rfl hsupp hstep
-  intro n
-  induction n with
-  | zero =>
-    intro e hd s s' ev hexpr hsupp hstep
-    -- depth 0 means leaf. All compound exprs have depth ≥ 1.
-    cases e <;> simp [Core.Expr.depth] at hd
-    -- Only leaves survive. Copy existing leaf proofs (var, this, break, continue, etc.)
-    -- But actually: lit has step? = none (contradiction), var/this/break/continue are fine
-    all_goals (rw [state_with_expr_eq hexpr] at hstep; simp [Core.step?, Core.pushTrace] at hstep)
-    all_goals (try (obtain ⟨-, rfl⟩ := hstep; rfl))
-    -- var and this need lookup split — copy from existing proof
-    all_goals sorry
-  | succ n ih =>
-    intro e hd s s' ev hexpr hsupp hstep
-    cases hexpr' : e with
-    -- PUT ALL EXISTING CASES HERE, but:
-    -- 1. Replace `hexpr` references with `hexpr'` and `he : s.expr = e`
-    -- 2. In each | none => case, apply ih:
+sorry⟩ -- CCStateAgree st' vs then_-only state: needs different st_a choice
 ```
 
-### THE KEY PATTERN for `| none =>` cases:
+The pattern is: `refine ⟨st_a, st_a', ..., ⟨rfl, rfl⟩, sorry⟩` where the sorry needs to show the output CCState matches. The fix is usually to pick the RIGHT `st_a` and `st_a'` in the `refine`.
 
-Each `| none =>` case means `exprValue? sub = none`, so Core.step? steps `sub`. The result expression wraps the stepped sub-expression in the same constructor. Example for `| «return» (some arg) =>`:
+**Approach**: Use `lean_goal` at each sorry to see EXACTLY what's needed. Often the fix is:
+- Change which CCState you pick as `st_a`/`st_a'`
+- Use `CCState_agree_trans` or similar lemma
+- Or prove `convertExpr_snd_monotone` (conversion only increments nextId)
 
+Try each one. If the goal is just `st_a = st_b` for specific states, trace back through the convertExpr calls to find the right choice.
+
+## TASK 2: L3748 (captured variable sorry)
+
+This is the `var` case where `lookupEnv envMap name = some idx`:
 ```lean
-    | none =>
-      -- arg is not a value, so Core.step? steps arg
-      rw [state_with_expr_eq hexpr] at hstep  -- where hexpr : s.expr = .return (some arg)
-      simp [Core.step?, Core.exprValue?, hval] at hstep
-      -- Now hstep tells us step? on arg produced some result
-      -- Split on step? result
-      split at hstep
-      · next sub_ev sub_s' hsub =>
-        obtain ⟨-, rfl⟩ := hstep
-        simp [Core.Expr.supported]
-        -- Need: sub_s'.expr.supported = true
-        -- Use ih n arg (by simp [Core.Expr.depth] at hd; omega) ...
-        exact ih n arg (by cases e <;> simp [Core.Expr.depth] at hd ⊢; omega)
-          {s with expr := arg} sub_s' sub_ev rfl
-          (by simp [Core.Expr.supported] at hsupp; exact hsupp)  -- arg.supported from compound.supported
-          hsub
-      · simp at hstep  -- step? = none contradicts hstep
+| some idx =>
+  simp [hlookupEnv] at hconv
+  sorry
 ```
 
-### FOR THE 11 CONSTRUCTOR CASES (L3509-3519):
+The converted expression is `.getEnv (.var envVar) idx`. When Flat steps this:
+1. First step: evaluate `.var envVar` → looks up envVar in env
+2. Second step: `.getEnv (.lit envObj) idx` → indexes into the environment object
 
-These (unary, call, binary, getProp, setProp, getIndex, setIndex, deleteProp, objectLit, arrayLit, tryCatch) are the same pattern but with multiple sub-expressions. Each needs:
+This is a 2-step Flat reduction vs 1-step Core (var lookup). You need to show the simulation: Core looks up `name` in env, Flat does getEnv on the closure environment.
 
-1. `rw [state_with_expr_eq hexpr] at hstep`
-2. `simp [Core.step?, Core.exprValue?] at hstep` to unfold
-3. Case split on which sub-expression gets stepped
-4. Apply `ih` for the stepped sub
+Use `lean_goal` at L3748 to see the exact proof state. The key hypothesis should be `EnvCorrInj` which relates Core env to Flat env through the injMap.
 
-### STEP BY STEP PLAN:
+## TASK 3: L4664 (non-consoleLog function call)
 
-1. Use `lean_goal` at L3377 and `lean_hover_info` on `Core.Expr.depth` to understand the depth function.
-2. Add the `suffices` wrapper. Put ALL existing proof code after `cases hexpr : s.expr with` inside the `| succ n ih =>` branch, changing `hexpr` to work with the new structure.
-3. Handle the `zero` base case (leaves only).
-4. Test that existing working cases still compile (use `lean_multi_attempt`).
-5. Fix `| none =>` cases one at a time using `ih`.
-6. Attack constructor cases.
+```lean
+sorry -- non-consoleLog function call: needs sf.funcs[idx] ↔ sc.funcs[idx] correspondence
+```
 
-### IMPORTANT: Incremental approach
-- Start by JUST adding the suffices wrapper and making the existing cases compile under it
-- Then fix sorry cases one at a time
-- Build after each batch of changes
+This needs a `FuncsCorr` invariant or similar. Check if CC_SimRel already has a funcs correspondence hypothesis. Use `lean_hover_info` on `CC_SimRel` to see its fields.
+
+## TASK 4: L6760 (functionDef)
+
+```lean
+| functionDef fname params body isAsync isGen => sorry
+```
+
+This is the function definition case. Core creates a closure and stores it. Flat's convertExpr for functionDef should produce a similar structure. Use `lean_hover_info` on `Flat.convertExpr` for the functionDef case.
+
+## TASK 5: Depth induction (L3675-3682) — ONLY IF TASKS 1-4 DONE
+
+If you finish the above, return to the depth induction approach from the previous prompt. The `suffices` wrapper with induction on `Core.Expr.depth` is the right strategy.
+
+## PRIORITY ORDER
+1. L4077, L4100 (if CCStateAgree) — likely quick fixes
+2. L6917, L6918, L6990 (tryCatch CCStateAgree) — same pattern
+3. L3748 (captured var)
+4. L4664 (function call FuncsCorr)
+5. L6760 (functionDef)
+6. Depth induction (L3675-3682)
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

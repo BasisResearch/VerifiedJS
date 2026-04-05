@@ -9927,8 +9927,8 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
   simp only [Flat.State.funcs] at hfuncs_na hfuncs_ac
   suffices ∀ n e, e.depth ≤ n → ∀ env heap trace funcs cs ev sf',
     NoNestedAbrupt e →
-    (∀ i (fd : Flat.FuncDef), funcs[i]? = some fd → NoNestedAbrupt fd.body) →
-    (∀ i (fd : Flat.FuncDef), funcs[i]? = some fd → hasAbruptCompletion fd.body = false) →
+    (∀ (i : Nat) (fd : Flat.FuncDef), funcs[i]? = some fd → NoNestedAbrupt fd.body) →
+    (∀ (i : Nat) (fd : Flat.FuncDef), funcs[i]? = some fd → hasAbruptCompletion fd.body = false) →
     Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf') →
     NoNestedAbrupt sf'.expr from this _ _ (Nat.le_refl _) _ _ _ _ _ _ _ hna hfuncs_na hfuncs_ac hstep
   intro n
@@ -10391,8 +10391,8 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
 /-- Flat multi-step preserves NoNestedAbrupt. -/
 private theorem NoNestedAbrupt_steps_preserved {sf sf' : Flat.State} {evs : List Core.TraceEvent}
     (hna : NoNestedAbrupt sf.expr)
-    (hfuncs_na : ∀ i (fd : Flat.FuncDef), sf.funcs[i]? = some fd → NoNestedAbrupt fd.body)
-    (hfuncs_ac : ∀ i (fd : Flat.FuncDef), sf.funcs[i]? = some fd → hasAbruptCompletion fd.body = false)
+    (hfuncs_na : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → NoNestedAbrupt fd.body)
+    (hfuncs_ac : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → hasAbruptCompletion fd.body = false)
     (hsteps : Flat.Steps sf evs sf') :
     NoNestedAbrupt sf'.expr := by
   induction hsteps with

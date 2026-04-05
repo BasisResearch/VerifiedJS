@@ -1,58 +1,75 @@
-# wasmspec — FIX if_step_sim ERRORS then close let/while sorries
+# wasmspec — Close let/while/tryCatch ANF step sim sorries
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
 - **DO NOT** run `lake build` anything large
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
-- MEMORY: 7.7GB total, NO swap. ~2.6GB available right now.
+- MEMORY: 7.7GB total, NO swap. ~3.8GB available right now.
 - You CAN edit ANFConvertCorrect.lean AND Flat/Semantics.lean
 - Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
 ## MEMORY WARNING
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
-## STATUS: You split L9093 into sub-cases and added normalizeExpr_while_decomp. Good progress.
+## STATUS: Good work fixing 4 if_step_sim simp errors! if_step_sim section now clean.
 
-## TASK 1: Fix if_step_sim ERRORS at L9285-L9399 (PRIORITY 1)
+## TASK 1: Prove Flat.step?_preserves_funcs (NEW — shared with proof agent)
 
-These 12 errors block ALL downstream LSP verification. There are 4 repeated error patterns across 4 if-condition cases (lit, var, this, compound).
+Both proof agent and you need this lemma. If it doesn't exist yet in Flat/Semantics.lean, add it:
 
-### Error 1: `Flat.pushTrace` is private (L9297, L9320, L9364, L9388)
-**FIX**: In `VerifiedJS/Flat/Semantics.lean`, find `private def pushTrace` (around L191) and remove `private`. Make it `protected def pushTrace` or just `def pushTrace`.
+```lean
+theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Flat.State)
+    (h : step? sf = some (ev, sf')) : sf'.funcs = sf.funcs := by
+  -- Unfold step? and inspect every branch
+  unfold step? at h
+  -- Each branch constructs sf' with the same funcs
+  split at h <;> simp_all [pushTrace]
+```
 
-### Error 2: `env.lookup` vs `ANF.Env.lookup` (L9290, L9313, L9356, L9380)
-After simp, the hypothesis becomes `ANF.Env.lookup env name = some v` but the goal needs `env.lookup name = some v`.
-**FIX**: Check with `lean_hover_info` whether `ANF.Env.lookup` and `List.lookup` are the same. If yes, add `[ANF.Env.lookup]` to the simp call. Or use `exact` instead of simp.
+This should be straightforward — step? never modifies funcs. Check with `lean_hover_info` on step? to verify.
 
-### Error 3: `simp at this` no progress (L9299, L9322, L9370, L9394)
-The `have := Flat.step?_if_true ...` produces something that `simp` can't simplify.
-**FIX**: Try `simp [Flat.step?_pushTrace_expand]` directly, or try `exact this` if the types already match, or `unfold Flat.pushTrace at this`.
+## TASK 2: Close L9050 (let step sim)
 
-### Error 4: `observableTrace` mismatch (L9303, L9326, L9375, L9399)
-The trace has `[.silent, .silent]` but needs to match the goal.
-**FIX**: Likely just needs `simp [observableTrace_append, observableTrace_silent, observableTrace_nil, List.append_assoc]`.
+```lean
+sorry -- Need characterization of what produces .let, flat simulation
+```
 
-### Approach: Fix error 1 FIRST (just remove `private`), then build to see how many errors remain.
+This is the case where ANF has a `.let name init body` and `exprValue? init = none`, so ANF.step? steps `init`. The normalizeExpr for `.let` should produce a Flat `.let` with normalized init and body.
 
-## TASK 2: Close let step sim (L9050)
+**Approach:**
+1. `lean_goal` at L9050 to see the exact proof state
+2. `lean_hover_info` on `ANF.normalizeExpr` for the `.let` case
+3. The key: if `normalizeExpr (.let name init body) k` produces a Flat let, then stepping init in ANF corresponds to stepping the normalized init in Flat
 
-Currently: `sorry -- Need characterization of what produces .let, flat simulation`
-
-When ANF has `.let name init body` and `exprValue? init = none`, ANF.step? steps init. The Flat simulation needs to show Flat can match. The normalizeExpr for let should produce something Flat can step.
-
-Use `lean_hover_info` on normalizeExpr and ANF.step? for `.let` to understand the exact structure.
+You likely need:
+- `normalizeExpr_let_decomp`: shows normalizeExpr of .let decomposes into normalizeExpr of init + body
+- Then connect ANF.step? on `.let` with Flat.step? on the normalized form
 
 ## TASK 3: Continue while sub-cases (L9140, L9152)
 
-You already split L9093 and added `normalizeExpr_while_decomp`. Continue:
-- L9140: while condition value case — transient state
-- L9152: condition-steps case — needs flat while-condition simulation
+You already split L9093 and added `normalizeExpr_while_decomp`.
+
+- **L9140**: while condition value case. The transient `.seq (.seq d (.while_ c d)) b` form is NOT directly normalizeExpr-compatible. This may need multi-step simulation (Flat takes multiple steps to match one ANF step).
+
+- **L9152**: condition-steps case. Flat `.while_ c d` desugars to `.if c (.seq d (.while_ c d)) (.lit .undefined)`. When ANF steps the condition, Flat needs to:
+  1. Desugar while → if (one silent step)
+  2. Step the condition inside the if
+
+This requires a 2-step Flat simulation. Check if `Flat.Steps` can handle this.
+
+## TASK 4: L9451 (tryCatch step sim) — IF TIME
+
+```lean
+sorry
+```
+
+Similar pattern: ANF has .tryCatch, need to show Flat simulation matches.
 
 ## PRIORITY ORDER
-1. Fix `private pushTrace` → rebuild → see remaining errors
-2. Fix env.lookup, simp, observableTrace errors
-3. L9050 (let step sim)
-4. L9140, L9152 (while)
+1. `step?_preserves_funcs` — quick lemma, unblocks proof agent too
+2. L9050 (let) — most tractable
+3. L9140, L9152 (while) — harder, needs multi-step
+4. L9451 (tryCatch) — if time
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

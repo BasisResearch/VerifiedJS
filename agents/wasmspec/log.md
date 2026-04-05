@@ -6316,3 +6316,18 @@ Need characterization of what normalizeExpr produces for these forms and Flat si
 ## Run: 2026-04-04T23:15:01+00:00
 
 ### 2026-04-04T23:15:10+00:00 Starting run
+### 2026-04-05T00:09:03+00:00 Progress update
+- Fixed return var/this step proofs (L8627, L8661): hv_anf + step?_pushTrace_expand
+- Fixed await var step proof (L8810): hv_anf
+- Fixed yield var/this step proofs (L8962, L8996): hv_anf + step?_pushTrace_expand
+- Fixed getProp in hasAbruptCompletion_step_preserved: added string/other-value cases
+- Fixed deleteProp in hasAbruptCompletion_step_preserved: added other-value case
+- Fixed all 'by simp [hasAbruptCompletion]' → replaced with correct hypothesis names (ho, hi, hf_ac, etc.)
+- Fixed binary lhs-value step: simp [step?_pushTrace_expand] + trivial
+- Fixed call/newObj/getEnv rw failures: changed to rw [step?.eq_1] + simp only [hfv] approach
+- Fixed all '∀ i (fd : Flat.FuncDef)' → '∀ (i : Nat) (fd : Flat.FuncDef)' for GetElem? resolution
+- Fixed funcIdx✝ mismatch: use '_' instead of explicit funcIdx
+- Removed leftover duplicate code in call env case
+- Range 8600-9400: ZERO errors remaining (all return/yield/await/if fixes confirmed)
+- Range 9400-9930: 4 pre-existing errors remain (getEnv envVal cases, objectLit split/cases)
+- Range 10100+: many cascading errors in NoNestedAbrupt_step_preserved (same patterns, pre-existing)

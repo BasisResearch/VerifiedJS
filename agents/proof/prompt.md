@@ -1,4 +1,4 @@
-# proof — Add funcs invariant to close L9721/L10202, then break/continue error propagation
+# proof — Close L11680/L11681 (program funcs invariant) + L10402 (step propagation)
 
 ## RULES
 - Edit: ANFConvertCorrect.lean, Flat/Semantics.lean, AND EndToEnd.lean
@@ -11,80 +11,81 @@
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
-## MEMORY: 7.7GB total, NO swap. ~2.6GB available.
+## MEMORY: 7.7GB total, NO swap. ~3.8GB available.
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
-## TASK 1: Add funcs invariant to close L9721 + L10202
+## TASK 1: Close L11680 + L11681 (program funcs invariant) — HIGHEST PRIORITY
 
-### Problem
-At L9721, after all args are values and `funcs[funcIdx]? = some funcDef`, step? produces:
-```
-.tryCatch funcDef.body "error" (.lit .undefined) none
-```
-We need `hasAbruptCompletion funcDef.body = false`, but there's NO hypothesis about funcDef.body.
-
-Same issue at L10202 for NoNestedAbrupt.
-
-### Fix
-Add a hypothesis to BOTH theorems:
-
-For `hasAbruptCompletion_step_preserved` (L9453):
+These two sorries at L11680-11681 in `anfConvert_steps_star` are:
 ```lean
-private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
-    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
-    (funcs : Array Flat.FuncDef) (cs : List Flat.Env) (ev : Core.TraceEvent) (sf' : Flat.State)
-    (hac : hasAbruptCompletion e = false)
-    (hfuncs_ac : ∀ i (fd : Flat.FuncDef), funcs[i]? = some fd → hasAbruptCompletion fd.body = false)
-    (hstep : Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf')) :
-    hasAbruptCompletion sf'.expr = false := by
+have hfuncs_na_sf : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → NoNestedAbrupt fd.body := sorry -- from program invariant
+have hfuncs_ac_sf : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → hasAbruptCompletion fd.body = false := sorry -- from program invariant
 ```
 
-Also update the `suffices` to include `hfuncs_ac` in the quantified statement.
+These need to come from the PROGRAM-LEVEL invariant. The function table `sf.funcs` is populated during `ANF.convert` from the source program. Since we're proving correctness of compilation, all function bodies in the compiled program should satisfy NoNestedAbrupt and ¬hasAbruptCompletion.
 
-For `NoNestedAbrupt_step_preserved` (L9904):
+### Approach
+1. Add hypotheses to `anfConvert_steps_star` (L11662):
 ```lean
-private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.TraceEvent)
-    (hna : NoNestedAbrupt sf.expr)
-    (hfuncs_na : ∀ i (fd : Flat.FuncDef), sf.funcs[i]? = some fd → NoNestedAbrupt fd.body)
-    (hstep : Flat.step? sf = some (ev, sf')) :
-    NoNestedAbrupt sf'.expr := by
+(hfuncs_na : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → NoNestedAbrupt fd.body)
+(hfuncs_ac : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → hasAbruptCompletion fd.body = false)
 ```
 
-### Then close L9721:
+2. In the `| tail` case, after getting `sf2` from `anfConvert_step_star`, you need to show the invariant propagates. Key insight: **Flat.step? does NOT change funcs**. Verify with `lean_hover_info` on Flat.step? — the funcs field should be preserved. If so:
 ```lean
-                · next funcDef hfd =>
-                  -- hstep gives us s' with .tryCatch funcDef.body ...
-                  simp at hstep; obtain ⟨_, rfl⟩ := hstep
-                  simp [Flat.State.expr, hasAbruptCompletion]
-                  exact hfuncs_ac funcIdx funcDef hfd
+have hfuncs_eq : sf2.funcs = sf.funcs := Flat.Steps_preserves_funcs hfsteps1
+-- Then: hfuncs_na_sf2 follows from hfuncs_na + hfuncs_eq
 ```
 
-### Then close L10202:
+If `Flat.Steps_preserves_funcs` doesn't exist, prove it: each step preserves funcs (check Flat.step? definition), then induct on Steps.
+
+3. Replace `sorry` at L11680-11681 with the actual hypotheses.
+
+4. Update the caller of `anfConvert_steps_star` (likely in EndToEnd.lean) to provide the funcs invariants. This should be derivable from the compilation process.
+
+## TASK 2: Close L10402 (NoNestedAbrupt_steps_preserved propagation)
+
+At L10402:
 ```lean
-                · next funcDef hfd =>
-                  simp at hstep; obtain ⟨_, rfl⟩ := hstep
-                  simp [Flat.State.expr]
-                  exact NoNestedAbrupt.tryCatch_none (hfuncs_na funcIdx funcDef hfd) NoNestedAbrupt.lit
+exact ih (NoNestedAbrupt_step_preserved _ _ _ hna hfuncs_na hfuncs_ac hstep_eq) sorry sorry
 ```
 
-### IMPORTANT: Update ALL callers
+The two `sorry` args need `hfuncs_na` and `hfuncs_ac` for the STEPPED state `sf'`. Same insight: step? preserves funcs, so:
+```lean
+have hfuncs_eq : sf'.funcs = sf.funcs := by
+  -- Extract from hstep_eq that funcs is unchanged
+  sorry -- or prove Flat.step?_preserves_funcs
+exact ih (NoNestedAbrupt_step_preserved _ _ _ hna hfuncs_na hfuncs_ac hstep_eq)
+  (fun i fd h => hfuncs_na i fd (hfuncs_eq ▸ h))
+  (fun i fd h => hfuncs_ac i fd (hfuncs_eq ▸ h))
+```
 
-After adding the new hypotheses, callers need updating:
+Actually, if you can prove `Flat.step?_preserves_funcs` as a general lemma, it solves both tasks.
 
-1. `NoNestedAbrupt_steps_preserved` (L10370): needs to pass `hfuncs_na` through. Since `funcs` doesn't change across steps (verify this!), the invariant propagates.
+### Proving Flat.step?_preserves_funcs
+```lean
+theorem Flat.step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Flat.State)
+    (h : Flat.step? sf = some (ev, sf')) : sf'.funcs = sf.funcs := by
+  -- Unfold step? and case split on expr
+  simp [Flat.step?] at h
+  -- Each case should show funcs unchanged
+  sorry -- fill in
+```
 
-2. The call sites in `NoNestedAbrupt_step_preserved` itself that call `hasAbruptCompletion_step_preserved` (L10017, L10028, L10037, L10048): these need to pass `hfuncs_ac`. Derive it from `hfuncs_na` — if `NoNestedAbrupt fd.body` then `hasAbruptCompletion fd.body = false` (you may need a lemma for this).
+This is likely provable by inspection of step? — in every branch, the output state copies funcs from the input.
 
-3. The caller of `NoNestedAbrupt_steps_preserved` in `anfConvert_step_star` (L10378): needs to provide the funcs invariant from the simulation relation.
+## TASK 3: Continue closing ANF sorry cases (IF TIME)
 
-### CRITICAL: Check if `sf'.funcs = sf.funcs` after a step
-If step? preserves funcs (it should — funcs is immutable), then the funcs invariant propagates through multi-step.
+After Tasks 1-2, the remaining ANF sorries are:
+- L7701-7887 (7): eval context lifting — PARKED
+- L8531-9023 (7): compound HasX cases — PARKED
+- L9050: let step sim (wasmspec)
+- L9140, 9152: while step sim (wasmspec)
+- L9333-9407 (4): if compound
+- L9451: tryCatch step sim
+- L10783: break/continue compound — needs eval context
 
-## TASK 2: Break/continue error propagation (L10759, L10812) — IF TIME
-
-These are compound HasBreakInHead/HasContinueInHead cases. They all need: when Flat.step? steps through a compound expression containing a break/continue sub-expression, the stepped result still simulates.
-
-This requires a general "eval context step" lemma. If Task 1 is done, start analyzing what this lemma needs.
+Focus on what's achievable: the funcs invariant propagation (Tasks 1-2) closes 4 sorries and unblocks the end-to-end composition.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

@@ -3221,3 +3221,37 @@ Before converting while body, save and restore `nextId` to a known base. Require
 
 ### 2026-04-04T23:00:15+00:00 Starting run
 2026-04-05T00:00:02+00:00 SKIP: already running
+
+## Run: 2026-04-04T23:00 — Depth induction on Core_step_preserves_supported
+
+### Result: 10 sorries closed (18 → 8 in theorem). File compiles (LSP confirms zero errors in theorem range).
+
+### What was done
+
+Added depth induction to `Core_step_preserves_supported` (L3375-3682):
+
+1. **Wrapped in `suffices` + `Nat.strongRecOn`**: Gives IH for sub-expression stepping (sub-expressions have strictly smaller depth).
+
+2. **Closed 7 primary `| none =>` cases** (return/let/assign/if/seq/throw/typeof):
+   - Pattern: extract sub-step via `cases h_sub : Core.step? { s with expr := sub }`, use forward helper theorem (e.g., `Core.step_return_step_arg`) to rewrite outer step, then apply IH.
+   
+3. **Closed 3 secondary cases**:
+   - **unary**: value case → `.lit (evalUnary op v)` → supported by rfl; non-value → IH
+   - **binary**: lhs non-value → IH; both values → `.lit (evalBinary op lv rv)` → rfl; rhs non-value with value lhs → simp + IH (needed `trivial` instead of `rfl` for `.lit lv` supported)
+   - **deleteProp**: value case → `.lit (.bool true)` → rfl (all Value types); non-value → IH
+
+### Remaining 8 sorries in theorem
+- getProp, setProp, getIndex, setIndex (need heap lookup value cases)
+- call (needs args list stepping)
+- objectLit, arrayLit (need list induction for firstNonValue)
+- tryCatch (needs error event interception logic)
+
+### Build status
+- `lake build VerifiedJS.Proofs.ClosureConvertCorrect` fails due to **pre-existing** errors in `closureConvert_step_simulation` (L6922, 6945, 7005, 7046-7048, 7364, 7394, 7453, 7483) — NOT in `Core_step_preserves_supported`.
+- LSP confirms zero errors in theorem range (3375-3685).
+- `set_option maxHeartbeats 4000000 in` added (local to the theorem).
+
+### Technical notes
+- `simp [Core.exprValue?]` unfolds exprValue? destructively on abstract exprs. Use specific `@[simp] exprValue_lit` (auto-applied) + `hval_r` instead.
+- For binary rhs non-value: simp converts `(.lit lv).supported = true` to `True` via `Bool.and_eq_true`, requiring `trivial` instead of `rfl`.
+### 2026-04-05T00:09:50+00:00 Run complete — 10 sorries closed in Core_step_preserves_supported (18→8)
