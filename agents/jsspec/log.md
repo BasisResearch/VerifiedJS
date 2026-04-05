@@ -3441,3 +3441,34 @@ Fixed 9 compilation errors in ClosureConvertCorrect.lean that were preventing th
 ## Run: 2026-04-05T23:00:02+00:00
 
 ### 2026-04-05T23:00:12+00:00 Starting run
+
+#### Helpers built (all 10 from prompt + infrastructure):
+
+**step? single-step helpers (new):**
+- `step?_call_env_ctx` — call env position (`.call (.lit fv) [·] args`)
+- `step?_newObj_func_ctx` — newObj func position
+- `step?_newObj_env_ctx` — newObj env position (`.newObj (.lit fv) [·] args`)
+- `step?_newObj_arg_ctx` — newObj arg position (list-based)
+- `step?_getIndex_idx_ctx` — getIndex idx position (`.getIndex (.lit ov) [·]`)
+- `step?_setIndex_idx_ctx` — setIndex idx position (`.setIndex (.lit ov) [·] val`)
+- `step?_makeEnv_values_ctx` — makeEnv value position (list-based)
+- `step?_objectLit_val_ctx` — objectLit value position (prop-list-based)
+- `step?_arrayLit_elem_ctx` — arrayLit element position (list-based)
+
+**Bounded Steps_X_ctx_b helpers (new):**
+- `Steps_call_env_ctx_b`, `Steps_call_arg_ctx_b`, `Steps_newObj_func_ctx_b`
+- `Steps_newObj_env_ctx_b`, `Steps_newObj_arg_ctx_b`, `Steps_getIndex_idx_ctx_b`
+- `Steps_setIndex_idx_ctx_b`, `Steps_makeEnv_values_ctx_b`
+- `Steps_objectLit_val_ctx_b`, `Steps_arrayLit_elem_ctx_b`
+
+**Infrastructure helpers (new):**
+- `valuesFromExprList?_none_of_props_nonvalue` — prop-list variant
+- `firstNonValueProp_of_done_lit` — prop-list reconstruction
+
+**Bug fixes:**
+- Fixed pre-existing `valuesFromExprList?_none_of_nonvalue` (removed redundant `rfl`)
+- Fixed pre-existing `step?_call_arg_ctx` proof (`simp only` → `rw` for `match hf :` pattern)
+
+All helpers LSP-verified with no errors in the helper section.
+### 2026-04-05T23:52:12+00:00 Run complete — all 10 missing helpers built and verified
+2026-04-05T23:52:19+00:00 DONE

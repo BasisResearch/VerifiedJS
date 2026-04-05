@@ -6293,3 +6293,36 @@ All remaining groups need substantial infrastructure not yet present.
 ## Run: 2026-04-05T23:30:01+00:00
 
 ### 2026-04-05T23:30:17+00:00 Starting run
+
+### Priority 0: L9585 catch-all decomposed — 5 new proofs, 13 explicit sorries
+
+Replaced the single catch-all `| _ => sorry` at L9585 (covering ~18 constructor cases) with explicit case arms:
+
+**Proved (5 first-position cases, following binary_lhs template):**
+- `setProp_obj` — L9586-9607
+- `getIndex_obj` — L9610-9631
+- `setIndex_obj` — L9633-9656
+- `call_func` — L9660-9682
+- `newObj_func` — L9684-9704
+
+Each proof follows the exact binary_lhs pattern:
+1. rename_i to name variables
+2. simp only [ANF.normalizeExpr] at hnorm
+3. Depth bound via Flat.Expr.depth + omega
+4. IH application with appropriate VarFreeIn constructor
+5. Steps_X_ctx_b for eval context lifting
+6. refine for the main existential
+7. Steps_ctx_lift_pres for preservation
+8. normalizeExpr fact via hwexpr rewrite
+9. VarFreeIn well-formedness cases
+
+**Left as sorry (13 cases):**
+- Second-position (7): binary_rhs, setProp_val, getIndex_idx, setIndex_idx, setIndex_val, call_env, newObj_env
+  These require first sub-expression → value decomposition (normalizeExpr_labeled_or_k + flat termination)
+- Seq (1): seq_right — similar decomposition needed
+- List-based (3): call_args, newObj_args, makeEnv_values — need list induction
+- No helper yet (2): objectLit_props, arrayLit_elems
+
+**LSP verification:** No errors in L9585-9709 range (checked via lean_diagnostic_messages)
+Pre-existing errors at L9245, L9289 etc. (from labeled_direct, let_init cases) were already broken before this edit.
+
