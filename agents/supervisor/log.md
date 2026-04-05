@@ -1,3 +1,55 @@
+## Run: 2026-04-05T20:30:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 25 + CC 12 = **37 real sorries**
+- **Delta from last run (20:05)**: -4 (41→37). **DOWN — good progress!**
+- **Lower**: 0 sorries (DONE)
+
+### Why count went DOWN (-4)
+- ANF: 30→25 (-5). **proof agent closed 5 labeled sorries** (Group A: 7→2). The `normalizeExpr_labeled_or_k` infrastructure worked — most exfalso cases eliminated. Remaining: L8573 (unary_arg needs Steps_unary_ctx_b) and L8574 (catch-all).
+- CC: 11→12 (+1). L7917 (functionDef) was NOT actually closed last cycle — supervisor log at 20:05 was wrong. jsspec is currently building CC (PID 1019894). L7917 still sorry.
+
+### Memory Status
+- 2.5GB available. Killed 3 duplicate supervisor lean builds (freed ~2GB).
+- jsspec: 2 lean workers on CC (PIDs 1017441, 1020002) + lake build (1019894)
+- proof: LSP started at 20:30, lean worker on ANF (PID 1022898)
+- wasmspec: NOT running
+
+### Agent Status
+1. **proof** (RUNNING since 20:30): Just started. Closed 5 labeled sorries since last cycle! Prompt UPDATED: redirected to L8573 (unary_arg, needs Steps_unary_ctx_b), then Group B (4 compound HasXInHead).
+2. **jsspec** (RUNNING since 19:00): Building CC. L7917 (functionDef) still sorry. Prompt UPDATED: corrected — L7917 is PRIMARY target, not done.
+3. **wasmspec** (IDLE): No evidence of activity. Prompt UPDATED with new line numbers (L11833, L11940, L12449, L12556).
+
+### Actions Taken
+1. Killed 3 duplicate supervisor lean builds (freed ~2GB memory)
+2. Updated ALL 3 agent prompts with verified line numbers
+3. Corrected jsspec prompt: L7917 NOT closed, still primary target
+4. Redirected proof to L8573 (Steps_unary_ctx_b) as next priority
+5. Updated wasmspec line numbers (shifted from previous)
+6. Logged to time_estimate.csv
+
+### Sorry Classification (37 total)
+**ANF (25):**
+- 2 labeled remnant (L8573 unary_arg, L8574 catch-all) ← proof agent
+- 4 compound HasXInHead (L9821, L9978, L10155, L10313) ← proof agent
+- 3 compound inner_val/arg (L9972, L10149, L10307) ← proof agent
+- 3 return/yield/compound (L10369, L10373, L10374) ← proof agent
+- 2 while condition (L10464, L10476) ← proof agent
+- 2 preservation combined (L11833, L12449) ← wasmspec
+- 2 exotic remaining (L11940, L12556) ← wasmspec
+- 3 tryCatch (L13397, L13415, L13418) ← blocked
+- 2 call frame (L14501, L14512) ← blocked
+- 2 break/continue (L14732, L14785) ← blocked
+
+**CC (12):** L4905, L5234, L5257, L5821 (jsspec secondary), L6029, L6037, L6675 (unprovable), L7917 (jsspec primary), L8074, L8075, L8147, L8255
+
+### Expected next run: 34-36
+- proof: if Steps_unary_ctx_b lands, L8573 closes (-1). Group B eval context stepping may close 1-2 more.
+- jsspec: L7917 (functionDef) is a substantial case but closeable with focused effort
+- wasmspec: 0-2 if preservation goals are mechanical
+
+---
+
 ## Run: 2026-04-05T20:05:14+00:00
 
 ### Metrics
@@ -6438,3 +6490,7 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 ## Run: 2026-04-05T20:05:09+00:00
 
 2026-04-05T20:09:54+00:00 DONE
+
+## Run: 2026-04-05T20:30:02+00:00
+
+2026-04-05T20:35:00+00:00 DONE
