@@ -9795,10 +9795,12 @@ private theorem normalizeExpr_if_compound_true_sim
       · intro x hfx; exact hewf x (VarFreeIn.if_then _ _ _ _ hfx)
     | «break» l =>
       exfalso; simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_break, pure, Pure.pure,
-        StateT.pure, Except.pure, StateT.run] at hnorm
+        StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hnorm
+      exact ANF.Expr.noConfusion hnorm.1
     | «continue» l =>
       exfalso; simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_continue, pure, Pure.pure,
-        StateT.pure, Except.pure, StateT.run] at hnorm
+        StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hnorm
+      exact ANF.Expr.noConfusion hnorm.1
     | labeled l body' =>
       exfalso; simp only [ANF.normalizeExpr_if'] at hnorm
       exact ANF.normalizeExpr_labeled_not_if l body' _ cond then_ else_ n m hnorm
@@ -9891,10 +9893,12 @@ private theorem normalizeExpr_if_compound_false_sim
       · intro x hfx; exact hewf x (VarFreeIn.if_else _ _ _ _ hfx)
     | «break» l =>
       exfalso; simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_break, pure, Pure.pure,
-        StateT.pure, Except.pure, StateT.run] at hnorm
+        StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hnorm
+      exact ANF.Expr.noConfusion hnorm.1
     | «continue» l =>
       exfalso; simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_continue, pure, Pure.pure,
-        StateT.pure, Except.pure, StateT.run] at hnorm
+        StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hnorm
+      exact ANF.Expr.noConfusion hnorm.1
     | labeled l body' =>
       exfalso; simp only [ANF.normalizeExpr_if'] at hnorm
       exact ANF.normalizeExpr_labeled_not_if l body' _ cond then_ else_ n m hnorm
@@ -10118,6 +10122,7 @@ private theorem normalizeExpr_tryCatch_step_sim
       ExprWellFormed sf'.expr sf'.env := by
   subst hheap henv
   have htc_head := ANF.normalizeExpr_tryCatch_implies_hasTryCatchInHead sf.expr k hk body catchParam catchBody finally_ n m hnorm
+  generalize hsfe : sf.expr = sfe at htc_head hnorm hewf
   cases htc_head with
   | tryCatch_direct => sorry -- MAIN CASE: direct tryCatch simulation
   | _ => sorry -- compound cases: deferred
