@@ -915,7 +915,7 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
                     | [] => []
                   let s' := pushTrace
                     { s with expr := .lit retVal, env := restoredEnv
-                           , heap := sb.heap, funcs := sb.funcs
+                           , heap := sb.heap
                            , callStack := newStack } .silent
                   some (.silent, s')
               else if isCallFrame then
@@ -928,7 +928,7 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
                     | [] => []
                   let s' := pushTrace
                     { s with expr := .lit .undefined, env := restoredEnv
-                           , heap := sb.heap, funcs := sb.funcs
+                           , heap := sb.heap
                            , callStack := newStack } (.error msg)
                   some (.error msg, s')
               else
@@ -2041,23 +2041,21 @@ set_option maxHeartbeats 4000000 in
 /-- step? never modifies the funcs field. -/
 theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Flat.State)
     (h : step? sf = some (ev, sf')) : sf'.funcs = sf.funcs := by
-  induction sf using step?.induct
-  all_goals (unfold step? at h)
-  all_goals (repeat split at h)
-  all_goals (try contradiction)
-  -- 1) Direct injection: h is some = some → rfl
-  all_goals (try (simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h; rfl))
-  -- 2) Conjunction from split (recursive await/yield): h is a ∧ b
+  unfold step? at h
+  split at h
+  <;> (repeat split at h)
+  <;> (try contradiction)
+  <;> (try (simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h; rfl))
+  -- Remaining: recursive step? in h. Generalize to split without needing IH.
+  all_goals (try { revert h; generalize step? _ = r; intro h;
+    rcases r with _ | ⟨t, si⟩
+    · simp at h
+    · dsimp only [] at h
+      simp only [Option.some.injEq, Prod.mk.injEq] at h
+      obtain ⟨-, rfl⟩ := h; simp [pushTrace] })
+  -- Handle conjunction cases (split decomposed some=some into And)
   all_goals (try { obtain ⟨-, rfl⟩ := h; rfl })
-  -- 3) Let-binding cases (pushTrace in step?): dsimp + inject + pushTrace
-  all_goals (try { dsimp only [] at h;
-    simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h;
-    simp only [pushTrace, allocFreshObject, allocEnvObject, allocObjectWithProps] })
-  -- 4) tryCatch error: funcs := sb.funcs needs IH. Hypothesis has step? ... = some (_, sb)
-  all_goals (try { dsimp only [] at h;
-    simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h;
-    simp only [pushTrace];
-    assumption })
+  all_goals (try { obtain ⟨-, rfl⟩ := h; simp [pushTrace] })
 
 /-- Multi-step execution preserves the funcs field. -/
 theorem Steps_preserves_funcs {sf sf' : Flat.State} {evs : List Core.TraceEvent}
