@@ -8506,7 +8506,8 @@ private theorem closureConvert_halt_preservation
       (∀ (b : String) (o f : Core.Expr), sc.expr ≠ .forIn b o f) →
       (∀ (b : String) (i f : Core.Expr), sc.expr ≠ .forOf b i f) →
       Core.step? sc = none := by
-  intro sf sc ⟨htrace, _, _hncfr, _hexprwf, _henvwf, _hheapvwf, _hheapna, _hsupp, _hfuncs_supp, scope, envVar, envMap, st, st', hconv⟩ hhalt hnoForIn hnoForOf
+  intro sf sc hrel hhalt hnoForIn hnoForOf
+  obtain ⟨htrace, _, _hncfr, _hexprwf, _henvwf, _hheapvwf, _hheapna, _hsupp, _, scope, envVar, envMap, st, st', hconv⟩ := hrel
   obtain ⟨v, hlit⟩ := step?_none_implies_lit sf hhalt
   rw [hlit] at hconv
   cases hsc : sc.expr with
