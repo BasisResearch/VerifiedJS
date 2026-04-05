@@ -1484,7 +1484,7 @@ private theorem closureConvert_init_related
     intro i fd hi
     dsimp at hi
     simp at hi
-    subst hi; rfl
+    obtain rfl := hi; rfl
   case conv =>
     unfold Flat.closureConvert at h
     simp only [Except.ok.injEq] at h
@@ -4077,21 +4077,21 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           { s with expr := target } se t (Nat.le_refl _) htgt_supp hfuncs_supp h_sub
         exact listSupported_replace_target se.expr hd_supp hse_supp hr_supp
   | tryCatch body catchParam catchBody finally_ =>
-    simp only [hexpr, Core.Expr.supported, Bool.and_eq_true] at hsupp
-    obtain ⟨⟨hsup_body, hsup_catch⟩, hsup_fin⟩ := hsupp
+    rw [hexpr] at hsupp; unfold Core.Expr.supported at hsupp
+    have hsup_body : body.supported = true := by revert hsupp; cases body.supported <;> simp
+    have hsup_catch : catchBody.supported = true := by revert hsupp; simp [hsup_body]; intro h; exact (Bool.and_eq_true.mp h).1
+    have hsup_fin : (match finally_ with | some x => x.supported | none => true) = true := by
+      revert hsupp; simp [hsup_body, hsup_catch]
     rw [state_with_expr_eq hexpr] at hstep
     cases hval_b : Core.exprValue? body with
     | some v =>
-      -- body is a value: tryCatch completes
       have hstep' := hstep
       unfold Core.step? at hstep'
       simp only [hval_b] at hstep'
       split at hstep'
-      · -- isCallFrame
-        simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
+      · simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
         obtain ⟨-, rfl⟩ := hstep'; simp [Core.pushTrace, Core.Expr.supported]
-      · -- not isCallFrame
-        cases finally_ with
+      · cases finally_ with
         | some fin =>
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
           obtain ⟨-, rfl⟩ := hstep'
@@ -4101,7 +4101,6 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
           obtain ⟨-, rfl⟩ := hstep'; simp [Core.pushTrace, Core.Expr.supported]
     | none =>
-      -- body is not a value: step body
       cases h_sub : Core.step? { s with expr := body } with
       | none =>
         exfalso; revert hstep; rw [state_with_expr_eq hexpr]; unfold Core.step?; simp [hval_b, h_sub]
@@ -4109,20 +4108,16 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         obtain ⟨te, sb⟩ := p
         cases te with
         | error msg =>
-          -- error branch
           have hstep' := hstep
           unfold Core.step? at hstep'
           simp only [hval_b, h_sub] at hstep'
           split at hstep'
-          · -- isCallFrame && starts with "return:"
-            simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
+          · simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
             obtain ⟨-, rfl⟩ := hstep'; simp [Core.pushTrace, Core.Expr.supported]
           · split at hstep'
-            · -- isCallFrame, not return
-              simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
+            · simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
               obtain ⟨-, rfl⟩ := hstep'; simp [Core.pushTrace, Core.Expr.supported]
-            · -- regular catch
-              simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
+            · simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
               obtain ⟨-, rfl⟩ := hstep'
               cases finally_ with
               | some fin =>
@@ -4780,8 +4775,8 @@ private theorem Core_step_preserves_funcs_supported (s s' : Core.State) (ev : Co
           { s with expr := target } se t (Nat.le_refl _) htgt_supp hfuncs_supp h_sub i fd
           (by simpa [Core.pushTrace] using hfd)
   | tryCatch body catchParam catchBody finally_ =>
-    simp only [hexpr, Core.Expr.supported, Bool.and_eq_true] at hsupp
-    obtain ⟨⟨hsup_body, _⟩, _⟩ := hsupp
+    rw [hexpr] at hsupp; unfold Core.Expr.supported at hsupp
+    have hsup_body : body.supported = true := by revert hsupp; cases body.supported <;> simp
     rw [state_with_expr_eq hexpr] at hstep
     cases hval_b : Core.exprValue? body with
     | some v =>
