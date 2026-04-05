@@ -5894,3 +5894,6 @@ The normalizeExpr_tryCatch_step_sim sorry is now split into:
 - `| _ => sorry` — compound cases (sf.expr is .seq/.let/.getProp/etc. with tryCatch in head), needs step simulation through compound prefix
 2026-04-05T08:17:34+00:00 DONE
 2026-04-05T08:17:46+00:00 DONE
+
+## Run: 2026-04-05T08:30:01+00:00
+
