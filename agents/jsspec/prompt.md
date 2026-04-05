@@ -1,4 +1,4 @@
-# jsspec — PIVOT: Close easy CC sorries FIRST, then depth induction
+# jsspec — Close remaining 8 Core_step_preserves_supported + CC sorries
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -12,72 +12,97 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 ## MEMORY: 7.7GB total, NO swap. ~3.8GB available.
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
-## STATUS: Depth induction has been stuck for 3+ runs. PIVOTING to easier wins.
+## STATUS: GREAT WORK! You closed 10 sorries last run (18→8 in Core_step_preserves_supported).
 
-The depth induction on Core_step_preserves_supported (L3675-3682) is important but you've been stuck on it. Instead, close OTHER CC sorries first for concrete progress, then return to depth induction.
+The depth induction + suffices + Nat.strongRecOn approach WORKS. You proved return, let, assign, if, seq, throw, typeof, unary, binary, deleteProp. 8 remaining.
 
-## TASK 1: CCStateAgree sorries (L4077, L4100, L6917, L6918, L6990) — EASIEST
+## TASK 1: Close remaining 8 in Core_step_preserves_supported (L3675-3682)
 
-These all say "CCStateAgree" — the CCState (nextId, funcs list) after converting one branch may differ from the state expected by the proof. Look at what CCStateAgree requires:
-
-At L4077 (if-true branch):
+Remaining cases:
 ```lean
-sorry⟩ -- CCStateAgree st' vs then_-only state: needs different st_a choice
+| getProp => sorry
+| setProp => sorry
+| getIndex => sorry
+| setIndex => sorry
+| call => sorry
+| objectLit => sorry
+| arrayLit => sorry
+| tryCatch => sorry
 ```
 
-The pattern is: `refine ⟨st_a, st_a', ..., ⟨rfl, rfl⟩, sorry⟩` where the sorry needs to show the output CCState matches. The fix is usually to pick the RIGHT `st_a` and `st_a'` in the `refine`.
-
-**Approach**: Use `lean_goal` at each sorry to see EXACTLY what's needed. Often the fix is:
-- Change which CCState you pick as `st_a`/`st_a'`
-- Use `CCState_agree_trans` or similar lemma
-- Or prove `convertExpr_snd_monotone` (conversion only increments nextId)
-
-Try each one. If the goal is just `st_a = st_b` for specific states, trace back through the convertExpr calls to find the right choice.
-
-## TASK 2: L3748 (captured variable sorry)
-
-This is the `var` case where `lookupEnv envMap name = some idx`:
+### getProp (L3675)
+Pattern: `getProp obj prop`. If obj is a value, Core.step? does heap lookup → result is a value (lit) → supported by rfl. If obj is not a value, step steps obj → IH on obj.depth.
 ```lean
-| some idx =>
-  simp [hlookupEnv] at hconv
-  sorry
+| getProp obj prop =>
+  cases hval : Core.exprValue? obj with
+  | some v =>
+    -- obj is a value, step? does heap lookup, result is .lit something
+    simp [Core.step?, hval] at hstep
+    split at hstep <;> simp_all [Core.pushTrace, Core.Expr.supported]
+  | none =>
+    -- obj not a value, step? steps obj
+    cases h_sub : Core.step? { s with expr := obj } with
+    | none => simp [Core.step?, hval, h_sub] at hstep
+    | some p =>
+      obtain ⟨t, sa⟩ := p
+      have hfwd := Core.step_getProp_step_obj obj prop s.env s.heap s.trace s.funcs s.callStack hval t sa h_sub
+      rw [hfwd] at hstep
+      simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+      obtain ⟨-, rfl⟩ := hstep
+      simp only [Core.pushTrace, Core.Expr.supported]
+      exact ih obj.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+        { s with expr := obj } sa t (Nat.le_refl _) hsupp h_sub
 ```
 
-The converted expression is `.getEnv (.var envVar) idx`. When Flat steps this:
-1. First step: evaluate `.var envVar` → looks up envVar in env
-2. Second step: `.getEnv (.lit envObj) idx` → indexes into the environment object
+Check if `Core.step_getProp_step_obj` exists with `lean_local_search`. If not, you need to write a forward lemma first.
 
-This is a 2-step Flat reduction vs 1-step Core (var lookup). You need to show the simulation: Core looks up `name` in env, Flat does getEnv on the closure environment.
+### setProp (L3676)
+Similar 3-level pattern: obj not value → step obj; obj value, val not value → step val; both values → heap write → .lit result.
 
-Use `lean_goal` at L3748 to see the exact proof state. The key hypothesis should be `EnvCorrInj` which relates Core env to Flat env through the injMap.
+### getIndex / setIndex (L3677-3678)
+Same pattern as getProp/setProp but with index expressions.
 
-## TASK 3: L4664 (non-consoleLog function call)
+### call (L3679)
+More complex: has func expr, optional env, args list. When func not value → step func. When func value but env not value → step env. When both value but args has non-value → step first non-value arg. When all values → call invocation.
 
-```lean
-sorry -- non-consoleLog function call: needs sf.funcs[idx] ↔ sc.funcs[idx] correspondence
-```
+Use `lean_goal` to see the exact state. The key is `Core.firstNonValue` for the args list. You may need separate lemmas or `List.induction`.
 
-This needs a `FuncsCorr` invariant or similar. Check if CC_SimRel already has a funcs correspondence hypothesis. Use `lean_hover_info` on `CC_SimRel` to see its fields.
+### objectLit / arrayLit (L3680-3681)
+These use `firstNonValue` on a list of expressions. Pattern:
+- If all values: step? allocates on heap → .lit (.object addr) → supported
+- If has non-value: step? steps it → IH on depth
 
-## TASK 4: L6760 (functionDef)
+You may need induction on the list or a `firstNonValue_depth_lt` lemma.
 
-```lean
-| functionDef fname params body isAsync isGen => sorry
-```
+### tryCatch (L3682)
+`tryCatch body catch_ finally_`. If body not value → step body. If body is error → catch path. If body is value → result.
 
-This is the function definition case. Core creates a closure and stores it. Flat's convertExpr for functionDef should produce a similar structure. Use `lean_hover_info` on `Flat.convertExpr` for the functionDef case.
+### Strategy
+- Do getProp first — it's closest to deleteProp which you already proved
+- setProp/getIndex/setIndex follow the same pattern
+- Use `lean_multi_attempt` to test tactic sequences before editing
+- For each case, check if the relevant `Core.step_X_step_Y` forward lemma exists
 
-## TASK 5: Depth induction (L3675-3682) — ONLY IF TASKS 1-4 DONE
+## TASK 2: Other CC sorries (IF TIME after Task 1)
 
-If you finish the above, return to the depth induction approach from the previous prompt. The `suffices` wrapper with induction on `Core.Expr.depth` is the right strategy.
+After Core_step_preserves_supported is fully proved, these remain:
+- L3748: captured variable simulation (2-step Flat)
+- L4077, L4100: if CCStateAgree
+- L4664: non-consoleLog function call
+- L4872, L4880: non-value func/arg semantic mismatch
+- L5518: getIndex string (marked UNPROVABLE — consider removing or axiomatizing)
+- L6760: functionDef
+- L6917, L6918, L6990, L7098: tryCatch/while CCState threading
+
+For L4077/L4100, use `lean_goal` to see what's needed — these are often fixable by choosing the right witness state.
 
 ## PRIORITY ORDER
-1. L4077, L4100 (if CCStateAgree) — likely quick fixes
-2. L6917, L6918, L6990 (tryCatch CCStateAgree) — same pattern
-3. L3748 (captured var)
-4. L4664 (function call FuncsCorr)
-5. L6760 (functionDef)
-6. Depth induction (L3675-3682)
+1. getProp, setProp (closest to proven deleteProp pattern)
+2. getIndex, setIndex (same pattern)
+3. call (harder, needs args list handling)
+4. objectLit, arrayLit (needs list induction)
+5. tryCatch (needs error path analysis)
+6. Other CC sorries if time
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`
