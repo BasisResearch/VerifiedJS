@@ -11766,7 +11766,22 @@ private theorem normalizeExpr_if_compound_false_sim
     | _ =>
       sorry -- UNLOCK: normalizeExpr_if_branch_step_false on condition + Steps_if_cond_ctx lift
   -- non-if_direct HasIfInHead: use normalizeExpr_if_branch_step_false directly
-  all_goals sorry -- UNLOCK: normalizeExpr_if_branch_step_false directly on sf_expr
+  all_goals (
+    obtain ⟨sf', evs, hsteps, hsil, henv, hheap, hfuncs, hcs, htrace_sf, hpres, ⟨n', m', hnorm'⟩, hewf'⟩ :=
+      normalizeExpr_if_branch_step_false _ _ (Nat.le_refl _) hif_copy
+        env heap trace funcs cs k n m cond then_ else_ v hnorm hewf heval hbool
+    have h_obs_nil : observableTrace evs = [] := by
+      clear hewf' hnorm' hpres htrace_sf henv hheap hfuncs hcs hsteps sf'
+      induction evs with
+      | nil => rfl
+      | cons ev rest ih =>
+        simp [observableTrace, hsil ev (List.mem_cons_self _ _)]
+        exact ih (fun e he => hsil e (List.mem_cons_of_mem _ he))
+    refine ⟨sf', evs, hsteps, by simp [observableTrace, h_obs_nil], ?_, hewf'⟩
+    exact ⟨hheap.symm, henv.symm,
+      by rw [htrace_sf]; simp [observableTrace_append, observableTrace_silent, observableTrace_nil, h_obs_nil]; exact htrace,
+      k, n', m', hnorm', hk⟩
+  )
 
 /-- If normalizeExpr sf.expr k produces .if cond then_ else_ (with trivial-preserving k),
     then one ANF step on the if can be simulated by Flat steps. -/
