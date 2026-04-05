@@ -4065,7 +4065,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           { s with expr := target } se t (Nat.le_refl _) htgt_supp h_sub
         exact listSupported_replace_target se.expr hd_supp hse_supp hr_supp
   | tryCatch body catchParam catchBody finally_ =>
-    have hsupp := hsupp; rw [hexpr] at hsupp; simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp
+    simp only [hexpr, Core.Expr.supported, Bool.and_eq_true] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
     cases hval_b : Core.exprValue? body with
     | some v =>
