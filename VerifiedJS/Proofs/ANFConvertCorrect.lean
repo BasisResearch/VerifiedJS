@@ -12198,7 +12198,8 @@ private theorem normalizeExpr_if_branch_step :
           trivialChain_eval_value (trivialChainCost a) a env heap trace funcs cs
             htc_a (le_refl _) (fun x hfx => hewf x (VarFreeIn.seq_l _ _ _ hfx))
         obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-          Steps_seq_ctx_b b hsteps_a (fun ev hev msg => hnoerr_a ev hev msg) hpres_a
+          Steps_seq_ctx_b b hsteps_a (fun ev hev msg => hnoerr_a ev hev msg)
+            (fun smid evs1 h _ => hpres_a smid evs1 h)
         have hws_eq : ws = ⟨.seq (.lit v_a) b, env, heap, trace ++ evs_a, funcs, cs⟩ := by
           cases ws; simp_all
         rw [hws_eq] at hwsteps
@@ -12219,7 +12220,24 @@ private theorem normalizeExpr_if_branch_step :
           · simp at hev; exact hev
           · exact hsil_b ev hev
         · simp [List.append_assoc] at htrace_b ⊢; exact htrace_b
-        · sorry -- preservation for combined steps
+        · have hw_pres := Steps_ctx_lift_pres (.seq · b)
+            (fun s inner hv t si hs he => step?_seq_ctx s inner b hv t si hs he)
+            hsteps_a (fun ev hev msg => hnoerr_a ev hev msg)
+            (fun smid evs1 h _ => hpres_a smid evs1 h)
+          have htail_pres : ∀ smid evs,
+              Flat.Steps ⟨.seq (.lit v_a) b, env, heap, trace ++ evs_a, funcs, cs⟩ evs smid →
+              evs.length ≤ (.silent :: evs_b).length →
+              smid.funcs = funcs ∧ smid.callStack = cs ∧
+              smid.trace = (trace ++ evs_a) ++ evs := by
+            intro smid evs hst hlen
+            cases hst with
+            | refl => exact ⟨rfl, rfl, by simp⟩
+            | @tail _ smid' _ t' ts' hstep' hrest' =>
+              have := hstep'.1; rw [hdisc] at this; simp at this; obtain ⟨rfl, rfl⟩ := this
+              have hlen' : ts'.length ≤ evs_b.length := by simp at hlen; omega
+              obtain ⟨hf, hc, ht⟩ := hpres_b smid ts' hrest' hlen'
+              exact ⟨hf, hc, by rw [ht]; simp [List.append_assoc]⟩
+          exact Steps_pres_append hwsteps hw_pres (.tail ⟨hdisc⟩ hsteps_b) htail_pres
     | let_init h_init =>
       rename_i name init body
       simp only [ANF.normalizeExpr_let'] at hnorm
@@ -12814,7 +12832,8 @@ private theorem normalizeExpr_if_branch_step_false :
           trivialChain_eval_value (trivialChainCost a) a env heap trace funcs cs
             htc_a (le_refl _) (fun x hfx => hewf x (VarFreeIn.seq_l _ _ _ hfx))
         obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-          Steps_seq_ctx_b b hsteps_a (fun ev hev msg => hnoerr_a ev hev msg) hpres_a
+          Steps_seq_ctx_b b hsteps_a (fun ev hev msg => hnoerr_a ev hev msg)
+            (fun smid evs1 h _ => hpres_a smid evs1 h)
         have hws_eq : ws = ⟨.seq (.lit v_a) b, env, heap, trace ++ evs_a, funcs, cs⟩ := by
           cases ws; simp_all
         rw [hws_eq] at hwsteps
@@ -12835,7 +12854,24 @@ private theorem normalizeExpr_if_branch_step_false :
           · simp at hev; exact hev
           · exact hsil_b ev hev
         · simp [List.append_assoc] at htrace_b ⊢; exact htrace_b
-        · sorry -- preservation for combined steps
+        · have hw_pres := Steps_ctx_lift_pres (.seq · b)
+            (fun s inner hv t si hs he => step?_seq_ctx s inner b hv t si hs he)
+            hsteps_a (fun ev hev msg => hnoerr_a ev hev msg)
+            (fun smid evs1 h _ => hpres_a smid evs1 h)
+          have htail_pres : ∀ smid evs,
+              Flat.Steps ⟨.seq (.lit v_a) b, env, heap, trace ++ evs_a, funcs, cs⟩ evs smid →
+              evs.length ≤ (.silent :: evs_b).length →
+              smid.funcs = funcs ∧ smid.callStack = cs ∧
+              smid.trace = (trace ++ evs_a) ++ evs := by
+            intro smid evs hst hlen
+            cases hst with
+            | refl => exact ⟨rfl, rfl, by simp⟩
+            | @tail _ smid' _ t' ts' hstep' hrest' =>
+              have := hstep'.1; rw [hdisc] at this; simp at this; obtain ⟨rfl, rfl⟩ := this
+              have hlen' : ts'.length ≤ evs_b.length := by simp at hlen; omega
+              obtain ⟨hf, hc, ht⟩ := hpres_b smid ts' hrest' hlen'
+              exact ⟨hf, hc, by rw [ht]; simp [List.append_assoc]⟩
+          exact Steps_pres_append hwsteps hw_pres (.tail ⟨hdisc⟩ hsteps_b) htail_pres
     | let_init h_init =>
       rename_i name init body
       simp only [ANF.normalizeExpr_let'] at hnorm
