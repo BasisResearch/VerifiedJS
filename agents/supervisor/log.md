@@ -1,3 +1,48 @@
+## Run: 2026-04-05T07:30:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 27 + CC 13 = **40 raw sorries**
+- **Delta from last run (07:05)**: +3 (37→40). COUNT UP but this is DECOMPOSITION not regression.
+- **Lower**: 0 sorries (DONE)
+
+### Why count went UP (+3): Decomposition is progress
+- proof agent: break/continue direct cases PROVED, compound cases added as sorry (+2 net at L11425, L11478)
+- wasmspec: if compound lemmas lit/var/this subcases PROVED, 4 narrower sorries remain (was 4 before, +0)
+- proof agent: tryCatch decomposed into tryCatch_direct + compound (+1 net at L10122, L10123)
+- **Net proof coverage increased** even though sorry count increased
+
+### Agent Status
+1. **proof** (RUNNING since 07:00): Building ANFConvertCorrect (started 07:17). HasTryCatchInHead infrastructure COMPLETE. Decomposition at L10122/10123 DONE. Prompt updated: focus on tryCatch_direct (L10122).
+
+2. **jsspec** (RUNNING since 07:00): Building CC (started 07:19). CC still 13 sorries — **8 CONSECUTIVE RUNS WITH NO CC CLOSURE**. Prompt updated: ONLY focus on L4202 (captured variable), the easiest target. Written step-by-step approach.
+
+3. **wasmspec** (RUNNING since 07:15): GOOD PROGRESS — proved 6 subcases (lit/var/this × 2 lemmas) in last run. 4 narrower sorries remain (L9811/9812/9907/9908). Prompt updated with specific approach for compound c_flat cases.
+
+### Actions Taken
+1. **Killed supervisor builds** (~400MB). Memory: 606MB available → survivable with 2 agent builds.
+2. Updated ALL 3 agent prompts:
+   - proof: Redirect from Tasks 1-4 (DONE) to tryCatch_direct (L10122)
+   - jsspec: Emphasized L4202 as ONLY focus, detailed step-by-step
+   - wasmspec: Updated line numbers, strategy for compound c_flat vs non-if_direct
+3. Logged to time_estimate.csv.
+
+### Memory Status
+- 606MB available after killing supervisor builds
+- 2 active builds: proof (ANFConvertCorrect), jsspec (CC)
+- wasmspec: LSP workers only (~700MB total)
+- Risk: tight but no immediate OOM threat
+
+### Critical Assessment
+**Count UP is OK because proof quality improved.** The 3 new sorries replace broader unknowns with narrower, tractable targets. 6 subcases were proved. This is the first real proof progress in 8 runs.
+
+**jsspec is the bottleneck.** 8 runs, 0 CC closures. L4202 (captured variable) should be closeable — it's a simple 2-step Flat simulation. If jsspec fails again, I will take over and write the proof myself next run.
+
+**wasmspec is performing well.** Keep current direction.
+
+**Expected next run: 38-40** (jsspec closes 0-2, others hold steady or close 1).
+
+---
+
 ## Run: 2026-04-05T07:05:00+00:00
 
 ### Metrics
@@ -5315,3 +5360,7 @@ If proof closes L9460+L9469 and wasmspec closes L9050+if cases: ANF drops to ~15
 ## Run: 2026-04-05T07:05:00+00:00
 
 2026-04-05T07:12:18+00:00 DONE
+
+## Run: 2026-04-05T07:30:03+00:00
+
+2026-04-05T07:34:36+00:00 DONE

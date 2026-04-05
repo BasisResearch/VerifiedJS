@@ -1,4 +1,4 @@
-# proof — Build HasTryCatchInHead infrastructure, THEN close L9536
+# proof — Close tryCatch_direct (L10122) and break/continue compounds
 
 ## RULES
 - Edit: ANFConvertCorrect.lean, Flat/Semantics.lean, AND EndToEnd.lean
@@ -10,7 +10,7 @@
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
-## MEMORY: 7.7GB total, NO swap. ~2GB available.
+## MEMORY: 7.7GB total, NO swap. ~600MB available.
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
 ## BUILD COORDINATION — CRITICAL
@@ -18,113 +18,47 @@ wasmspec is ALSO building ANFConvertCorrect. **Check before building:**
 ```bash
 ps aux | grep "lake build" | grep -v grep | wc -l
 ```
-If count > 0, WAIT. Do not start a build. Use `lean_goal` / `lean_multi_attempt` via LSP instead of full builds while waiting.
+If count > 0, WAIT. Do not start a build. Use `lean_goal` / `lean_multi_attempt` via LSP instead.
 
-## STATUS: You have crashed 3+ consecutive runs before adding HasTryCatchInHead. SPEED IS CRITICAL.
+## STATUS: HasTryCatchInHead + decomposition DONE. Tasks 1-4 from previous prompt COMPLETE.
 
-## WORKFLOW: NO BUILDS until all edits are done
-1. Make ALL edits (Tasks 1-4) using the Edit tool ONLY
-2. Verify each edit with `lean_diagnostic_messages` or `lean_goal` via LSP (no build needed)
-3. ONLY after all 4 tasks are edited into the file, run ONE build at the end
-4. If you can't build (other builds running), that's FINE — just make the edits and verify with LSP
+## TASK 1: Close tryCatch_direct (L10122) — MAIN TARGET
 
-## TASK 1: Define HasTryCatchInHead — INSERT AT L7100 (after HasIfInHead_not_value)
+Line 10122: `| tryCatch_direct => sorry -- MAIN CASE: direct tryCatch simulation`
 
-Model EXACTLY on HasIfInHead (L7054-7098). Create:
+Context: `sf.expr = .tryCatch body_flat cp_flat cb_flat fin_flat` (from HasTryCatchInHead.tryCatch_direct).
+normalizeExpr (.tryCatch body_flat cp_flat cb_flat fin_flat) k normalizes into ANF .tryCatch.
 
-```lean
-/-! ## HasTryCatchInHead: tracks .tryCatch in CPS-head position -/
+**ANF.step? on .tryCatch**: pushes catch handler to callStack, steps into body.
+**Flat.step? on .tryCatch**: same — pushes catch handler, steps into body.
 
-section TryCatchInHead
+Approach:
+1. `lean_goal` at L10122 to see exact proof state
+2. `rename_i body_flat cp_flat cb_flat fin_flat` to name the tryCatch components
+3. Unfold ANF.step? on .tryCatch in hstep_eq to get the body/catch/finally structure
+4. Show Flat.step? on sf also steps into the body with matching semantics
+5. Construct ANF_SimRel between the resulting states (body with catch frame on stack)
+6. Use `lean_multi_attempt` to try tactics before editing
 
-set_option autoImplicit true in
-mutual
-inductive HasTryCatchInHead : Flat.Expr → Prop where
-  | tryCatch_direct : HasTryCatchInHead (.tryCatch body cp cb fin)
-  | seq_left : HasTryCatchInHead a → HasTryCatchInHead (.seq a b)
-  | seq_right : HasTryCatchInHead b → HasTryCatchInHead (.seq a b)
-  | let_init : HasTryCatchInHead init → HasTryCatchInHead (.let name init body)
-  | getProp_obj : HasTryCatchInHead obj → HasTryCatchInHead (.getProp obj prop)
-  | setProp_obj : HasTryCatchInHead obj → HasTryCatchInHead (.setProp obj prop val)
-  | setProp_val : HasTryCatchInHead val → HasTryCatchInHead (.setProp obj prop val)
-  | binary_lhs : HasTryCatchInHead lhs → HasTryCatchInHead (.binary op lhs rhs)
-  | binary_rhs : HasTryCatchInHead rhs → HasTryCatchInHead (.binary op lhs rhs)
-  | unary_arg : HasTryCatchInHead arg → HasTryCatchInHead (.unary op arg)
-  | typeof_arg : HasTryCatchInHead arg → HasTryCatchInHead (.typeof arg)
-  | deleteProp_obj : HasTryCatchInHead obj → HasTryCatchInHead (.deleteProp obj prop)
-  | assign_val : HasTryCatchInHead val → HasTryCatchInHead (.assign name val)
-  | call_func : HasTryCatchInHead f → HasTryCatchInHead (.call f env args)
-  | call_env : HasTryCatchInHead env → HasTryCatchInHead (.call f env args)
-  | call_args : HasTryCatchInHeadList args → HasTryCatchInHead (.call f env args)
-  | newObj_func : HasTryCatchInHead f → HasTryCatchInHead (.newObj f env args)
-  | newObj_env : HasTryCatchInHead env → HasTryCatchInHead (.newObj f env args)
-  | newObj_args : HasTryCatchInHeadList args → HasTryCatchInHead (.newObj f env args)
-  | if_cond : HasTryCatchInHead c → HasTryCatchInHead (.if c t e)
-  | return_some_arg : HasTryCatchInHead v → HasTryCatchInHead (.return (some v))
-  | yield_some_arg : HasTryCatchInHead v → HasTryCatchInHead (.yield (some v) d)
-  | throw_arg : HasTryCatchInHead arg → HasTryCatchInHead (.throw arg)
-  | await_arg : HasTryCatchInHead arg → HasTryCatchInHead (.await arg)
-  | getIndex_obj : HasTryCatchInHead obj → HasTryCatchInHead (.getIndex obj idx)
-  | getIndex_idx : HasTryCatchInHead idx → HasTryCatchInHead (.getIndex obj idx)
-  | setIndex_obj : HasTryCatchInHead obj → HasTryCatchInHead (.setIndex obj idx val)
-  | setIndex_idx : HasTryCatchInHead idx → HasTryCatchInHead (.setIndex obj idx val)
-  | setIndex_val : HasTryCatchInHead val → HasTryCatchInHead (.setIndex obj idx val)
-  | getEnv_env : HasTryCatchInHead env → HasTryCatchInHead (.getEnv env idx)
-  | makeClosure_env : HasTryCatchInHead env → HasTryCatchInHead (.makeClosure funcIdx env)
-  | makeEnv_values : HasTryCatchInHeadList values → HasTryCatchInHead (.makeEnv values)
-  | objectLit_props : HasTryCatchInHeadProps props → HasTryCatchInHead (.objectLit props)
-  | arrayLit_elems : HasTryCatchInHeadList elems → HasTryCatchInHead (.arrayLit elems)
+**Key**: The Flat and ANF tryCatch stepping should be structurally similar. The main work is threading the SimRel hypotheses through.
 
-inductive HasTryCatchInHeadList : List Flat.Expr → Prop where
-  | head : HasTryCatchInHead e → HasTryCatchInHeadList (e :: rest)
-  | tail : HasTryCatchInHeadList rest → HasTryCatchInHeadList (e :: rest)
+## TASK 2: Close break/continue compound cases (L11425, L11478) — SECONDARY
 
-inductive HasTryCatchInHeadProps : List (Flat.PropName × Flat.Expr) → Prop where
-  | head : HasTryCatchInHead e → HasTryCatchInHeadProps ((name, e) :: rest)
-  | tail : HasTryCatchInHeadProps rest → HasTryCatchInHeadProps (p :: rest)
-end
+These are compound HasBreakInHead/HasContinueInHead cases (seq, let, call, etc.).
+They require Flat.step? error propagation through compound expressions.
 
-private theorem HasTryCatchInHead_not_value (e : Flat.Expr)
-    (h : HasTryCatchInHead e) : Flat.exprValue? e = none := by
-  cases h <;> simp [Flat.exprValue?]
+**Same root cause as all compound cases**: when break/continue appears inside a seq/let/call, Flat.step? steps the inner expression, not the outer break/continue. Need evaluation context lifting.
 
-end TryCatchInHead
-```
-
-**STOP after inserting this. Verify with `lean_diagnostic_messages` at line 7100. Do NOT build yet.**
-
-## TASK 2: Prove normalizeExpr_tryCatch_or_k — INSERT after HasTryCatchInHead
-
-Model on `normalizeExpr_if_or_k` (search for it with grep). This lemma says:
-"If normalizeExpr e k produces .tryCatch, then either HasTryCatchInHead e, or k produced the .tryCatch."
-
-**Find normalizeExpr_if_or_k first**: `grep -n "normalizeExpr_if_or_k" VerifiedJS/Proofs/ANFConvertCorrect.lean`
-
-Copy its ENTIRE structure, replacing `.if` → `.tryCatch`, `HasIfInHead` → `HasTryCatchInHead`.
-
-## TASK 3: Prove normalizeExpr_tryCatch_implies_hasTryCatchInHead
-
-Trivial once Task 2 is done — use normalizeExpr_tryCatch_or_k, then derive contradiction from hk.
-
-## TASK 4: Use in normalizeExpr_tryCatch_step_sim (L9536)
-
-Replace the sorry at L9536 with:
-```lean
-  have htc_head := normalizeExpr_tryCatch_implies_hasTryCatchInHead sf.expr k hk body catchParam catchBody finally_ n m hnorm
-  cases htc_head with
-  | tryCatch_direct => sorry -- MAIN CASE: direct tryCatch simulation
-  | _ => sorry -- compound cases: deferred
-```
+**Only attempt if Task 1 is done or blocked.**
 
 ## CONCURRENCY: wasmspec also edits ANFConvertCorrect.lean
-- wasmspec works on L9273-9322 (if compound infrastructure) ONLY
-- You insert at L7100 and work on L9536. DON'T touch L9273-9322.
+- wasmspec works on L9800-9910 (if compound infrastructure) ONLY
+- You work on L10122 and L11425/11478. DON'T touch L9800-9910.
 
 ## PRIORITY ORDER
-1. HasTryCatchInHead definition (Task 1) — INSERT at L7100, verify with LSP
-2. normalizeExpr_tryCatch_or_k (Task 2)
-3. normalizeExpr_tryCatch_implies_hasTryCatchInHead (Task 3)
-4. Wire into L9536 (Task 4)
+1. tryCatch_direct (L10122) — THE most important sorry
+2. break compound (L11425)
+3. continue compound (L11478)
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

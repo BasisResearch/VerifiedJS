@@ -1,11 +1,11 @@
-# wasmspec — Prove compound if infrastructure lemmas in ANF
+# wasmspec — Prove compound if cases (L9811/9812/9907/9908) in ANF
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
 - **DO NOT** edit Flat/Semantics.lean — it's DONE (0 sorries), leave it alone
 - **DO NOT** run `lake build` anything large
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
-- MEMORY: 7.7GB total, NO swap. ~2GB available.
+- MEMORY: 7.7GB total, NO swap. ~600MB available.
 - You CAN edit ANFConvertCorrect.lean ONLY
 - Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
@@ -17,61 +17,55 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 If count > 0, DO NOT BUILD. Use `lean_goal` / `lean_multi_attempt` via LSP instead. Wait 60s then check again.
 
 ## CONCURRENCY: proof agent also edits ANFConvertCorrect.lean
-- proof agent is INSERTING new definitions around L7100 (HasTryCatchInHead) and working on L9536
-- **YOU** own L9273-9322 (infrastructure lemmas) and L9326+ (normalizeExpr_if_step_sim usage)
-- DO NOT touch lines 7046-7500 or 9508-9540
-- **NOTE**: proof agent's insertions will SHIFT your line numbers. Use `grep -n "normalizeExpr_if_compound_true_sim"` to find current lines.
+- proof agent works on L10122 (tryCatch_direct) and L11425/11478
+- **YOU** own L9800-9910 (if compound infrastructure)
+- DO NOT touch lines outside your range
 
-## STATUS: CRASHED at 06:31 (EXIT code 1). Restarting fresh.
+## STATUS: GOOD PROGRESS LAST RUN — proved lit/var/this subcases for both if_compound lemmas.
 
-You previously consolidated 4 inline sorries → 2 infrastructure lemmas (net -2). L9298 and L9322 still sorry.
+You proved 6 subcases (3 per lemma: lit/var/this). 4 narrower sorries remain:
+- L9811: compound c_flat with HasIfInHead — eval context lifting / strong induction needed
+- L9812: non-if_direct HasIfInHead — structural induction on depth needed
+- L9907: same as L9811 but false branch
+- L9908: same as L9812 but false branch
 
-## YOUR TASK: Prove these 2 infrastructure lemmas
+## YOUR TASK: Close L9811/9812 (true branch), then L9907/9908 (false branch)
 
-`normalizeExpr_if_compound_true_sim` and `normalizeExpr_if_compound_false_sim`.
+### L9811 — compound c_flat in if_direct, true branch
+sf.expr = `.if c_flat then_flat else_flat`, but c_flat is compound (not lit/var/this).
+normalizeExpr (.if compound_c ...) k wraps c_flat in .let via normalization.
 
-### Step-by-step approach
+**Key insight**: If c_flat is compound, normalizeExpr normalizes c_flat FIRST into a trivial + continuation. The .if in the result comes from the continuation. So:
+- Flat.step? steps the innermost sub-expression of c_flat
+- This is an evaluation context reduction
+- Need: "Flat steps on .if compound_c ... reduce to Flat steps on compound_c, then branch"
 
-1. **Find your lemmas**: `grep -n "normalizeExpr_if_compound_true_sim" VerifiedJS/Proofs/ANFConvertCorrect.lean`
+**Approach**:
+1. `lean_goal` at L9811 to see exact state
+2. Case analyze c_flat — it's NOT lit/var/this (those are proved), so it's a compound expression
+3. Flat.step? on `.if compound_c t e` steps the condition: `Flat.step? (.if c t e)` where c steps
+4. Use `Flat_step?_if_cond_step` (should exist) to lift inner steps
+5. After c_flat fully evaluates, the if branches — use existing true/false branch lemmas
 
-2. **Use `lean_goal` at the sorry line** to see exact proof state.
+### L9812 — non-if_direct HasIfInHead
+sf.expr is NOT `.if ...` but HasIfInHead sf.expr (e.g., `.seq (.if ...) b` or `.let x (.if ...) body`).
+normalizeExpr propagates the .if through the outer expression's normalization.
 
-3. **Key insight**: Only `.if` in sf_expr can produce `.if` through normalizeExpr.
-   Use `ANF.normalizeExpr_if_implies_hasIfInHead` (already exists!) to get `HasIfInHead sf_expr`.
+**This is the hardest case**. Needs eval context stepping through seq/let/etc.
 
-4. **Case split on HasIfInHead**:
-```lean
-  have hif := ANF.normalizeExpr_if_implies_hasIfInHead sf_expr k hk cond then_ else_ n m hnorm
-  cases hif with
-  | if_direct =>
-    -- sf_expr = .if c_flat then_flat else_flat
-    -- This is the main case: prove simulation directly
-    sorry
-  | _ =>
-    -- Compound cases (seq, let, etc.)
-    -- These are harder — sorry for now
-    sorry
-```
+**Approach**: Try `lean_multi_attempt` with:
+- `exact absurd hewf (HasIfInHead_not_wellformed ...)` — maybe these are unreachable?
+- `simp [HasIfInHead] at *` — see if can derive contradiction
+If not contradiction, this needs the general eval context lifting lemma (shared with break/continue/throw/return/await/yield compound cases).
 
-5. **For if_direct case**: sf_expr = `.if c_flat then_flat else_flat`.
-   - normalizeExpr (.if c t e) k normalizes c to a trivial condTriv
-   - The `cond` in the ANF .if IS condTriv
-   - For the true branch: Flat.step? (.if c_flat ...) evaluates c_flat
-   - If c_flat is value (lit): single step, trivial
-   - If c_flat is var: two steps (lookup + branch)
-   - If c_flat is this: two steps (lookup + branch)
-   - Model on the existing normalizeExpr_if_step_sim proof (L9343+)
-
-6. **Even if you can only prove if_direct**: That's still progress — narrows the sorry to compound cases only.
-
-### IMPORTANT: Use existing decomp lemmas
-- `normalizeExpr_if_lit_decomp`, `normalizeExpr_if_var_decomp`, `normalizeExpr_if_this_decomp`
-- `Flat_step?_if_cond_step`
-- `Flat.step?_if_true`, `Flat.step?_if_false`
+### Strategy: Focus on L9811/9907 FIRST (compound c_flat)
+These are more tractable than L9812/9908. Even proving just these two would be progress.
 
 ## PRIORITY ORDER
-1. L9298 (true branch infrastructure) — prove if_direct case, sorry compounds
-2. L9322 (false branch) — structurally identical
+1. L9811 (compound c_flat, true) — try eval context approach
+2. L9907 (compound c_flat, false) — structurally identical
+3. L9812 (non-if_direct, true) — only if 1-2 done
+4. L9908 (non-if_direct, false) — only if 1-3 done
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

@@ -1,4 +1,4 @@
-# jsspec — Close captured variable (L4175) FIRST, then functionDef (L7187)
+# jsspec — Close captured variable (L4202) FIRST, then functionDef (L7214)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -9,58 +9,61 @@
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
-## MEMORY: 7.7GB total, NO swap. ~2GB available.
+## MEMORY: 7.7GB total, NO swap. ~600MB available.
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
 ## BUILD COORDINATION
-proof and wasmspec are building ANFConvertCorrect. Before you build CC, check:
+proof and wasmspec build ANFConvertCorrect. Before you build CC, check:
 ```bash
 ps aux | grep "lake build" | grep -v grep | wc -l
 ```
 If count > 1, wait 60s then check again. Only ONE build at a time or everything OOMs.
 
-## STATUS: CC has 13 real sorries. You are reassigned from call.
+## STATUS: CC has 13 real sorries. 8 CONSECUTIVE RUNS AT 13. You MUST close at least 1 this run.
 
-## TASK 1: Close L4175 (captured variable) — DO THIS FIRST
+## CC SORRY MAP (13 total)
+| Line | Case | Difficulty |
+|------|------|-----------|
+| 3970 | call: closure body supported | Medium (needs FuncsSupported) |
+| 4202 | var: captured variable | **EASY — DO THIS FIRST** |
+| 4531 | if true: CCStateAgree | Medium |
+| 4554 | if false: CCStateAgree | Medium |
+| 5118 | call: non-consoleLog func | Hard |
+| 5326 | call: f not value | Hard |
+| 5334 | call: arg not value | Hard |
+| 5972 | getIndex string | UNPROVABLE (skip) |
+| 7214 | functionDef | Medium-Hard |
+| 7371 | tryCatch body-value finally | Hard |
+| 7372 | tryCatch with finally | Hard |
+| 7444 | tryCatch catch | Hard |
+| 7552 | while_ CCState | Hard |
 
-Line 4175: `sorry` inside `closureConvert_step_simulation`, var case, captured branch.
+## TASK 1: Close L4202 (captured variable) — YOUR ONLY FOCUS
 
-Context: `lookupEnv envMap name = some idx`, so convertExpr gives `.getEnv (.var envVar) idx`.
+Line 4202 in `closureConvert_step_simulation`, var case, captured branch.
 
-**Core side**: `Core.step? (.var name) env` → looks up `name` in `env.bindings`, returns the value.
+After `simp [hlookupEnv] at hconv`, you have:
+- `hlookupEnv : Flat.lookupEnv envMap name = some idx`
+- `hconv` tells you convertExpr gives `.getEnv (.var envVar) idx`
+- The Core side: `Core.step? (.var name) env` → looks up `name` in bindings
 
-**Flat side**: `.getEnv (.var envVar) idx` needs multi-step simulation:
-1. Step `.getEnv (.var envVar) idx` — first `.var envVar` evaluates to environment object pointer
-2. `.getEnv (.lit (.object envPtr)) idx` — looks up idx-th value in heap object
+**Exact approach:**
+1. `lean_goal` at L4202 to see the full proof state
+2. You need to show Flat multi-step simulation of `.getEnv (.var envVar) idx`
+3. Step 1: `.var envVar` evaluates to the environment object pointer via `sf.env` lookup
+4. Step 2: `.getEnv (.lit (.object envPtr)) idx` reads the idx-th slot from heap
+5. The result matches the Core variable lookup via `EnvCorrInj` (or similar hypothesis)
 
-**Key hypotheses you'll need**:
-- `EnvCorrInj injMap sc.env sf.env` — relates Core env bindings to Flat env
-- `HeapInj injMap sc.heap sf.heap` — heap correspondence
-- The envMap maps Core variable names to Flat env indices
+**Key hypotheses** you should find in the goal:
+- `hinj : HeapInj injMap sc.heap sf.heap` (or similar)
+- `henvCorr : EnvCorr ...` (relates Core env bindings to Flat env)
+- The envMap maps Core var names to Flat env indices
 
-Steps:
-1. `lean_goal` at L4175 to see exact proof state
-2. Unfold Flat.step? for `.getEnv (.var envVar) idx`
-3. Show `.var envVar` steps to the env object (via `sf.env` lookup)
-4. Show getEnv on the object gives the right value (via HeapInj + EnvCorrInj)
-5. Construct the multi-step simulation using Flat.Steps
+Use `lean_goal` FIRST. Then `lean_multi_attempt` with simple tactics. Then build the proof step by step.
 
-## TASK 2: Close L7187 (functionDef) — ONLY if Task 1 is done
+## TASK 2: Close L4531/L4554 (CCStateAgree) — ONLY if Task 1 done
 
-Line 7187: `| functionDef fname params body isAsync isGen => sorry`
-
-This is complex (multi-step: makeEnv evaluates captured exprs, then makeClosure creates closure). Only attempt after Task 1.
-
-**Core side** (L8594 Core/Semantics.lean): creates FuncClosure from params+body+env, pushes to funcs, result = `.lit (.function idx)`
-
-**Flat side** (L231 Flat/ClosureConvert.lean): creates `(.makeClosure funcIdx (.makeEnv capturedExprs), st3)`
-
-## TASK 3: L3960 (call) — ONLY if Tasks 1-2 are done
-
-## PRIORITY ORDER
-1. L4175 (captured variable) — most tractable, single variable lookup
-2. L7187 (functionDef) — complex multi-step
-3. L3960 (call) — only if time remains
+These need a different `st_a` choice for CCStateAgree. The `sorry` is inside an anonymous constructor `⟨..., sorry⟩`. You likely need to adjust the `st` witness.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

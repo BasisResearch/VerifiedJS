@@ -3950,7 +3950,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           | true =>
             -- consoleLog: idx = consoleLogIdx
             have hidx : idx = Core.consoleLogIdx := by
-              simp [BEq.beq, Core.consoleLogIdx] at hcl; exact hcl
+              have := Nat.eq_of_beq_eq_true hcl; exact this
             subst hidx
             obtain ⟨msg, hfwd⟩ := Core.step_call_consoleLog args argVals s.env s.heap s.trace s.funcs s.callStack hallv
             rw [hfwd] at hstep
@@ -3961,7 +3961,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
             cases hfunc : s.funcs[idx]? with
             | some closure =>
               have hfwd := Core.step_call_func_closure idx args argVals s.env s.heap s.trace s.funcs s.callStack
-                closure hallv (by simp [hcl]) hfunc
+                closure hallv hcl hfunc
               rw [hfwd] at hstep
               simp only [Option.some.injEq, Prod.mk.injEq] at hstep
               obtain ⟨-, rfl⟩ := hstep
@@ -3970,7 +3970,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
               sorry
             | none =>
               have hfwd := Core.step_call_func_none idx args argVals s.env s.heap s.trace s.funcs s.callStack
-                hallv (by simp [hcl]) hfunc
+                hallv hcl hfunc
               rw [hfwd] at hstep
               simp only [Option.some.injEq, Prod.mk.injEq] at hstep
               obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace, Core.Expr.supported]
