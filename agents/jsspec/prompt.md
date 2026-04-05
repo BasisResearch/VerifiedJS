@@ -1,4 +1,4 @@
-# jsspec — Close captured variable (L4202) FIRST, then functionDef (L7214)
+# jsspec — Close L3970 (FuncsSupported) then Core_step_preserves_supported leftovers
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -19,51 +19,34 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 ```
 If count > 1, wait 60s then check again. Only ONE build at a time or everything OOMs.
 
-## STATUS: CC has 13 real sorries. 8 CONSECUTIVE RUNS AT 13. You MUST close at least 1 this run.
+## REALITY CHECK: CC has 13 sorries. 10 of 13 are ARCHITECTURALLY BLOCKED.
+The captured variable (L4202), CCStateAgree (L4531/4554/7371/7444/7552), semantic mismatch (L5326/5334), getIndex string (L5972), and tryCatch finally (L7372) cases ALL require multi-step simulation or CCState redesign. DO NOT waste time on them.
 
-## CC SORRY MAP (13 total)
-| Line | Case | Difficulty |
-|------|------|-----------|
-| 3970 | call: closure body supported | Medium (needs FuncsSupported) |
-| 4202 | var: captured variable | **EASY — DO THIS FIRST** |
-| 4531 | if true: CCStateAgree | Medium |
-| 4554 | if false: CCStateAgree | Medium |
-| 5118 | call: non-consoleLog func | Hard |
-| 5326 | call: f not value | Hard |
-| 5334 | call: arg not value | Hard |
-| 5972 | getIndex string | UNPROVABLE (skip) |
-| 7214 | functionDef | Medium-Hard |
-| 7371 | tryCatch body-value finally | Hard |
-| 7372 | tryCatch with finally | Hard |
-| 7444 | tryCatch catch | Hard |
-| 7552 | while_ CCState | Hard |
+## CLOSEABLE TARGETS (in priority order)
 
-## TASK 1: Close L4202 (captured variable) — YOUR ONLY FOCUS
+### TASK 1: L3970 — closure.body.supported (in Core_step_preserves_supported)
+Line 3970 in `Core_step_preserves_supported`, call case with closure.
 
-Line 4202 in `closureConvert_step_simulation`, var case, captured branch.
+**Context**: After Core.step? on `.call (.lit (.function idx)) argVals`, the result is a state with `expr := closure.body` where `closure = s.funcs[idx]`. Need to prove `closure.body.supported = true`.
 
-After `simp [hlookupEnv] at hconv`, you have:
-- `hlookupEnv : Flat.lookupEnv envMap name = some idx`
-- `hconv` tells you convertExpr gives `.getEnv (.var envVar) idx`
-- The Core side: `Core.step? (.var name) env` → looks up `name` in bindings
+**What you need**: A `FuncsSupported` invariant — all function bodies in `s.funcs` have `.supported = true`.
 
-**Exact approach:**
-1. `lean_goal` at L4202 to see the full proof state
-2. You need to show Flat multi-step simulation of `.getEnv (.var envVar) idx`
-3. Step 1: `.var envVar` evaluates to the environment object pointer via `sf.env` lookup
-4. Step 2: `.getEnv (.lit (.object envPtr)) idx` reads the idx-th slot from heap
-5. The result matches the Core variable lookup via `EnvCorrInj` (or similar hypothesis)
+**Approach**:
+1. Add hypothesis `(hfuncs_supp : ∀ i fd, s.funcs[i]? = some fd → fd.body.supported = true)` to the theorem
+2. At L3970, use: `exact hfuncs_supp idx closure hfunc` (or similar)
+3. Then at the call site (L4175), prove the hypothesis is satisfied — this requires proving FuncsSupported is preserved by steps (new funcs from functionDef have supported bodies if input was supported)
+4. The initial FuncsSupported comes from the program being supported
 
-**Key hypotheses** you should find in the goal:
-- `hinj : HeapInj injMap sc.heap sf.heap` (or similar)
-- `henvCorr : EnvCorr ...` (relates Core env bindings to Flat env)
-- The envMap maps Core var names to Flat env indices
+**Alternative simpler approach**: If adding a hypothesis is too invasive, try:
+1. `lean_goal` at L3970 to see exact state
+2. Check if there's already a hypothesis about funcs in scope
+3. Maybe `hsupp` (the supported hypothesis) implies it via the step structure
 
-Use `lean_goal` FIRST. Then `lean_multi_attempt` with simple tactics. Then build the proof step by step.
+### TASK 2: L5118 — non-consoleLog function call (in closureConvert_step_simulation)
+If Task 1 gives you a FuncsCorr-like invariant, use it to relate `sf.funcs[idx]` to `sc.funcs[idx]`.
 
-## TASK 2: Close L4531/L4554 (CCStateAgree) — ONLY if Task 1 done
-
-These need a different `st_a` choice for CCStateAgree. The `sorry` is inside an anonymous constructor `⟨..., sorry⟩`. You likely need to adjust the `st` witness.
+### TASK 3: L7214 — functionDef case (only if Tasks 1-2 done)
+Complex multi-step but maybe decomposable. Core creates closure, Flat creates makeClosure+makeEnv.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

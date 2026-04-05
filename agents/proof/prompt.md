@@ -1,4 +1,4 @@
-# proof — Close tryCatch_direct (L10122) and break/continue compounds
+# proof — Close tryCatch_direct (L10127) and ANF infrastructure
 
 ## RULES
 - Edit: ANFConvertCorrect.lean, Flat/Semantics.lean, AND EndToEnd.lean
@@ -20,45 +20,39 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 ```
 If count > 0, WAIT. Do not start a build. Use `lean_goal` / `lean_multi_attempt` via LSP instead.
 
-## STATUS: HasTryCatchInHead + decomposition DONE. Tasks 1-4 from previous prompt COMPLETE.
+## STATUS: ANF has 27 sorries. hasAbruptCompletion/NoNestedAbrupt infrastructure partially done.
 
-## TASK 1: Close tryCatch_direct (L10122) — MAIN TARGET
+## TASK 1: Close tryCatch_direct (L10127) — MAIN TARGET
 
-Line 10122: `| tryCatch_direct => sorry -- MAIN CASE: direct tryCatch simulation`
+Line 10127: `| tryCatch_direct => sorry -- MAIN CASE: direct tryCatch simulation`
 
 Context: `sf.expr = .tryCatch body_flat cp_flat cb_flat fin_flat` (from HasTryCatchInHead.tryCatch_direct).
-normalizeExpr (.tryCatch body_flat cp_flat cb_flat fin_flat) k normalizes into ANF .tryCatch.
 
 **ANF.step? on .tryCatch**: pushes catch handler to callStack, steps into body.
 **Flat.step? on .tryCatch**: same — pushes catch handler, steps into body.
 
 Approach:
-1. `lean_goal` at L10122 to see exact proof state
-2. `rename_i body_flat cp_flat cb_flat fin_flat` to name the tryCatch components
-3. Unfold ANF.step? on .tryCatch in hstep_eq to get the body/catch/finally structure
-4. Show Flat.step? on sf also steps into the body with matching semantics
-5. Construct ANF_SimRel between the resulting states (body with catch frame on stack)
-6. Use `lean_multi_attempt` to try tactics before editing
+1. `lean_goal` at L10127 to see exact proof state
+2. Unfold ANF.step? on .tryCatch in hstep_eq to get body/catch/finally structure
+3. Show Flat.step? on sf also steps into body with matching semantics
+4. Construct ANF_SimRel between resulting states (body with catch frame on stack)
+5. Use `lean_multi_attempt` to try tactics before editing
 
-**Key**: The Flat and ANF tryCatch stepping should be structurally similar. The main work is threading the SimRel hypotheses through.
+**Key**: Flat and ANF tryCatch stepping should be structurally similar. Main work is threading SimRel hypotheses through.
 
-## TASK 2: Close break/continue compound cases (L11425, L11478) — SECONDARY
+## TASK 2: Close hasAbruptCompletion_step_preserved / NoNestedAbrupt_step_preserved (L10131+)
+If these are still sorry'd from your previous infrastructure work, complete them. They are needed by anfConvert_steps_star.
 
-These are compound HasBreakInHead/HasContinueInHead cases (seq, let, call, etc.).
-They require Flat.step? error propagation through compound expressions.
-
-**Same root cause as all compound cases**: when break/continue appears inside a seq/let/call, Flat.step? steps the inner expression, not the outer break/continue. Need evaluation context lifting.
-
-**Only attempt if Task 1 is done or blocked.**
+## TASK 3: break/continue compound (L11430, L11483) — ONLY if Task 1 done
 
 ## CONCURRENCY: wasmspec also edits ANFConvertCorrect.lean
-- wasmspec works on L9800-9910 (if compound infrastructure) ONLY
-- You work on L10122 and L11425/11478. DON'T touch L9800-9910.
+- wasmspec works on L9800-9912 (if compound infrastructure) ONLY
+- You work on L10127 and L10131+. DON'T touch L9800-9912.
 
 ## PRIORITY ORDER
-1. tryCatch_direct (L10122) — THE most important sorry
-2. break compound (L11425)
-3. continue compound (L11478)
+1. tryCatch_direct (L10127) — THE most important sorry
+2. hasAbruptCompletion/NoNestedAbrupt infrastructure
+3. break/continue compound (L11430/11483)
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

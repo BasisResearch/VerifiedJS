@@ -1,4 +1,4 @@
-# wasmspec — Prove compound if cases (L9811/9812/9907/9908) in ANF
+# wasmspec — Prove compound if cases (L9813/9814/9911/9912) in ANF
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -17,55 +17,46 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 If count > 0, DO NOT BUILD. Use `lean_goal` / `lean_multi_attempt` via LSP instead. Wait 60s then check again.
 
 ## CONCURRENCY: proof agent also edits ANFConvertCorrect.lean
-- proof agent works on L10122 (tryCatch_direct) and L11425/11478
-- **YOU** own L9800-9910 (if compound infrastructure)
+- proof agent works on L10127 (tryCatch_direct) and L10131+
+- **YOU** own L9800-9912 (if compound infrastructure)
 - DO NOT touch lines outside your range
 
-## STATUS: GOOD PROGRESS LAST RUN — proved lit/var/this subcases for both if_compound lemmas.
+## STATUS: GOOD PROGRESS — lit/var/this subcases proved, 5 contradiction cases proved. 4 sorries remain.
 
-You proved 6 subcases (3 per lemma: lit/var/this). 4 narrower sorries remain:
-- L9811: compound c_flat with HasIfInHead — eval context lifting / strong induction needed
-- L9812: non-if_direct HasIfInHead — structural induction on depth needed
-- L9907: same as L9811 but false branch
-- L9908: same as L9812 but false branch
+Remaining sorries:
+- L9813: compound c_flat with HasIfInHead — eval context lifting / strong induction
+- L9814: non-if_direct HasIfInHead — structural induction on depth
+- L9911: same as L9813 but false branch
+- L9912: same as L9814 but false branch
 
-## YOUR TASK: Close L9811/9812 (true branch), then L9907/9908 (false branch)
+## YOUR TASK: Close L9813/9911 first, then L9814/9912
 
-### L9811 — compound c_flat in if_direct, true branch
-sf.expr = `.if c_flat then_flat else_flat`, but c_flat is compound (not lit/var/this).
-normalizeExpr (.if compound_c ...) k wraps c_flat in .let via normalization.
+### L9813/L9911 — compound c_flat in if_direct
+sf.expr = `.if c_flat then_flat else_flat`, c_flat is compound (not lit/var/this, not break/continue/labeled/while_/tryCatch — those are contradictions you already proved).
 
-**Key insight**: If c_flat is compound, normalizeExpr normalizes c_flat FIRST into a trivial + continuation. The .if in the result comes from the continuation. So:
-- Flat.step? steps the innermost sub-expression of c_flat
-- This is an evaluation context reduction
-- Need: "Flat steps on .if compound_c ... reduce to Flat steps on compound_c, then branch"
+**Key infrastructure you found**:
+- `Steps_if_cond_ctx` (L1828): lifts multi-step evaluation through `.if [·] then_ else_` context
+- `normalizeExpr_if_or_k_aux` (L7219): pattern for strong induction on expression depth
 
 **Approach**:
-1. `lean_goal` at L9811 to see exact state
-2. Case analyze c_flat — it's NOT lit/var/this (those are proved), so it's a compound expression
-3. Flat.step? on `.if compound_c t e` steps the condition: `Flat.step? (.if c t e)` where c steps
-4. Use `Flat_step?_if_cond_step` (should exist) to lift inner steps
-5. After c_flat fully evaluates, the if branches — use existing true/false branch lemmas
+1. `lean_goal` at L9813 to see exact state
+2. The compound c_flat must be one of: seq, let, assign, if, call, unary, binary, var, this, etc.
+3. Flat.step? on `.if compound_c t e` steps compound_c (evaluation context)
+4. After the step, the result is still `.if c' t e` with simpler c'
+5. Use `Steps_if_cond_ctx` to lift the inner stepping
+6. Apply strong induction on depth — the stepped c' has smaller depth
 
-### L9812 — non-if_direct HasIfInHead
-sf.expr is NOT `.if ...` but HasIfInHead sf.expr (e.g., `.seq (.if ...) b` or `.let x (.if ...) body`).
-normalizeExpr propagates the .if through the outer expression's normalization.
+### L9814/L9912 — non-if_direct HasIfInHead
+These need eval context stepping through seq/let/etc. where the `.if` is nested inside.
 
-**This is the hardest case**. Needs eval context stepping through seq/let/etc.
-
-**Approach**: Try `lean_multi_attempt` with:
-- `exact absurd hewf (HasIfInHead_not_wellformed ...)` — maybe these are unreachable?
-- `simp [HasIfInHead] at *` — see if can derive contradiction
-If not contradiction, this needs the general eval context lifting lemma (shared with break/continue/throw/return/await/yield compound cases).
-
-### Strategy: Focus on L9811/9907 FIRST (compound c_flat)
-These are more tractable than L9812/9908. Even proving just these two would be progress.
+**Check first**: Can these be proved by contradiction? If HasIfInHead requires `.if` in head position of a normalized expression, maybe some wrappers (seq/let) can't have `.if` in head?
+Try: `lean_multi_attempt` with `exact absurd hewf sorry` or `simp [HasIfInHead] at *`
 
 ## PRIORITY ORDER
-1. L9811 (compound c_flat, true) — try eval context approach
-2. L9907 (compound c_flat, false) — structurally identical
-3. L9812 (non-if_direct, true) — only if 1-2 done
-4. L9908 (non-if_direct, false) — only if 1-3 done
+1. L9813 (compound c_flat, true) — strong induction approach
+2. L9911 (compound c_flat, false) — structurally identical
+3. L9814 (non-if_direct, true) — eval context through wrappers
+4. L9912 (non-if_direct, false) — structurally identical
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

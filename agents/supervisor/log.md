@@ -1,3 +1,55 @@
+## Run: 2026-04-05T08:00:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 27 + CC 13 = **40 real sorries**
+- **Delta from last run (07:30)**: 0 change (40→40). **COUNT FLAT.**
+- **Lower**: 0 sorries (DONE)
+
+### Why count unchanged
+- No agent completed a sorry closure this cycle
+- proof agent: long-running build for ANFConvertCorrect since 07:27, still in progress
+- jsspec agent: running since 07:00, no logged completion — likely still working on Core_step_preserves_supported remaining cases
+- wasmspec agent: building ANFConvertCorrect (1.2GB RSS), still in progress
+
+### Agent Status
+1. **proof** (RUNNING since 07:00): Build started at 07:27 for ANFConvertCorrect. Working on hasAbruptCompletion/NoNestedAbrupt infrastructure. Prompt updated: keep tryCatch_direct (L10127) as main target.
+
+2. **jsspec** (RUNNING since 07:00): No logged completion this cycle. Last real progress: proved getProp/setProp in Core_step_preserves_supported at 03:09. **MAJOR REDIRECT**: L4202 (captured variable) is ARCHITECTURALLY BLOCKED — needs multi-step simulation. Redirected to L3970 (FuncsSupported invariant in Core_step_preserves_supported) — the ONLY closeable CC sorry.
+
+3. **wasmspec** (RUNNING since 07:15): Building ANFConvertCorrect at 1.2GB RSS. Proved 5 contradiction cases for compound c_flat, 4 sorries remain needing strong induction + eval context lifting.
+
+### Actions Taken
+1. **Killed 2 supervisor lean builds** (~700MB freed). Memory: 332MB → 969MB available.
+2. Updated ALL 3 agent prompts:
+   - jsspec: **MAJOR REDIRECT** — stopped pursuing L4202 (architecturally blocked), redirected to L3970 (FuncsSupported) as only closeable CC target
+   - proof: Kept tryCatch_direct + infrastructure targets, updated line numbers
+   - wasmspec: Kept compound if focus, noted Steps_if_cond_ctx infrastructure
+3. Logged to time_estimate.csv.
+
+### CC Architectural Assessment
+**10 of 13 CC sorries are architecturally blocked.** They require either:
+- Multi-step simulation (captured variable L4202, functionDef L7214, call subexpr stepping L5326/5334)
+- CCState redesign (if L4531/4554, tryCatch L7371/7444, while_ L7552)
+- Semantic mismatch (getIndex string L5972 — UNPROVABLE)
+
+**Only 3 CC sorries are potentially closeable:**
+- L3970: FuncsSupported invariant (in Core_step_preserves_supported)
+- L5118: FuncsCorr for non-consoleLog calls (needs FuncsCorr invariant)
+- L7372: tryCatch with finally (may need CCState fix)
+
+**To close ALL CC sorries, the proof architecture needs redesign.** The 1-to-1 Flat→Core step simulation cannot handle multi-step cases. This is a fundamental limitation that no amount of sorry-filling will fix.
+
+### Critical Assessment
+**Sorry count flat at 40.** Root cause: all agents working on hard/infrastructure tasks.
+- ANF: 27 sorries, most need eval context lifting lemma (shared structural blocker)
+- CC: 13 sorries, 10 architecturally blocked
+- The eval context lifting lemma is the single highest-leverage piece of work for ANF
+- For CC, architectural redesign to N-to-M step simulation is needed
+
+**Expected next run: 39-40** (jsspec may close L3970, proof/wasmspec may close infrastructure).
+
+---
+
 ## Run: 2026-04-05T07:30:03+00:00
 
 ### Metrics
