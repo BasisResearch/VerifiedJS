@@ -3379,3 +3379,29 @@ The only sorry is at L3970: closure body supported. Requires `∀ i c, s.funcs[i
 
 ### 2026-04-05T19:00:09+00:00 Starting run
 2026-04-05T20:00:02+00:00 SKIP: already running
+
+### 2026-04-05T19:00 Starting run — L7917 functionDef analysis
+
+**Goal**: Close the functionDef sorry at L7917 in closureConvert_step_simulation.
+
+**Analysis**: The functionDef case in the 1-to-1 step simulation is **architecturally blocked** due to a fundamental step-count mismatch:
+
+1. **Core side**: `step? (.functionDef ...)` completes in ONE step, producing `(.silent, { expr := .lit (.function idx), funcs := funcs.push closure, ... })`.
+
+2. **Flat side**: `convertExpr (.functionDef ...)` produces `.makeClosure funcIdx (.makeEnv capturedExprs)`. Evaluating this requires MULTIPLE Flat steps:
+   - Step 1: Evaluate `makeEnv` sub-expressions (variable lookups, etc.)
+   - Step N: `makeEnv` allocates env object → `.lit (.object addr)`  
+   - Step N+1: `makeClosure funcIdx (.lit (.object addr))` → `.lit (.closure funcIdx addr)`
+
+3. **SimRel mismatch**: After the FIRST Flat step, `sf'.expr = .makeClosure funcIdx (partially evaluated)`. But the SimRel requires `sf'.expr = convertExpr sc'.expr ...` where `sc'.expr = .lit (.function idx)`, giving `sf'.expr = .lit (.closure idx 0)`. These don't match.
+
+**Root cause**: Core's `functionDef` is an atomic step that creates a closure in one go. Flat's closure conversion splits this into multiple runtime operations (env allocation + closure creation). The 1-to-1 step simulation can't bridge this gap.
+
+**What would fix it**:
+- Option A: Modify `Flat.step?` so `makeClosure funcIdx (makeEnv capturedExprs)` evaluates to completion in one step (big-step semantics for this case)
+- Option B: Change the simulation to allow multi-step matching (e.g., stuttering bisimulation)
+- Option C: Change `convertExpr (.functionDef ...)` to produce an expression that evaluates in one step
+
+**Attempted**: `exfalso; rw [hsc] at hsupp; simp [Core.Expr.supported] at hsupp` — fails because `hsupp` simplifies to `body.supported = true`, not `False`.
+
+**Result**: L7917 sorry remains. Confirmed architecturally blocked like the other CC sorries.
