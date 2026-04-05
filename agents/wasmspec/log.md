@@ -6693,3 +6693,17 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 ## Run: 2026-04-05T16:15:01+00:00
 
 ### 2026-04-05T16:15:11+00:00 Starting run
+
+#### Progress so far:
+- Added `trivialChain_if_decomp_with_value` helper lemma (~140 lines)
+  - Decomposes normalizeExpr (.if tc then_flat else_flat) K for trivialChain tc
+  - Connects ANF evalTrivial with Flat trivialChain evaluation
+  - Handles lit, var, this cases fully; seq case proved except preservation → closed via trivialChain_eval_value
+- Expanded trivialChain sorries in normalizeExpr_if_branch_step (true):
+  - lit case: fully proved (~20 lines)
+  - var case: fully proved (~35 lines) 
+  - this case: fully proved (~35 lines)
+  - seq case: partially proved using helper, remaining sorry for final step combination
+- Same for normalizeExpr_if_branch_step_false
+- Net sorry count: 40 (same as start, but sorries are now more specific/smaller)
+- Waiting for build to verify

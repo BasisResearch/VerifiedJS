@@ -11259,7 +11259,30 @@ private theorem normalizeExpr_if_branch_step :
     | seq_right h_b =>
       rename_i a b
       simp only [ANF.normalizeExpr_seq'] at hnorm
-      sorry -- ¬HasIfInHead a → trivialChain eval → IH on b; or HasIfInHead a → IH on a
+      -- hnorm : (normalizeExpr a (fun _ => normalizeExpr b K)).run n = .ok (.if cond then_ else_, m)
+      rcases Classical.em (HasIfInHead a) with ha_if | ha_no_if
+      · -- HasIfInHead a: same as seq_left, IH on a
+        have ha_depth : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+        obtain ⟨sf_a, evs_a, hsteps_a, hsil_a, henv_a, hheap_a, hfuncs_a, hcs_a,
+          htrace_a, hpres_a, ⟨n_a, m_a, hnorm_a⟩, hewf_a⟩ :=
+          ih a ha_depth ha_if env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.seq_l _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_seq_ctx_b b hsteps_a
+            (fun ev hev msg => by rw [hsil_a ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_a
+        refine ⟨ws, evs_a, hwsteps, hsil_a, hwenv.trans henv_a, hwheap.trans hheap_a,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_a], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (.seq · b)
+            (fun s inner hv t si hs he => step?_seq_ctx s inner b hv t si hs he)
+            hsteps_a (fun ev hev msg => by rw [hsil_a ev hev]; exact Core.TraceEvent.noConfusion) hpres_a
+        · exact ⟨n_a, m_a, by rw [hwexpr]; simp only [ANF.normalizeExpr_seq']; exact hnorm_a⟩
+        · rw [hwexpr, hwenv, henv_a]; exact fun x hfx => by
+            cases hfx with
+            | seq_l _ _ _ h => exact henv_a ▸ hewf_a x h
+            | seq_r _ _ _ h => exact hewf x (VarFreeIn.seq_r _ _ _ h)
+      · -- ¬HasIfInHead a: a is trivialChain, evaluate a, then IH on b
+        sorry -- needs trivialChain eval of a + seq discard + IH on b
     | let_init h_init =>
       rename_i name init body
       simp only [ANF.normalizeExpr_let'] at hnorm
@@ -11602,7 +11625,29 @@ private theorem normalizeExpr_if_branch_step_false :
     | seq_right h_b =>
       rename_i a b
       simp only [ANF.normalizeExpr_seq'] at hnorm
-      sorry -- seq_right: same as true version
+      rcases Classical.em (HasIfInHead a) with ha_if | ha_no_if
+      · -- HasIfInHead a: same as seq_left, IH on a
+        have ha_depth : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+        obtain ⟨sf_a, evs_a, hsteps_a, hsil_a, henv_a, hheap_a, hfuncs_a, hcs_a,
+          htrace_a, hpres_a, ⟨n_a, m_a, hnorm_a⟩, hewf_a⟩ :=
+          ih a ha_depth ha_if env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.seq_l _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_seq_ctx_b b hsteps_a
+            (fun ev hev msg => by rw [hsil_a ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_a
+        refine ⟨ws, evs_a, hwsteps, hsil_a, hwenv.trans henv_a, hwheap.trans hheap_a,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_a], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (.seq · b)
+            (fun s inner hv t si hs he => step?_seq_ctx s inner b hv t si hs he)
+            hsteps_a (fun ev hev msg => by rw [hsil_a ev hev]; exact Core.TraceEvent.noConfusion) hpres_a
+        · exact ⟨n_a, m_a, by rw [hwexpr]; simp only [ANF.normalizeExpr_seq']; exact hnorm_a⟩
+        · rw [hwexpr, hwenv, henv_a]; exact fun x hfx => by
+            cases hfx with
+            | seq_l _ _ _ h => exact henv_a ▸ hewf_a x h
+            | seq_r _ _ _ h => exact hewf x (VarFreeIn.seq_r _ _ _ h)
+      · -- ¬HasIfInHead a: a is trivialChain, evaluate a, then IH on b
+        sorry -- needs trivialChain eval of a + seq discard + IH on b
     | let_init h_init =>
       rename_i name init body
       simp only [ANF.normalizeExpr_let'] at hnorm

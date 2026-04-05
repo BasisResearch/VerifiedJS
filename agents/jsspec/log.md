@@ -3368,3 +3368,4 @@ The only sorry is at L3970: closure body supported. Requires `∀ i c, s.funcs[i
 ### 2026-04-05T15:00:14+00:00 Starting run
 ### 2026-04-05T15:28:26+00:00 Wrote Core_step_preserves_funcs_supported theorem (~690 lines). Replaced L4197 sorry with theorem call. Build running.
 2026-04-05T16:00:01+00:00 SKIP: already running
+2026-04-05T17:00:01+00:00 SKIP: already running
