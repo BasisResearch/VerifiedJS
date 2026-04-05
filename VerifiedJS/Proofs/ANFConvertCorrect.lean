@@ -10521,13 +10521,16 @@ private theorem normalizeExpr_if_branch_step :
   intro d; induction d with
   | zero =>
     intro e hd hif
-    -- e.depth ≤ 0 → e is a leaf, HasIfInHead is impossible for leaves
+    -- e.depth ≤ 0 → e is a leaf or depth-0 constructor. HasIfInHead is impossible.
     cases e with
     | lit _ => cases hif
     | var _ => cases hif
     | «this» => cases hif
     | «break» _ => cases hif
     | «continue» _ => cases hif
+    | «return» arg => cases arg with | none => cases hif | some _ => simp [Flat.Expr.depth] at hd
+    | yield arg _ => cases arg with | none => cases hif | some _ => simp [Flat.Expr.depth] at hd
+    | tryCatch _ _ _ fin => cases fin with | none => simp [Flat.Expr.depth] at hd | some _ => simp [Flat.Expr.depth] at hd
     | _ => simp [Flat.Expr.depth] at hd
   | succ d ih =>
     intro e hd hif env heap trace funcs cs K n m cond then_ else_ v hnorm hewf heval hbool
@@ -10569,6 +10572,9 @@ private theorem normalizeExpr_if_branch_step_false :
     | «this» => cases hif
     | «break» _ => cases hif
     | «continue» _ => cases hif
+    | «return» arg => cases arg with | none => cases hif | some _ => simp [Flat.Expr.depth] at hd
+    | yield arg _ => cases arg with | none => cases hif | some _ => simp [Flat.Expr.depth] at hd
+    | tryCatch _ _ _ fin => cases fin with | none => simp [Flat.Expr.depth] at hd | some _ => simp [Flat.Expr.depth] at hd
     | _ => simp [Flat.Expr.depth] at hd
   | succ d ih =>
     intro e hd hif env heap trace funcs cs K n m cond then_ else_ v hnorm hewf heval hbool
@@ -11112,10 +11118,13 @@ private theorem normalizeExpr_exprValue_inv
       exfalso
       simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hbody
       revert hbody; intro hbody
-      split at hbody <;> (try simp at hbody)
-      split at hbody <;> (try simp at hbody)
-      simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hbody
-      exact ANF.Expr.noConfusion hbody.1
+      split at hbody
+      · simp at hbody
+      · next =>
+        split at hbody
+        · simp at hbody
+        · simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hbody
+          exact ANF.Expr.noConfusion hbody.1
     | _ =>
       exfalso
       exact normalizeExpr_compound_not_trivial _ k
