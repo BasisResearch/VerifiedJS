@@ -2029,7 +2029,6 @@ private theorem valuesFromExprList?_none_of_nonvalue
     simp only [List.nil_append, List.singleton_append]
     unfold Flat.valuesFromExprList?
     simp only [hnotval]
-    rfl
   | cons d ds ih =>
     have ⟨v, hv⟩ := hdone d (.head ..)
     subst hv
@@ -2152,7 +2151,7 @@ private theorem step?_call_arg_ctx (s : Flat.State)
   have hvnone := valuesFromExprList?_none_of_nonvalue done remaining inner hdone hnotval
   have hfirst := firstNonValueExpr_of_done_lit done remaining inner hdone hnotlit
   rw [Flat.step?.eq_1]
-  simp only [hfv, hev, hvnone, hfirst, hstep]
+  simp only [hfv, hev, hvnone]; rw [hfirst]; simp only [hstep]
   cases t with
   | error msg => exact absurd rfl (hnoerr msg)
   | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
@@ -2181,7 +2180,7 @@ private theorem step?_newObj_arg_ctx (s : Flat.State)
   have hvnone := valuesFromExprList?_none_of_nonvalue done remaining inner hdone hnotval
   have hfirst := firstNonValueExpr_of_done_lit done remaining inner hdone hnotlit
   rw [Flat.step?.eq_1]
-  simp only [hfv, hev, hvnone, hfirst, hstep]
+  simp only [hfv, hev, hvnone]; rw [hfirst]; simp only [hstep]
   cases t with
   | error msg => exact absurd rfl (hnoerr msg)
   | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
