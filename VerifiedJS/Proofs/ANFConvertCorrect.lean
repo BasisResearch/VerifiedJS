@@ -10493,12 +10493,92 @@ private theorem trivialChain_if_false_sim
         · simp [observableTrace] at hobs ⊢; exact hobs
     | _ => simp [isTrivialChain] at htc
 
+/-- General eval context stepping for compound if (true branch):
+    When normalizeExpr e K produces .if cond then_ else_ and HasIfInHead e,
+    Flat can step e (all silent) to a state e' where normalizeExpr e' K produces then_.
+    K need not be trivial-preserving — only the top-level caller needs that. -/
+private theorem normalizeExpr_if_branch_step :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    HasIfInHead e →
+    ∀ (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+    (K : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (cond : ANF.Trivial) (then_ else_ : ANF.Expr) (v : Flat.Value),
+    (ANF.normalizeExpr e K).run n = .ok (.«if» cond then_ else_, m) →
+    ExprWellFormed e env →
+    ANF.evalTrivial env cond = .ok v →
+    Flat.toBoolean v = true →
+    ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
+      Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs sf' ∧
+      (∀ ev ∈ evs, ev = .silent) ∧
+      sf'.env = env ∧ sf'.heap = heap ∧
+      sf'.funcs = funcs ∧ sf'.callStack = cs ∧
+      sf'.trace = trace ++ evs ∧
+      (∀ smid evs1, Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs1 smid →
+        smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1) ∧
+      (∃ n' m', (ANF.normalizeExpr sf'.expr K).run n' = .ok (then_, m')) ∧
+      ExprWellFormed sf'.expr sf'.env := by
+  intro d; induction d with
+  | zero =>
+    intro e hd hif
+    -- e.depth ≤ 0 → e is a leaf, HasIfInHead is impossible for leaves
+    cases e with
+    | lit _ => cases hif
+    | var _ => cases hif
+    | «this» => cases hif
+    | «break» _ => cases hif
+    | «continue» _ => cases hif
+    | _ => simp [Flat.Expr.depth] at hd
+  | succ d ih =>
+    intro e hd hif env heap trace funcs cs K n m cond then_ else_ v hnorm hewf heval hbool
+    sorry -- TODO: case split on hif constructors, handle .if/.seq/.let/.throw etc.
+    -- Key cases:
+    -- if_direct/if_cond: step the .if condition or branch directly
+    -- seq_left/seq_right: step through .seq, lift via Steps_seq_ctx
+    -- let_init: step through .let init, lift via Steps_let_init_ctx
+    -- throw_arg/return_some_arg/await_arg/yield_some_arg: step inner, lift via Steps_*_ctx
+
+/-- Same as normalizeExpr_if_branch_step but for the false/else branch. -/
+private theorem normalizeExpr_if_branch_step_false :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    HasIfInHead e →
+    ∀ (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+    (K : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (cond : ANF.Trivial) (then_ else_ : ANF.Expr) (v : Flat.Value),
+    (ANF.normalizeExpr e K).run n = .ok (.«if» cond then_ else_, m) →
+    ExprWellFormed e env →
+    ANF.evalTrivial env cond = .ok v →
+    Flat.toBoolean v = false →
+    ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
+      Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs sf' ∧
+      (∀ ev ∈ evs, ev = .silent) ∧
+      sf'.env = env ∧ sf'.heap = heap ∧
+      sf'.funcs = funcs ∧ sf'.callStack = cs ∧
+      sf'.trace = trace ++ evs ∧
+      (∀ smid evs1, Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs1 smid →
+        smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1) ∧
+      (∃ n' m', (ANF.normalizeExpr sf'.expr K).run n' = .ok (else_, m')) ∧
+      ExprWellFormed sf'.expr sf'.env := by
+  intro d; induction d with
+  | zero =>
+    intro e hd hif
+    cases e with
+    | lit _ => cases hif
+    | var _ => cases hif
+    | «this» => cases hif
+    | «break» _ => cases hif
+    | «continue» _ => cases hif
+    | _ => simp [Flat.Expr.depth] at hd
+  | succ d ih =>
+    intro e hd hif env heap trace funcs cs K n m cond then_ else_ v hnorm hewf heval hbool
+    sorry -- TODO: symmetric to normalizeExpr_if_branch_step
+
 /-- Infrastructure: multi-step Flat simulation for compound if-expressions (true branch).
     When normalizeExpr sf_expr k produces .if cond then_ else_, and the condition evaluates
     to a value v with Flat.toBoolean v = true, the Flat machine can simulate the ANF if-step
     even when sf_expr requires multi-step condition evaluation.
-    Covers: if_direct with compound c_flat (not lit/var/this) AND HasIfInHead cases.
-    TODO: prove via strong induction on sf_expr.depth + Flat evaluation context lifting. -/
+    Covers: if_direct with compound c_flat (not lit/var/this) AND HasIfInHead cases. -/
 private theorem normalizeExpr_if_compound_true_sim
     (sf_expr : Flat.Expr)
     (s : Flat.Program) (t : ANF.Program)
@@ -10596,7 +10676,33 @@ private theorem normalizeExpr_if_compound_true_sim
       have hnorm_if := hnorm
       simp only [ANF.normalizeExpr_if'] at hnorm
       by_cases hif_seq : HasIfInHead (Flat.Expr.seq a_c b_c)
-      · sorry -- HasIfInHead inside seq condition: needs eval context stepping
+      · -- HasIfInHead inside seq condition: use normalizeExpr_if_branch_step
+        obtain ⟨sf_c, evs_c, hsteps_c, hsil_c, henv_c, hheap_c, hfuncs_c, hcs_c,
+          htrace_c, hpres_c, ⟨n', m', hnorm_c⟩, hewf_c⟩ :=
+          normalizeExpr_if_branch_step (Flat.Expr.seq a_c b_c).depth (Flat.Expr.seq a_c b_c)
+            (Nat.le_refl _) hif_seq env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.if_cond _ _ _ _ hfx)) heval hbool
+        -- Lift steps through .if [·] then_flat else_flat context
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_if_cond_ctx then_flat else_flat hsteps_c
+            (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_c
+        refine ⟨ws, evs_c, hwsteps, ?_, ?_, ?_⟩
+        · simp [observableTrace]; ext1; simp; intro ev hev; exact hsil_c ev hev
+        · refine ⟨hwheap.trans hheap_c, hwenv.trans henv_c, ?_, _, n', m', ?_, ?_⟩
+          · simp [observableTrace_append]; rw [← htrace]
+            have : observableTrace evs_c = [] := by
+              induction evs_c with
+              | nil => rfl
+              | cons h t iht =>
+                simp [observableTrace, List.filter]
+                exact ⟨hsil_c h (List.Mem.head _), iht (fun ev hev => hsil_c ev (List.mem_cons_of_mem _ hev))⟩
+            sorry -- observableTrace matching: needs careful trace algebra
+          · rw [show ws.expr = Flat.Expr.if sf_c.expr then_flat else_flat from hwexpr]
+            simp only [ANF.normalizeExpr_if']
+            exact hnorm_c
+          · sorry -- ExprWellFormed: follows from hewf_c + well-formedness of then_flat/else_flat
+        · sorry -- ExprWellFormed ws.expr ws.env
       · -- ¬HasIfInHead: .seq a_c b_c is a trivial chain
         have htc := no_if_head_implies_trivial_chain (Flat.Expr.seq a_c b_c).depth (Flat.Expr.seq a_c b_c) (Nat.le_refl _)
           _ cond then_ else_ n m hnorm hif_seq
@@ -10604,10 +10710,30 @@ private theorem normalizeExpr_if_compound_true_sim
           then_flat else_flat s t env heap trace sa_trace funcs cs k n m cond then_ else_ v
           htc (Nat.le_refl _) hnorm_if hk hewf heval htrace hbool
     | «if» c' t' e' =>
-      sorry -- nested if in condition: always HasIfInHead, needs eval context stepping
+      -- nested if in condition: use normalizeExpr_if_branch_step (always HasIfInHead)
+      have hif_inner : HasIfInHead (Flat.Expr.if c' t' e') := .if_direct
+      simp only [ANF.normalizeExpr_if'] at hnorm
+      obtain ⟨sf_c, evs_c, hsteps_c, hsil_c, henv_c, hheap_c, hfuncs_c, hcs_c,
+        htrace_c, hpres_c, ⟨n', m', hnorm_c⟩, hewf_c⟩ :=
+        normalizeExpr_if_branch_step (Flat.Expr.if c' t' e').depth (Flat.Expr.if c' t' e')
+          (Nat.le_refl _) hif_inner env heap trace funcs cs _ n m cond then_ else_ v
+          hnorm (fun x hfx => hewf x (VarFreeIn.if_cond _ _ _ _ hfx)) heval hbool
+      sorry -- lift through .if context + construct SimRel (same pattern as seq case above)
     | _ =>
-      sorry -- compound c_flat with HasIfInHead: needs eval context lifting
-  all_goals sorry -- non-if_direct HasIfInHead: requires structural induction on depth
+      -- other compound condition: use normalizeExpr_if_branch_step
+      simp only [ANF.normalizeExpr_if'] at hnorm
+      sorry -- same pattern: branch_step on condition + lift through .if context
+  -- non-if_direct HasIfInHead: use normalizeExpr_if_branch_step directly on sf_expr
+  all_goals (
+    obtain ⟨sf', evs, hsteps, hsil, henv', hheap', hfuncs', hcs', htrace', hpres,
+      ⟨n', m', hnorm'⟩, hewf'⟩ :=
+      normalizeExpr_if_branch_step sf_expr.depth sf_expr (Nat.le_refl _) ‹_›
+        env heap trace funcs cs k n m cond then_ else_ v hnorm hewf heval hbool
+    refine ⟨sf', evs, hsteps, ?_, ?_, hewf'⟩
+    · simp [observableTrace]; ext1; simp; intro ev hev; exact hsil ev hev
+    · exact ⟨hheap'.symm ▸ rfl, henv'.symm ▸ rfl,
+        by sorry, -- observableTrace (sa_trace ++ [.silent]) = observableTrace sf'.trace
+        k, n', m', hnorm', hk⟩)
 
 /-- Infrastructure: multi-step Flat simulation for compound if-expressions (false branch).
     Same as normalizeExpr_if_compound_true_sim but for the false/else branch.
@@ -10708,17 +10834,36 @@ private theorem normalizeExpr_if_compound_false_sim
       have hnorm_if := hnorm
       simp only [ANF.normalizeExpr_if'] at hnorm
       by_cases hif_seq : HasIfInHead (Flat.Expr.seq a_c b_c)
-      · sorry -- HasIfInHead inside seq condition: needs eval context stepping
+      · -- HasIfInHead inside seq condition: use normalizeExpr_if_branch_step_false
+        obtain ⟨sf_c, evs_c, hsteps_c, hsil_c, henv_c, hheap_c, hfuncs_c, hcs_c,
+          htrace_c, hpres_c, ⟨n', m', hnorm_c⟩, hewf_c⟩ :=
+          normalizeExpr_if_branch_step_false (Flat.Expr.seq a_c b_c).depth (Flat.Expr.seq a_c b_c)
+            (Nat.le_refl _) hif_seq env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.if_cond _ _ _ _ hfx)) heval hbool
+        sorry -- lift through .if context + construct SimRel (same as true version)
       · have htc := no_if_head_implies_trivial_chain (Flat.Expr.seq a_c b_c).depth (Flat.Expr.seq a_c b_c) (Nat.le_refl _)
           _ cond then_ else_ n m hnorm hif_seq
         exact trivialChain_if_false_sim (trivialChainCost (Flat.Expr.seq a_c b_c)) (Flat.Expr.seq a_c b_c)
           then_flat else_flat s t env heap trace sa_trace funcs cs k n m cond then_ else_ v
           htc (Nat.le_refl _) hnorm_if hk hewf heval htrace hbool
     | «if» c' t' e' =>
-      sorry -- nested if in condition: always HasIfInHead, needs eval context stepping
+      -- nested if: use normalizeExpr_if_branch_step_false
+      simp only [ANF.normalizeExpr_if'] at hnorm
+      sorry -- same pattern: branch_step_false on condition + lift through .if context
     | _ =>
-      sorry -- compound c_flat with HasIfInHead: needs eval context lifting
-  all_goals sorry -- non-if_direct HasIfInHead: requires structural induction on depth
+      simp only [ANF.normalizeExpr_if'] at hnorm
+      sorry -- same pattern: branch_step_false on condition + lift through .if context
+  -- non-if_direct HasIfInHead: use normalizeExpr_if_branch_step_false directly
+  all_goals (
+    obtain ⟨sf', evs, hsteps, hsil, henv', hheap', hfuncs', hcs', htrace', hpres,
+      ⟨n', m', hnorm'⟩, hewf'⟩ :=
+      normalizeExpr_if_branch_step_false sf_expr.depth sf_expr (Nat.le_refl _) ‹_›
+        env heap trace funcs cs k n m cond then_ else_ v hnorm hewf heval hbool
+    refine ⟨sf', evs, hsteps, ?_, ?_, hewf'⟩
+    · simp [observableTrace]; ext1; simp; intro ev hev; exact hsil ev hev
+    · exact ⟨hheap'.symm ▸ rfl, henv'.symm ▸ rfl,
+        by sorry, -- observableTrace matching
+        k, n', m', hnorm', hk⟩)
 
 /-- If normalizeExpr sf.expr k produces .if cond then_ else_ (with trivial-preserving k),
     then one ANF step on the if can be simulated by Flat steps. -/
@@ -10967,8 +11112,8 @@ private theorem normalizeExpr_exprValue_inv
       exfalso
       simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hbody
       revert hbody; intro hbody
-      split at hbody <;> [simp at hbody; skip]
-      split at hbody <;> [simp at hbody; skip]
+      split at hbody <;> (try simp at hbody)
+      split at hbody <;> (try simp at hbody)
       simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hbody
       exact ANF.Expr.noConfusion hbody.1
     | _ =>
