@@ -2964,9 +2964,7 @@ private theorem listSupported_firstNonValue_parts {es : List Core.Expr}
     Core.Expr.listSupported done = true ∧ Core.Expr.listSupported rest = true := by
   have hdecomp := firstNonValueExpr_decompose h
   rw [hdecomp, listSupported_append, listSupported_append] at hsupp
-  simp only [Bool.and_eq_true] at hsupp
-  obtain ⟨h1, h2, h3⟩ := hsupp
-  exact ⟨h1, h3⟩
+  constructor <;> (simp only [Bool.and_eq_true] at hsupp ⊢ <;> tauto)
 
 /-- Replacing the target with a supported expr preserves listSupported. -/
 private theorem listSupported_replace_target {done rest : List Core.Expr}
@@ -2986,9 +2984,7 @@ private theorem propListSupported_firstNonValue_parts {ps : List (Core.PropName 
     Core.Expr.propListSupported done = true ∧ Core.Expr.propListSupported rest = true := by
   have hdecomp := firstNonValueProp_decompose h
   rw [hdecomp, propListSupported_append, propListSupported_append] at hsupp
-  simp only [Bool.and_eq_true] at hsupp
-  obtain ⟨h1, h2, h3⟩ := hsupp
-  exact ⟨h1, h3⟩
+  constructor <;> (simp only [Bool.and_eq_true] at hsupp ⊢ <;> tauto)
 
 /-- Replacing the target with a supported expr preserves propListSupported. -/
 private theorem propListSupported_replace_target {done rest : List (Core.PropName × Core.Expr)}
