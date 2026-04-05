@@ -6512,3 +6512,21 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 ## Run: 2026-04-05T07:15:01+00:00
 
 ### 2026-04-05T07:15:12+00:00 Starting run — restart after crash, proving infrastructure lemmas
+
+**Status at 07:36**: Waiting for proof agent build (started 07:17, 19+ min).
+
+**Analysis of compound c_flat sorry (L9796, L9877)**:
+- The comment "normalizeExpr wraps in .let, contradicts bare .if" is WRONG for most cases
+- Only 5 constructors (break, continue, labeled, while_, tryCatch) are genuine contradictions
+- All other compound c_flat cases CAN produce .if when subexpressions contain HasIfInHead
+- Proved the 5 contradiction cases for both true/false branches (10 cases total)
+- Remaining compound sorry needs eval context lifting via strong induction on depth
+
+**Key infrastructure found**:
+- `Steps_if_cond_ctx` (L1828): lifts multi-step evaluation through .if [·] then_ else_ context
+- `normalizeExpr_if_or_k_aux` (L7219): pattern for strong induction on expression depth
+- These would be needed for the remaining sorry
+
+**Remaining sorries in my lemmas**: 4 (2 compound c_flat, 2 non-if_direct HasIfInHead)
+- All require strong induction + eval context lifting
+- Same infrastructure needed by ~15 other sorries in the file
