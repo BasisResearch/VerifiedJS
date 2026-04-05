@@ -2045,17 +2045,16 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
   split at h
   <;> (repeat split at h)
   <;> (try contradiction)
+  <;> (try { obtain ⟨-, rfl⟩ := h; rfl })
   <;> (try (simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h; rfl))
-  -- Remaining: recursive step? in h. Generalize to split without needing IH.
-  all_goals (try { revert h; generalize step? _ = r; intro h;
-    rcases r with _ | ⟨t, si⟩
-    · simp at h
-    · dsimp only [] at h
-      simp only [Option.some.injEq, Prod.mk.injEq] at h
-      obtain ⟨-, rfl⟩ := h; simp [pushTrace] })
-  -- Handle conjunction cases (split decomposed some=some into And)
-  all_goals (try { obtain ⟨-, rfl⟩ := h; rfl })
-  all_goals (try { obtain ⟨-, rfl⟩ := h; simp [pushTrace] })
+  <;> (try { dsimp only [] at h; obtain ⟨-, rfl⟩ := h; rfl })
+  <;> (try { dsimp only [] at h; simp only [Option.some.injEq, Prod.mk.injEq] at h;
+             obtain ⟨-, rfl⟩ := h; try rfl; simp [pushTrace] })
+  <;> (try { revert h; generalize step? _ = r; intro h;
+             rcases r with _ | ⟨t, si⟩
+             · simp at h
+             · dsimp only [] at h; simp only [Option.some.injEq, Prod.mk.injEq] at h;
+               obtain ⟨-, rfl⟩ := h; simp [pushTrace] })
 
 /-- Multi-step execution preserves the funcs field. -/
 theorem Steps_preserves_funcs {sf sf' : Flat.State} {evs : List Core.TraceEvent}
