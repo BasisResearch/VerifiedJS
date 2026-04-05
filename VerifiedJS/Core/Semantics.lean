@@ -13643,6 +13643,59 @@ theorem step_call_step_arg (cv : Value) (args : List Expr)
       some (t, pushTrace { sa with expr := .call (.lit cv) (done ++ [sa.expr] ++ remaining), trace := trace } t) := by
   unfold step?; simp [exprValue?, hallv]; split <;> simp_all [pushTrace]
 
+/-- call with consoleLog: produces log event and .lit .undefined. -/
+theorem step_call_consoleLog (args : List Expr) (argVals : List Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hargs : allValues args = some argVals) :
+    step? ⟨.call (.lit (.function consoleLogIdx)) args, env, heap, trace, funcs, cs⟩ =
+      some (
+        .log (match argVals with | [v] => valueToString v | vs => String.intercalate " " (vs.map valueToString)),
+        pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩
+          (.log (match argVals with | [v] => valueToString v | vs => String.intercalate " " (vs.map valueToString)))) := by
+  simp [step?, exprValue?, hargs, consoleLogIdx]
+
+/-- call with function (non-consoleLog) and closure found: enters closure body. -/
+theorem step_call_func_closure (idx : FuncIdx) (args : List Expr) (argVals : List Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (closure : FuncClosure)
+    (hargs : allValues args = some argVals)
+    (hnotcl : (idx == consoleLogIdx) = false)
+    (hfunc : funcs[idx]? = some closure) :
+    let pairs := closure.params.zip argVals
+    let bodyBindings := pairs.foldr (fun pv bs => (pv.1, pv.2) :: bs) closure.capturedEnv
+    let bodyEnv : Env := { bindings := bodyBindings }
+    let bodyEnv' : Env := match closure.name with
+      | some n => { bindings := (n, .function idx) :: bodyEnv.bindings }
+      | none => bodyEnv
+    let wrapped := .tryCatch closure.body "__call_frame_return__" (.var "__call_frame_return__") none
+    step? ⟨.call (.lit (.function idx)) args, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨wrapped, bodyEnv', heap, trace, funcs, env.bindings :: cs⟩ .silent) := by
+  simp [step?, exprValue?, hargs, hnotcl, hfunc]
+
+/-- call with function (non-consoleLog) and no closure: returns undefined. -/
+theorem step_call_func_none (idx : FuncIdx) (args : List Expr) (argVals : List Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hargs : allValues args = some argVals)
+    (hnotcl : (idx == consoleLogIdx) = false)
+    (hfunc : funcs[idx]? = none) :
+    step? ⟨.call (.lit (.function idx)) args, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ .silent) := by
+  simp [step?, exprValue?, hargs, hnotcl, hfunc]
+
+/-- call with non-function value callee and all-value args: returns undefined. -/
+theorem step_call_nonfunc_exact (v : Value) (args : List Expr) (argVals : List Value)
+    (env : Env) (heap : Heap) (trace : List TraceEvent)
+    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
+    (hv : ∀ idx, v ≠ .function idx) (hargs : allValues args = some argVals) :
+    step? ⟨.call (.lit v) args, env, heap, trace, funcs, cs⟩ =
+      some (.silent, pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ .silent) := by
+  cases v with
+  | function idx => exact absurd rfl (hv idx)
+  | _ => simp [step?, exprValue?, hargs]
+
 /-- §13.2.5.4 When some prop value is not a value, step the first non-value prop. -/
 theorem step_objectLit_step_prop (props : List (PropName × Expr))
     (env : Env) (heap : Heap) (trace : List TraceEvent)

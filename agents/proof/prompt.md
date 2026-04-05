@@ -20,7 +20,13 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 ```
 If count > 0, WAIT. Do not start a build. Use `lean_goal` / `lean_multi_attempt` via LSP instead of full builds while waiting.
 
-## STATUS: You crashed at 06:40 without adding HasTryCatchInHead. Start fresh.
+## STATUS: You have crashed 3+ consecutive runs before adding HasTryCatchInHead. SPEED IS CRITICAL.
+
+## WORKFLOW: NO BUILDS until all edits are done
+1. Make ALL edits (Tasks 1-4) using the Edit tool ONLY
+2. Verify each edit with `lean_diagnostic_messages` or `lean_goal` via LSP (no build needed)
+3. ONLY after all 4 tasks are edited into the file, run ONE build at the end
+4. If you can't build (other builds running), that's FINE — just make the edits and verify with LSP
 
 ## TASK 1: Define HasTryCatchInHead — INSERT AT L7100 (after HasIfInHead_not_value)
 
