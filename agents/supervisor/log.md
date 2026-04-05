@@ -1,3 +1,58 @@
+## Run: 2026-04-05T22:00:08+00:00
+
+### Metrics
+- **Sorry count (grep -c)**: ANF 30 + CC 12 = **42 raw sorries**
+- **Delta from last run (21:30)**: +6 (36→42). **UP — but misleading (see below).**
+- **Lower**: 0 sorries (DONE)
+- **Effective sorries**: 34 (8 of 30 ANF are LSP-verified, just need reinstatement)
+
+### Why count went UP (+6)
+- **ANF 24→30 (+6)**: Proof agent DECOMPOSED the normalizeExpr_labeled_branch_step catch-all. Old: 1 monolithic sorry. New: 9 specific cases (8 LSP-verified + 1 remaining). Net: +8 from decomposition.
+- **wasmspec CLOSED 2 sorries**: Old 4 preservation/exotic sorries → 2 remaining catch-all sorries. Net: -2.
+- **CC 12→12**: No change. All 12 still architecturally blocked.
+- Net: +8 - 2 = +6 in grep count, but REAL progress is being made.
+
+### Memory Status
+- **294MB available** — still tight but better than 64MB
+- wasmspec lean worker: 3.9GB (PID 1168070, active since 21:38)
+- Killed supervisor's own build process (PID 1223013, 1GB) to free memory
+- jsspec and proof Claude processes running (~300MB each)
+
+### Agent Status
+1. **proof** (last active 21:48): Added 6 step?_ctx helpers + 8 Steps_ctx_b defs. Verified 8 proofs via LSP but left as sorry because build was broken. BUILD IS NOW FIXED. Prompt UPDATED: P0 = reinstate 8 verified proofs.
+2. **jsspec** (just started 22:00): Fixed 9 CC build errors last run. Build succeeds. Prompt UPDATED: build missing Steps_X_ctx_b helpers for L8802.
+3. **wasmspec** (running since 21:15): Lean worker active. Closed 2 of 4 sorries. Prompt UPDATED: 2 catch-all sorries remain (L12355, L13161).
+
+### Actions Taken
+1. Killed supervisor build process (PID 1223013) — freed 1GB memory
+2. Updated ALL 3 agent prompts with correct line numbers and priorities
+3. proof prompt: P0 = reinstate 8 LSP-verified proofs (build is fixed!)
+4. jsspec prompt: build missing Steps_X_ctx_b helpers (binary_rhs, setProp, call, etc.)
+5. wasmspec prompt: 2 remaining catch-all sorries at L12355, L13161
+6. Logged to time_estimate.csv
+
+### Sorry Classification (42 raw / 34 effective)
+**ANF (30 raw, 22 effective):**
+- 8 LSP-verified (L8794-8801) ← proof: REINSTATE NOW (P0)
+- 1 remaining catch-all (L8802) ← needs more Steps_X_ctx_b from jsspec
+- 4 compound HasXInHead (L10049, L10206, L10383, L10541) ← proof P1
+- 3 compound inner_val/arg (L10200, L10377, L10535) ← proof
+- 3 return/yield/compound (L10597, L10601, L10602) ← proof
+- 2 while condition (L10692, L10704) ← proof
+- 2 if_branch catch-all (L12355, L13161) ← wasmspec
+- 3 tryCatch (L14002, L14020, L14023) ← blocked
+- 2 call frame (L15106, L15117) ← blocked
+- 2 break/continue (L15337, L15390) ← blocked
+
+**CC (12):** ALL architecturally blocked
+
+### Expected next run: 32-34
+- proof: if it reinstates 8 verified proofs → 42-8 = 34. Could also close 1-2 Group B.
+- wasmspec: if catch-all cases are unreachable → 34-2 = 32
+- jsspec: building helpers, no direct sorry impact yet
+
+---
+
 ## Run: 2026-04-05T21:30:09+00:00
 
 ### Metrics
@@ -6659,3 +6714,4 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 ## Run: 2026-04-05T22:00:08+00:00
 
 2026-04-05T22:05:01+00:00 SKIP: already running
+2026-04-05T22:08:41+00:00 DONE

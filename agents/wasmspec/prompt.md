@@ -1,49 +1,38 @@
-# wasmspec — 4 sorries remain. Line numbers UPDATED 21:30. Close preservation + exotic cases.
+# wasmspec — 2 sorries remain. Close the remaining catch-all cases.
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
 - **DO NOT** edit Flat/Semantics.lean — it's DONE (0 sorries), leave it alone
-- **DO NOT** run `lake build` anything — memory is 64MB available. USE LSP ONLY.
+- **DO NOT** run `lake build` — memory is tight (~300MB free). USE LSP ONLY.
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
-- MEMORY: 7.7GB total, NO swap. **64MB available — CRITICAL.**
 - You CAN edit ANFConvertCorrect.lean ONLY
 
-## MEMORY WARNING — DO NOT BUILD
-Memory is at 64MB available. Your lean worker is using 3.6GB. If you start a build it will OOM and crash everything. **USE LSP TOOLS ONLY** (lean_goal, lean_multi_attempt, lean_hover_info).
+## GOOD PROGRESS: You closed 2 of 4 sorries! 2 remain.
 
 ## CONCURRENCY: proof agent also edits ANFConvertCorrect.lean
-- proof agent works on L8963-10865
-- **YOU** own L12200-12950 ONLY (trivialChain/exotic zone)
-- DO NOT touch lines outside your range
+- proof agent works on L8794-10865
+- jsspec works on helper section L1654-2280
+- **YOU** own L12355 and L13161 zones
 
-## YOUR 4 SORRIES (verified 21:30 — LINE NUMBERS CORRECTED):
+## YOUR 2 SORRIES:
 
-| Line | Category | Description |
-|------|----------|-------------|
-| L12222 | preservation for combined steps (true) | seq_right: needs preservation proof for appended steps |
-| L12329 | exotic remaining (true) | binary, unary, getProp, etc. |
-| L12838 | preservation for combined steps (false) | Same as L12222, false branch |
-| L12945 | exotic remaining (false) | Same as L12329, false branch |
+| Line | Description |
+|------|-------------|
+| L12355 | remaining catch-all in normalizeExpr_if_branch_step (true): setProp_obj/val, binary_rhs, call_func/env/args, newObj, getIndex, setIndex, makeEnv, objectLit, arrayLit |
+| L13161 | remaining catch-all in normalizeExpr_if_branch_step_false: same cases as L12355 |
 
-## APPROACH FOR L12222 / L12838 (preservation for combined steps)
+## APPROACH
+These are `| _ => sorry` catch-all branches. Use `lean_goal` at each line to see what constructors remain.
 
-Your log says you closed the trivialChain seq sorry and partially closed seq_right, with preservation remaining. Use `lean_goal` at L12222 to see the exact goal.
+Options:
+1. If the remaining constructors can be shown unreachable (exfalso + contradiction on HasIfInHead): `exfalso; cases hif <;> simp_all`
+2. If they need actual proofs, follow the same pattern as the binary_lhs case just above them (L12330-12354 for true, L13136-13160 for false): apply IH, lift through Steps_X_ctx_b, prove preservation/norm/ewf.
+3. Some constructors might need Steps_X_ctx_b helpers that don't exist yet. If so, note which ones and move on — jsspec is building them.
 
-The pattern: you have steps from IH (hsteps_a, hsteps_b) composed together. Preservation should compose from `hpres_a` and `hpres_b` from the IH. Try:
-- `exact Steps_pres_trans hpres_a hpres_b` or similar composition
-- Look for how other preservation proofs compose in the file
-
-## APPROACH FOR L12329 / L12945 (exotic remaining)
-
-These are catch-all `| _ =>` cases. Use `lean_goal` to see what constructors remain. Try:
-- `exfalso; cases hif <;> simp_all` to show all constructors are already covered
-- If some remain, handle them individually
-
-## PRIORITY ORDER
-1. L12222 + L12838 (preservation) — likely mechanical once you see the goal
-2. L12329 + L12945 (exotic) — likely contradictions or trivialChain
-
-## GOOD: You started at 21:15. Keep going. Close these 4.
+## PRIORITY
+1. Use lean_goal at L12355 to understand what's needed
+2. Try closing as many sub-cases as possible
+3. L13161 is the mirror of L12355 — same proof works
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

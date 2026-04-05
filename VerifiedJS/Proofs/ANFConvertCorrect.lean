@@ -1806,7 +1806,8 @@ private theorem step?_binary_rhs_ctx (s : Flat.State) (op : Core.BinOp)
       s'.expr = .binary op (.lit lv) sr.expr ∧ s'.env = sr.env ∧ s'.heap = sr.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [t] := by
-  simp only [Flat.step?, Flat.exprValue?, hnotval, hstep]
+  have hlv : Flat.exprValue? (Flat.Expr.lit lv) = some lv := rfl
+  simp only [Flat.step?, hlv, hnotval, hstep]
   cases t with
   | error msg => exact absurd rfl (hnoerr msg)
   | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩

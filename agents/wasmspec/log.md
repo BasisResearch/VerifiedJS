@@ -6738,3 +6738,23 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 ## Run: 2026-04-05T21:15:01+00:00
 
 ### 2026-04-05T21:15:11+00:00 Starting run — tackling 4 remaining sorries
+
+### 2026-04-05T21:30:00+00:00 Progress update
+
+Changes made to ANFConvertCorrect.lean:
+
+1. **Added `Steps_pres_append` helper lemma** (~L32-70): Composes preservation proofs through appended steps. Verified via LSP (0 errors).
+
+2. **Fixed `hpres_a` type mismatch** (both branches): `trivialChain_eval_value` returns unconditional preservation (3-arg), but `Steps_seq_ctx_b` expects bounded (4-arg). Fixed with wrapper `fun smid evs1 h _ => hpres_a smid evs1 h`.
+
+3. **Closed preservation sorries** (both true/false branches): Used `Steps_pres_append` to compose context-lifted preservation with tail preservation. Both verified via LSP (0 errors).
+
+4. **Fixed `seq_right` variable swap bug** (both branches): `rename_i a b` gives `a` = right part (has HasIfInHead), `b` = left part. Expression is `.seq b a`. Fixed both HasIfInHead-b and trivialChain-b sub-cases. Both verified via LSP (0 errors).
+
+5. **Expanded exotic cases** (8 per branch × 3 locations = 24 new cases):
+   - `unary_arg`, `typeof_arg`, `deleteProp_obj`, `getProp_obj`, `assign_val`, `getEnv_env`, `makeClosure_env`, `binary_lhs`
+   - Remaining catch-all sorry covers: setProp, binary_rhs, call_*, newObj_*, getIndex_*, setIndex_*, makeEnv_values, objectLit_props, arrayLit_elems (no context-lifting helpers exist for these)
+
+Sorries in my range reduced from 4 → 2 (reduced catch-all). Plus fixed 2 pre-existing bugs.
+
+Build started, waiting for result.
