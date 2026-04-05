@@ -9712,6 +9712,226 @@ private theorem Flat_step?_if_cond_step (s : Flat.State) (cond then_ else_ : Fla
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
   simp [Flat.step?, hstep]; split <;> simp_all [Flat.exprValue?]
 
+/-- If normalizeExpr e k produces .if and e has no HasIfInHead, then e is a trivial chain. -/
+private theorem no_if_head_implies_trivial_chain :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    ∀ (k : ANF.Trivial → ANF.ConvM ANF.Expr) (cond : ANF.Trivial) (then_ else_ : ANF.Expr) (n m : Nat),
+    (ANF.normalizeExpr e k).run n = .ok (.if cond then_ else_, m) →
+    ¬ HasIfInHead e →
+    isTrivialChain e = true := by
+  intro d; induction d with
+  | zero =>
+    intro e hd k cond then_ else_ n m h hno
+    cases e with
+    | lit _ => rfl
+    | var _ => rfl
+    | «this» => rfl
+    | «break» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | «continue» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | «return» arg_r =>
+      cases arg_r with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some _ => exfalso; simp [Flat.Expr.depth] at hd
+    | yield arg_y _ =>
+      cases arg_y with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some _ => exfalso; simp [Flat.Expr.depth] at hd
+    | tryCatch _ _ _ fin => exfalso; cases fin <;> (simp [Flat.Expr.depth] at hd; try omega)
+    | _ => exfalso; simp [Flat.Expr.depth] at hd; try omega
+  | succ d ih =>
+    intro e hd k cond then_ else_ n m h hno
+    cases e with
+    | lit _ => rfl
+    | var _ => rfl
+    | «this» => rfl
+    | «break» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | «continue» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | «if» c t e => exfalso; exact hno HasIfInHead.if_direct
+    | «throw» arg_t =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_if_or_k arg_t _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.throw_arg hleft)
+      · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
+    | «return» arg_r =>
+      cases arg_r with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some v =>
+        exfalso; simp only [ANF.normalizeExpr] at h
+        rcases ANF.normalizeExpr_if_or_k v _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+        · exact hno (HasIfInHead.return_some_arg hleft)
+        · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
+    | yield arg_y dlg =>
+      cases arg_y with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some v =>
+        exfalso; simp only [ANF.normalizeExpr] at h
+        rcases ANF.normalizeExpr_if_or_k v _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+        · exact hno (HasIfInHead.yield_some_arg hleft)
+        · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
+    | await v =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_if_or_k v _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.await_arg hleft)
+      · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
+    | labeled l body => exfalso; exact absurd h (ANF.normalizeExpr_labeled_not_if l body k cond then_ else_ n m)
+    | while_ c b => exfalso; exact absurd h (ANF.normalizeExpr_while_not_if c b k cond then_ else_ n m)
+    | tryCatch body cp cb fin =>
+      exfalso; exact absurd h (ANF.normalizeExpr_tryCatch_not_if body cp cb fin k cond then_ else_ n m)
+    | seq a b =>
+      simp only [ANF.normalizeExpr] at h
+      have hda : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have hdb : b.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have hno_a : ¬HasIfInHead a := fun ha => hno (HasIfInHead.seq_left ha)
+      have hno_b : ¬HasIfInHead b := fun hb => hno (HasIfInHead.seq_right hb)
+      have htc_a := ih a hda (fun _ => ANF.normalizeExpr b k) cond then_ else_ n m h hno_a
+      have hpass := normalizeExpr_trivialChain_passthrough a.depth a (Nat.le_refl _) htc_a
+        (ANF.normalizeExpr b k) n
+      have h_b : (ANF.normalizeExpr b k).run n = .ok (.if cond then_ else_, m) := by rw [← hpass]; exact h
+      have htc_b := ih b hdb k cond then_ else_ n m h_b hno_b
+      simp [isTrivialChain, htc_a, htc_b]
+    | «let» name init body =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_if_or_k init _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.let_init hleft)
+      · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure,
+          Except.pure, Except.bind] at hkt
+        split at hkt <;> simp_all
+    | assign name val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_if_or_k val _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.assign_val hleft)
+      · exact absurd hkt (ANF.bindComplex_never_if_general _ _ _ _ _ _ _)
+    | getProp obj _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_if_or_k obj _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.getProp_obj hleft)
+      · exact absurd hkt (ANF.bindComplex_never_if_general _ _ _ _ _ _ _)
+    | deleteProp obj _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_if_or_k obj _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.deleteProp_obj hleft)
+      · exact absurd hkt (ANF.bindComplex_never_if_general _ _ _ _ _ _ _)
+    | typeof val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_if_or_k val _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.typeof_arg hleft)
+      · exact absurd hkt (ANF.bindComplex_never_if_general _ _ _ _ _ _ _)
+    | unary _ val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_if_or_k val _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.unary_arg hleft)
+      · exact absurd hkt (ANF.bindComplex_never_if_general _ _ _ _ _ _ _)
+    | getEnv envPtr _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_if_or_k envPtr _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.getEnv_env hleft)
+      · exact absurd hkt (ANF.bindComplex_never_if_general _ _ _ _ _ _ _)
+    | makeClosure _ env =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_if_or_k env _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.makeClosure_env hleft)
+      · exact absurd hkt (ANF.bindComplex_never_if_general _ _ _ _ _ _ _)
+    | setProp obj _ val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_if_or_k obj _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.setProp_obj hleft)
+      · rcases ANF.normalizeExpr_if_or_k val _ cond then_ else_ _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasIfInHead.setProp_val hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_never_if_general _ _ _ _ _ _ _)
+    | binary _ lhs rhs =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_if_or_k lhs _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.binary_lhs hleft)
+      · rcases ANF.normalizeExpr_if_or_k rhs _ cond then_ else_ _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasIfInHead.binary_rhs hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_never_if_general _ _ _ _ _ _ _)
+    | getIndex obj idx =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_if_or_k obj _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.getIndex_obj hleft)
+      · rcases ANF.normalizeExpr_if_or_k idx _ cond then_ else_ _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasIfInHead.getIndex_idx hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_never_if_general _ _ _ _ _ _ _)
+    | setIndex obj idx val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_if_or_k obj _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.setIndex_obj hleft)
+      · rcases ANF.normalizeExpr_if_or_k idx _ cond then_ else_ _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasIfInHead.setIndex_idx hleft)
+        · rcases ANF.normalizeExpr_if_or_k val _ cond then_ else_ _ _ hkt₂ with hleft | ⟨_, _, _, hkt₃⟩
+          · exact hno (HasIfInHead.setIndex_val hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_never_if_general _ _ _ _ _ _ _)
+    | call f env args =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_if_or_k f _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.call_func hleft)
+      · rcases ANF.normalizeExpr_if_or_k env _ cond then_ else_ _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasIfInHead.call_env hleft)
+        · have args_ih : ∀ e, e ∈ args → ∀ k' (cond' : ANF.Trivial) (then_' else_' : ANF.Expr) n m,
+              (ANF.normalizeExpr e k').run n = .ok (.if cond' then_' else_', m) →
+              HasIfInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.if cond' then_' else_', m') :=
+            fun e he => ANF.normalizeExpr_if_or_k e
+          rcases normalizeExprList_if_or_k args args_ih _ _ _ _ _ _ hkt₂ with hleft | ⟨_, _, _, hkt₃⟩
+          · exact hno (HasIfInHead.call_args hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_never_if_general _ _ _ _ _ _ _)
+    | newObj f env args =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_if_or_k f _ cond then_ else_ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.newObj_func hleft)
+      · rcases ANF.normalizeExpr_if_or_k env _ cond then_ else_ _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasIfInHead.newObj_env hleft)
+        · have args_ih : ∀ e, e ∈ args → ∀ k' (cond' : ANF.Trivial) (then_' else_' : ANF.Expr) n m,
+              (ANF.normalizeExpr e k').run n = .ok (.if cond' then_' else_', m) →
+              HasIfInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.if cond' then_' else_', m') :=
+            fun e he => ANF.normalizeExpr_if_or_k e
+          rcases normalizeExprList_if_or_k args args_ih _ _ _ _ _ _ hkt₂ with hleft | ⟨_, _, _, hkt₃⟩
+          · exact hno (HasIfInHead.newObj_args hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_never_if_general _ _ _ _ _ _ _)
+    | makeEnv values =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have vals_ih : ∀ e, e ∈ values → ∀ k' (cond' : ANF.Trivial) (then_' else_' : ANF.Expr) n m,
+          (ANF.normalizeExpr e k').run n = .ok (.if cond' then_' else_', m) →
+          HasIfInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.if cond' then_' else_', m') :=
+        fun e he => ANF.normalizeExpr_if_or_k e
+      rcases normalizeExprList_if_or_k values vals_ih _ _ _ _ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.makeEnv_values hleft)
+      · exact absurd hkt (ANF.bindComplex_never_if_general _ _ _ _ _ _ _)
+    | objectLit props =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have props_ih : ∀ (name : Flat.PropName) (e : Flat.Expr), (name, e) ∈ props →
+          ∀ k' (cond' : ANF.Trivial) (then_' else_' : ANF.Expr) n m,
+          (ANF.normalizeExpr e k').run n = .ok (.if cond' then_' else_', m) →
+          HasIfInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.if cond' then_' else_', m') :=
+        fun name e he => ANF.normalizeExpr_if_or_k e
+      rcases normalizeProps_if_or_k props props_ih _ _ _ _ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.objectLit_props hleft)
+      · exact absurd hkt (ANF.bindComplex_never_if_general _ _ _ _ _ _ _)
+    | arrayLit elems =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have elems_ih : ∀ e, e ∈ elems → ∀ k' (cond' : ANF.Trivial) (then_' else_' : ANF.Expr) n m,
+          (ANF.normalizeExpr e k').run n = .ok (.if cond' then_' else_', m) →
+          HasIfInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.if cond' then_' else_', m') :=
+        fun e he => ANF.normalizeExpr_if_or_k e
+      rcases normalizeExprList_if_or_k elems elems_ih _ _ _ _ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasIfInHead.arrayLit_elems hleft)
+      · exact absurd hkt (ANF.bindComplex_never_if_general _ _ _ _ _ _ _)
+
 /-- Infrastructure: multi-step Flat simulation for compound if-expressions (true branch).
     When normalizeExpr sf_expr k produces .if cond then_ else_, and the condition evaluates
     to a value v with Flat.toBoolean v = true, the Flat machine can simulate the ANF if-step

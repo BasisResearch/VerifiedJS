@@ -5907,3 +5907,6 @@ The normalizeExpr_tryCatch_step_sim sorry is now split into:
 - Remaining in tryCatch_direct: body-step, body-error, call-frame edge cases, compound cases
 - Confirmed hasAbruptCompletion_step_preserved and NoNestedAbrupt_step_preserved are already closed
 - Total sorry count: 31 (down from ~27 base + new structure sorries)
+- Build attempt OOM-killed (code 137) — concurrent builds consuming memory
+- LSP diagnostics confirmed no errors in added code (L10100-10320)
+2026-04-05T09:51:28+00:00 DONE
