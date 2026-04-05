@@ -9730,8 +9730,8 @@ private theorem trivialChain_eval_value
   | zero =>
     cases tc with
     | lit v =>
-      have htnil : trace ++ ([] : List Core.TraceEvent) = trace := by simp
-      refine ⟨v, [], htnil ▸ .refl _, fun _ h _ => absurd h (by simp), rfl, fun smid evs1 hsteps => ?_⟩
+      refine ⟨v, [], ?_, fun _ h _ => absurd h (by simp), rfl, fun smid evs1 hsteps => ?_⟩
+      · simp only [List.append_nil]; exact .refl _
       · cases hsteps with
         | refl => simp
         | tail hsingle _ =>
@@ -9744,8 +9744,8 @@ private theorem trivialChain_eval_value
   | succ fuel ih =>
     cases tc with
     | lit v =>
-      have htnil : trace ++ ([] : List Core.TraceEvent) = trace := by simp
-      refine ⟨v, [], htnil ▸ .refl _, fun _ h _ => absurd h (by simp), rfl, fun smid evs1 hsteps => ?_⟩
+      refine ⟨v, [], ?_, fun _ h _ => absurd h (by simp), rfl, fun smid evs1 hsteps => ?_⟩
+      · simp only [List.append_nil]; exact .refl _
       · cases hsteps with
         | refl => simp
         | tail hsingle _ =>
@@ -9818,7 +9818,7 @@ private theorem trivialChain_eval_value
           simp at hev; rcases hev with rfl | hev
           · exact Core.TraceEvent.noConfusion hmsg
           · exact hnoerr ev hev msg hmsg
-        · simp [observableTrace] at hobs ⊢; exact hobs
+        · simp only [observableTrace_silent]; exact hobs
         · intro smid evs1 hsteps
           cases hsteps with
           | refl => simp
@@ -9859,7 +9859,7 @@ private theorem trivialChain_eval_value
           simp at hev; rcases hev with rfl | hev
           · exact Core.TraceEvent.noConfusion hmsg
           · exact hnoerr ev hev msg hmsg
-        · simp [observableTrace] at hobs ⊢; exact hobs
+        · simp only [observableTrace_silent]; exact hobs
         · intro smid evs1 hsteps
           cases hsteps with
           | refl => simp
@@ -10189,11 +10189,11 @@ private theorem normalizeExpr_if_compound_true_sim
     | tryCatch body' cp cb fin =>
       exfalso; simp only [ANF.normalizeExpr_if'] at hnorm
       exact ANF.normalizeExpr_tryCatch_not_if body' cp cb fin _ cond then_ else_ n m hnorm
-    | «return» none =>
+    | .«return» .none =>
       exfalso; simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_return_none', pure, Pure.pure,
         StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hnorm
       exact ANF.Expr.noConfusion hnorm.1
-    | yield none _ =>
+    | .yield .none _ =>
       exfalso; simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_yield_none', pure, Pure.pure,
         StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hnorm
       exact ANF.Expr.noConfusion hnorm.1
@@ -10295,11 +10295,11 @@ private theorem normalizeExpr_if_compound_false_sim
     | tryCatch body' cp cb fin =>
       exfalso; simp only [ANF.normalizeExpr_if'] at hnorm
       exact ANF.normalizeExpr_tryCatch_not_if body' cp cb fin _ cond then_ else_ n m hnorm
-    | «return» none =>
+    | .«return» .none =>
       exfalso; simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_return_none', pure, Pure.pure,
         StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hnorm
       exact ANF.Expr.noConfusion hnorm.1
-    | yield none _ =>
+    | .yield .none _ =>
       exfalso; simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_yield_none', pure, Pure.pure,
         StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hnorm
       exact ANF.Expr.noConfusion hnorm.1
