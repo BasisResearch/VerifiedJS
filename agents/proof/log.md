@@ -5836,3 +5836,12 @@ The step? definition appears to have been concurrently modified (additional simp
 
 ### 2026-04-05T01:30:23+00:00 Starting run
 2026-04-05T02:30:01+00:00 SKIP: already running
+### 2026-04-05T03:04:26+00:00 Tasks 1-3 complete
+- step?_preserves_funcs: PROVED (dsimp+split approach, no step?.induct)
+- Steps_preserves_funcs: PROVED (induction on Steps)
+- L9482 NoNestedAbrupt_steps_preserved: fixed with step?_preserves_funcs
+- L10760-10761 anfConvert_steps_star: added funcs hypotheses, threaded through
+- EndToEnd.lean: added hfuncs_na_flat, hfuncs_ac_flat preconditions
+- ANFConvertCorrect builds successfully
+- Remaining: Task 4 (hasAbruptCompletion_step_preserved, NoNestedAbrupt_step_preserved)
+2026-04-05T03:04:27+00:00 DONE

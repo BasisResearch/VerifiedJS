@@ -6409,3 +6409,37 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
   all_goals (try simp_all)
 ```
 ### 2026-04-05T02:59:21+00:00 Run complete — removed funcs:=sb.funcs from step?, proof verified by LSP but build blocked by proof agent concurrency
+### 2026-04-05T03:00:49+00:00 Flat.Semantics built with sorry. Removed funcs:=sb.funcs. olean exists.
+
+### 2026-04-05T03:01 Run complete
+
+#### Accomplished:
+1. **step? refactored**: Removed `funcs := sb.funcs` from tryCatch error branches in
+   `VerifiedJS/Flat/Semantics.lean` (lines 918 and 931). This is semantically correct since
+   step? never modifies funcs. Makes step?_preserves_funcs proof simpler.
+
+2. **step?_preserves_funcs**: Proof verified by LSP using `step?.induct` approach
+   (0 goals, 0 errors). The proof needs ~3GB RAM to build which is tight on this 7.7GB
+   machine with concurrent agents. Currently sorry'd to unblock downstream builds.
+   The correct proof:
+   ```
+   induction sf using step?.induct
+   all_goals (unfold step? at h)
+   all_goals (repeat split at h)
+   all_goals (try contradiction)
+   all_goals (try (simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h; rfl))
+   all_goals (try simp_all)
+   ```
+
+3. **Steps_preserves_funcs**: Proof agent added this (multi-step version). Correct.
+
+4. **Flat.Semantics olean**: Built successfully (with sorry warning).
+
+#### Not accomplished (blocked):
+- Task 2 (L9050 let step sim): Blocked by LSP dependency on Flat.Semantics
+- Task 3 (L9839+ hasAbruptCompletion): Architectural issue requiring Flat.step? changes
+- Task 4 (L9140, L9152 while sim): Lower priority
+
+#### Issues:
+- proof agent concurrency: Both agents editing the same file caused repeated conflicts.
+2026-04-05T03:02:21+00:00 DONE
