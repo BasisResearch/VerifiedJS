@@ -3282,3 +3282,38 @@ Added depth induction to `Core_step_preserves_supported` (L3375-3682):
 
 ### 2026-04-05T07:00:15+00:00 Starting run
 2026-04-05T08:00:01+00:00 SKIP: already running
+
+## Run: 2026-04-05T07:00 — Call case expansion in Core_step_preserves_supported
+
+### Result: Call case expanded from 1 broad sorry to 1 targeted sorry. All non-closure subcases proved.
+
+### What was done
+
+1. **Expanded `| call => sorry` into 7 subcases** (L3921-4006 in Core_step_preserves_supported):
+   - Callee not value → IH via `step_call_step_callee` + depth bound ✓
+   - Callee value, all args values, consoleLog → `.lit .undefined` ✓
+   - Callee value, all args values, function + closure found → **sorry** (needs FuncsSupported invariant)
+   - Callee value, all args values, function + no closure → `.lit .undefined` ✓
+   - Callee value, all args values, non-function → `.lit .undefined` ✓ (6 constructors: null/undefined/bool/number/string/object)
+   - Callee value, not all args values, first non-value steppable → IH via `step_call_step_arg` + `listSupported_replace_target` ✓
+   - Callee value, not all args values, first non-value stuck → contradiction via `step_call_arg_stuck` ✓
+   - allValues = none ∧ firstNonValueExpr = none → contradiction via `allValues_firstNonValue_contra` ✓
+
+2. **Added 5 forward lemmas to Core/Semantics.lean**:
+   - `step_call_callee_stuck`: callee stuck → call stuck
+   - `step_call_arg_stuck`: arg stuck → call stuck
+   - `step_call_consoleLog`: consoleLog produces log event + `.lit .undefined`
+   - `step_call_func_closure`: non-consoleLog function with closure enters body
+   - `step_call_func_none`: non-consoleLog function with no closure returns `.lit .undefined`
+
+### Remaining sorry in call case
+The only sorry is at L3970: closure body supported. Requires `∀ i c, s.funcs[i]? = some c → c.body.supported = true` (FuncsSupported invariant). This needs:
+1. Adding `hfuncs` parameter to `Core_step_preserves_supported`
+2. Proving invariant preservation (functionDef case adds supported body)
+3. Updating the single caller at L4175 in `closureConvert_step_simulation`
+
+### Build status
+- Pre-existing errors in closureConvert_step_simulation unchanged
+- No new errors introduced by call case changes
+- Core/Semantics.lean forward lemmas compile cleanly
+### 2026-04-05T08:14:33+00:00 Run complete — Call case expanded (1 broad sorry → 1 targeted sorry), 5 forward lemmas added to Core/Semantics.lean, no new errors

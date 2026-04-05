@@ -6530,3 +6530,12 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 **Remaining sorries in my lemmas**: 4 (2 compound c_flat, 2 non-if_direct HasIfInHead)
 - All require strong induction + eval context lifting
 - Same infrastructure needed by ~15 other sorries in the file
+
+**Build verified at 08:02**:
+- Fixed `cases hif with` → `cases hif` + `case if_direct` syntax (Lean 4 autoImplicit compat)
+- Fixed break/continue cases: added `Except.ok.injEq, Prod.mk.injEq` + `ANF.Expr.noConfusion`
+- Build confirms: NO errors in my code (L9721-9908)
+- Pre-existing errors at L10126, L11032 are in other theorems (not my responsibility)
+- 10 contradiction cases proved (5 per lemma × 2 lemmas: break, continue, labeled, while_, tryCatch)
+- Remaining 4 sorries in my lemmas: unchanged but scope is narrower
+2026-04-05T08:15:01+00:00 SKIP: already running
