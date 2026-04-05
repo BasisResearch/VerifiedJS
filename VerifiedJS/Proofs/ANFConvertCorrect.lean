@@ -10101,6 +10101,55 @@ private theorem normalizeExpr_if_step_sim
     | litNull | litUndefined | litBool _ | litNum _ | litStr _ | litObject _ | litClosure _ _ =>
       simp only [ANF.evalTrivial, ANF.trivialValue?] at herr; exact nomatch herr
 
+/-- If normalizeExpr body_f k produces an ANF expression whose exprValue? is some v,
+    and k is trivial-preserving, then body_f = .lit v. -/
+private theorem normalizeExpr_exprValue_inv
+    (body_f : Flat.Expr) (body : ANF.Expr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n n1 : Nat)
+    (v : Flat.Value)
+    (hk : ∀ t' n', ∃ m', (k t').run n' = .ok (.trivial t', m'))
+    (hbody : (ANF.normalizeExpr body_f k).run n = .ok (body, n1))
+    (hval : ANF.exprValue? body = some v) :
+    body_f = .lit v := by
+  -- exprValue? body = some v implies body = .trivial t with trivialValue? t = some v
+  cases hbody_eq : body with
+  | trivial t =>
+    rw [hbody_eq] at hval; simp only [ANF.exprValue?] at hval
+    -- Now hval : trivialValue? t = some v
+    -- body_f must be lit, var, this (compound ruled out by normalizeExpr_compound_not_trivial)
+    -- seq ruled out because normalizeExpr (.seq ..) k = .seq which ≠ .trivial
+    cases body_f with
+    | lit w =>
+      obtain ⟨m_lit, hlit⟩ := normalizeExpr_lit_trivial_k w k hk n
+      rw [hlit] at hbody; obtain ⟨h_eq, _⟩ := Prod.mk.inj (Except.ok.inj hbody)
+      have := ANF.Expr.trivial.inj h_eq
+      rw [← this] at hval
+      cases w <;> simp [ANF.trivialOfValue, ANF.trivialValue?] at hval <;> exact congrArg _ hval.symm
+    | var name =>
+      exfalso; obtain ⟨m', hk_eq⟩ := hk (.var name) n
+      have : (ANF.normalizeExpr (.var name) k).run n = (k (.var name)).run n := by simp [ANF.normalizeExpr]
+      rw [this, hk_eq] at hbody; obtain ⟨h_eq, _⟩ := Prod.mk.inj (Except.ok.inj hbody)
+      rw [← ANF.Expr.trivial.inj h_eq] at hval; simp [ANF.trivialValue?] at hval
+    | «this» =>
+      exfalso; obtain ⟨m', hk_eq⟩ := hk (.var "this") n
+      have : (ANF.normalizeExpr Flat.Expr.this k).run n = (k (.var "this")).run n := by simp [ANF.normalizeExpr]
+      rw [this, hk_eq] at hbody; obtain ⟨h_eq, _⟩ := Prod.mk.inj (Except.ok.inj hbody)
+      rw [← ANF.Expr.trivial.inj h_eq] at hval; simp [ANF.trivialValue?] at hval
+    | seq a b =>
+      exfalso
+      simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hbody
+      split at hbody
+      · simp at hbody
+      · rename_i _ ha; split at hbody
+        · simp at hbody
+        · rename_i _ hb
+          simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hbody
+          exact ANF.Expr.noConfusion hbody.1
+    | _ =>
+      exfalso
+      exact normalizeExpr_compound_not_trivial _ k (by simp) (by simp) (by simp) (by simp) n n1 t hbody
+  | _ => simp [ANF.exprValue?] at hval
+
 /-- Decompose normalizeExpr (.tryCatch body_f cp cb_f fin_f) k into its components. -/
 private theorem normalizeExpr_tryCatch_decomp
     (body_f : Flat.Expr) (cp : Flat.VarName) (cb_f : Flat.Expr) (fin_f : Option Flat.Expr)
@@ -10208,67 +10257,24 @@ private theorem normalizeExpr_tryCatch_step_sim
         -- Eliminate absurd branch of hfin_norm (none = some is False)
         rcases hfin_norm with ⟨hfin_f, _, hm⟩ | ⟨_, _, _, habs, _⟩
         · subst hfin_f hm
-          -- Case split on body_f to identify what Flat body expression we have
-          cases body_f with
-          | lit w =>
-            -- normalizeExpr (.lit w) k = .trivial(trivialOfValue w) by normalizeExpr_lit_trivial_k
-            obtain ⟨m_lit, hlit⟩ := normalizeExpr_lit_trivial_k w k hk n
-            rw [hlit] at hbody_norm
-            obtain ⟨htv_eq, rfl⟩ := Prod.mk.inj (Except.ok.inj hbody_norm)
-            -- body = .trivial (trivialOfValue w)
-            -- hval : exprValue? (.trivial (trivialOfValue w)) = some v
-            simp only [ANF.exprValue?] at hval
-            -- hval : trivialValue? (trivialOfValue w) = some v
-            have hv_eq : v = w := by cases w <;> simp [ANF.trivialOfValue, ANF.trivialValue?] at hval ⊢ <;> exact hval.symm
-            subst hv_eq
-            -- Construct one Flat step: .tryCatch (.lit v) cp cb none → .lit v
-            by_cases hcf : catchParam = "__call_frame_return__"
-            · sorry -- call frame: shouldn't occur in source programs
-            · have hflat_step : Flat.step? ⟨.tryCatch (.lit v) catchParam cb_f none, env, heap, trace, funcs, cs⟩ =
-                some (.silent, ⟨.lit v, env, heap, trace ++ [.silent], funcs, cs⟩) := by
-                unfold Flat.step?; simp [Flat.exprValue?, beq_eq_false_iff_ne, hcf]
-              refine ⟨⟨.lit v, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent],
-                .tail ⟨hflat_step⟩ (.refl _), rfl, ?_, ?_⟩
-              · -- ANF_SimRel
-                refine ⟨rfl, rfl, ?_, fun t' => pure (.trivial t'), 0, 0, ?_, ANF.trivial_k_preserving⟩
-                · simp only [observableTrace_append, observableTrace_silent, observableTrace_nil]; exact htrace
-                · simp [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue,
-                    StateT.run, pure, Pure.pure, StateT.pure, Except.pure,
-                    bind, Bind.bind, StateT.bind, Except.bind]
-              · intro x hfx; cases hfx
-          | var name =>
-            exfalso
-            obtain ⟨m_var, hvar_eq⟩ := hk (.var name) n
-            have : (ANF.normalizeExpr (.var name) k).run n = (k (.var name)).run n := by
-              simp [ANF.normalizeExpr]
-            rw [this, hvar_eq] at hbody_norm
-            simp only [Except.ok.injEq, Prod.mk.injEq] at hbody_norm
-            rw [hbody_norm.1] at hval; simp [ANF.exprValue?, ANF.trivialValue?] at hval
-          | «this» =>
-            exfalso
-            obtain ⟨m_this, hthis_eq⟩ := hk (.var "this") n
-            have : (ANF.normalizeExpr Flat.Expr.this k).run n = (k (.var "this")).run n := by
-              simp [ANF.normalizeExpr]
-            rw [this, hthis_eq] at hbody_norm
-            simp only [Except.ok.injEq, Prod.mk.injEq] at hbody_norm
-            rw [hbody_norm.1] at hval; simp [ANF.exprValue?, ANF.trivialValue?] at hval
-          | seq a b =>
-            exfalso
-            simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hbody_norm
-            split at hbody_norm
-            · simp at hbody_norm
-            · split at hbody_norm
-              · simp at hbody_norm
-              · simp [pure, Pure.pure, StateT.pure, Except.pure] at hbody_norm
-                rw [hbody_norm.1] at hval; simp [ANF.exprValue?] at hval
-          | _ =>
-            exfalso
-            -- body = .trivial tv only possible for lit/var/this/seq by compound_not_trivial
-            have : ANF.exprValue? body = some v := hval
-            cases body <;> simp [ANF.exprValue?] at this
-            rename_i tv
-            exact normalizeExpr_compound_not_trivial _ k
-              (by simp) (by simp) (by simp) (by simp) n n1 tv hbody_norm
+          -- body_f = .lit v by inversion
+          have hbf_lit := normalizeExpr_exprValue_inv body_f body k n n1 v hk hbody_norm hval
+          subst hbf_lit
+          -- Construct one Flat step: .tryCatch (.lit v) cp cb none → .lit v
+          by_cases hcf : catchParam = "__call_frame_return__"
+          · sorry -- call frame: shouldn't occur in source programs
+          · have hflat_step : Flat.step? ⟨.tryCatch (.lit v) catchParam cb_f none, env, heap, trace, funcs, cs⟩ =
+              some (.silent, ⟨.lit v, env, heap, trace ++ [.silent], funcs, cs⟩) := by
+              unfold Flat.step?; simp [Flat.exprValue?, beq_eq_false_iff_ne, hcf]
+            refine ⟨⟨.lit v, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent],
+              .tail ⟨hflat_step⟩ (.refl _), rfl, ?_, ?_⟩
+            · -- ANF_SimRel
+              refine ⟨rfl, rfl, ?_, fun t' => pure (.trivial t'), 0, 0, ?_, ANF.trivial_k_preserving⟩
+              · simp only [observableTrace_append, observableTrace_silent, observableTrace_nil]; exact htrace
+              · simp [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue,
+                  StateT.run, pure, Pure.pure, StateT.pure, Except.pure,
+                  bind, Bind.bind, StateT.bind, Except.bind]
+            · intro x hfx; cases hfx
         · exact absurd habs.2.1 (by simp)
     · -- Case 2: exprValue? body = none (body is not a value)
       rename_i hnval

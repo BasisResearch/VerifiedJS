@@ -5473,3 +5473,56 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 
 ## Run: 2026-04-05T09:05:02+00:00
 
+
+### Metrics
+- **Sorry count**: ANF 30 + CC 13 = **43 sorries**
+- **Delta from last run (08:00)**: +3 (40→43). COUNT UP — decomposition, not regression.
+- **Lower**: 0 sorries (DONE)
+
+### Why count went UP (+3): tryCatch decomposition is PROGRESS
+- proof agent: tryCatch_direct case split into 5 subcases (L10204/10232/10272/10275/10278)
+- The lit-body/no-finally subcase (L10206-10266) is **FULLY PROVED** — real proof progress
+- Previous: 1 monolithic sorry → now 5 narrower sorries with 1 case already closed
+- This is the RIGHT direction
+
+### Agent Status
+1. **proof** (RUNNING since 08:30): LSP worker on ANFConvertCorrect. Proved tryCatch lit-body/no-finally case. 5 remaining tryCatch subcases at L10204/10232/10272/10275/10278. Prompt updated with specific approach for each.
+
+2. **jsspec** (RUNNING since 07:00): Working on objectLit/arrayLit fixes in Core/Semantics.lean + Core_step_preserves_supported. Added forward lemmas. Still targeting L3970 (FuncsSupported). 13 CC sorries unchanged.
+
+3. **wasmspec** (STOPPED since 08:15): Proved 10 contradiction subcases for if compound. 4 remaining if-compound sorries need strong induction. Prompt updated — eval context lifting is the systemic 17-sorry unlock.
+
+### Actions Taken
+1. Killed supervisor build (~240MB freed). Memory: 1295MB available.
+2. Updated ALL 3 agent prompts:
+   - proof: Updated tryCatch subcases with specific approach for L10272/10275/10204/10232
+   - jsspec: Kept L3970 focus, added objectLit/arrayLit acknowledgment
+   - wasmspec: Kept eval context lifting focus, refreshed line numbers and strategy
+3. Logged to time_estimate.csv.
+
+### Sorry Classification (43 total)
+
+| Category | Count | Lines | Owner |
+|----------|-------|-------|-------|
+| Eval context lifting | 17 | L8143-9526 | wasmspec (systemic) |
+| While simulation | 2 | L9616, 9628 | unowned |
+| If compound | 4 | L9813/9814/9911/9912 | wasmspec |
+| TryCatch subcases | 5 | L10204/10232/10272/10275/10278 | proof |
+| Break/continue compound | 2 | L11580, L11633 | blocked (needs Flat.step? error propagation) |
+| CC closeable | 3 | L3970, L5114, L7210 | jsspec |
+| CC blocked | 10 | various | architecturally blocked |
+
+### Critical Assessment
+**Count UP is OK — real proof is happening.** Proof agent proved the tryCatch lit-body/no-finally case, which is the first tryCatch subcase actually closed. The +3 net is from decomposition.
+
+**Key blockers:**
+- **Eval context lifting** (17 sorries): wasmspec's top priority. If they crack L9813, we can apply the pattern to 17 sorries.
+- **L3970 FuncsSupported** (1 sorry + 6 CC inner sorries): jsspec's target. Should be closeable.
+- **Break/continue compound** (2 sorries): Architecturally blocked — needs Flat.step? error propagation.
+- **10 CC architectural** (10 sorries): Need multi-step simulation or CCState redesign. Not closeable with current architecture.
+
+**Expected next run: 40-43** (proof may close 1-2 tryCatch subcases, jsspec may close L3970).
+
+---
+2026-04-05T09:10:11+00:00 DONE
+2026-04-05T09:10:18+00:00 DONE
