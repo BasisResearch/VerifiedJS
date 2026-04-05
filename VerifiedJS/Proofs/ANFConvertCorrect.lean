@@ -8817,7 +8817,36 @@ private theorem normalizeExpr_labeled_step_sim :
             cases ‹Option Flat.Expr› with
             | none => simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
             | some _ => simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-          | _ => sorry -- compound/bindComplex cases: needs induction on depth
+          | _ =>
+            -- compound val in .return (some val): use labeled_or_k + branch_step + return context lift
+            rcases ANF.normalizeExpr_labeled_or_k _ (fun t => pure (ANF.Expr.return (some t))) label body n m hnorm with hlh | ⟨t_k, n_k, m_k, body_k, hk_labeled⟩
+            · -- HasLabeledInHead val label → use branch_step + lift through .return context
+              cases sf with
+              | mk sf_expr sf_env sf_heap sf_trace sf_funcs sf_cs =>
+                simp only [Flat.State.expr] at hsf
+                have hval_depth : Flat.Expr.depth _ ≤ d := by simp [Flat.Expr.depth] at hd; omega
+                have hewf_val : ExprWellFormed _ sf_env := by
+                  intro x hfx; exact hwf x (VarFreeIn.return_some_arg _ _ hfx)
+                obtain ⟨sf', evs, hsteps, hsil, henv, hheap, hfuncs, hcs, htrace, hpres, ⟨n', m', hnorm'⟩, hewf'⟩ :=
+                  normalizeExpr_labeled_branch_step d _ hval_depth label hlh sf_env sf_heap sf_trace sf_funcs sf_cs
+                    (fun t => pure (ANF.Expr.return (some t))) n m body hnorm hewf_val
+                -- Lift steps through .return (some _) context
+                obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+                  Steps_return_some_ctx_b hsteps
+                    (fun ev hev msg => by rw [hsil ev hev]; exact Core.TraceEvent.noConfusion)
+                    hpres
+                have h_obs_nil := observableTrace_all_silent hsil
+                simp only [Flat.State.env, Flat.State.heap, Flat.State.trace, Flat.State.funcs, Flat.State.callStack] at hsf ⊢
+                refine ⟨evs, ws, hwsteps, ⟨fun arg => pure (.trivial arg), n', m', ?_, fun arg n'' => ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩⟩, (hwenv.trans henv).symm, (hwheap.trans hheap).symm, ?_, h_obs_nil, ?_⟩
+                · rw [hwexpr]; simp only [ANF.normalizeExpr_return_some']; exact hnorm'
+                · rw [hwtrace, htrace, observableTrace_append, h_obs_nil, List.append_nil]
+                · rw [hwexpr, hwenv, henv]; exact fun x hfx => by
+                    cases hfx with
+                    | return_some_arg _ _ h => exact henv ▸ hewf' x h
+            · -- continuation produced .labeled → impossible
+              exfalso
+              simp only [pure, Pure.pure, StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hk_labeled
+              exact ANF.Expr.noConfusion hk_labeled.1
       | yield arg delegate =>
         cases arg with
         | none =>
@@ -8959,7 +8988,24 @@ private theorem normalizeExpr_labeled_step_sim :
         | some fin =>
           simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
           repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-      | _ => sorry -- compound/bindComplex/throw/await cases: needs induction on depth
+      | _ =>
+        -- compound expression: use normalizeExpr_labeled_or_k + normalizeExpr_labeled_branch_step
+        rcases ANF.normalizeExpr_labeled_or_k e k label body n m hnorm with hlh | ⟨t_k, n_k, m_k, body_k, hk_labeled⟩
+        · -- HasLabeledInHead e label → use branch_step
+          cases sf with
+          | mk sf_expr sf_env sf_heap sf_trace sf_funcs sf_cs =>
+            simp only [Flat.State.expr] at hsf; subst hsf
+            simp only [Flat.State.env, Flat.State.heap, Flat.State.trace, Flat.State.funcs, Flat.State.callStack] at hwf ⊢
+            obtain ⟨sf', evs, hsteps, hsil, henv, hheap, hfuncs, hcs, htrace, _, ⟨n', m', hnorm'⟩, hewf'⟩ :=
+              normalizeExpr_labeled_branch_step (d + 1) e hd label hlh sf_env sf_heap sf_trace sf_funcs sf_cs k n m body hnorm hwf
+            have h_obs_nil := observableTrace_all_silent hsil
+            refine ⟨evs, sf', hsteps, ⟨k, n', m', hnorm', hk⟩, henv.symm, hheap.symm, ?_, h_obs_nil, hewf'⟩
+            rw [htrace, observableTrace_append, h_obs_nil, List.append_nil]
+        · -- k produced .labeled → impossible (k is trivial-preserving)
+          exfalso
+          obtain ⟨m'', hm''⟩ := hk t_k n_k
+          rw [hm''] at hk_labeled
+          exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hk_labeled)).1
 
 /-! ### REMOVED: hasBreakInHead_flat_error_steps / hasContinueInHead_flat_error_steps
 
