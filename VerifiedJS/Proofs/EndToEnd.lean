@@ -51,6 +51,8 @@ theorem flat_to_wasm_correct
     (h_supp_core : core.body.supported = true)
     (hwf_flat : ExprWellFormed flat.main (Flat.initialState flat).env)
     (hna_flat : NoNestedAbrupt flat.main)
+    (hfuncs_na_flat : ∀ (i : Nat) (fd : Flat.FuncDef), flat.functions[i]? = some fd → NoNestedAbrupt fd.body)
+    (hfuncs_ac_flat : ∀ (i : Nat) (fd : Flat.FuncDef), flat.functions[i]? = some fd → hasAbruptCompletion fd.body = false)
     (hmem_pos : 0 < ir.memories.size)
     (hmem_nomax : ∀ (i : Nat) (mt : Wasm.MemType),
       ir.memories[i]? = some mt → mt.lim.max = none) :
@@ -67,7 +69,7 @@ theorem flat_to_wasm_correct
       (lower_behavioral_correct _ ir hlower _
         ((optimize_correct anf anfTrace).mpr hanfb))
   · -- Backward: ANF → Flat → Core
-    obtain ⟨flatTrace, hflatb, hobs⟩ := anfConvert_correct flat anf hanf hwf_flat hna_flat anfTrace hanfb
+    obtain ⟨flatTrace, hflatb, hobs⟩ := anfConvert_correct flat anf hanf hwf_flat hna_flat hfuncs_na_flat hfuncs_ac_flat anfTrace hanfb
     obtain ⟨coreTrace, hcoreb, heq⟩ := closureConvert_correct core flat hcc h_wf h_addr_wf h_supp_core hnofor flatTrace hflatb
     exact ⟨coreTrace, hcoreb, by rw [hobs, heq]⟩
 
