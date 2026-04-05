@@ -1883,6 +1883,191 @@ private def Steps_await_ctx
   Steps_ctx_lift .await (fun s inner hv t si hs he => step?_await_ctx s inner hv t si hs he)
     hsteps hnoerr hpres
 
+/-- Bounded preservation for wrapped steps: any Steps from the wrapped start of length ≤ inner
+    events preserves funcs/callStack/trace. Uses determinism of step? to relate arbitrary Steps
+    to the specific wrapped Steps from Steps_ctx_lift. -/
+private theorem Steps_ctx_lift_pres
+    (wrap : Flat.Expr → Flat.Expr)
+    (single_step : ∀ (s : Flat.State) (inner : Flat.Expr)
+      (hnotval : Flat.exprValue? inner = none)
+      (t : Core.TraceEvent) (si : Flat.State)
+      (hstep : Flat.step? { s with expr := inner } = some (t, si))
+      (hnoerr : ∀ msg, t ≠ .error msg),
+      ∃ s', Flat.step? { s with expr := wrap inner } = some (t, s') ∧
+        s'.expr = wrap si.expr ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+        s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+        s'.trace = s.trace ++ [t])
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3)
+    (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ (smid : Flat.State) (evs1 : List Core.TraceEvent),
+       Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :
+    ∀ smid evs1,
+      Flat.Steps ⟨wrap s1.expr, s1.env, s1.heap, s1.trace, s1.funcs, s1.callStack⟩ evs1 smid →
+      evs1.length ≤ evs.length →
+      smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1 := by
+  induction hsteps with
+  | refl =>
+    intro smid evs1 hmid hlen
+    simp at hlen; cases evs1 with
+    | nil => cases hmid with | refl => simp
+    | cons => simp at hlen
+  | @tail s1' s2 s3' t rest hstep_i hrest ih =>
+    intro smid evs1 hmid hlen
+    have hstep_eq := hstep_i.1
+    have hnotval := step?_some_implies_not_value hstep_eq
+    have hnoerr_t : ∀ msg, t ≠ .error msg := fun msg => hnoerr t (List.Mem.head rest) msg
+    obtain ⟨ws2, hwstep, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+      single_step s1' s1'.expr hnotval t s2 hstep_eq hnoerr_t
+    have hs2_pres := hpres s2 [t] (.tail hstep_i (.refl _)) (by simp)
+    obtain ⟨hs2f, hs2c, hs2t⟩ := hs2_pres
+    cases evs1 with
+    | nil => cases hmid with | refl => simp
+    | cons ev evs1' =>
+      simp at hlen
+      cases hmid with
+      | @tail _ ws_mid _ _ _ ⟨hstep_mid⟩ hrest_mid =>
+        have h_eq : (ev, ws_mid) = (t, ws2) := by
+          have : Flat.step? ⟨wrap s1'.expr, s1'.env, s1'.heap, s1'.trace, s1'.funcs, s1'.callStack⟩
+            = some (t, ws2) := hwstep
+          rw [this] at hstep_mid; exact Option.some.inj hstep_mid
+        obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_eq
+        have hnoerr_rest : ∀ ev ∈ rest, ∀ msg, ev ≠ .error msg :=
+          fun ev hev msg => hnoerr ev (List.mem_cons_of_mem t hev) msg
+        have hpres_s2 : ∀ smid evs1, Flat.Steps s2 evs1 smid → evs1.length ≤ rest.length →
+            smid.funcs = s2.funcs ∧ smid.callStack = s2.callStack ∧ smid.trace = s2.trace ++ evs1 := by
+          intro smid evs1 hsteps_s2 hlen_s2
+          have h := hpres smid (t :: evs1) (.tail hstep_i hsteps_s2) (by simp; omega)
+          exact ⟨h.1.trans hs2f.symm, h.2.1.trans hs2c.symm,
+                 by rw [h.2.2, hs2t, List.append_assoc]; rfl⟩
+        have hws2_eq : ws2 = ⟨wrap s2.expr, s2.env, s2.heap, s2.trace, s2.funcs, s2.callStack⟩ := by
+          cases ws2 with | mk e env heap trace funcs cs =>
+          simp only [Flat.State.mk.injEq] at hwexpr hwenv hwheap hwfuncs hwcs hwtrace ⊢
+          exact ⟨hwexpr, hwenv, hwheap, hwfuncs.trans hs2f.symm, hwcs.trans hs2c.symm, hwtrace.trans hs2t.symm⟩
+        rw [hws2_eq] at hrest_mid
+        have ⟨hf, hc, ht⟩ := ih hnoerr_rest hpres_s2 smid evs1' hrest_mid (by omega)
+        exact ⟨hf.trans hs2f, hc.trans hs2c, by rw [ht, hs2t]; simp [List.append_assoc]⟩
+
+/-- Bounded variant of Steps_ctx_lift: accepts bounded inner hpres. -/
+private theorem Steps_ctx_lift_b
+    (wrap : Flat.Expr → Flat.Expr)
+    (single_step : ∀ (s : Flat.State) (inner : Flat.Expr)
+      (hnotval : Flat.exprValue? inner = none)
+      (t : Core.TraceEvent) (si : Flat.State)
+      (hstep : Flat.step? { s with expr := inner } = some (t, si))
+      (hnoerr : ∀ msg, t ≠ .error msg),
+      ∃ s', Flat.step? { s with expr := wrap inner } = some (t, s') ∧
+        s'.expr = wrap si.expr ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+        s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+        s'.trace = s.trace ++ [t])
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3)
+    (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ (smid : Flat.State) (evs1 : List Core.TraceEvent),
+       Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :
+    ∃ ws3 : Flat.State,
+      Flat.Steps ⟨wrap s1.expr, s1.env, s1.heap, s1.trace, s1.funcs, s1.callStack⟩ evs ws3 ∧
+      ws3.expr = wrap s3.expr ∧
+      ws3.env = s3.env ∧ ws3.heap = s3.heap ∧
+      ws3.funcs = s1.funcs ∧ ws3.callStack = s1.callStack ∧
+      ws3.trace = s3.trace := by
+  induction hsteps with
+  | refl => exact ⟨_, .refl _, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | @tail s1 s2 s3 t ts hstep hrest ih =>
+    have hstep_eq := hstep.1
+    have hnotval := step?_some_implies_not_value hstep_eq
+    have hnoerr_t : ∀ msg, t ≠ .error msg :=
+      fun msg => hnoerr t (List.Mem.head ts) msg
+    have hs2_pres := hpres s2 [t] (.tail hstep (.refl _)) (by simp)
+    obtain ⟨hs2f, hs2c, hs2t⟩ := hs2_pres
+    obtain ⟨ws2, hwstep, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+      single_step s1 s1.expr hnotval t s2 hstep_eq hnoerr_t
+    have hnoerr_ts : ∀ ev ∈ ts, ∀ msg, ev ≠ .error msg :=
+      fun ev hev msg => hnoerr ev (List.mem_cons_of_mem t hev) msg
+    have hpres_s2 : ∀ smid evs1, Flat.Steps s2 evs1 smid → evs1.length ≤ ts.length →
+        smid.funcs = s2.funcs ∧ smid.callStack = s2.callStack ∧ smid.trace = s2.trace ++ evs1 := by
+      intro smid evs1 hsteps_s2 hlen
+      have h := hpres smid (t :: evs1) (.tail hstep hsteps_s2) (by simp; omega)
+      exact ⟨h.1.trans hs2f.symm, h.2.1.trans hs2c.symm,
+             by rw [h.2.2, hs2t, List.append_assoc]; rfl⟩
+    obtain ⟨ws3, hwsteps3, hwexpr3, hwenv3, hwheap3, hwfuncs3, hwcs3, hwtrace3⟩ :=
+      ih hnoerr_ts hpres_s2
+    have hws2 : ws2 = ⟨wrap s2.expr, s2.env, s2.heap, s2.trace, s2.funcs, s2.callStack⟩ := by
+      cases ws2 with | mk e env heap trace funcs cs =>
+      simp only [Flat.State.mk.injEq] at hwexpr hwenv hwheap hwfuncs hwcs hwtrace ⊢
+      exact ⟨hwexpr, hwenv, hwheap, hwfuncs.trans hs2f.symm, hwcs.trans hs2c.symm, hwtrace.trans hs2t.symm⟩
+    refine ⟨ws3, .tail ⟨hwstep⟩ (hws2 ▸ hwsteps3), hwexpr3, hwenv3, hwheap3,
+      hwfuncs3.trans hs2f, hwcs3.trans hs2c, hwtrace3⟩
+
+/-- Bounded multi-step lifting through .if [·] then_ else_ context. -/
+private def Steps_if_cond_ctx_b (then_ else_ : Flat.Expr)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b (.«if» · then_ else_)
+    (fun s inner hv t si hs he => step?_if_cond_step s inner then_ else_ hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded multi-step lifting through .seq [·] b context. -/
+private def Steps_seq_ctx_b (b : Flat.Expr)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b (.seq · b) (fun s inner hv t si hs he => step?_seq_ctx s inner b hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded multi-step lifting through .let name [·] body context. -/
+private def Steps_let_init_ctx_b (name : String) (body : Flat.Expr)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b (.«let» name · body)
+    (fun s inner hv t si hs he => step?_let_init_ctx s name inner body hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded multi-step lifting through .throw [·] context. -/
+private def Steps_throw_ctx_b
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b .throw (fun s inner hv t si hs he => step?_throw_ctx s inner hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded multi-step lifting through .return (some [·]) context. -/
+private def Steps_return_some_ctx_b
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b (fun e => .«return» (some e))
+    (fun s inner hv t si hs he => step?_return_some_ctx s inner hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded multi-step lifting through .await [·] context. -/
+private def Steps_await_ctx_b
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b .await (fun s inner hv t si hs he => step?_await_ctx s inner hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded multi-step lifting through .yield (some [·]) delegate context. -/
+private def Steps_yield_some_ctx_b (delegate : Bool)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b (fun e => .yield (some e) delegate)
+    (fun s inner hv t si hs he => step?_yield_some_ctx s inner delegate hv t si hs he)
+    hsteps hnoerr hpres
+
 /-! ## Steps preservation for terminal wrappers
 
     For wrappers where the inner value produces a terminal state (.lit v),
@@ -10706,6 +10891,7 @@ private theorem normalizeExpr_if_branch_step :
       sf'.funcs = funcs ∧ sf'.callStack = cs ∧
       sf'.trace = trace ++ evs ∧
       (∀ smid evs1, Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs1 smid →
+        evs1.length ≤ evs.length →
         smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1) ∧
       (∃ n' m', (ANF.normalizeExpr sf'.expr K).run n' = .ok (then_, m')) ∧
       ExprWellFormed sf'.expr sf'.env := by
@@ -10742,7 +10928,7 @@ private theorem normalizeExpr_if_branch_step :
             hnorm (fun x hfx => hewf x (VarFreeIn.if_cond _ _ _ _ hfx)) heval hbool
         -- Lift through .if [·] then_flat else_flat context
         obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-          Steps_if_cond_ctx then_flat else_flat hsteps_c
+          Steps_if_cond_ctx_b then_flat else_flat hsteps_c
             (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
             hpres_c
         refine ⟨ws, evs_c, hwsteps, hsil_c, hwenv.trans henv_c, hwheap.trans hheap_c,
@@ -10766,7 +10952,7 @@ private theorem normalizeExpr_if_branch_step :
         ih c_flat hc_depth h_c env heap trace funcs cs _ n m cond then_ else_ v
           hnorm (fun x hfx => hewf x (VarFreeIn.if_cond _ _ _ _ hfx)) heval hbool
       obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-        Steps_if_cond_ctx then_flat else_flat hsteps_c
+        Steps_if_cond_ctx_b then_flat else_flat hsteps_c
           (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_c
       refine ⟨ws, evs_c, hwsteps, hsil_c, hwenv.trans henv_c, hwheap.trans hheap_c,
@@ -10788,7 +10974,7 @@ private theorem normalizeExpr_if_branch_step :
         ih a ha_depth h_a env heap trace funcs cs _ n m cond then_ else_ v
           hnorm (fun x hfx => hewf x (VarFreeIn.seq_l _ _ _ hfx)) heval hbool
       obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-        Steps_seq_ctx b hsteps_a
+        Steps_seq_ctx_b b hsteps_a
           (fun ev hev msg => by rw [hsil_a ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_a
       refine ⟨ws, evs_a, hwsteps, hsil_a, hwenv.trans henv_a, hwheap.trans hheap_a,
@@ -10812,7 +10998,7 @@ private theorem normalizeExpr_if_branch_step :
         ih name hinit_depth h_init env heap trace funcs cs _ n m cond then_ else_ v
           hnorm (fun x hfx => hewf x (VarFreeIn.let_init _ _ _ _ hfx)) heval hbool
       obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-        Steps_let_init_ctx init body hsteps_init
+        Steps_let_init_ctx_b init body hsteps_init
           (fun ev hev msg => by rw [hsil_init ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_init
       refine ⟨ws, evs_init, hwsteps, hsil_init, hwenv.trans henv_init, hwheap.trans hheap_init,
@@ -10832,7 +11018,7 @@ private theorem normalizeExpr_if_branch_step :
         ih arg harg_depth h_arg env heap trace funcs cs _ n m cond then_ else_ v
           hnorm (fun x hfx => hewf x (VarFreeIn.throw_arg _ _ hfx)) heval hbool
       obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-        Steps_throw_ctx hsteps_arg
+        Steps_throw_ctx_b hsteps_arg
           (fun ev hev msg => by rw [hsil_arg ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_arg
       refine ⟨ws, evs_arg, hwsteps, hsil_arg, hwenv.trans henv_arg, hwheap.trans hheap_arg,
@@ -10851,7 +11037,7 @@ private theorem normalizeExpr_if_branch_step :
         ih retv hretv_depth h_v env heap trace funcs cs _ n m cond then_ else_ v
           hnorm (fun x hfx => hewf x (VarFreeIn.return_some_arg _ _ hfx)) heval hbool
       obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-        Steps_return_some_ctx hsteps_retv
+        Steps_return_some_ctx_b hsteps_retv
           (fun ev hev msg => by rw [hsil_retv ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_retv
       refine ⟨ws, evs_retv, hwsteps, hsil_retv, hwenv.trans henv_retv, hwheap.trans hheap_retv,
@@ -10870,7 +11056,7 @@ private theorem normalizeExpr_if_branch_step :
         ih awarg hawarg_depth h_arg env heap trace funcs cs _ n m cond then_ else_ v
           hnorm (fun x hfx => hewf x (VarFreeIn.await_arg _ _ hfx)) heval hbool
       obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-        Steps_await_ctx hsteps_awarg
+        Steps_await_ctx_b hsteps_awarg
           (fun ev hev msg => by rw [hsil_awarg ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_awarg
       refine ⟨ws, evs_awarg, hwsteps, hsil_awarg, hwenv.trans henv_awarg, hwheap.trans hheap_awarg,
@@ -10889,7 +11075,7 @@ private theorem normalizeExpr_if_branch_step :
         ih yv hyv_depth h_v env heap trace funcs cs _ n m cond then_ else_ v
           hnorm (fun x hfx => hewf x (VarFreeIn.yield_some_arg _ _ _ hfx)) heval hbool
       obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-        Steps_yield_some_ctx delegate hsteps_yv
+        Steps_yield_some_ctx_b delegate hsteps_yv
           (fun ev hev msg => by rw [hsil_yv ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_yv
       refine ⟨ws, evs_yv, hwsteps, hsil_yv, hwenv.trans henv_yv, hwheap.trans hheap_yv,
@@ -10920,6 +11106,7 @@ private theorem normalizeExpr_if_branch_step_false :
       sf'.funcs = funcs ∧ sf'.callStack = cs ∧
       sf'.trace = trace ++ evs ∧
       (∀ smid evs1, Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs1 smid →
+        evs1.length ≤ evs.length →
         smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1) ∧
       (∃ n' m', (ANF.normalizeExpr sf'.expr K).run n' = .ok (else_, m')) ∧
       ExprWellFormed sf'.expr sf'.env := by
@@ -10949,7 +11136,7 @@ private theorem normalizeExpr_if_branch_step_false :
           ih c_flat hc_depth hc_if env heap trace funcs cs _ n m cond then_ else_ v
             hnorm (fun x hfx => hewf x (VarFreeIn.if_cond _ _ _ _ hfx)) heval hbool
         obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-          Steps_if_cond_ctx then_flat else_flat hsteps_c
+          Steps_if_cond_ctx_b then_flat else_flat hsteps_c
             (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
             hpres_c
         refine ⟨ws, evs_c, hwsteps, hsil_c, hwenv.trans henv_c, hwheap.trans hheap_c,
@@ -10971,7 +11158,7 @@ private theorem normalizeExpr_if_branch_step_false :
         ih c_flat hc_depth h_c env heap trace funcs cs _ n m cond then_ else_ v
           hnorm (fun x hfx => hewf x (VarFreeIn.if_cond _ _ _ _ hfx)) heval hbool
       obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-        Steps_if_cond_ctx then_flat else_flat hsteps_c
+        Steps_if_cond_ctx_b then_flat else_flat hsteps_c
           (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_c
       refine ⟨ws, evs_c, hwsteps, hsil_c, hwenv.trans henv_c, hwheap.trans hheap_c,
@@ -10992,7 +11179,7 @@ private theorem normalizeExpr_if_branch_step_false :
         ih a ha_depth h_a env heap trace funcs cs _ n m cond then_ else_ v
           hnorm (fun x hfx => hewf x (VarFreeIn.seq_l _ _ _ hfx)) heval hbool
       obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-        Steps_seq_ctx b hsteps_a
+        Steps_seq_ctx_b b hsteps_a
           (fun ev hev msg => by rw [hsil_a ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_a
       refine ⟨ws, evs_a, hwsteps, hsil_a, hwenv.trans henv_a, hwheap.trans hheap_a,
@@ -11016,7 +11203,7 @@ private theorem normalizeExpr_if_branch_step_false :
         ih name hinit_depth h_init env heap trace funcs cs _ n m cond then_ else_ v
           hnorm (fun x hfx => hewf x (VarFreeIn.let_init _ _ _ _ hfx)) heval hbool
       obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-        Steps_let_init_ctx init body hsteps_init
+        Steps_let_init_ctx_b init body hsteps_init
           (fun ev hev msg => by rw [hsil_init ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_init
       refine ⟨ws, evs_init, hwsteps, hsil_init, hwenv.trans henv_init, hwheap.trans hheap_init,
@@ -11036,7 +11223,7 @@ private theorem normalizeExpr_if_branch_step_false :
         ih arg harg_depth h_arg env heap trace funcs cs _ n m cond then_ else_ v
           hnorm (fun x hfx => hewf x (VarFreeIn.throw_arg _ _ hfx)) heval hbool
       obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-        Steps_throw_ctx hsteps_arg
+        Steps_throw_ctx_b hsteps_arg
           (fun ev hev msg => by rw [hsil_arg ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_arg
       refine ⟨ws, evs_arg, hwsteps, hsil_arg, hwenv.trans henv_arg, hwheap.trans hheap_arg,
@@ -11055,7 +11242,7 @@ private theorem normalizeExpr_if_branch_step_false :
         ih retv hretv_depth h_v env heap trace funcs cs _ n m cond then_ else_ v
           hnorm (fun x hfx => hewf x (VarFreeIn.return_some_arg _ _ hfx)) heval hbool
       obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-        Steps_return_some_ctx hsteps_retv
+        Steps_return_some_ctx_b hsteps_retv
           (fun ev hev msg => by rw [hsil_retv ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_retv
       refine ⟨ws, evs_retv, hwsteps, hsil_retv, hwenv.trans henv_retv, hwheap.trans hheap_retv,
@@ -11074,7 +11261,7 @@ private theorem normalizeExpr_if_branch_step_false :
         ih awarg hawarg_depth h_arg env heap trace funcs cs _ n m cond then_ else_ v
           hnorm (fun x hfx => hewf x (VarFreeIn.await_arg _ _ hfx)) heval hbool
       obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-        Steps_await_ctx hsteps_awarg
+        Steps_await_ctx_b hsteps_awarg
           (fun ev hev msg => by rw [hsil_awarg ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_awarg
       refine ⟨ws, evs_awarg, hwsteps, hsil_awarg, hwenv.trans henv_awarg, hwheap.trans hheap_awarg,
@@ -11093,7 +11280,7 @@ private theorem normalizeExpr_if_branch_step_false :
         ih yv hyv_depth h_v env heap trace funcs cs _ n m cond then_ else_ v
           hnorm (fun x hfx => hewf x (VarFreeIn.yield_some_arg _ _ _ hfx)) heval hbool
       obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-        Steps_yield_some_ctx delegate hsteps_yv
+        Steps_yield_some_ctx_b delegate hsteps_yv
           (fun ev hev msg => by rw [hsil_yv ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_yv
       refine ⟨ws, evs_yv, hwsteps, hsil_yv, hwenv.trans henv_yv, hwheap.trans hheap_yv,

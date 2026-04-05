@@ -1483,10 +1483,10 @@ private theorem closureConvert_init_related
     -- FuncsSupported: initial funcs = #[logBuiltin], body = .lit .undefined
     intro i fd hi
     dsimp at hi
-    simp only [Array.getElem?_eq_getElem, Array.size] at hi
+    rw [Array.getElem?_push] at hi
     split at hi
-    · simp at hi; subst hi; rfl
-    · exact absurd hi (by simp)
+    · simp only [Option.some.injEq] at hi; subst hi; rfl
+    · simp [Array.getElem?_empty] at hi
   case conv =>
     unfold Flat.closureConvert at h
     simp only [Except.ok.injEq] at h
@@ -4094,23 +4094,20 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
       · -- not isCallFrame
         cases finally_ with
         | some fin =>
-          simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
           obtain ⟨-, rfl⟩ := hstep'
           simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-          exact ⟨hsupp.1.2, hsupp.2⟩
+          exact ⟨hsupp.1.2, by rcases hsupp with ⟨_, _, h⟩; simpa using h⟩
         | none =>
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
           obtain ⟨-, rfl⟩ := hstep'; simp [Core.pushTrace, Core.Expr.supported]
     | none =>
       -- body is not a value: step body
       cases h_sub : Core.step? { s with expr := body } with
-      | none =>
-        have hstep' := hstep
-        unfold Core.step? at hstep'
-        simp only [hval_b, h_sub] at hstep'
+      | none => simp [Core.step?, hval_b, h_sub] at hstep
       | some p =>
         obtain ⟨te, sb⟩ := p
+        have hsup_body : body.supported = true := hsupp.1.1
         cases te with
         | error msg =>
           -- error branch
@@ -4130,11 +4127,9 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
               obtain ⟨-, rfl⟩ := hstep'
               cases finally_ with
               | some fin =>
-                simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp
                 simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-                exact ⟨hsupp.1.2, hsupp.2⟩
+                exact ⟨hsupp.1.2, by rcases hsupp with ⟨_, _, h⟩; simpa using h⟩
               | none =>
-                simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp
                 simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
                 exact hsupp.1.2
         | silent =>
@@ -4143,16 +4138,16 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨-, rfl⟩ := hstep
           simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-          exact ⟨⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-            { s with expr := body } sb .silent (Nat.le_refl _) hsupp.1.1 hfuncs_supp h_sub, hsupp.1.2⟩, hsupp.2⟩
+          refine ⟨⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+            { s with expr := body } sb .silent (Nat.le_refl _) hsup_body hfuncs_supp h_sub, hsupp.1.2⟩, hsupp.2⟩
         | log msg =>
           have hfwd := Core.step_tryCatch_step_body_log body catchParam catchBody finally_ s.env s.heap s.trace s.funcs s.callStack hval_b msg sb h_sub
           rw [hfwd] at hstep
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨-, rfl⟩ := hstep
           simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-          exact ⟨⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-            { s with expr := body } sb (.log msg) (Nat.le_refl _) hsupp.1.1 hfuncs_supp h_sub, hsupp.1.2⟩, hsupp.2⟩
+          refine ⟨⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+            { s with expr := body } sb (.log msg) (Nat.le_refl _) hsup_body hfuncs_supp h_sub, hsupp.1.2⟩, hsupp.2⟩
 
 set_option maxHeartbeats 8000000 in
 private theorem Core_step_preserves_funcs_supported (s s' : Core.State) (ev : Core.TraceEvent)
@@ -4316,7 +4311,7 @@ private theorem Core_step_preserves_funcs_supported (s s' : Core.State) (ev : Co
       subst hlit
       simp [Core.step?, Core.pushTrace, Core.exprValue?] at hstep
       obtain ⟨-, rfl⟩ := hstep
-      exact hfuncs_supp i fd (by simp only [Core.pushTrace] at hfd; split at hfd <;> exact hfd)
+      exact hfuncs_supp i fd (by simpa [Core.pushTrace] using hfd)
     | none =>
       cases h_sub : Core.step? { s with expr := cond } with
       | none => simp [Core.step?, hval, h_sub] at hstep
@@ -4808,15 +4803,14 @@ private theorem Core_step_preserves_funcs_supported (s s' : Core.State) (ev : Co
           exact hfuncs_supp i fd (by simpa [Core.pushTrace] using hfd)
     | none =>
       cases h_sub : Core.step? { s with expr := body } with
-      | none =>
-        have hstep' := hstep
-        unfold Core.step? at hstep'
-        simp only [hval_b, h_sub] at hstep'
+      | none => simp [Core.step?, hval_b, h_sub] at hstep
       | some p =>
         obtain ⟨te, sb⟩ := p
+        have hsup_body : body.supported = true := by
+          rcases hsupp with ⟨⟨h, _⟩, _⟩; exact h
         have ih_body : ∀ j fj, sb.funcs[j]? = some fj → fj.body.supported = true :=
           ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-            { s with expr := body } sb te (Nat.le_refl _) hsupp.1.1 hfuncs_supp h_sub
+            { s with expr := body } sb te (Nat.le_refl _) hsup_body hfuncs_supp h_sub
         cases te with
         | error msg =>
           have hstep' := hstep
