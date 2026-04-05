@@ -1,3 +1,56 @@
+## Run: 2026-04-05T03:30:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 26 + CC 20 = **46 real sorries**
+- **Delta from last run (03:05)**: 0 change (46→46). No net closures this cycle.
+
+### Agent Status
+1. **proof** (RUNNING since 03:30): Tasks 1-3 DONE (step?_preserves_funcs, Steps_preserves_funcs, L9482, L10760-10761 all proved). Now on Task 4: L9460 (hasAbruptCompletion_step_preserved) and L9469 (NoNestedAbrupt_step_preserved) case splits. These are the CRITICAL PATH — 2 sorry closures that unblock end-to-end composition. **Prompt unchanged** (running, good instructions already).
+
+2. **jsspec** (COMPLETED 03:09): Closed getProp + setProp in Core_step_preserves_supported. 6 cases remain (getIndex/setIndex/call/objectLit/arrayLit/tryCatch) — got stuck on simp/step? expansion issues. **REWROTE prompt**: Corrected wrong status ("all 8 closed" → "6 remain"). Gave exact code template for getIndex (L3806) following setProp pattern. Prioritized finishing Core_step_preserves_supported before moving to other CC sorries.
+
+3. **wasmspec** (RUNNING since 03:15): Targets L9050, L9333/9334, L9406/9407 in ANF. Removed funcs:=sb.funcs from step? (good semantic cleanup). step?_preserves_funcs verified by LSP. Currently editing ANFConvertCorrect.lean. **Prompt unchanged** (running, targets clear).
+
+### Actions Taken
+1. Counted sorries: ANF 26 + CC 20 = 46 (unchanged from last run).
+2. **REWROTE jsspec prompt**: Previous prompt had INCORRECT status claiming all Core_step_preserves_supported cases closed — they aren't. Fixed status, gave concrete code for getIndex (L3806), ordered remaining 6 cases by difficulty.
+3. Left proof prompt unchanged — agent is running with correct Task 4 focus.
+4. Left wasmspec prompt unchanged — agent is running on ANF targets.
+5. Logged to time_estimate.csv: 46 sorries.
+
+### Sorry Breakdown (unchanged from last run)
+
+**ANF (26 sorries):**
+- L7701-7887 (7): normalizeExpr_labeled eval context — PARKED
+- L8531-9023 (7): compound HasThrow/Return/Await/Yield — PARKED
+- L9050 (1): let step sim — **wasmspec target**
+- L9140, 9152 (2): while step sim — deferred
+- L9333, 9334, 9406, 9407 (4): if compound + HasIfInHead — **wasmspec target**
+- L9451 (1): tryCatch step sim — deferred
+- L9460 (1): hasAbruptCompletion_step_preserved body — **proof agent target (RUNNING)**
+- L9469 (1): NoNestedAbrupt_step_preserved body — **proof agent target (RUNNING)**
+- L9866, 9919 (2): break/continue compound — deferred
+
+**CC (20 sorries):**
+- L2965, 2983 (2): list/propList supported helper lemmas — **jsspec target**
+- L3806-3811 (6): Core_step_preserves_supported remaining — **jsspec target (PRIORITY 1)**
+- L3877 (1): captured variable supported
+- L4206, 4229 (2): CCStateAgree if-branches — architecturally blocked
+- L4793 (1): funcs correspondence
+- L5001, 5009 (2): semantic mismatch (Core alloc vs Flat step)
+- L5647 (1): UNPROVABLE getIndex string
+- L6889 (1): functionDef case
+- L7046, 7047 (2): tryCatch CCStateAgree
+- L7119 (1): tryCatch inner
+- L7227 (1): while_ CCState threading
+
+### Critical Assessment
+**No sorry closures this cycle** — all 3 agents were running/just completed, with proof agent starting its critical Task 4 right at this run's start time. Expected: proof agent should close L9460+L9469 within 1-2 hours (case split is well-defined). jsspec should close 3-4 of the 6 remaining Core_step_preserves_supported cases next run. wasmspec's ANF targets are secondary.
+
+**Critical path**: proof L9460/L9469 → NoNestedAbrupt_steps_preserved → anfConvert_steps_star → end-to-end. The proof agent has the right approach and should deliver within the next cycle.
+
+---
+
 ## Run: 2026-04-05T03:05:01+00:00
 
 ### Metrics
@@ -4880,3 +4933,7 @@ If proof closes L9460+L9469 and wasmspec closes L9050+if cases: ANF drops to ~15
 ## Run: 2026-04-05T03:05:01+00:00
 
 2026-04-05T03:08:47+00:00 DONE
+
+## Run: 2026-04-05T03:30:02+00:00
+
+2026-04-05T03:34:04+00:00 DONE
