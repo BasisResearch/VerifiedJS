@@ -9454,12 +9454,12 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
     (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
     (funcs : Array Flat.FuncDef) (cs : List Flat.Env) (ev : Core.TraceEvent) (sf' : Flat.State)
     (hac : hasAbruptCompletion e = false)
-    (hfuncs_ac : ∀ i (fd : Flat.FuncDef), funcs[i]? = some fd → hasAbruptCompletion fd.body = false)
+    (hfuncs_ac : ∀ (i : Nat) (fd : Flat.FuncDef), funcs[i]? = some fd → hasAbruptCompletion fd.body = false)
     (hstep : Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf')) :
     hasAbruptCompletion sf'.expr = false := by
   suffices ∀ n e, e.depth ≤ n → ∀ env heap trace funcs cs ev sf',
     hasAbruptCompletion e = false →
-    (∀ i (fd : Flat.FuncDef), funcs[i]? = some fd → hasAbruptCompletion fd.body = false) →
+    (∀ (i : Nat) (fd : Flat.FuncDef), funcs[i]? = some fd → hasAbruptCompletion fd.body = false) →
     Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf') →
     hasAbruptCompletion sf'.expr = false from this _ _ (Nat.le_refl _) _ _ _ _ _ _ _ hac hfuncs_ac hstep
   intro n
@@ -11667,8 +11667,8 @@ private theorem anfConvert_steps_star
   | tail hstep _ ih =>
     obtain ⟨sf2, evs1, hfsteps1, hobsev, hrel2, hwf2⟩ :=
       anfConvert_step_star s t h _ _ _ _ hrel hwf hna hstep
-    have hfuncs_na_sf : ∀ i (fd : Flat.FuncDef), sf.funcs[i]? = some fd → NoNestedAbrupt fd.body := sorry -- from program invariant
-    have hfuncs_ac_sf : ∀ i (fd : Flat.FuncDef), sf.funcs[i]? = some fd → hasAbruptCompletion fd.body = false := sorry -- from program invariant
+    have hfuncs_na_sf : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → NoNestedAbrupt fd.body := sorry -- from program invariant
+    have hfuncs_ac_sf : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → hasAbruptCompletion fd.body = false := sorry -- from program invariant
     have hna2 : NoNestedAbrupt sf2.expr := NoNestedAbrupt_steps_preserved hna hfuncs_na_sf hfuncs_ac_sf hfsteps1
     obtain ⟨sf3, evs2, hfsteps2, hobstr, hrel3, hwf3⟩ :=
       ih sf2 hrel2 hwf2 hna2
