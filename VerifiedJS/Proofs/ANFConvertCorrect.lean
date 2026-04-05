@@ -1918,7 +1918,7 @@ private theorem step?_return_some_callStack_inv
     (e : Flat.Expr) (t : Core.TraceEvent) (s' : Flat.State)
     (hstep : Flat.step? ⟨.return (some e), env, heap, trace, funcs, cs⟩ = some (t, s')) :
     s'.callStack = cs ∧ ((∃ e', s'.expr = .return (some e')) ∨ (∃ v, s'.expr = .lit v)) := by
-  unfold Flat.step? at hstep
+  unfold Flat.step? at hstep; dsimp only [] at hstep
   split at hstep
   · -- exprValue? e = some v (return produces error, terminal)
     simp only [Flat.pushTrace, Option.some.injEq, Prod.mk.injEq] at hstep
@@ -1954,7 +1954,7 @@ private theorem step?_yield_some_callStack_inv
     (e : Flat.Expr) (delegate : Bool) (t : Core.TraceEvent) (s' : Flat.State)
     (hstep : Flat.step? ⟨.yield (some e) delegate, env, heap, trace, funcs, cs⟩ = some (t, s')) :
     s'.callStack = cs ∧ ((∃ e', s'.expr = .yield (some e') delegate) ∨ (∃ v, s'.expr = .lit v)) := by
-  unfold Flat.step? at hstep
+  unfold Flat.step? at hstep; dsimp only [] at hstep
   split at hstep
   · -- exprValue? e = some v (yield resolves, terminal)
     simp only [Flat.pushTrace, Option.some.injEq, Prod.mk.injEq] at hstep
