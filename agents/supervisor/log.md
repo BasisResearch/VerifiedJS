@@ -5529,3 +5529,42 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 
 ## Run: 2026-04-05T10:05:01+00:00
 
+
+### Metrics
+- **Sorry count**: ANF 30 + CC 13 + Lower 0 = **43 sorries**
+- **Delta from last run (08:00)**: +3 (40→43). COUNT UP — decomposition by proof agent, not regression.
+- Lower: 0 (DONE)
+
+### Why count went UP (+3): Decomposition in ANF
+- proof agent decomposed tryCatch into finer subcases (body-error, body-step, call-frame, compound)
+- The 3 new sorries are narrower targets replacing monolithic unknowns
+- CC unchanged at 13
+
+### Agent Status
+1. **proof** (IDLE since 09:51): Last run proved tryCatch lit-body/value cases, added decomposition lemmas. OOM-killed build. **NOT RUNNING** — needs restart. Prompt updated with correct line numbers: L10548 (body-error), L10551 (body-step), L10492/10529 (call-frame).
+
+2. **jsspec** (RUNNING): Building CC. Working on L3970 (FuncsSupported) and objectLit/arrayLit fixes. Last progress: expanded call case, added 9 forward lemmas. **Still 0 CC sorry closures in last 10 runs.**
+
+3. **wasmspec** (RUNNING): Building ANF. Working on eval context lifting. 10 contradiction subcases proved (great). 4 remaining sorries at L10033/10034/10131/10132. Prompt updated with correct line numbers.
+
+### Actions Taken
+1. Killed supervisor lake builds (~400MB freed). Memory: 2.6GB available.
+2. Updated ALL 3 agent prompts:
+   - proof: Updated line numbers (L10548, L10551, L10492/10529, L10554), clear task priority
+   - jsspec: Updated memory estimate
+   - wasmspec: Updated line numbers (L10033/10034/10131/10132), updated zone boundaries
+3. Logged to time_estimate.csv.
+
+### Critical Assessment
+**Sorry count +3 is decomposition progress, not regression.** Proof agent created narrower targets.
+
+**Proof agent IDLE for 15 minutes.** This is wasted time. It should be restarted immediately.
+
+**jsspec: 10 runs, 0 CC closures.** L3970 is the only realistically closeable target. If jsspec doesn't close it this run, the CC sorry count is effectively static — 10 of 13 are architecturally blocked.
+
+**wasmspec holding steady.** Eval context lifting is the highest-leverage work for ANF — if cracked, it unlocks ~17 sorries.
+
+**Expected next run: 41-43** (proof may close body-error/body-step, jsspec may close L3970).
+
+---
+2026-04-05T10:08:52+00:00 DONE

@@ -1,4 +1,4 @@
-# proof — Close tryCatch subcases (L10204, L10272, L10275) — you're INSIDE the proof now
+# proof — Close tryCatch body-error (L10548) and body-step (L10551), then call-frame (L10492/10529)
 
 ## RULES
 - Edit: ANFConvertCorrect.lean, Flat/Semantics.lean, AND EndToEnd.lean
@@ -10,7 +10,7 @@
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
-## MEMORY: 7.7GB total, NO swap. ~1.3GB available.
+## MEMORY: 7.7GB total, NO swap. ~2.6GB available.
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
 ## BUILD COORDINATION — CRITICAL
@@ -22,58 +22,61 @@ If count > 0, WAIT. Do not start a build. Use `lean_goal` / `lean_multi_attempt`
 
 ## CONCURRENCY: wasmspec also edits ANFConvertCorrect.lean
 - wasmspec works on L7700-9912 (if compound/eval context lifting)
-- **YOU** own L10190-10278 (tryCatch) and L11560-11633 (break/continue)
+- **YOU** own L10400-10555 (tryCatch) and L11840-11910 (break/continue)
 - DO NOT touch lines outside your range
 
-## GREAT PROGRESS — tryCatch lit-body/no-finally is PROVED
+## CURRENT STATE — tryCatch lit-body cases PROVED, 5 sorries remain in your zone
 
-You decomposed tryCatch_direct beautifully. The lit-body no-finally case (L10206-10266) is fully proved. Now close the remaining 5 sorry subcases:
-
-### TASK 1: L10272 — tryCatch body-error (PRIORITY 1)
-```
+### TASK 1: L10548 — tryCatch body-error (PRIORITY 1)
+```lean
 sorry -- tryCatch body-error: needs inner body step simulation + catch handler SimRel
 ```
-The ANF step? returned an error from the body. You need to:
-1. `lean_goal` at L10272
-2. The body is NOT a value, and step? body returned (.error msg, sb)
-3. Show Flat.step? on the tryCatch also steps the body
-4. When body errors, tryCatch catches it → steps to catch handler with error bound
-5. Both ANF and Flat should do the same thing here
-6. Use inner SimRel to get Flat stepping body → error, then tryCatch catches
+Context (L10543-10548): `exprValue? body = none`, `step? body = some (.error msg, sb)`.
 
-### TASK 2: L10275 — tryCatch body-step (normal step)
-```
+**Strategy**:
+1. `lean_goal` at L10548 to see exact state
+2. You have `hbody_norm` (normalizeExpr for body) and inner SimRel from it
+3. body errors → ANF unwraps tryCatch, binds error to catch variable
+4. Flat.step? on tryCatch also: steps body, body errors → steps to catch handler with error substituted
+5. Both sides produce catch handler with error bound to catchParam
+6. Construct SimRel for the resulting catch handler states
+7. Key: use `normalizeExpr_step_sim` (or similar inner IH) to get Flat body → error, then show tryCatch catches it
+
+### TASK 2: L10551 — tryCatch body-step (normal step, non-value, non-error)
+```lean
 sorry -- tryCatch body-step: needs inner body step simulation + tryCatch wrapping SimRel
 ```
-1. Body takes a normal step (not error, not value)
-2. ANF wraps stepped body back in tryCatch
-3. Show Flat also steps body, wraps back in tryCatch
-4. SimRel preserved because inner step preserves it
+Context (L10549-10551): body took a normal step, `step? body = some (t_body, sb)` where t_body is NOT error.
 
-### TASK 3: L10204 — tryCatch body-value with finally
+**Strategy**:
+1. `lean_goal` at L10551
+2. Inner body step: use SimRel/IH to get corresponding Flat step on body
+3. Both ANF and Flat wrap the stepped body back in tryCatch
+4. Construct SimRel for `.tryCatch stepped_body catchParam cb finally_` on both sides
+
+### TASK 3: L10492, L10529 — call frame contradiction (EASY)
+```lean
+sorry -- call frame: shouldn't occur in source programs
 ```
-sorry -- tryCatch body-value with finally: Flat steps .tryCatch (.lit v) cp cb (some fin_f) → .seq fin_f (.lit v)
+These are where `catchParam = "__call_frame_return__"`. This should be contradicted by well-formedness of source programs.
+
+**Strategy**:
+1. `lean_goal` at L10492
+2. Look for an `ExprWellFormed` or similar hypothesis that excludes internal catch params
+3. If not available, check if you can derive contradiction from `supported` or other invariants
+4. If truly no hypothesis available, add a precondition to `normalizeExpr_tryCatch_step_sim`
+
+### TASK 4: L10554 — compound cases (ONLY if 1-3 done)
+```lean
+| _ => sorry -- compound cases: deferred
 ```
-1. Body is a value, finally = some fin
-2. ANF produces .seq fin (.trivial v)
-3. Flat produces .seq fin_f (.lit v)
-4. Construct SimRel between these
-
-### TASK 4: L10232 — call frame case
-This is likely contradictory in well-formed source programs. Try:
-1. `lean_goal` at L10232
-2. Show catchParam = "__call_frame_return__" contradicts source program well-formedness
-3. If no well-formedness hyp available, add one or use `exfalso`
-
-### TASK 5 (only if 1-4 done): L10278 — compound tryCatch cases
-Deferred — needs eval context lifting (same blocker as ~17 other sorries).
+Needs eval context lifting. Same systemic blocker as ~17 other sorries. Low priority.
 
 ## PRIORITY ORDER
-1. L10272 (body-error) — should be most straightforward
-2. L10275 (body-step) — similar pattern
-3. L10204 (finally case)
-4. L10232 (call frame contradiction)
-5. L10278 (compound — only if time permits)
+1. L10548 (body-error) — most tractable, should compose from inner SimRel
+2. L10551 (body-step) — similar structure
+3. L10492/10529 (call frame) — should be easy contradiction
+4. L10554 (compound) — only if time permits
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

@@ -5,7 +5,7 @@
 - **DO NOT** edit Flat/Semantics.lean — it's DONE (0 sorries), leave it alone
 - **DO NOT** run `lake build` anything large
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
-- MEMORY: 7.7GB total, NO swap. ~1.3GB available.
+- MEMORY: 7.7GB total, NO swap. ~2.6GB available.
 - You CAN edit ANFConvertCorrect.lean ONLY
 - Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
@@ -17,13 +17,13 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 If count > 0, DO NOT BUILD. Use `lean_goal` / `lean_multi_attempt` via LSP instead. Wait 60s then check again.
 
 ## CONCURRENCY: proof agent also edits ANFConvertCorrect.lean
-- proof agent works on L10190-10278 (tryCatch) and L11560-11633 (break/continue)
-- **YOU** own L7700-9912 (normalizeExpr step sim infrastructure)
+- proof agent works on L10400-10555 (tryCatch) and L11840-11910 (break/continue)
+- **YOU** own L7700-10135 (normalizeExpr step sim infrastructure)
 - DO NOT touch lines outside your range
 
 ## STATUS: 10 contradiction subcases proved (great!). 4 if-compound sorries remain. ~17 other sorries share same blocker.
 
-You proved break/continue/labeled/while_/tryCatch contradiction cases in both normalizeExpr_if_compound_true_sim and normalizeExpr_if_compound_false_sim. 4 remaining sorries at L9813/9814/9911/9912 need strong induction + eval context lifting.
+You proved break/continue/labeled/while_/tryCatch contradiction cases in both normalizeExpr_if_compound_true_sim and normalizeExpr_if_compound_false_sim. 4 remaining sorries at L10033/10034/10131/10132 need strong induction + eval context lifting.
 
 ## THE SYSTEMIC BLOCKER: Eval Context Stepping Through Compound Expressions
 
@@ -43,8 +43,8 @@ You proved break/continue/labeled/while_/tryCatch contradiction cases in both no
 
 ## YOUR TASK: Prove eval context stepping for L9813 then generalize
 
-### Step 1: Prove L9813 (if compound true, strong induction on depth)
-1. `lean_goal` at L9813 to see exact state
+### Step 1: Prove L10033 (if compound true, strong induction on depth)
+1. `lean_goal` at L10033 to see exact state
 2. c_flat is compound with HasIfInHead. Flat.step? steps c_flat one step.
 3. By strong induction on `c_flat.depth`:
    - c_flat must be some compound expr (seq, let, etc.) with .if in head
@@ -54,10 +54,10 @@ You proved break/continue/labeled/while_/tryCatch contradiction cases in both no
    - Apply IH (smaller depth)
 4. Pattern: follow `normalizeExpr_if_or_k_aux` (L7219) for strong induction setup
 
-### Step 2: Prove L9911 (mirror of L9813 for false branch)
+### Step 2: Prove L10131 (mirror of L10033 for false branch)
 Identical structure, just different branch.
 
-### Step 3: Prove L9814/L9912 (non-if_direct HasIfInHead through wrappers)
+### Step 3: Prove L10034/L10132 (non-if_direct HasIfInHead through wrappers)
 These need eval context through seq/let wrappers. Same strong induction.
 
 ### Step 4: Extract general `compound_head_step_sim` lemma
@@ -72,9 +72,9 @@ Once L9813 works, factor out the approach. The same pattern applies to:
 That's **17 sorries** unlocked by one general approach!
 
 ## PRIORITY ORDER
-1. L9813 (if compound true) — PROVE THE PATTERN
-2. L9911 (if compound false) — mirror
-3. L9814/L9912 (non-if_direct) — wrappers
+1. L10033 (if compound true) — PROVE THE PATTERN
+2. L10131 (if compound false) — mirror
+3. L10034/L10132 (non-if_direct) — wrappers
 4. Extract general lemma + apply to other compound sorries
 
 ## LOG YOUR WORK
