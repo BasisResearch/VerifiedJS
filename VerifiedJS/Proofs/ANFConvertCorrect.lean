@@ -9479,7 +9479,10 @@ private theorem NoNestedAbrupt_steps_preserved {sf sf' : Flat.State} {evs : List
   | refl => exact hna
   | tail hstep _ ih =>
     obtain ⟨hstep_eq⟩ := hstep
-    exact ih (NoNestedAbrupt_step_preserved _ _ _ hna hfuncs_na hfuncs_ac hstep_eq) sorry sorry
+    have hfuncs_eq := Flat.step?_preserves_funcs _ _ _ hstep_eq
+    exact ih (NoNestedAbrupt_step_preserved _ _ _ hna hfuncs_na hfuncs_ac hstep_eq)
+      (fun i fd h => hfuncs_na i fd (hfuncs_eq ▸ h))
+      (fun i fd h => hfuncs_ac i fd (hfuncs_eq ▸ h))
 
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.
@@ -10745,23 +10748,26 @@ private theorem anfConvert_steps_star
       ANF_SimRel s t sa sf →
       ExprWellFormed sf.expr sf.env →
       NoNestedAbrupt sf.expr →
+      (∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → NoNestedAbrupt fd.body) →
+      (∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → hasAbruptCompletion fd.body = false) →
       ANF.Steps sa tr sa' →
       ∃ (sf' : Flat.State) (tr' : List Core.TraceEvent),
         Flat.Steps sf tr' sf' ∧
         observableTrace tr = observableTrace tr' ∧
         ANF_SimRel s t sa' sf' ∧
         ExprWellFormed sf'.expr sf'.env := by
-  intro sa sf tr sa' hrel hwf hna hsteps
+  intro sa sf tr sa' hrel hwf hna hfuncs_na hfuncs_ac hsteps
   induction hsteps generalizing sf with
   | refl => exact ⟨sf, [], .refl sf, rfl, hrel, hwf⟩
   | tail hstep _ ih =>
     obtain ⟨sf2, evs1, hfsteps1, hobsev, hrel2, hwf2⟩ :=
       anfConvert_step_star s t h _ _ _ _ hrel hwf hna hstep
-    have hfuncs_na_sf : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → NoNestedAbrupt fd.body := sorry -- from program invariant
-    have hfuncs_ac_sf : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → hasAbruptCompletion fd.body = false := sorry -- from program invariant
-    have hna2 : NoNestedAbrupt sf2.expr := NoNestedAbrupt_steps_preserved hna hfuncs_na_sf hfuncs_ac_sf hfsteps1
+    have hna2 : NoNestedAbrupt sf2.expr := NoNestedAbrupt_steps_preserved hna hfuncs_na hfuncs_ac hfsteps1
+    have hfuncs_eq := Flat.Steps_preserves_funcs hfsteps1
     obtain ⟨sf3, evs2, hfsteps2, hobstr, hrel3, hwf3⟩ :=
       ih sf2 hrel2 hwf2 hna2
+        (fun i fd h => hfuncs_na i fd (hfuncs_eq ▸ h))
+        (fun i fd h => hfuncs_ac i fd (hfuncs_eq ▸ h))
     exact ⟨sf3, evs1 ++ evs2,
       Flat.Steps.append hfsteps1 hfsteps2,
       by rw [show ∀ (a : Core.TraceEvent) l, a :: l = [a] ++ l from fun _ _ => rfl,
@@ -10776,7 +10782,9 @@ private theorem anfConvert_steps_star
 theorem anfConvert_correct (s : Flat.Program) (t : ANF.Program)
     (h : ANF.convert s = .ok t)
     (hwf_prog : ExprWellFormed s.main (Flat.initialState s).env)
-    (hna_prog : NoNestedAbrupt s.main) :
+    (hna_prog : NoNestedAbrupt s.main)
+    (hfuncs_na_prog : ∀ (i : Nat) (fd : Flat.FuncDef), s.functions[i]? = some fd → NoNestedAbrupt fd.body)
+    (hfuncs_ac_prog : ∀ (i : Nat) (fd : Flat.FuncDef), s.functions[i]? = some fd → hasAbruptCompletion fd.body = false) :
     ∀ b, ANF.Behaves t b →
       ∃ b', Flat.Behaves s b' ∧ observableTrace b = observableTrace b' := by
   intro b ⟨sa, hsteps, hhalt⟩
@@ -10786,7 +10794,7 @@ theorem anfConvert_correct (s : Flat.Program) (t : ANF.Program)
   have hna_init : NoNestedAbrupt (Flat.initialState s).expr := hna_prog
   -- Multi-step simulation (now threads WF)
   obtain ⟨sf, tr', hfsteps, hobstr, hrel, hwf_sf⟩ :=
-    anfConvert_steps_star s t h _ _ _ _ hinit hwf_init hna_init hsteps
+    anfConvert_steps_star s t h _ _ _ _ hinit hwf_init hna_init hfuncs_na_prog hfuncs_ac_prog hsteps
   obtain ⟨sf', evs', hfsteps', hhalt', hobsevs, hrel'⟩ :=
     anfConvert_halt_star s t h _ _ hrel hhalt hwf_sf
   -- Combine: Flat reaches sf via tr', then sf' via evs' (all silent)

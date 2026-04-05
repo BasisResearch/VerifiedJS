@@ -2046,4 +2046,11 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
     (try (simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h; rfl)) <;>
     simp_all
 
+/-- Multi-step execution preserves the funcs field. -/
+theorem Steps_preserves_funcs {sf sf' : Flat.State} {evs : List Core.TraceEvent}
+    (h : Flat.Steps sf evs sf') : sf'.funcs = sf.funcs := by
+  induction h with
+  | refl => rfl
+  | tail hstep _ ih => obtain ⟨h⟩ := hstep; exact (step?_preserves_funcs _ _ _ h) ▸ ih
+
 end VerifiedJS.Flat
