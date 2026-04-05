@@ -4767,3 +4767,56 @@ jsspec is PRODUCING. 10 closures in one run is the best single-agent performance
 
 ## Run: 2026-04-05T02:05:01+00:00
 
+
+## Run: 2026-04-05T02:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 26 + CC 13 (real) = **39 real sorries**
+- **Delta from last run (23:00)**: CC 30→13 (-17!), ANF unchanged at 26. Net **-17 sorries**.
+- **Flat/Semantics.lean: 0 sorries** — step?_preserves_funcs and Steps_preserves_funcs PROVED.
+
+### Agent Status
+1. **proof** (file modified 01:38): step?_preserves_funcs is PROVED. Still has L9460 (hasAbruptCompletion_step_preserved) and L9469 (NoNestedAbrupt_step_preserved) sorry'd. **REWROTE prompt**: Focus on these two big case-split theorems now that infrastructure is done.
+2. **jsspec** (file modified 01:22): MASSIVE progress — closed ALL 8 remaining Core_step_preserves_supported cases (getProp, setProp, getIndex, setIndex, call, objectLit, arrayLit, tryCatch). CC down from 30→13. **REWROTE prompt**: Redirect to FuncsSupported invariant (L3930), functionDef (L7158), and CCStateAgree issues.
+3. **wasmspec** (file modified 02:04, actively working): step?_preserves_funcs proved in Flat/Semantics. **REWROTE prompt**: Focus on ANF step sim — L9050 (let), L9333-9407 (if compound), L9140-9152 (while).
+
+### Actions Taken
+1. Counted sorries: ANF 26 + CC 13 = 39 real. Down 17 from last run.
+2. **REWROTE proof prompt**: step?_preserves_funcs DONE. Now prove hasAbruptCompletion_step_preserved (L9460) and NoNestedAbrupt_step_preserved (L9469). Provided exact proof strategy (case split on e, use hfuncs_ac for call cases).
+3. **REWROTE jsspec prompt**: Core_step_preserves_supported DONE except L3930 (FuncsSupported). Redirect to FuncsSupported invariant, functionDef (L7158), CCStateAgree issues (L4475/4498/7315/7316/7496).
+4. **REWROTE wasmspec prompt**: step?_preserves_funcs DONE. Focus on let step sim (L9050), if compound (L9333-9407), while (L9140-9152).
+
+### Sorry Breakdown
+
+**ANF (26 sorries):**
+- L7701-7887 (7): eval context lifting — PARKED
+- L8531-9023 (7): compound HasX — PARKED
+- L9050 (1): let step sim — wasmspec target
+- L9140, 9152 (2): while step sim — wasmspec target
+- L9333, 9334, 9406, 9407 (4): if compound + HasIfInHead — wasmspec target
+- L9451 (1): tryCatch step sim — DEFERRED
+- L9460, 9469 (2): hasAbrupt/NoNestedAbrupt — proof agent target (NEWLY UNBLOCKED)
+- L9866, 9919 (2): break/continue compound — proof agent target
+
+**CC (13 real sorries):**
+- L3930 (1): FuncsSupported invariant — jsspec target
+- L4146 (1): HeapInj staging — deferred
+- L4475, 4498 (2): if CCStateAgree — jsspec target (architecturally hard)
+- L5062 (1): non-consoleLog funcs correspondence — jsspec target
+- L5270, 5278 (2): semantic mismatch — jsspec target
+- L5916 (1): getIndex string UNPROVABLE
+- L7158 (1): functionDef — jsspec target
+- L7315, 7316 (2): tryCatch CCStateAgree — jsspec target
+- L7388 (1): tryCatch — jsspec target
+- L7496 (1): while_ CCState — jsspec target (architecturally hard)
+
+### Critical Assessment
+jsspec is CRUSHING IT — 17 sorries closed since last run. Proof infrastructure (step?_preserves_funcs) is complete, unblocking proof agent for the two big case-split theorems. wasmspec is actively working on Flat/Semantics. Three parallel tracks:
+1. **proof**: hasAbruptCompletion + NoNestedAbrupt case splits (2 sorries, high impact)
+2. **jsspec**: FuncsSupported + functionDef + CCStateAgree (13 sorries, mix of tractable and hard)
+3. **wasmspec**: let/if/while step sim (7 sorries)
+
+If proof closes L9460+L9469 and wasmspec closes L9050+if cases: ANF drops to ~15 (just the PARKED eval context ones). CC's 5 architecturally hard sorries (CCStateAgree) may need a design change.
+
+---
+2026-04-05T02:10:24+00:00 DONE
