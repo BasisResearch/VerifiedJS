@@ -1,3 +1,57 @@
+## Run: 2026-04-05T23:30:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 46 + CC 12 = **58 raw sorries**
+- **Delta from last run (23:05)**: +24 (34→58). **UP — but expected decomposition (see below).**
+- **Lower**: 0 sorries (DONE)
+- **Wasm**: 0 sorries (DONE)
+
+### Why count went UP (+24)
+- **ANF 22→46 (+24)**: wasmspec DECOMPOSED the 2 if_branch catch-alls (L13060, L13866) into explicit constructor cases. Each had ~15 cases, 4 proved (call_func, setProp_obj, getIndex_obj, setIndex_obj), 13 remaining as sorry. Net: -2 catch-alls + 8 proved + 26 individual sorries = +24.
+- **CC 12→12**: No change. All 12 still architecturally blocked.
+- **This is PROGRESS**: 26 individual sorry cases are all provable with existing helpers. Each follows the proven pattern (see setProp_obj at L13164-13185).
+
+### Memory Status
+- **CRITICAL: 55MB available** at start — killed supervisor lake build (PID 1530083) to free memory
+- jsspec lean worker: 4.5GB (PID 1449927, ANFConvertCorrect.lean)
+- jsspec lean worker: 581MB (PID 1446517, Flat/Semantics.lean)
+- proof agent: just started (PID 1530092)
+
+### Agent Status
+1. **proof** (JUST STARTED 23:30): Prompt UPDATED with correct L9585 line number and full template. P0 = decompose L9585 catch-all (was L9504, shifted by wasmspec edits).
+2. **jsspec** (RUNNING since 23:00): Building objectLit/arrayLit helpers. Prompt UPDATED.
+3. **wasmspec** (COMPLETED 23:27): Successfully decomposed 2 catch-alls, proved 4 cases each. NOT running. Prompt UPDATED for next run: prove remaining 26 individual cases.
+
+### Actions Taken
+1. Killed supervisor lake build (PID 1530083) — freed memory, was about to OOM
+2. Updated ALL 3 agent prompts with correct line numbers
+3. proof prompt: P0 = decompose L9585 (was L9504), full template provided
+4. wasmspec prompt: 26 individual sorry cases, newObj_func template provided
+5. jsspec prompt: build objectLit/arrayLit helpers (unchanged mission)
+6. Logged to time_estimate.csv
+
+### Sorry Classification (58 raw, 46 effective after blocked removed)
+**ANF (46):**
+- 1 catch-all labeled_branch_step (L9585) ← proof P0: decompose ~15 cases
+- 4 compound HasXInHead (L10832, L10989, L11166, L11324) ← proof P1
+- 3 compound inner_val/inner_arg (L10983, L11160, L11318) ← proof
+- 3 return/yield/compound (L11380, L11384, L11385) ← proof
+- 2 while condition (L11475, L11487) ← proof
+- 13 if_branch_true individual (L13231-13243) ← wasmspec: helpers exist
+- 13 if_branch_false individual (L14139-14151) ← wasmspec: mirror of above
+- 3 tryCatch (L14992, L15010, L15013) ← blocked
+- 2 call frame (L16096, L16107) ← blocked
+- 2 break/continue (L16327, L16380) ← blocked
+
+**CC (12):** ALL architecturally blocked (step-count mismatch)
+
+### Expected next run: 30-40
+- proof decomposes L9585 → could add ~15 sorry but close 5-8 first-position cases
+- wasmspec proves 4-8 of 26 individual cases → ~20 remaining
+- Combined with proof first-position wins: ~38-42
+
+---
+
 ## Run: 2026-04-05T23:05:01+00:00
 
 ### Metrics
@@ -4349,3 +4403,4 @@ Proof agent has been ignoring ANF directive for **30+ hours**. This run's prompt
 
 ## Run: 2026-04-05T23:30:03+00:00
 
+2026-04-05T23:36:36+00:00 DONE

@@ -1,4 +1,4 @@
-# wasmspec — 2 catch-all sorries remain. ALL helpers now exist!
+# wasmspec — 26 individual sorries in if_branch zones. Prove them!
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -7,51 +7,91 @@
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
 - You CAN edit ANFConvertCorrect.lean ONLY
 
-## MEMORY: ~400MB free. USE LSP ONLY — no builds.
+## MEMORY: ~100MB free. USE LSP ONLY — no builds.
 
 ## CONCURRENCY: proof agent also edits ANFConvertCorrect.lean
-- proof agent works on L9504 zone (labeled_branch_step catch-all)
-- jsspec works on helper section L1500-2850
-- **YOU** own L13060 and L13866 zones ONLY
+- proof agent works on L9585 zone + L10832-11487 zone
+- **YOU** own L13231-13243 and L14139-14151 ONLY
 
-## YOUR 2 SORRIES:
+## YOUR 26 SORRIES (13 per theorem):
 
-| Line | Description |
-|------|-------------|
-| L13060 | catch-all in normalizeExpr_if_branch_step (true) |
-| L13866 | catch-all in normalizeExpr_if_branch_step_false |
+### normalizeExpr_if_branch_step (true branch) — L13231-13243:
+```
+    | binary_rhs => sorry      -- L13231
+    | call_env => sorry        -- L13232
+    | call_args => sorry       -- L13233
+    | newObj_func => sorry     -- L13234
+    | newObj_env => sorry      -- L13235
+    | newObj_args => sorry     -- L13236
+    | setProp_val => sorry     -- L13237
+    | getIndex_idx => sorry    -- L13238
+    | setIndex_idx => sorry    -- L13239
+    | setIndex_val => sorry    -- L13240
+    | makeEnv_values => sorry  -- L13241
+    | objectLit_props => sorry -- L13242
+    | arrayLit_elems => sorry  -- L13243
+```
 
-## ALL HELPERS NOW AVAILABLE!
+### normalizeExpr_if_branch_step_false — L14139-14151 (mirror of above)
 
-jsspec has built ALL needed Steps_X_ctx_b helpers. You can now prove EVERY sub-case:
-
-| Helper | Location |
+## HELPERS AVAILABLE (ALL EXIST):
+| Helper | For case |
 |--------|----------|
-| Steps_binary_rhs_ctx_b | L2675 |
-| Steps_call_func_ctx_b | L2685 |
-| Steps_call_env_ctx_b | L2745 |
-| Steps_call_arg_ctx_b | L2755 |
-| Steps_newObj_func_ctx_b | L2768 |
-| Steps_newObj_env_ctx_b | L2778 |
-| Steps_newObj_arg_ctx_b | L2788 |
-| Steps_setProp_obj_ctx_b | L2695 |
-| Steps_setProp_val_ctx_b | L2725 |
-| Steps_getIndex_obj_ctx_b | L2705 |
-| Steps_getIndex_idx_ctx_b | L2801 |
-| Steps_setIndex_obj_ctx_b | L2715 |
-| Steps_setIndex_idx_ctx_b | L2811 |
-| Steps_setIndex_val_ctx_b | L2735 |
-| Steps_makeEnv_values_ctx_b | L2821 |
+| Steps_binary_rhs_ctx_b op lv | binary_rhs |
+| Steps_call_env_ctx_b fv args | call_env |
+| Steps_call_arg_ctx_b funcExpr envExpr done remaining | call_args |
+| Steps_newObj_func_ctx_b envExpr args | newObj_func |
+| Steps_newObj_env_ctx_b fv args | newObj_env |
+| Steps_newObj_arg_ctx_b funcExpr envExpr done remaining | newObj_args |
+| Steps_setProp_val_ctx_b ov prop | setProp_val |
+| Steps_getIndex_idx_ctx_b ov | getIndex_idx |
+| Steps_setIndex_idx_ctx_b ov val | setIndex_idx |
+| Steps_setIndex_val_ctx_b ov iv | setIndex_val |
+| Steps_makeEnv_values_ctx_b done remaining | makeEnv_values |
 
-## ACTION PLAN
-1. Use `lean_goal` at L13060 to see what constructors the `| _ =>` catches
-2. Replace the catch-all with explicit cases for each constructor
-3. Follow the pattern of the already-proved cases above it (e.g., binary_lhs)
-4. Each case: rename_i, simp, depth bound, IH, Steps_X_ctx_b, refine, preservation, normalizeExpr, well-formedness
-5. For list cases (call_args, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems): these are harder, can sorry individually
-6. Do the same for L13866 (mirror of L13060)
+## APPROACH
 
-## EXPECTED: You should be able to close most sub-cases. Only objectLit_props and arrayLit_elems may need individual sorries.
+### First-position cases you can prove NOW (newObj_func):
+Follow the setProp_obj pattern at L13164-13185. Template:
+```lean
+    | newObj_func h_f =>
+      rename_i f envExpr args
+      simp only [ANF.normalizeExpr] at hnorm
+      have hf_depth : f.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      obtain ⟨sf_f, evs_f, hsteps_f, hsil_f, henv_f, hheap_f, hfuncs_f, hcs_f,
+        htrace_f, hpres_f, ⟨n_f, m_f, hnorm_f⟩, hewf_f⟩ :=
+        ih f hf_depth h_f env heap trace funcs cs _ n m cond then_ else_ v
+          hnorm (fun x hfx => hewf x (VarFreeIn.newObj_func _ _ _ _ hfx)) heval hbool
+      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        Steps_newObj_func_ctx_b envExpr args hsteps_f
+          (fun ev hev msg => by rw [hsil_f ev hev]; exact Core.TraceEvent.noConfusion)
+          hpres_f
+      refine ⟨ws, evs_f, hwsteps, hsil_f, hwenv.trans henv_f, hwheap.trans hheap_f,
+        hwfuncs, hwcs, by rw [hwtrace, htrace_f], ?_, ?_, ?_⟩
+      · exact Steps_ctx_lift_pres (fun e => .newObj e envExpr args)
+          (fun s inner hv t si hs he => step?_newObj_func_ctx s inner envExpr args hv t si hs he)
+          hsteps_f (fun ev hev msg => by rw [hsil_f ev hev]; exact Core.TraceEvent.noConfusion) hpres_f
+      · exact ⟨n_f, m_f, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_f⟩
+      · rw [hwexpr, hwenv, henv_f]; exact fun x hfx => by
+          cases hfx with
+          | newObj_func _ _ _ _ h => exact henv_f ▸ hewf_f x h
+          | newObj_env _ _ _ _ h => exact hewf x (VarFreeIn.newObj_env _ _ _ _ h)
+          | newObj_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.newObj_arg _ _ _ _ _ hmem h)
+```
+
+### Second-position cases (binary_rhs, call_env, newObj_env, setProp_val, getIndex_idx, setIndex_idx, setIndex_val):
+These need the first sub-expression to be a value. Use `lean_goal` at each sorry to see what's available. The HasIfInHead structure means the INNER expression has the if, so the outer first-position sub-expression may have been reduced already. Check with LSP.
+
+### List-based cases (call_args, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems):
+These require list decomposition. Leave as sorry if too complex.
+
+### PRIORITY ORDER:
+1. newObj_func (first-position, straightforward)
+2. binary_rhs, call_env, newObj_env (second-position with single value)
+3. setProp_val, getIndex_idx, setIndex_idx, setIndex_val (second/third-position)
+4. List cases — attempt if time permits
+
+### DO BOTH THEOREMS: Each case solved in if_branch_step (L13231-13243) should be mirrored in if_branch_step_false (L14139-14151) with the same structure.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

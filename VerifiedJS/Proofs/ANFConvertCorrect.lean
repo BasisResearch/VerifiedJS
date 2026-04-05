@@ -2205,7 +2205,7 @@ private theorem step?_makeEnv_values_ctx (s : Flat.State)
   have hvnone := valuesFromExprList?_none_of_nonvalue done remaining inner hdone hnotval
   have hfirst := firstNonValueExpr_of_done_lit done remaining inner hdone hnotlit
   rw [Flat.step?.eq_1]
-  simp only [hvnone, hfirst, hstep]
+  simp only [hvnone]; rw [hfirst]; simp only [hstep]
   cases t with
   | error msg => exact absurd rfl (hnoerr msg)
   | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
@@ -2229,7 +2229,7 @@ private theorem step?_arrayLit_elem_ctx (s : Flat.State)
   have hvnone := valuesFromExprList?_none_of_nonvalue done remaining inner hdone hnotval
   have hfirst := firstNonValueExpr_of_done_lit done remaining inner hdone hnotlit
   rw [Flat.step?.eq_1]
-  simp only [hvnone, hfirst, hstep]
+  simp only [hvnone]; rw [hfirst]; simp only [hstep]
   cases t with
   | error msg => exact absurd rfl (hnoerr msg)
   | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
