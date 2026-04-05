@@ -10189,14 +10189,6 @@ private theorem normalizeExpr_if_compound_true_sim
     | tryCatch body' cp cb fin =>
       exfalso; simp only [ANF.normalizeExpr_if'] at hnorm
       exact ANF.normalizeExpr_tryCatch_not_if body' cp cb fin _ cond then_ else_ n m hnorm
-    | .«return» .none =>
-      exfalso; simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_return_none', pure, Pure.pure,
-        StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hnorm
-      exact ANF.Expr.noConfusion hnorm.1
-    | .yield .none _ =>
-      exfalso; simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_yield_none', pure, Pure.pure,
-        StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hnorm
-      exact ANF.Expr.noConfusion hnorm.1
     | _ => sorry -- compound c_flat with HasIfInHead: needs eval context lifting / strong induction
   all_goals sorry -- non-if_direct HasIfInHead: requires structural induction on depth
 
@@ -10295,14 +10287,6 @@ private theorem normalizeExpr_if_compound_false_sim
     | tryCatch body' cp cb fin =>
       exfalso; simp only [ANF.normalizeExpr_if'] at hnorm
       exact ANF.normalizeExpr_tryCatch_not_if body' cp cb fin _ cond then_ else_ n m hnorm
-    | .«return» .none =>
-      exfalso; simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_return_none', pure, Pure.pure,
-        StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hnorm
-      exact ANF.Expr.noConfusion hnorm.1
-    | .yield .none _ =>
-      exfalso; simp only [ANF.normalizeExpr_if', ANF.normalizeExpr_yield_none', pure, Pure.pure,
-        StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hnorm
-      exact ANF.Expr.noConfusion hnorm.1
     | _ => sorry -- compound c_flat with HasIfInHead: needs eval context lifting / strong induction
   all_goals sorry -- non-if_direct HasIfInHead: requires structural induction on depth
 
