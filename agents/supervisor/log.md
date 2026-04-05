@@ -1,3 +1,62 @@
+## Run: 2026-04-05T06:01:05+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 + CC 13 = **37 real sorries**
+- **Delta from last run (05:30)**: **-2** (39→37). wasmspec consolidated 4 if compound inline sorries into 2 infrastructure lemmas.
+- **Wasm/Semantics.lean**: 0 real sorries (only comments).
+
+### Agent Status
+1. **proof** (RUNNING since 03:30, ~2.5h): L9536 tryCatch (was L9485, line numbers shifted). Added `subst hheap henv` but didn't close the sorry. Build running since 05:42. **CONCERN**: 2.5h with minimal progress. **Prompt REWRITTEN** with corrected line number (L9536) and detailed tactic skeleton.
+
+2. **jsspec** (RUNNING since 04:00, ~2h): L3921 call case (was L3914). LSP and build running. **Prompt REWRITTEN** with corrected line number.
+
+3. **wasmspec** (RUNNING since 05:15, ~45min): Consolidated 4→2 sorries (L9298, L9322). Good progress! **Prompt REWRITTEN** to now prove the 2 infrastructure lemmas via case analysis on sf_expr.
+
+### Actions Taken
+1. **Killed stale processes**: 4 stale supervisor builds from previous runs + 2 current supervisor builds. Freed ~1.5GB RAM (98MB → 2GB available).
+2. **Rewrote all 3 agent prompts**:
+   - proof: Corrected L9485→L9536, added detailed tactic skeleton for tryCatch
+   - jsspec: Corrected L3914→L3921, updated status
+   - wasmspec: Pivoted from "consolidate sorries" (DONE) to "prove infrastructure lemmas"
+3. Logged to time_estimate.csv: 37 sorries.
+
+### Sorry Breakdown
+
+**ANF (24 sorries):**
+- L7701-7887 (7): normalizeExpr_labeled eval context — PARKED
+- L8531-9023 (7): compound HasThrow/Return/Await/Yield — PARKED
+- L9079, 9083, 9084 (3): let compound (return/yield some + general) — proof target if time
+- L9174, 9186 (2): while step sim — deferred
+- L9298, 9322 (2): if compound infrastructure lemmas — **wasmspec target (REWRITTEN)**
+- L9536 (1): tryCatch step sim — **proof target (REWRITTEN)**
+- L10836, 10889 (2): break/continue compound — PARKED
+
+**CC (13 sorries):**
+- L3921 (1): call — **jsspec target (RUNNING)**
+- L4109 (1): captured variable — jsspec lower priority
+- L4438, L4461 (2): CCStateAgree if-branches — architecturally blocked
+- L5025 (1): funcs correspondence
+- L5233, L5241 (2): semantic mismatch — architecturally blocked
+- L5879 (1): UNPROVABLE getIndex string — SKIP
+- L7121 (1): functionDef — jsspec lower priority
+- L7278, L7279 (2): tryCatch CCStateAgree — architecturally blocked
+- L7351 (1): tryCatch inner
+- L7459 (1): while_ CCState threading — architecturally blocked
+
+### Critical Assessment
+**First sorry decrease in 4 runs!** 39→37 (-2). wasmspec's consolidation of if compound sorries is working.
+
+**Concern**: proof agent has been running 2.5h on tryCatch with only `subst` added. The corrected prompt now has the exact tactic skeleton. If still no progress by next run (06:30), will consider: (a) have wasmspec take over tryCatch, or (b) rewrite approach to first characterize what normalizeExpr produces .tryCatch.
+
+**Next cycle expectations:**
+- proof: Close L9536 (tryCatch) = -1 sorry
+- jsspec: Close L3921 (call) = -1 sorry
+- wasmspec: Narrow L9298/9322 infrastructure lemmas, possibly -1 or -2
+
+**Potential total next run: 33-35 sorries** (37 - 2 to 4 expected closures)
+
+---
+
 ## Run: 2026-04-05T05:30:08+00:00
 
 ### Metrics
@@ -5138,3 +5197,7 @@ If proof closes L9460+L9469 and wasmspec closes L9050+if cases: ANF drops to ~15
 ## Run: 2026-04-05T05:30:08+00:00
 
 2026-04-05T05:32:46+00:00 DONE
+
+## Run: 2026-04-05T06:01:05+00:00
+
+2026-04-05T06:05:01+00:00 SKIP: already running

@@ -1,11 +1,11 @@
-# wasmspec — Build compound sub-expression IH infrastructure for ANF
+# wasmspec — Prove compound if infrastructure lemmas in ANF
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
 - **DO NOT** edit Flat/Semantics.lean — it's DONE (0 sorries), leave it alone
 - **DO NOT** run `lake build` anything large
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
-- MEMORY: 7.7GB total, NO swap. ~3.8GB available right now.
+- MEMORY: 7.7GB total, NO swap. ~2GB available.
 - You CAN edit ANFConvertCorrect.lean ONLY
 - Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
@@ -13,94 +13,57 @@
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
 ## CONCURRENCY: proof agent also edits ANFConvertCorrect.lean
-- proof agent works on L9485 (tryCatch step sim) and L9079-9084 (let compound)
-- **YOU** insert new infrastructure ABOVE L9027 (around line 9020)
-- **YOU** can also edit L9367/9368 and L9440/9441
-- DO NOT touch lines 9027-9090 or 9475-9500
+- proof agent works on L9536 (tryCatch step sim) and L9079-9084 (let compound)
+- **YOU** own L9273-9322 (infrastructure lemmas) and L9326+ (normalizeExpr_if_step_sim)
+- DO NOT touch lines 9060-9090 or 9508-9540
 
-## STATUS: STUCK 3 RUNS on L9367-9441. APPROACH CHANGE REQUIRED.
+## STATUS: GREAT PROGRESS — 4 inline sorries → 2 infrastructure lemmas (net -2)
 
-The exfalso approach DOES NOT WORK — compound condition cases ARE REACHABLE.
-The Flat machine has the ORIGINAL un-normalized expression. When normalizeExpr(.if cond then else)
-normalizes cond to trivial `t`, the Flat machine still has compound `cond` and needs MULTIPLE
-steps to evaluate it. This is a multi-step simulation problem.
+You successfully consolidated the 4 if compound inline sorries into 2 well-typed infrastructure lemmas:
+- `normalizeExpr_if_compound_true_sim` (L9273-9298) — sorry
+- `normalizeExpr_if_compound_false_sim` (L9300-9322) — sorry
 
-## ROOT CAUSE: Missing Induction Hypothesis
+## YOUR TASK: Prove these 2 infrastructure lemmas
 
-ALL compound sorry cases in ANF share the same problem: the per-constructor `normalizeExpr_*_step_sim`
-theorems handle lit/var/this sub-expressions but `sorry` ALL compound sub-expressions because they
-lack an IH for recursive simulation.
+Both lemmas have the same structure. The goal is:
+Given `normalizeExpr sf_expr k` produces `.if cond then_ else_`, and `evalTrivial env cond = .ok v`,
+show that Flat can step from `⟨sf_expr, env, heap, trace, funcs, cs⟩` to a state matching `then_` (or `else_`).
 
-The fix: build a depth-based strong induction infrastructure that lets compound sub-expression
-cases call the simulation recursively on smaller expressions.
+### Proof strategy: case analysis on sf_expr
 
-## YOUR TASK: Restructure anfConvert_step_star with depth induction
+1. **Use `lean_goal` at L9298 to see exact proof state**
 
-Currently `anfConvert_step_star` (L10409) does a flat case split on `sa.expr` and dispatches
-to per-constructor theorems. It has NO induction, so per-constructor theorems get NO IH.
+2. **Key insight**: Only `.if` in sf_expr can produce `.if` through normalizeExpr.
+   - `normalizeExpr (.if c t e) k` normalizes c, then wraps in .if
+   - No other constructor produces .if (seq→.let, let→.let, etc.)
 
-### Approach: Add depth parameter + IH threading
+3. **Case split on sf_expr**:
+   - Most constructors: derive contradiction (normalizeExpr doesn't produce .if)
+   - `.if c_flat then_flat else_flat`: the actual case to prove
+     - normalizeExpr normalizes c_flat → trivial cond
+     - Flat steps: `.if c_flat ...` → evaluate c_flat to value → branch
+     - If c_flat is already a value (lit/var/this): single Flat step
+     - If c_flat is compound: need multi-step sim (this is the hard part — can sorry initially)
 
-1. **Read** `anfConvert_step_star` (L10409-L10488+) carefully to understand its structure.
+4. **Start with the easy path**: prove the case where c_flat is already a trivial expression (lit/var/this). Sorry the compound sub-case. Even proving the trivial case narrows what's left.
 
-2. **Add** an IH parameter to `normalizeExpr_if_step_sim` (L9275):
+### Template:
 ```lean
-private theorem normalizeExpr_if_step_sim
-    (sf : Flat.State) (s : Flat.Program) (t : ANF.Program)
-    (h_convert : ANF.convert s = .ok t)  -- ADD THIS
-    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
-    (cond : ANF.Trivial) (then_ else_ : ANF.Expr)
-    -- ADD: IH for sub-expressions with smaller depth
-    (ih_sub : ∀ (sf_sub : Flat.State),
-      sf_sub.expr.depth < sf.expr.depth →
-      ∀ (k' : ANF.Trivial → ANF.ConvM ANF.Expr) (n' m' : Nat) (anf' : ANF.Expr),
-      (ANF.normalizeExpr sf_sub.expr k').run n' = .ok (anf', m') →
-      (∀ t' n'', ∃ m'', (k' t').run n'' = .ok (.trivial t', m'')) →
-      ExprWellFormed sf_sub.expr sf_sub.env →
-      ∀ ... → ∃ sf' evs, Flat.Steps sf_sub evs sf' ∧ ...)
-    (hnorm : ...) -- rest unchanged
+  cases sf_expr with
+  | lit | var | this | break | continue | while_ | labeled | tryCatch | return | throw | yield | await =>
+    -- These don't produce .if through normalizeExpr
+    simp [ANF.normalizeExpr] at hnorm
+    -- (may need more work for some constructors)
+    sorry  -- placeholder for contradiction derivation
+  | «if» c_flat then_flat else_flat =>
+    -- The real case: normalizeExpr (.if c t e) k normalizes c then wraps
+    sorry -- main proof here
+  | _ => sorry -- remaining constructors: derive contradiction
 ```
 
-3. **Restructure** `anfConvert_step_star` to use `Nat.strongRecOn sf.expr.depth`:
-```lean
-private theorem anfConvert_step_star ... := by
-  intro sa sf ev sa' hrel hewf hna hstep
-  -- Strong induction on sf.expr.depth
-  have : ∀ (d : Nat) (sf : Flat.State), sf.expr.depth ≤ d → ... := by
-    intro d; induction d with
-    | zero => ...
-    | succ d ih => ...
-  exact this sf.expr.depth sf (Nat.le_refl _) ...
-```
-
-### SIMPLEST FIRST: Just add ih_sub to normalizeExpr_if_step_sim
-
-Don't restructure everything. Start minimal:
-
-1. Add `ih_sub` parameter to `normalizeExpr_if_step_sim` signature
-2. In the compound case at L9367, USE `ih_sub`:
-   - The Flat expression is `.if c_flat then_flat else_flat` where c_flat is compound
-   - `c_flat.depth < (.if c_flat then_flat else_flat).depth` (by Flat.Expr.depth definition)
-   - normalizeExpr of the if produces a normalized condition as a trivial
-   - Use ih_sub on `⟨c_flat, env, heap, trace, funcs, cs⟩` to simulate the condition evaluation
-   - Then step the resulting `.if (.lit v) then_flat else_flat` to the branch
-3. Update the call site in `anfConvert_step_star` to pass `ih_sub` (this will sorry initially — that's OK)
-4. Verify with LSP that L9367 closes with the IH
-
-### CRITICAL: This is infrastructure work
-
-It's OK if adding ih_sub creates a sorry at the CALL SITE in anfConvert_step_star.
-Trading 4 sorry at L9367-9441 for 1 sorry at the call site is PROGRESS.
-The call-site sorry can be closed in the next run by adding the strong induction to anfConvert_step_star.
-
-## STEP-BY-STEP PLAN
-1. `lean_goal` at L9367 — understand exact proof state
-2. `lean_hover_info` on `normalizeExpr_if_step_sim` — get current signature
-3. Add `ih_sub` parameter to signature with correct type
-4. Use `ih_sub` at L9367 to close compound condition case
-5. Use same approach for L9368 (HasIfInHead compound cases)
-6. Update call site in `anfConvert_step_star` — sorry the ih_sub argument for now
-7. Repeat for L9440/9441 (false branch — structurally identical)
+## PRIORITY ORDER
+1. L9298 (true branch infrastructure) — prove or narrow
+2. L9322 (false branch) — structurally identical to true
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
