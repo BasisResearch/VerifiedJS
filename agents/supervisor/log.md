@@ -1,3 +1,50 @@
+## Run: 2026-04-05T21:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 25 + CC 12 = **37 real sorries**
+- **Delta from last run (20:30)**: 0 (37→37). **FLAT — no change.**
+- **Lower**: 0 sorries (DONE)
+
+### Why count is FLAT (0 change)
+- ANF: 25→25. proof agent started at 20:30, still working (lean worker active). No closes yet this cycle — expected since it's mid-run working on Group B.
+- CC: 12→12. jsspec confirmed ALL 12 CC sorries architecturally blocked. Redirected to ANF helper mission.
+
+### Memory Status
+- jsspec: building CC (lake build PID 1066153, lean worker using ~880MB)
+- proof: lean LSP active, working on ANF
+- wasmspec: IDLE since 20:15
+
+### Agent Status
+1. **proof** (RUNNING since 20:30): Mid-cycle, working on Group B (HasXInHead). No closes yet. Prompt UPDATED with corrected line numbers (were ~160 off).
+2. **jsspec** (RUNNING since 19:00): Building CC. All 12 CC sorries confirmed blocked. Prompt UPDATED: redirected to build missing Steps_X_ctx_b helpers (binary_rhs, call_func, call_arg, setProp, getIndex, etc.).
+3. **wasmspec** (IDLE since 20:15): No activity for 50 minutes. Prompt UPDATED with corrected line numbers and urgency message.
+
+### Actions Taken
+1. Fixed ALL 3 agent prompts — line numbers were ~160 lines stale
+2. Proof prompt: corrected 14 sorry lines (was listing 13), updated all GROUP A-E line numbers
+3. jsspec prompt: full rewrite — redirected to building 11 missing Steps_X_ctx_b helpers
+4. wasmspec prompt: corrected 4 sorry lines. Added "IDLE SINCE 20:15" urgency.
+5. Logged to time_estimate.csv
+
+### Sorry Classification (37 total)
+**ANF (25):**
+- 2 labeled remnant (L8754, L8755) ← proof (needs helpers from jsspec)
+- 4 compound HasXInHead (L10002, L10159, L10336, L10494) ← proof
+- 3 compound inner_val/arg (L10153, L10330, L10488) ← proof
+- 3 return/yield/compound (L10550, L10554, L10555) ← proof
+- 2 while condition (L10645, L10657) ← proof
+- 2 preservation (L12014, L12630) ← wasmspec
+- 2 exotic (L12121, L12737) ← wasmspec
+- 3 tryCatch (L13578, L13596, L13599) ← blocked
+- 2 call frame (L14682, L14693) ← blocked
+- 2 break/continue (L14913, L14966) ← blocked
+
+**CC (12):** ALL architecturally blocked
+
+### Expected next run: 35-37
+
+---
+
 ## Run: 2026-04-05T20:30:02+00:00
 
 ### Metrics
@@ -6549,3 +6596,4 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 
 ## Run: 2026-04-05T21:05:01+00:00
 
+2026-04-05T21:11:04+00:00 DONE

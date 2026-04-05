@@ -8751,7 +8751,28 @@ private theorem normalizeExpr_labeled_branch_step :
       · rw [hwexpr, hwenv, henv_arg]; exact fun x hfx => by
           cases hfx with
           | await_arg _ _ h => exact henv_arg ▸ hewf_arg x h
-    | unary_arg h_arg => sorry -- unary: needs Steps_unary_ctx_b
+    | unary_arg h_arg =>
+      rename_i arg op
+      have harg_depth : arg.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have hnorm' : (ANF.normalizeExpr arg (fun argTriv => ANF.bindComplex (.unary op argTriv) K)).run n =
+          .ok (.labeled label body, m) := hnorm
+      obtain ⟨sf_arg, evs_arg, hsteps_arg, hsil_arg, henv_arg, hheap_arg, hfuncs_arg, hcs_arg,
+        htrace_arg, hpres_arg, ⟨n_arg, m_arg, hnorm_arg⟩, hewf_arg⟩ :=
+        ih arg harg_depth label h_arg env heap trace funcs cs _ n m body
+          hnorm' (fun x hfx => hewf x (VarFreeIn.unary_arg _ _ _ hfx))
+      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        Steps_unary_ctx_b op hsteps_arg
+          (fun ev hev msg => by rw [hsil_arg ev hev]; exact Core.TraceEvent.noConfusion)
+          hpres_arg
+      refine ⟨ws, evs_arg, hwsteps, hsil_arg, hwenv.trans henv_arg, hwheap.trans hheap_arg,
+        hwfuncs, hwcs, by rw [hwtrace, htrace_arg], ?_, ?_, ?_⟩
+      · exact Steps_ctx_lift_pres (.unary op ·)
+          (fun s inner hv t si hs he => step?_unary_ctx s op inner hv t si hs he)
+          hsteps_arg (fun ev hev msg => by rw [hsil_arg ev hev]; exact Core.TraceEvent.noConfusion) hpres_arg
+      · exact ⟨n_arg, m_arg, by rw [hwexpr]; show (ANF.normalizeExpr (.unary op sf_arg.expr) K).run n_arg = _; exact hnorm_arg⟩
+      · rw [hwexpr, hwenv, henv_arg]; exact fun x hfx => by
+          cases hfx with
+          | unary_arg _ _ _ h => exact henv_arg ▸ hewf_arg x h
     | _ => sorry -- remaining compound cases: need additional step? helpers or handle later sub-expressions
 
 /-- When normalizeExpr sf.expr k produces .labeled label body, there exist Flat steps

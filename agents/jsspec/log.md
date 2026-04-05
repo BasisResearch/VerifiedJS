@@ -3407,3 +3407,22 @@ The only sorry is at L3970: closure body supported. Requires `∀ i c, s.funcs[i
 **Result**: L7917 sorry remains. Confirmed architecturally blocked like the other CC sorries.
 ### 2026-04-05T20:42:06+00:00 Run complete — 0 sorries closed. L7917 (functionDef) confirmed architecturally blocked (step-count mismatch). L5821 needs FuncsCorr. All 12 CC sorries blocked.
 2026-04-05T21:00:01+00:00 SKIP: already running
+
+### 2026-04-05T21:10 Fixed pre-existing compilation errors in CC proof
+
+Fixed 9 compilation errors in ClosureConvertCorrect.lean that were preventing the build:
+
+1. **L8079, L8102, L8162** (tryCatch `supported` projection): The `first | exact h.1.1 | exact h.1` pattern failed when `simp` simplified `(tryCatch body cp cb none).supported = true` to `body.supported = true` (non-conjunction). Added `| exact (fun _ => h) | exact (fun _ _ => h)` fallbacks.
+
+2. **L8205** (congrArg direction): `congrArg Prod.fst hconv'.symm` had wrong equality direction. Fixed to `congrArg Prod.fst hconv'`.
+
+3. **L8219** (simp rewrite): Adjusted simp lemmas after congrArg fix — removed `←` from `hconv'_fst` and added `sc'`, `fcatch`, `ffin` to unfold let-definitions.
+
+4. **L8521, L8551** (yield `simp` at `⊢`): `simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp ⊢` failed because `⊢` couldn't be simplified. Since `yield` has `supported = false`, replaced with `simp only [Core.Expr.supported] at hsupp; exact absurd hsupp (by decide)`.
+
+5. **L8610, L8640** (await `simp` at `⊢`): Same fix as yield — `await` also has `supported = false`.
+
+**Build: SUCCEEDED** with only warnings (unused simp args, unused variable).
+**Sorry count: 12 (unchanged)**. No new sorries introduced, no sorries closed.
+### 2026-04-05T21:12:02+00:00 Run complete — 0 sorries closed, 9 compilation errors fixed, build succeeds
+2026-04-05T21:12:19+00:00 DONE
