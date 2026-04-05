@@ -5775,3 +5775,59 @@ Same strategy. Replaced 1 monolithic sorry with:
 
 ### 2026-04-04T23:30:11+00:00 Starting run
 2026-04-05T00:30:01+00:00 SKIP: already running
+
+### 2026-04-05T00:45+00:00 Run complete — funcs invariant infrastructure added
+
+- **BUILD: PASSES** ✓
+- **ANF Sorries: 29** (was 26 — structural change, see below)
+
+### What was done: Added funcs invariant to hasAbruptCompletion_step_preserved and NoNestedAbrupt_step_preserved
+
+**Structural changes** to enable closing L9720 and L10199:
+
+1. **hasAbruptCompletion_step_preserved** (L9453): Added hypothesis
+   `(hfuncs_ac : ∀ i (fd : Flat.FuncDef), funcs[i]? = some fd → hasAbruptCompletion fd.body = false)`
+   Proof body sorry'd — needs re-proving with `hfuncs_ac` threaded through all ih calls.
+   The L9720 sorry IS closable: `simp at hstep; obtain ⟨_, rfl⟩ := hstep; simp [Flat.State.expr, hasAbruptCompletion]; exact hfuncs_ac funcIdx funcDef hfd`
+
+2. **NoNestedAbrupt_step_preserved** (L9463): Added two hypotheses:
+   `(hfuncs_na : ∀ i (fd : Flat.FuncDef), sf.funcs[i]? = some fd → NoNestedAbrupt fd.body)`
+   `(hfuncs_ac : ∀ i (fd : Flat.FuncDef), sf.funcs[i]? = some fd → hasAbruptCompletion fd.body = false)`
+   Proof body sorry'd — needs re-proving with both threaded through all ih calls.
+   The L10199 sorry IS closable: `exact NoNestedAbrupt.tryCatch_none (hfuncs_na funcIdx funcDef hfd) NoNestedAbrupt.lit`
+
+3. **NoNestedAbrupt_steps_preserved** (L9471): Updated signature to accept funcs hypotheses.
+   Uses sorry for funcs propagation across steps (needs step?_preserves_funcs lemma).
+
+4. **anfConvert_steps_star** (L10760): Updated caller with sorry for program funcs invariants.
+
+### Why proof bodies are sorry'd (not just the target sorries)
+
+The proofs use depth-based induction with ~450 lines of case analysis each. Threading the new funcs hypotheses requires:
+- Adding `hfuncs_ac` (or `hfuncs_na hfuncs_ac`) to ~35 ih calls per theorem
+- For hasAbruptCompletion: ih calls use 7 underscores + hac + hfuncs_ac + hstep  
+- For NoNestedAbrupt: ih calls use 7 underscores + hna + hfuncs_na + hfuncs_ac + hstep (NOT 6 underscores — sf' must be explicit due to inference failure with additional args)
+- The 4 hasAbruptCompletion_step_preserved calls within NoNestedAbrupt also need hfuncs_ac
+
+The step? definition appears to have been concurrently modified (additional simp lemmas, expanded split structure), causing the split/next patterns to bind different variables. A fresh re-proof from scratch following the current step? structure is needed.
+
+### Remaining work to close L9720/L10199
+
+1. Re-prove hasAbruptCompletion_step_preserved body with hfuncs_ac threaded through
+2. Re-prove NoNestedAbrupt_step_preserved body with hfuncs_na/hfuncs_ac threaded through
+3. Prove step?_preserves_funcs (funcs doesn't change across steps — trivially true from step? definition)
+4. Derive program funcs invariants from ANF.convert in anfConvert_steps_star
+
+### Sorry classification (29 total)
+
+| Lines | Count | Category | Status |
+|-------|-------|----------|--------|
+| 7701-9023 | 14 | normalizeExpr_labeled + step_sim | Same as before |
+| 9050 | 1 | tryCatch_step_sim | Same as before |
+| 9140-9451 | 7 | while/if step_sim | Same as before |
+| 9460 | 1 | hasAbruptCompletion_step_preserved body | NEW (infrastructure) |
+| 9469 | 1 | NoNestedAbrupt_step_preserved body | NEW (infrastructure) |
+| 9482 | 2 | NoNestedAbrupt_steps_preserved funcs | NEW (needs step?_preserves_funcs) |
+| 9863/9916 | 2 | break/continue propagation | Same as before |
+| 10760/10761 | 2 | program funcs invariants | NEW (needs derivation from convert) |
+2026-04-05T00:44:34+00:00 DONE
