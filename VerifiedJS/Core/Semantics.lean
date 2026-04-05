@@ -12656,6 +12656,19 @@ theorem step_getIndex_step_obj (obj idx : Expr) (env : Env) (heap : Heap)
       some (t, pushTrace { so with expr := .getIndex so.expr idx, trace := trace } t) := by
   simp [step?, hobj, hstep]
 
+/-- step? on getIndex with value obj but non-value idx steps the idx. -/
+theorem step_getIndex_step_idx (objVal : Value) (idx : Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hidx : exprValue? idx = none)
+    (t : TraceEvent) (si : State)
+    (hstep : step? ⟨idx, env, heap, trace, funcs, cs⟩ = some (t, si)) :
+    step? ⟨.getIndex (.lit objVal) idx, env, heap, trace, funcs, cs⟩ =
+      some (t, pushTrace { si with expr := .getIndex (.lit objVal) si.expr, trace := trace } t) := by
+  unfold step?
+  have hlit : exprValue? (.lit objVal) = some objVal := rfl
+  simp only [hlit, hidx, hstep]
+
 /-- step? on tryCatch with non-value body: normal (non-error) step wraps in tryCatch. -/
 theorem step_tryCatch_step_body_silent (body : Expr) (catchParam : VarName) (catchBody : Expr)
     (finally_ : Option Expr) (env : Env) (heap : Heap)
