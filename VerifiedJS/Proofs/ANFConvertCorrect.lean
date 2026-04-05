@@ -11011,7 +11011,7 @@ private theorem normalizeExpr_if_branch_step :
             cases hsteps with
             | refl => simp
             | @tail _ s2 _ t ts hsingle hrest =>
-              have hts_nil : ts = [] := List.eq_nil_of_length_eq_zero (by simp [List.length] at hlen; omega)
+              have hts_nil : ts = [] := List.eq_nil_of_length_eq_zero (by simp only [List.length_cons, List.length_nil] at hlen; omega)
               subst hts_nil; cases hrest with | refl =>
               obtain ⟨hstep_eq⟩ := hsingle
               simp [Flat.step?, Flat.exprValue?, hbool, Flat.step?_pushTrace_expand] at hstep_eq
@@ -11047,7 +11047,7 @@ private theorem normalizeExpr_if_branch_step :
               cases rest1 with
               | refl => simp [List.append_assoc]
               | @tail _ s3 _ t2 ts2 h2 rest2 =>
-                have : ts2 = [] := List.eq_nil_of_length_eq_zero (by simp [List.length] at hlen; omega)
+                have : ts2 = [] := List.eq_nil_of_length_eq_zero (by simp only [List.length_cons, List.length_nil] at hlen; omega)
                 subst this; cases rest2 with | refl =>
                 obtain ⟨hstep_eq2⟩ := h2
                 simp [List.append_assoc] at hstep2
@@ -11084,7 +11084,7 @@ private theorem normalizeExpr_if_branch_step :
               cases rest1 with
               | refl => simp [List.append_assoc]
               | @tail _ s3 _ t2 ts2 h2 rest2 =>
-                have : ts2 = [] := List.eq_nil_of_length_eq_zero (by simp [List.length] at hlen; omega)
+                have : ts2 = [] := List.eq_nil_of_length_eq_zero (by simp only [List.length_cons, List.length_nil] at hlen; omega)
                 subst this; cases rest2 with | refl =>
                 obtain ⟨hstep_eq2⟩ := h2
                 simp [List.append_assoc] at hstep2
@@ -11334,7 +11334,7 @@ private theorem normalizeExpr_if_branch_step_false :
             cases hsteps with
             | refl => simp
             | @tail _ s2 _ t ts hsingle hrest =>
-              have hts_nil : ts = [] := List.eq_nil_of_length_eq_zero (by simp [List.length] at hlen; omega)
+              have hts_nil : ts = [] := List.eq_nil_of_length_eq_zero (by simp only [List.length_cons, List.length_nil] at hlen; omega)
               subst hts_nil; cases hrest with | refl =>
               obtain ⟨hstep_eq⟩ := hsingle
               simp [Flat.step?, Flat.exprValue?, hbool, Flat.step?_pushTrace_expand] at hstep_eq
@@ -11370,7 +11370,7 @@ private theorem normalizeExpr_if_branch_step_false :
               cases rest1 with
               | refl => simp [List.append_assoc]
               | @tail _ s3 _ t2 ts2 h2 rest2 =>
-                have : ts2 = [] := List.eq_nil_of_length_eq_zero (by simp [List.length] at hlen; omega)
+                have : ts2 = [] := List.eq_nil_of_length_eq_zero (by simp only [List.length_cons, List.length_nil] at hlen; omega)
                 subst this; cases rest2 with | refl =>
                 obtain ⟨hstep_eq2⟩ := h2
                 simp [List.append_assoc] at hstep2
@@ -11407,7 +11407,7 @@ private theorem normalizeExpr_if_branch_step_false :
               cases rest1 with
               | refl => simp [List.append_assoc]
               | @tail _ s3 _ t2 ts2 h2 rest2 =>
-                have : ts2 = [] := List.eq_nil_of_length_eq_zero (by simp [List.length] at hlen; omega)
+                have : ts2 = [] := List.eq_nil_of_length_eq_zero (by simp only [List.length_cons, List.length_nil] at hlen; omega)
                 subst this; cases rest2 with | refl =>
                 obtain ⟨hstep_eq2⟩ := h2
                 simp [List.append_assoc] at hstep2
