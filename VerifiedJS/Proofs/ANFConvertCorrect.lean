@@ -9861,6 +9861,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
             · rename_i _ heq; obtain ⟨_, rfl⟩ := hstep
               simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff,
                          List.append_assoc, List.singleton_append]
+              have _depth_lt := Flat.firstNonValueExpr_depth hfnv
               have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac_args
               exact ⟨⟨hac_f, hac_e⟩,
                      hdecomp.2.2 _
@@ -9899,6 +9900,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
             · rename_i _ heq; obtain ⟨_, rfl⟩ := hstep
               simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff,
                          List.append_assoc, List.singleton_append]
+              have _depth_lt := Flat.firstNonValueExpr_depth hfnv
               have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac_args
               exact ⟨⟨hac_f, hac_e⟩,
                      hdecomp.2.2 _
@@ -9917,6 +9919,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         · rename_i _ heq; obtain ⟨_, rfl⟩ := hstep
           simp only [Flat.pushTrace, hasAbruptCompletion,
                      List.append_assoc, List.singleton_append]
+          have _depth_lt := Flat.firstNonValueExpr_depth hfnv
           have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac
           exact hdecomp.2.2 _
             (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac heq)
@@ -9934,6 +9937,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         · rename_i _ heq; obtain ⟨_, rfl⟩ := hstep
           simp only [Flat.pushTrace, hasAbruptCompletion,
                      List.append_assoc, List.singleton_append]
+          have _depth_lt := Flat.firstNonValueProp_depth hfnv
           have hdecomp := hasAbruptCompletionProps_firstNonValueProp_preserved hfnv hac
           exact hdecomp.2.2 _
             (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac heq)
@@ -9951,6 +9955,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         · rename_i _ heq; obtain ⟨_, rfl⟩ := hstep
           simp only [Flat.pushTrace, hasAbruptCompletion,
                      List.append_assoc, List.singleton_append]
+          have _depth_lt := Flat.firstNonValueExpr_depth hfnv
           have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac
           exact hdecomp.2.2 _
             (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac heq)
@@ -10011,11 +10016,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
                  hac_catch⟩, hac_fin⟩
         · exact absurd hstep (by simp)
   termination_by e.depth
-  decreasing_by
-    all_goals first
-      | { simp_all [Flat.Expr.depth]; omega }
-      | { have := Flat.firstNonValueExpr_depth ‹_›; simp_all [Flat.Expr.depth]; omega }
-      | { have := Flat.firstNonValueProp_depth ‹_›; simp_all [Flat.Expr.depth]; omega }
+  decreasing_by all_goals { simp_all [Flat.Expr.depth]; omega }
 
 set_option maxHeartbeats 3200000 in
 /-- Flat single-step preserves NoNestedAbrupt. -/
@@ -10312,6 +10313,7 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
             split at hstep
             · rename_i _ heq; obtain ⟨_, rfl⟩ := hstep
               simp only [Flat.pushTrace, List.append_assoc, List.singleton_append]
+              have _depth_lt := Flat.firstNonValueExpr_depth hfnv
               have hdecomp := firstNonValueExpr_noNestedAbrupt_preserved hfnv hargs
               exact .call hf henv (hdecomp.2.2 _
                 (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
@@ -10338,6 +10340,7 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
             split at hstep
             · rename_i _ heq; obtain ⟨_, rfl⟩ := hstep
               simp only [Flat.pushTrace, List.append_assoc, List.singleton_append]
+              have _depth_lt := Flat.firstNonValueExpr_depth hfnv
               have hdecomp := firstNonValueExpr_noNestedAbrupt_preserved hfnv hargs
               exact .newObj hf henv (hdecomp.2.2 _
                 (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
@@ -10352,6 +10355,7 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
         split at hstep
         · rename_i _ heq; obtain ⟨_, rfl⟩ := hstep
           simp only [Flat.pushTrace, List.append_assoc, List.singleton_append]
+          have _depth_lt := Flat.firstNonValueExpr_depth hfnv
           have hdecomp := firstNonValueExpr_noNestedAbrupt_preserved hfnv hvals
           exact .makeEnv (hdecomp.2.2 _
             (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
@@ -10366,6 +10370,7 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
         split at hstep
         · rename_i _ heq; obtain ⟨_, rfl⟩ := hstep
           simp only [Flat.pushTrace, List.append_assoc, List.singleton_append]
+          have _depth_lt := Flat.firstNonValueProp_depth hfnv
           have hdecomp := firstNonValueProp_noNestedAbrupt_preserved hfnv hprops
           exact .objectLit (hdecomp.2.2 _
             (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
@@ -10380,6 +10385,7 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
         split at hstep
         · rename_i _ heq; obtain ⟨_, rfl⟩ := hstep
           simp only [Flat.pushTrace, List.append_assoc, List.singleton_append]
+          have _depth_lt := Flat.firstNonValueExpr_depth hfnv
           have hdecomp := firstNonValueExpr_noNestedAbrupt_preserved hfnv helems
           exact .arrayLit (hdecomp.2.2 _
             (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
@@ -10432,11 +10438,7 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
           hbody hfuncs_na hfuncs_ac heq) hcatch hfin
       · exact absurd hstep (by simp)
   termination_by sf.expr.depth
-  decreasing_by
-    all_goals first
-      | { simp_all [Flat.Expr.depth]; omega }
-      | { have := Flat.firstNonValueExpr_depth ‹_›; simp_all [Flat.Expr.depth]; omega }
-      | { have := Flat.firstNonValueProp_depth ‹_›; simp_all [Flat.Expr.depth]; omega }
+  decreasing_by all_goals { simp_all [Flat.Expr.depth]; omega }
 
 /-- Flat multi-step preserves NoNestedAbrupt. -/
 private theorem NoNestedAbrupt_steps_preserved {sf sf' : Flat.State} {evs : List Core.TraceEvent}
