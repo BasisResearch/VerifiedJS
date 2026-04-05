@@ -1,4 +1,4 @@
-# jsspec — Close call case in Core_step_preserves_supported + remaining CC sorries
+# jsspec — STOP working on call. Close functionDef (L7119) NOW.
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -12,45 +12,54 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 ## MEMORY: 7.7GB total, NO swap. ~2GB available.
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
-## STATUS: Running 2.5h on call case. Check your actual progress.
-
-CC has 13 real sorries total:
-- **L3921 (1): Core_step_preserves_supported: call — PRIORITY 1**
-- L4107 (1): captured variable (multi-step sim, staging sorry)
-- L4436, L4459 (2): CCStateAgree if-branches (architecturally blocked)
-- L5023 (1): funcs correspondence
-- L5231, L5239 (2): semantic mismatch (architecturally blocked)
-- L5877 (1): UNPROVABLE getIndex string (SKIP)
-- L7119 (1): functionDef
-- L7276, L7277 (2): tryCatch CCStateAgree (architecturally blocked)
-- L7349 (1): tryCatch inner
-- L7457 (1): while_ CCState threading (architecturally blocked)
-
-## TASK 1: Close L3921 (call) — HIGHEST PRIORITY
-
-**If you have NOT yet added hfuncs parameter**: The approach is:
-1. Add `(hfuncs : ∀ (i : Nat) (c : Core.Closure), s.funcs[i]? = some c → c.body.supported = true)` to `Core_step_preserves_supported`
-2. In the call case: use hfuncs to get closure.body.supported
-3. Update all callers to pass hfuncs
-
-**If you HAVE added hfuncs but it broke callers**: Fix the callers first. Use `lean_diagnostic_messages` to find errors.
-
-**If you're stuck on Core.step? expansion for call**: The call case in Core.step? is complex (firstNonValue, function lookup, etc.). Use `lean_goal` at L3921 to see exact state. Try `unfold Core.step? at hstep` then case-split on `Core.firstNonValue`.
-
-**ALTERNATIVE simpler approach if stuck**: Instead of modifying the theorem signature, try:
-```lean
-| call => sorry -- leave for now, work on L7119 (functionDef) instead
+## BUILD COORDINATION
+proof and wasmspec are building ANFConvertCorrect. Before you build CC, check:
+```bash
+ps aux | grep "lake build" | grep -v grep | wc -l
 ```
-L7119 (functionDef) might be easier — it's a standalone case.
+If count > 1, wait 60s then check again. Only ONE build at a time or everything OOMs.
 
-## TASK 2: Close L7119 (functionDef) — MEDIUM PRIORITY
+## STATUS: You have been stuck on call (L3921) for 6+ HOURS across multiple runs. STOP.
 
-This is `closureConvert_step_simulation` case for `functionDef`. Check with `lean_goal` at L7119.
+CC has 13 real sorries. You are reassigned.
+
+## TASK 1: Close L7119 (functionDef) — DO THIS FIRST
+
+Line 7119: `| functionDef fname params body isAsync isGen => sorry`
+
+This is `closureConvert_step_simulation` for the functionDef case.
+
+Steps:
+1. `lean_goal` at line 7119 to see exact proof state
+2. Core.step? for functionDef allocates a closure on the heap and binds the name
+3. Flat.convertExpr for functionDef creates a makeClosure + let binding
+4. Show the Flat side can step to match
+
+Key context: look at how other cases in this theorem are proved (e.g., `throw` at L7120-7139). Follow the same pattern:
+- Extract conversion info from hconv
+- Show sf has the right form
+- Show Flat.step? matches
+- Build the output SimRel
+
+## TASK 2: Close L4107 (captured variable)
+
+Line 4107: captured variable case in `closureConvert_step_simulation`.
+
+When `lookupEnv envMap name = some idx`, convertExpr gives `.getEnv (.var envVar) idx`.
+The Core side does `env.lookup name = some v`. The Flat side needs to:
+1. Step `.getEnv (.var envVar) idx` — first step looks up envVar in env
+2. Second step does getEnv on the closure environment
+
+Use `lean_goal` at L4107 to see what you need. The `EnvCorr` hypothesis should give you the value correspondence.
+
+## TASK 3: L3921 (call) — ONLY if Tasks 1-2 are done
+
+Leave call for last. It requires FuncsSupported invariant changes.
 
 ## PRIORITY ORDER
-1. L3921 (call) — if stuck after 30min, move to L7119
-2. L7119 (functionDef)
-3. L4107 (captured variable)
+1. L7119 (functionDef) — freshest target, highest chance of closure
+2. L4107 (captured variable) — captured env lookup
+3. L3921 (call) — only if time remains
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

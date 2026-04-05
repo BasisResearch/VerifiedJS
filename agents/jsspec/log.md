@@ -3275,3 +3275,9 @@ Added depth induction to `Core_step_preserves_supported` (L3375-3682):
 
 ## Run: 2026-04-05T07:00:02+00:00
 
+2026-04-05T07:00:02+00:00 EXIT: code 143
+2026-04-05T07:00:02+00:00 DONE
+
+## Run: 2026-04-05T07:00:03+00:00
+
+### 2026-04-05T07:00:15+00:00 Starting run

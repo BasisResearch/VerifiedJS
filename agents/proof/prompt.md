@@ -4,7 +4,6 @@
 - Edit: ANFConvertCorrect.lean, Flat/Semantics.lean, AND EndToEnd.lean
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
 - Build ANF: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
-- Build Flat: `lake build VerifiedJS.Flat.Semantics`
 - **DO NOT** edit ClosureConvertCorrect.lean (jsspec owns it)
 
 ## !! CRITICAL: DO NOT USE WHILE/UNTIL LOOPS !!
@@ -14,11 +13,14 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 ## MEMORY: 7.7GB total, NO swap. ~2GB available.
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
-## STATUS: 3h STUCK on L9536. Changing approach.
+## BUILD COORDINATION — CRITICAL
+wasmspec is ALSO building ANFConvertCorrect. **Check before building:**
+```bash
+ps aux | grep "lake build" | grep -v grep | wc -l
+```
+If count > 0, WAIT. Do not start a build. Use `lean_goal` / `lean_multi_attempt` via LSP instead of full builds while waiting.
 
-**WHY YOU WERE STUCK**: normalizeExpr can produce .tryCatch from MANY Flat constructors
-(not just .tryCatch), through CPS-head propagation. You need HasTryCatchInHead infrastructure
-(like HasIfInHead at L7054) before you can case-split in normalizeExpr_tryCatch_step_sim.
+## STATUS: You crashed at 06:40 without adding HasTryCatchInHead. Start fresh.
 
 ## TASK 1: Define HasTryCatchInHead — INSERT AT L7100 (after HasIfInHead_not_value)
 
@@ -83,24 +85,20 @@ private theorem HasTryCatchInHead_not_value (e : Flat.Expr)
 end TryCatchInHead
 ```
 
+**STOP after inserting this. Verify with `lean_diagnostic_messages` at line 7100. Do NOT build yet.**
+
 ## TASK 2: Prove normalizeExpr_tryCatch_or_k — INSERT after HasTryCatchInHead
 
 Model on `normalizeExpr_if_or_k` (search for it with grep). This lemma says:
 "If normalizeExpr e k produces .tryCatch, then either HasTryCatchInHead e, or k produced the .tryCatch."
 
-Use strong induction on e.depth, case-splitting on e:
-- .lit/.var/.this: k produced it (right disjunct)
-- .tryCatch: HasTryCatchInHead.tryCatch_direct (left)
-- .seq a b: recurse on a (if a produced it) or b (if continuation produced it)
-- .let name init body: recurse on init
-- .break/.continue/.return none/.yield none: normalizeExpr produces specific form, contradiction
-- Other compound: normalizeExpr goes through bindComplex → bindComplex_not_tryCatch → contradiction. Or recurse on sub-expression.
+**Find normalizeExpr_if_or_k first**: `grep -n "normalizeExpr_if_or_k" VerifiedJS/Proofs/ANFConvertCorrect.lean`
 
-**KEY**: Look at how `normalizeExpr_if_or_k` is structured. COPY that structure, replacing `.if` with `.tryCatch`.
+Copy its ENTIRE structure, replacing `.if` → `.tryCatch`, `HasIfInHead` → `HasTryCatchInHead`.
 
 ## TASK 3: Prove normalizeExpr_tryCatch_implies_hasTryCatchInHead
 
-Trivial once Task 2 is done — use normalizeExpr_tryCatch_or_k, then derive contradiction from hk (k can't produce .tryCatch because hk says k produces .trivial).
+Trivial once Task 2 is done — use normalizeExpr_tryCatch_or_k, then derive contradiction from hk.
 
 ## TASK 4: Use in normalizeExpr_tryCatch_step_sim (L9536)
 
@@ -112,17 +110,15 @@ Replace the sorry at L9536 with:
   | _ => sorry -- compound cases: deferred
 ```
 
-This trades 1 sorry for ~2 sorries BUT the tryCatch_direct case is now tractable.
-
 ## CONCURRENCY: wasmspec also edits ANFConvertCorrect.lean
 - wasmspec works on L9273-9322 (if compound infrastructure) ONLY
 - You insert at L7100 and work on L9536. DON'T touch L9273-9322.
 
 ## PRIORITY ORDER
-1. HasTryCatchInHead definition (Task 1) — INSERT at L7100
+1. HasTryCatchInHead definition (Task 1) — INSERT at L7100, verify with LSP
 2. normalizeExpr_tryCatch_or_k (Task 2)
 3. normalizeExpr_tryCatch_implies_hasTryCatchInHead (Task 3)
-4. Wire into L9536 (Task 4) — even if compound cases are sorry'd
+4. Wire into L9536 (Task 4)
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

@@ -9,8 +9,12 @@
 - You CAN edit ANFConvertCorrect.lean ONLY
 - Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
-## MEMORY WARNING
-Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
+## MEMORY WARNING — BUILD COORDINATION
+proof agent is ALSO building ANFConvertCorrect. Check before building:
+```bash
+ps aux | grep "lake build" | grep -v grep | wc -l
+```
+If count > 0, DO NOT BUILD. Use `lean_goal` / `lean_multi_attempt` via LSP instead. Wait 60s then check again.
 
 ## CONCURRENCY: proof agent also edits ANFConvertCorrect.lean
 - proof agent is INSERTING new definitions around L7100 (HasTryCatchInHead) and working on L9536
@@ -18,7 +22,7 @@ Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build i
 - DO NOT touch lines 7046-7500 or 9508-9540
 - **NOTE**: proof agent's insertions will SHIFT your line numbers. Use `grep -n "normalizeExpr_if_compound_true_sim"` to find current lines.
 
-## STATUS: CRASHED at 06:31 (EXIT code 1). Restarting.
+## STATUS: CRASHED at 06:31 (EXIT code 1). Restarting fresh.
 
 You previously consolidated 4 inline sorries → 2 infrastructure lemmas (net -2). L9298 and L9322 still sorry.
 
@@ -26,7 +30,7 @@ You previously consolidated 4 inline sorries → 2 infrastructure lemmas (net -2
 
 `normalizeExpr_if_compound_true_sim` and `normalizeExpr_if_compound_false_sim`.
 
-### Proof strategy: case analysis on sf_expr
+### Step-by-step approach
 
 1. **Find your lemmas**: `grep -n "normalizeExpr_if_compound_true_sim" VerifiedJS/Proofs/ANFConvertCorrect.lean`
 
@@ -56,14 +60,14 @@ You previously consolidated 4 inline sorries → 2 infrastructure lemmas (net -2
    - If c_flat is value (lit): single step, trivial
    - If c_flat is var: two steps (lookup + branch)
    - If c_flat is this: two steps (lookup + branch)
-   - Model on the existing normalizeExpr_if_step_sim proof (L9343+) which handles exactly this
+   - Model on the existing normalizeExpr_if_step_sim proof (L9343+)
 
 6. **Even if you can only prove if_direct**: That's still progress — narrows the sorry to compound cases only.
 
 ### IMPORTANT: Use existing decomp lemmas
-- `normalizeExpr_if_lit_decomp`, `normalizeExpr_if_var_decomp`, `normalizeExpr_if_this_decomp` — these extract cond/then_/else_ info from the normalizeExpr result
-- `Flat_step?_if_cond_step` — Flat step for if-condition
-- `Flat.step?_if_true`, `Flat.step?_if_false` — Flat step for branch selection
+- `normalizeExpr_if_lit_decomp`, `normalizeExpr_if_var_decomp`, `normalizeExpr_if_this_decomp`
+- `Flat_step?_if_cond_step`
+- `Flat.step?_if_true`, `Flat.step?_if_false`
 
 ## PRIORITY ORDER
 1. L9298 (true branch infrastructure) — prove if_direct case, sorry compounds

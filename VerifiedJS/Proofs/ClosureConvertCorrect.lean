@@ -3918,7 +3918,75 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           cases ov <;> simp [Core.step?, Core.exprValue?, Core.pushTrace] at hstep <;>
             (try (obtain ⟨-, rfl⟩ := hstep; rfl)) <;>
             (try (split at hstep <;> (try split at hstep) <;> (obtain ⟨-, rfl⟩ := hstep; rfl)))
-  | call => sorry -- call: needs FuncsSupported invariant for closure.body + step? too large for simp
+  | call callee args =>
+    rw [hexpr] at hsupp; simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp
+    rw [state_with_expr_eq hexpr] at hstep
+    cases hval_c : Core.exprValue? callee with
+    | none =>
+      -- Callee is not a value: step the callee
+      cases h_sub : Core.step? { s with expr := callee } with
+      | none => simp [Core.step?, hval_c, h_sub] at hstep
+      | some p =>
+        obtain ⟨t, sc⟩ := p
+        have hfwd := Core.step_call_step_callee callee args s.env s.heap s.trace s.funcs s.callStack hval_c t sc h_sub
+        rw [hfwd] at hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep
+        simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
+        exact ⟨ih callee.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          { s with expr := callee } sc t (Nat.le_refl _) hsupp.1 h_sub, hsupp.2⟩
+    | some cv =>
+      have hlit_c : callee = .lit cv := by cases callee <;> simp [Core.exprValue?] at hval_c; subst hval_c; rfl
+      subst hlit_c
+      cases hallv : Core.allValues args with
+      | some argVals =>
+        -- All args are values, callee is a value
+        cases cv with
+        | function idx =>
+          -- Function callee
+          unfold Core.step? at hstep
+          simp only [Core.exprValue?, Core.allValues, hallv] at hstep
+          split at hstep
+          · -- consoleLog
+            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+            obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
+          · -- not consoleLog
+            cases hfunc : s.funcs[idx]? with
+            | some closure =>
+              simp only [hfunc, Option.some.injEq, Prod.mk.injEq] at hstep
+              obtain ⟨-, rfl⟩ := hstep
+              simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
+              -- Need closure.body.supported — requires FuncsSupported invariant
+              sorry
+            | none =>
+              simp only [hfunc, Option.some.injEq, Prod.mk.injEq] at hstep
+              obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
+        | _ =>
+          -- Non-function callee with all-value args → .lit .undefined
+          unfold Core.step? at hstep
+          simp only [Core.exprValue?, Core.allValues, hallv] at hstep
+          simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+          obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
+      | none =>
+        -- Not all args are values: step first non-value arg
+        cases hfnv : Core.firstNonValueExpr args with
+        | none => simp [Core.step?, Core.exprValue?, hallv, hfnv] at hstep
+        | some val =>
+          obtain ⟨done, target, rest⟩ := val
+          cases h_sub : Core.step? { s with expr := target } with
+          | none => simp [Core.step?, Core.exprValue?, hallv, hfnv, h_sub] at hstep
+          | some p =>
+            obtain ⟨t, sa⟩ := p
+            have hfwd := Core.step_call_step_arg cv args s.env s.heap s.trace s.funcs s.callStack hallv done target rest hfnv t sa h_sub
+            rw [hfwd] at hstep
+            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+            obtain ⟨-, rfl⟩ := hstep
+            simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
+            have htgt_supp := listSupported_firstNonValueExpr_target hfnv hsupp.2
+            have ⟨hd_supp, hr_supp⟩ := listSupported_firstNonValue_parts hfnv hsupp.2
+            have hsa_supp := ih target.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; have := Core.firstNonValueExpr_depth hfnv; omega)
+              { s with expr := target } sa t (Nat.le_refl _) htgt_supp h_sub
+            exact ⟨trivial, listSupported_replace_target sa.expr hd_supp hsa_supp hr_supp⟩
   | objectLit props =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep

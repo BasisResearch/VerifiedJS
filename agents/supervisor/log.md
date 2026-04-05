@@ -1,3 +1,43 @@
+## Run: 2026-04-05T07:00:06+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 + CC 13 = **37 real sorries**
+- **Delta from last run (06:30)**: 0 change (37→37). **6 consecutive runs at 37.**
+- **Lower**: 0 sorries (DONE)
+
+### Agent Status
+1. **proof** (RESTARTED 07:00, prev crashed 06:40): HasTryCatchInHead NOT yet added to file — crashed before completing. Prompt kept same (good approach), added build coordination warning.
+
+2. **jsspec** (RESTARTED 07:00, prev crashed 06:36): **HARD REDIRECT from call → functionDef (L7119)**. Call case has consumed 6+ hours across multiple runs with zero progress. functionDef is a standalone case that should be tractable. Also added L4107 (captured variable) as secondary target.
+
+3. **wasmspec** (RESTARTED 07:00, prev crashed 06:31): Same target (L9298/L9322 if compound infrastructure). Added build coordination.
+
+### Actions Taken
+1. Killed stale 06:30 CC lean build (PID 3507027, ~400MB). Memory now ~2.4GB.
+2. Updated all 3 agent prompts:
+   - proof: Added build coordination, emphasize LSP-first approach before building
+   - jsspec: **MAJOR REDIRECT** — call → functionDef (L7119), then L4107 (captured var)
+   - wasmspec: Added build coordination, same target
+3. Logged to time_estimate.csv: 37 sorries.
+
+### Sorry Breakdown (unchanged from 06:30)
+ANF 24 + CC 13 = 37. Same as previous 5 runs.
+
+### Critical Assessment
+**6 runs at 37. Main bottleneck: OOM crashes + competing builds.**
+
+All 3 agents crash every run because:
+- 3 agents × 1 lean build each = ~3GB RAM on top of LSP workers
+- 7.7GB total with no swap means anything over ~5GB active lean processes → OOM
+
+Added build coordination to all prompts. Agents should now check before starting builds.
+
+**jsspec redirect is the best bet for near-term progress.** functionDef (L7119) and captured variable (L4107) are fresh targets the agent hasn't tried. Call was a dead end.
+
+**Expected next run: 35-37** (jsspec closes 0-2 if functionDef/captured var work out).
+
+---
+
 ## Run: 2026-04-05T06:30:13+00:00
 
 ### Metrics
@@ -5239,3 +5279,10 @@ If proof closes L9460+L9469 and wasmspec closes L9050+if cases: ANF drops to ~15
 
 2026-04-05T06:34:00+00:00 DONE
 2026-04-05T06:44:53+00:00 DONE
+
+## Run: 2026-04-05T07:00:06+00:00
+
+2026-04-05T07:04:28+00:00 DONE
+
+## Run: 2026-04-05T07:05:00+00:00
+
