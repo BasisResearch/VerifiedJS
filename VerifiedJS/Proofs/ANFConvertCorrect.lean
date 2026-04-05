@@ -10101,6 +10101,17 @@ private theorem normalizeExpr_if_step_sim
     | litNull | litUndefined | litBool _ | litNum _ | litStr _ | litObject _ | litClosure _ _ =>
       simp only [ANF.evalTrivial, ANF.trivialValue?] at herr; exact nomatch herr
 
+/-- normalizeExpr (.lit v) k with trivial-preserving k gives .trivial (trivialOfValue v). -/
+private theorem normalizeExpr_lit_trivial_k'
+    (v : Flat.Value) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (hk : ∀ t' n', ∃ m', (k t').run n' = .ok (.trivial t', m'))
+    (n : Nat) :
+    ∃ m, (ANF.normalizeExpr (.lit v) k).run n = .ok (.trivial (ANF.trivialOfValue v), m) := by
+  simp only [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue,
+    bind, Bind.bind, StateT.bind, StateT.run, Except.bind,
+    pure, Pure.pure, StateT.pure, Except.pure, StateT.lift, Functor.map, Except.map]
+  exact hk (ANF.trivialOfValue v) n
+
 /-- If normalizeExpr body_f k produces an ANF expression whose exprValue? is some v,
     and k is trivial-preserving, then body_f = .lit v. -/
 private theorem normalizeExpr_exprValue_inv
@@ -10112,42 +10123,50 @@ private theorem normalizeExpr_exprValue_inv
     (hval : ANF.exprValue? body = some v) :
     body_f = .lit v := by
   -- exprValue? body = some v implies body = .trivial t with trivialValue? t = some v
-  cases hbody_eq : body with
+  -- Use cases on body to substitute everywhere
+  cases body with
   | trivial t =>
-    rw [hbody_eq] at hval; simp only [ANF.exprValue?] at hval
-    -- Now hval : trivialValue? t = some v
-    -- body_f must be lit, var, this (compound ruled out by normalizeExpr_compound_not_trivial)
-    -- seq ruled out because normalizeExpr (.seq ..) k = .seq which ≠ .trivial
+    simp only [ANF.exprValue?] at hval
+    -- hval : trivialValue? t = some v
+    -- hbody : normalizeExpr body_f k = .ok (.trivial t, n1)
     cases body_f with
     | lit w =>
-      obtain ⟨m_lit, hlit⟩ := normalizeExpr_lit_trivial_k w k hk n
-      rw [hlit] at hbody; obtain ⟨h_eq, _⟩ := Prod.mk.inj (Except.ok.inj hbody)
-      have := ANF.Expr.trivial.inj h_eq
-      rw [← this] at hval
-      cases w <;> simp [ANF.trivialOfValue, ANF.trivialValue?] at hval <;> exact congrArg _ hval.symm
+      obtain ⟨m_lit, hlit⟩ := normalizeExpr_lit_trivial_k' w k hk n
+      rw [hlit] at hbody
+      have h_inj := Prod.mk.inj (Except.ok.inj hbody)
+      have ht_eq : ANF.trivialOfValue w = t := ANF.Expr.trivial.inj h_inj.1
+      rw [← ht_eq] at hval
+      cases w <;> simp [ANF.trivialOfValue, ANF.trivialValue?] at hval
+      all_goals (first | rfl | exact congrArg _ hval)
     | var name =>
       exfalso; obtain ⟨m', hk_eq⟩ := hk (.var name) n
-      have : (ANF.normalizeExpr (.var name) k).run n = (k (.var name)).run n := by simp [ANF.normalizeExpr]
-      rw [this, hk_eq] at hbody; obtain ⟨h_eq, _⟩ := Prod.mk.inj (Except.ok.inj hbody)
-      rw [← ANF.Expr.trivial.inj h_eq] at hval; simp [ANF.trivialValue?] at hval
+      have h1 : (ANF.normalizeExpr (.var name) k).run n = (k (.var name)).run n := by
+        simp [ANF.normalizeExpr]
+      rw [h1, hk_eq] at hbody
+      have h_inj := Prod.mk.inj (Except.ok.inj hbody)
+      have : ANF.Trivial.var name = t := ANF.Expr.trivial.inj h_inj.1
+      rw [← this] at hval; simp [ANF.trivialValue?] at hval
     | «this» =>
       exfalso; obtain ⟨m', hk_eq⟩ := hk (.var "this") n
-      have : (ANF.normalizeExpr Flat.Expr.this k).run n = (k (.var "this")).run n := by simp [ANF.normalizeExpr]
-      rw [this, hk_eq] at hbody; obtain ⟨h_eq, _⟩ := Prod.mk.inj (Except.ok.inj hbody)
-      rw [← ANF.Expr.trivial.inj h_eq] at hval; simp [ANF.trivialValue?] at hval
+      have h1 : (ANF.normalizeExpr Flat.Expr.this k).run n = (k (.var "this")).run n := by
+        simp [ANF.normalizeExpr]
+      rw [h1, hk_eq] at hbody
+      have h_inj := Prod.mk.inj (Except.ok.inj hbody)
+      have : ANF.Trivial.var "this" = t := ANF.Expr.trivial.inj h_inj.1
+      rw [← this] at hval; simp [ANF.trivialValue?] at hval
     | seq a b =>
       exfalso
       simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hbody
-      split at hbody
-      · simp at hbody
-      · rename_i _ ha; split at hbody
-        · simp at hbody
-        · rename_i _ hb
-          simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hbody
-          exact ANF.Expr.noConfusion hbody.1
+      revert hbody; intro hbody
+      split at hbody <;> [simp at hbody; skip]
+      split at hbody <;> [simp at hbody; skip]
+      simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hbody
+      exact ANF.Expr.noConfusion hbody.1
     | _ =>
       exfalso
-      exact normalizeExpr_compound_not_trivial _ k (by simp) (by simp) (by simp) (by simp) n n1 t hbody
+      exact normalizeExpr_compound_not_trivial _ k
+        (fun v h => Flat.Expr.noConfusion h) (fun n h => Flat.Expr.noConfusion h)
+        (fun h => Flat.Expr.noConfusion h) (fun a b h => Flat.Expr.noConfusion h) n n1 t hbody
   | _ => simp [ANF.exprValue?] at hval
 
 /-- Decompose normalizeExpr (.tryCatch body_f cp cb_f fin_f) k into its components. -/
