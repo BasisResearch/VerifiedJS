@@ -5421,3 +5421,52 @@ If proof closes L9460+L9469 and wasmspec closes L9050+if cases: ANF drops to ~15
 
 2026-04-05T08:05:01+00:00 SKIP: already running
 2026-04-05T08:11:11+00:00 DONE
+
+## Run: 2026-04-05T08:30:02+00:00
+
+
+### Metrics
+- **Sorry count**: ANF 27 + CC 13 = **40 real sorries**
+- **Delta from last run (08:00)**: 0 change (40→40). **COUNT FLAT.**
+- **Lower**: 0 sorries (DONE)
+
+### Why count unchanged
+- All 3 agents completed INFRASTRUCTURE work this cycle but no net sorry reduction:
+  - proof: Built HasTryCatchInHead + normalizeExpr_tryCatch_or_k + split tryCatch into tryCatch_direct + compound. No sorry closed but the tryCatch sorry is now much more tractable.
+  - jsspec: Expanded call case from 1 broad sorry to 1 targeted sorry (L3970). 5 forward lemmas added. Currently building CC.
+  - wasmspec: Proved 10 contradiction subcases for if compound. 4 remaining sorries need strong induction.
+
+### Agent Status
+1. **proof** (COMPLETED 08:17, not running): HasTryCatchInHead infrastructure done. tryCatch_direct (L10127) is decomposed and ready to close. **Prompt UPDATED**: told to CLOSE L10127 this run — infrastructure is done.
+
+2. **jsspec** (RUNNING since 07:00): Building CC at 08:26. Call case expanded, L3970 is the one remaining sorry. **Prompt UPDATED**: acknowledged call expansion, refocused on L3970 FuncsSupported invariant.
+
+3. **wasmspec** (COMPLETED 08:15, not running): 10 contradiction cases proved. 4 if-compound sorries remain. **Prompt REWRITTEN**: redirected to build GENERAL eval context stepping approach. ~20 of 27 ANF sorries share the same "eval context lifting" blocker. If wasmspec can prove L9813 via strong induction and extract a reusable lemma, it could unlock 17 sorries.
+
+### Actions Taken
+1. Counted sorries: ANF 27 + CC 13 = 40 (flat from last run)
+2. Updated ALL 3 agent prompts:
+   - proof: Close tryCatch_direct NOW — infrastructure is done
+   - jsspec: Close L3970 FuncsSupported — you're one step away
+   - wasmspec: MAJOR REDIRECT — build general eval context stepping to unlock ~17 ANF sorries
+3. Logged to time_estimate.csv.
+
+### Systemic Analysis
+**20 of 27 ANF sorries share the "eval context lifting" blocker.** They all need:
+1. Strong induction on expression depth
+2. Eval context stepping (Steps_*_ctx lemmas at L1800-1863 already exist)
+3. Proof that stepped expression has smaller depth → IH applies
+
+This is the highest-leverage work. If wasmspec proves this pattern on L9813 and extracts a general lemma, we could drop from 40 to ~20 sorries in 1-2 cycles.
+
+**CC**: 10 of 13 architecturally blocked. Only L3970, L5116, L7212 closeable. jsspec targeting L3970.
+
+### Critical Assessment
+**Sorry count flat at 40 for 3 runs.** This is concerning but agents are doing deep infrastructure work that should pay off:
+- proof: tryCatch infra done → L10127 should close next run
+- jsspec: call expansion done → L3970 should close next run
+- wasmspec: redirected to systemic eval context approach → potential 17-sorry unlock
+
+**Expected next run: 37-38** (proof closes L10127, jsspec closes L3970, wasmspec starts on eval context pattern)
+2026-04-05T08:33:41+00:00 DONE
+2026-04-05T08:33:50+00:00 DONE
