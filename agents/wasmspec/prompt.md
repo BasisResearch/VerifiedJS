@@ -21,7 +21,7 @@ If count > 0, DO NOT BUILD. Use `lean_goal` / `lean_multi_attempt` via LSP inste
 - **YOU** own L7700-10720 (normalizeExpr step sim infrastructure)
 - DO NOT touch lines outside your range
 
-## STATUS: 10 contradiction subcases proved. 4 if-compound sorries remain at L10597/10605/10610/10611 and L10710/10717/10719/10720. ~17 other sorries share same blocker.
+## STATUS: 10 contradiction subcases proved. 8 if-compound sorries at L10599/10607/10609/10610 and L10711/10718/10720/10721. ~17 other sorries share same blocker.
 
 ## THE SYSTEMIC BLOCKER: Eval Context Stepping Through Compound Expressions
 
@@ -42,41 +42,28 @@ If count > 0, DO NOT BUILD. Use `lean_goal` / `lean_multi_attempt` via LSP inste
 
 ## YOUR TASK: Build the general compound_head_step_sim lemma
 
-### CRITICAL INSIGHT: Don't prove each sorry individually. Build ONE general lemma.
+### CRITICAL: Don't prove each sorry individually. Build ONE general lemma.
 
-The pattern for EVERY compound sorry is:
+**THIS IS THE #1 HIGHEST LEVERAGE WORK IN THE ENTIRE PROJECT.** If you land this lemma, ~20 sorries become closeable.
+
+### Suggested approach — start SMALL, then generalize:
+
+**Step 1**: Pick ONE concrete sorry (L10609) and prove it directly:
 ```
-sf.expr = E[inner] where E is an eval context (seq/let/if/etc.)
-inner has HasXInHead (for some X: If, Throw, Return, etc.)
-Flat.step? steps inner one step → inner'
-normalizeExpr inner k produces X construct
-Need: Flat can step E[inner] and ANF preserves SimRel
+lean_goal at L10609 column 7
 ```
+Then understand what the proof needs:
+- c_flat is compound, has HasIfInHead
+- By strong induction on depth: case split on c_flat constructor
+- For `.seq inner rest`: inner has HasIfInHead, Flat steps inner → use `Steps_seq_ctx`
+- For `.let name init body`: init has HasIfInHead → `Steps_let_init_ctx`
+- Etc.
 
-### Step 1: Define compound_eval_ctx_step_sim (NEW LEMMA)
-```lean
-private theorem compound_eval_ctx_step_sim
-    (sf : Flat.State) (s : ANF.State) (t : Core.TraceEvent) (sa : ANF.State)
-    (k : ANF.Trivial → ANF.NormM ANF.Expr)
-    (n m : Nat) ...
-    -- When sf.expr is compound with some HasXInHead in head position,
-    -- and ANF steps to sa producing event t,
-    -- then Flat also produces corresponding steps preserving SimRel
-```
-This should work by strong induction on `sf.expr.depth`:
-1. sf.expr is compound: case split on outermost constructor
-2. For `.seq inner rest`: Flat steps inner via IH (smaller depth), lift through `Steps_seq_ctx`
-3. For `.let name init body`: Flat steps init via IH, lift through `Steps_let_init_ctx`
-4. For `.if cond then_ else_`: Flat steps cond via IH, lift through `Steps_if_cond_ctx`
-5. Base case: sf.expr IS the HasXInHead construct directly → use the direct case proof
+**Step 2**: Once L10609 works, extract the pattern into a general lemma.
 
-### Step 2: Apply to L10597/10605/10610/10611 (if compound true)
-Replace all 4 sorries with calls to the general lemma.
-
-### Step 3: Apply to L10710/10717/10719/10720 (if compound false)
-Same application.
-
-### Step 4: Apply to ALL other compound sorries
+**Step 3**: Apply to ALL compound sorries:
+- L10599/10607/10609/10610 (if compound true)
+- L10711/10718/10720/10721 (if compound false)
 - L9003 (compound HasThrowInHead)
 - L9154/9160 (compound HasReturnInHead)
 - L9331/9337 (compound HasAwaitInHead)
@@ -84,21 +71,18 @@ Same application.
 - L8173/8206/8217/8298/8331/8342/8359 (normalizeExpr_labeled inner value / compound)
 - L9551/9555/9556 (return/yield compound)
 
-That's **~20 sorries** unlockable by one general lemma!
-
-### Step 5: If general lemma is too hard, at least prove one concrete case
-If the general approach stalls, prove L10610 directly:
-1. `lean_goal` at L10610
-2. c_flat is compound, has HasIfInHead
-3. By strong induction on depth: case split on c_flat constructor
-4. For each compound constructor, use corresponding Steps_X_ctx to lift
-5. Once one case works, the pattern is clear for all others
+### USE lean_multi_attempt AGGRESSIVELY
+Before editing the file, test tactics via `lean_multi_attempt` at each sorry location. Try:
+```
+["simp", "exact absurd _ _", "cases htc_head with | seq_cond => sorry | let_init => sorry | if_cond => sorry"]
+```
+This lets you explore without rebuilding.
 
 ## PRIORITY ORDER
-1. Build general compound_eval_ctx_step_sim lemma
-2. Apply to if compound sorries (L10597-10720)
-3. Apply to other compound sorries (~15 more)
-4. If general lemma blocked, prove L10610 directly
+1. Prove L10609 directly (concrete case to build understanding)
+2. Extract general lemma
+3. Apply to if compound sorries (L10599-10721)
+4. Apply to other compound sorries (~15 more)
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
