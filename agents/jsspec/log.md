@@ -3328,3 +3328,23 @@ The only sorry is at L3970: closure body supported. Requires `∀ i c, s.funcs[i
 - No new errors introduced in Core_step_preserves_supported call case
 ### 2026-04-05T09:39:14+00:00 Run complete — Call case expanded (7 subcases, 6 closed), objectLit/arrayLit fixed with forward lemmas, tryCatch fix attempted with change tactic. 9 forward lemmas added to Core/Semantics.lean. Pre-existing errors in closureConvert_step_simulation remain.
 2026-04-05T10:00:01+00:00 SKIP: already running
+### 2026-04-05T10:00 Final status
+
+**Core_step_preserves_supported (L3461) fixes:**
+- **Call case**: Fully expanded, 6/7 subcases proved. Only closure-body-supported sorry remains.
+- **objectLit all-values**: Fixed with `step_objectLit_allValues_result_supported` forward lemma
+- **objectLit stuck**: Fixed with `step_objectLit_prop_stuck` forward lemma
+- **arrayLit all-values**: Fixed with `step_arrayLit_allValues_result_supported` forward lemma  
+- **arrayLit stuck**: Fixed with `step_arrayLit_elem_stuck` forward lemma
+- **tryCatch simp**: `simp only [hexpr, Core.Expr.supported, Bool.and_eq_true]` works but downstream proof at L4077 needs adjustment (different conjunction order from old `rw [hexpr]; simp only [...]` approach)
+
+**Root cause of objectLit/arrayLit/tryCatch regressions**: Recompiling Semantics.lean (even just adding theorems) caused `unfold Core.step?` and `simp only [Core.Expr.supported, Bool.and_eq_true]` to behave differently. Fixed by using dedicated forward lemmas.
+
+**Files changed:**
+- `VerifiedJS/Core/Semantics.lean`: +9 forward lemmas (~75 lines)
+- `VerifiedJS/Proofs/ClosureConvertCorrect.lean`: call case expanded, objectLit/arrayLit/tryCatch fixes, maxHeartbeats 8M
+
+**TODO for next run:**
+1. Fix tryCatch downstream proof at L4077 (adjust hsupp projections to match new conjunction order)
+2. Consider adding FuncsSupported invariant to close the final call sorry
+2026-04-05T10:12:38+00:00 DONE
