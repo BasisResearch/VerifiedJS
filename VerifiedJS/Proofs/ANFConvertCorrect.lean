@@ -56,8 +56,9 @@ theorem observableTrace_all_silent {evs : List Core.TraceEvent}
     observableTrace evs = [] := by
   induction evs with
   | nil => rfl
-  | cons ev rest ih =>
-    simp [observableTrace, h ev (List.mem_cons_self _ _)]
+  | cons hd tl ih =>
+    have hhd : hd = Core.TraceEvent.silent := h hd (List.mem_cons_self hd tl)
+    subst hhd; simp [observableTrace, observableTrace_silent]
     exact ih (fun e he => h e (List.mem_cons_of_mem _ he))
 
 theorem observableTrace_append (a b : List Core.TraceEvent) :
@@ -11633,8 +11634,27 @@ private theorem normalizeExpr_if_compound_true_sim
       have hnorm_if := hnorm
       simp only [ANF.normalizeExpr_if'] at hnorm
       by_cases hif_seq : HasIfInHead (Flat.Expr.seq a_c b_c)
-      · -- HasIfInHead inside seq condition: blocked on normalizeExpr_if_branch_step proof
-        sorry -- UNLOCK: normalizeExpr_if_branch_step on (.seq a_c b_c) + Steps_if_cond_ctx lift
+      · -- HasIfInHead inside seq condition: apply normalizeExpr_if_branch_step + context lift
+        obtain ⟨sf_c, evs_c, hsteps_c, hsil_c, henv_c, hheap_c, hfuncs_c, hcs_c,
+          htrace_c, hpres_c, ⟨n_c, m_c, hnorm_c⟩, hewf_c⟩ :=
+          normalizeExpr_if_branch_step _ _ (Nat.le_refl _) hif_seq
+            env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.if_cond _ _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_if_cond_ctx_b then_flat else_flat hsteps_c
+            (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_c
+        have h_obs_nil := observableTrace_all_silent hsil_c
+        refine ⟨ws, evs_c, hwsteps, by simp [observableTrace, h_obs_nil], ?_, ?_⟩
+        · exact ⟨(hwheap.trans hheap_c).symm, (hwenv.trans henv_c).symm,
+            by rw [hwtrace, htrace_c]; simp [observableTrace_append, h_obs_nil, observableTrace_silent, observableTrace_nil]; exact htrace,
+            k, n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c, hk⟩
+        · rw [hwexpr, hwenv, henv_c]
+          exact fun x hfx => by
+            cases hfx with
+            | if_cond _ _ _ _ h => exact henv_c ▸ hewf_c x h
+            | if_then _ _ _ _ h => exact hewf x (VarFreeIn.if_then _ _ _ _ h)
+            | if_else _ _ _ _ h => exact hewf x (VarFreeIn.if_else _ _ _ _ h)
       · -- ¬HasIfInHead: .seq a_c b_c is a trivial chain
         have htc := no_if_head_implies_trivial_chain (Flat.Expr.seq a_c b_c).depth (Flat.Expr.seq a_c b_c) (Nat.le_refl _)
           _ cond then_ else_ n m hnorm hif_seq
@@ -11642,9 +11662,56 @@ private theorem normalizeExpr_if_compound_true_sim
           then_flat else_flat s t env heap trace sa_trace funcs cs k n m cond then_ else_ v
           htc (Nat.le_refl _) hnorm_if hk hewf heval htrace hbool
     | «if» c' t' e' =>
-      sorry -- UNLOCK: normalizeExpr_if_branch_step on (.if c' t' e') + Steps_if_cond_ctx lift
+      have hnorm_if := hnorm
+      simp only [ANF.normalizeExpr_if'] at hnorm
+      obtain ⟨sf_c, evs_c, hsteps_c, hsil_c, henv_c, hheap_c, hfuncs_c, hcs_c,
+        htrace_c, hpres_c, ⟨n_c, m_c, hnorm_c⟩, hewf_c⟩ :=
+        normalizeExpr_if_branch_step _ _ (Nat.le_refl _) HasIfInHead.if_direct
+          env heap trace funcs cs _ n m cond then_ else_ v
+          hnorm (fun x hfx => hewf x (VarFreeIn.if_cond _ _ _ _ hfx)) heval hbool
+      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        Steps_if_cond_ctx_b then_flat else_flat hsteps_c
+          (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
+          hpres_c
+      have h_obs_nil := observableTrace_all_silent hsil_c
+      refine ⟨ws, evs_c, hwsteps, by simp [observableTrace, h_obs_nil], ?_, ?_⟩
+      · exact ⟨(hwheap.trans hheap_c).symm, (hwenv.trans henv_c).symm,
+          by rw [hwtrace, htrace_c]; simp [observableTrace_append, h_obs_nil, observableTrace_silent, observableTrace_nil]; exact htrace,
+          k, n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c, hk⟩
+      · rw [hwexpr, hwenv, henv_c]
+        exact fun x hfx => by
+          cases hfx with
+          | if_cond _ _ _ _ h => exact henv_c ▸ hewf_c x h
+          | if_then _ _ _ _ h => exact hewf x (VarFreeIn.if_then _ _ _ _ h)
+          | if_else _ _ _ _ h => exact hewf x (VarFreeIn.if_else _ _ _ _ h)
     | _ =>
-      sorry -- UNLOCK: normalizeExpr_if_branch_step on condition + Steps_if_cond_ctx lift
+      have hnorm_if := hnorm
+      simp only [ANF.normalizeExpr_if'] at hnorm
+      -- For catch-all constructors, ¬HasIfInHead is impossible (isTrivialChain would be false)
+      have hif_c : HasIfInHead _ := by
+        by_contra h
+        exact absurd (no_if_head_implies_trivial_chain _ _ (Nat.le_refl _) _ cond then_ else_ n m hnorm h)
+          (by simp [isTrivialChain])
+      obtain ⟨sf_c, evs_c, hsteps_c, hsil_c, henv_c, hheap_c, hfuncs_c, hcs_c,
+        htrace_c, hpres_c, ⟨n_c, m_c, hnorm_c⟩, hewf_c⟩ :=
+        normalizeExpr_if_branch_step _ _ (Nat.le_refl _) hif_c
+          env heap trace funcs cs _ n m cond then_ else_ v
+          hnorm (fun x hfx => hewf x (VarFreeIn.if_cond _ _ _ _ hfx)) heval hbool
+      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        Steps_if_cond_ctx_b then_flat else_flat hsteps_c
+          (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
+          hpres_c
+      have h_obs_nil := observableTrace_all_silent hsil_c
+      refine ⟨ws, evs_c, hwsteps, by simp [observableTrace, h_obs_nil], ?_, ?_⟩
+      · exact ⟨(hwheap.trans hheap_c).symm, (hwenv.trans henv_c).symm,
+          by rw [hwtrace, htrace_c]; simp [observableTrace_append, h_obs_nil, observableTrace_silent, observableTrace_nil]; exact htrace,
+          k, n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c, hk⟩
+      · rw [hwexpr, hwenv, henv_c]
+        exact fun x hfx => by
+          cases hfx with
+          | if_cond _ _ _ _ h => exact henv_c ▸ hewf_c x h
+          | if_then _ _ _ _ h => exact hewf x (VarFreeIn.if_then _ _ _ _ h)
+          | if_else _ _ _ _ h => exact hewf x (VarFreeIn.if_else _ _ _ _ h)
   -- non-if_direct HasIfInHead: use normalizeExpr_if_branch_step directly on sf_expr
   all_goals (
     obtain ⟨sf', evs, hsteps, hsil, henv, hheap, hfuncs, hcs, htrace_sf, hpres, ⟨n', m', hnorm'⟩, hewf'⟩ :=
@@ -11757,17 +11824,82 @@ private theorem normalizeExpr_if_compound_false_sim
       have hnorm_if := hnorm
       simp only [ANF.normalizeExpr_if'] at hnorm
       by_cases hif_seq : HasIfInHead (Flat.Expr.seq a_c b_c)
-      · -- HasIfInHead inside seq condition: blocked on normalizeExpr_if_branch_step_false proof
-        sorry -- UNLOCK: normalizeExpr_if_branch_step_false on (.seq a_c b_c) + Steps_if_cond_ctx lift
+      · -- HasIfInHead inside seq condition: apply normalizeExpr_if_branch_step_false + context lift
+        obtain ⟨sf_c, evs_c, hsteps_c, hsil_c, henv_c, hheap_c, hfuncs_c, hcs_c,
+          htrace_c, hpres_c, ⟨n_c, m_c, hnorm_c⟩, hewf_c⟩ :=
+          normalizeExpr_if_branch_step_false _ _ (Nat.le_refl _) hif_seq
+            env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.if_cond _ _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_if_cond_ctx_b then_flat else_flat hsteps_c
+            (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_c
+        have h_obs_nil := observableTrace_all_silent hsil_c
+        refine ⟨ws, evs_c, hwsteps, by simp [observableTrace, h_obs_nil], ?_, ?_⟩
+        · exact ⟨(hwheap.trans hheap_c).symm, (hwenv.trans henv_c).symm,
+            by rw [hwtrace, htrace_c]; simp [observableTrace_append, h_obs_nil, observableTrace_silent, observableTrace_nil]; exact htrace,
+            k, n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c, hk⟩
+        · rw [hwexpr, hwenv, henv_c]
+          exact fun x hfx => by
+            cases hfx with
+            | if_cond _ _ _ _ h => exact henv_c ▸ hewf_c x h
+            | if_then _ _ _ _ h => exact hewf x (VarFreeIn.if_then _ _ _ _ h)
+            | if_else _ _ _ _ h => exact hewf x (VarFreeIn.if_else _ _ _ _ h)
       · have htc := no_if_head_implies_trivial_chain (Flat.Expr.seq a_c b_c).depth (Flat.Expr.seq a_c b_c) (Nat.le_refl _)
           _ cond then_ else_ n m hnorm hif_seq
         exact trivialChain_if_false_sim (trivialChainCost (Flat.Expr.seq a_c b_c)) (Flat.Expr.seq a_c b_c)
           then_flat else_flat s t env heap trace sa_trace funcs cs k n m cond then_ else_ v
           htc (Nat.le_refl _) hnorm_if hk hewf heval htrace hbool
     | «if» c' t' e' =>
-      sorry -- UNLOCK: normalizeExpr_if_branch_step_false on (.if c' t' e') + Steps_if_cond_ctx lift
+      have hnorm_if := hnorm
+      simp only [ANF.normalizeExpr_if'] at hnorm
+      obtain ⟨sf_c, evs_c, hsteps_c, hsil_c, henv_c, hheap_c, hfuncs_c, hcs_c,
+        htrace_c, hpres_c, ⟨n_c, m_c, hnorm_c⟩, hewf_c⟩ :=
+        normalizeExpr_if_branch_step_false _ _ (Nat.le_refl _) HasIfInHead.if_direct
+          env heap trace funcs cs _ n m cond then_ else_ v
+          hnorm (fun x hfx => hewf x (VarFreeIn.if_cond _ _ _ _ hfx)) heval hbool
+      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        Steps_if_cond_ctx_b then_flat else_flat hsteps_c
+          (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
+          hpres_c
+      have h_obs_nil := observableTrace_all_silent hsil_c
+      refine ⟨ws, evs_c, hwsteps, by simp [observableTrace, h_obs_nil], ?_, ?_⟩
+      · exact ⟨(hwheap.trans hheap_c).symm, (hwenv.trans henv_c).symm,
+          by rw [hwtrace, htrace_c]; simp [observableTrace_append, h_obs_nil, observableTrace_silent, observableTrace_nil]; exact htrace,
+          k, n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c, hk⟩
+      · rw [hwexpr, hwenv, henv_c]
+        exact fun x hfx => by
+          cases hfx with
+          | if_cond _ _ _ _ h => exact henv_c ▸ hewf_c x h
+          | if_then _ _ _ _ h => exact hewf x (VarFreeIn.if_then _ _ _ _ h)
+          | if_else _ _ _ _ h => exact hewf x (VarFreeIn.if_else _ _ _ _ h)
     | _ =>
-      sorry -- UNLOCK: normalizeExpr_if_branch_step_false on condition + Steps_if_cond_ctx lift
+      have hnorm_if := hnorm
+      simp only [ANF.normalizeExpr_if'] at hnorm
+      have hif_c : HasIfInHead _ := by
+        by_contra h
+        exact absurd (no_if_head_implies_trivial_chain _ _ (Nat.le_refl _) _ cond then_ else_ n m hnorm h)
+          (by simp [isTrivialChain])
+      obtain ⟨sf_c, evs_c, hsteps_c, hsil_c, henv_c, hheap_c, hfuncs_c, hcs_c,
+        htrace_c, hpres_c, ⟨n_c, m_c, hnorm_c⟩, hewf_c⟩ :=
+        normalizeExpr_if_branch_step_false _ _ (Nat.le_refl _) hif_c
+          env heap trace funcs cs _ n m cond then_ else_ v
+          hnorm (fun x hfx => hewf x (VarFreeIn.if_cond _ _ _ _ hfx)) heval hbool
+      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        Steps_if_cond_ctx_b then_flat else_flat hsteps_c
+          (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
+          hpres_c
+      have h_obs_nil := observableTrace_all_silent hsil_c
+      refine ⟨ws, evs_c, hwsteps, by simp [observableTrace, h_obs_nil], ?_, ?_⟩
+      · exact ⟨(hwheap.trans hheap_c).symm, (hwenv.trans henv_c).symm,
+          by rw [hwtrace, htrace_c]; simp [observableTrace_append, h_obs_nil, observableTrace_silent, observableTrace_nil]; exact htrace,
+          k, n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c, hk⟩
+      · rw [hwexpr, hwenv, henv_c]
+        exact fun x hfx => by
+          cases hfx with
+          | if_cond _ _ _ _ h => exact henv_c ▸ hewf_c x h
+          | if_then _ _ _ _ h => exact hewf x (VarFreeIn.if_then _ _ _ _ h)
+          | if_else _ _ _ _ h => exact hewf x (VarFreeIn.if_else _ _ _ _ h)
   -- non-if_direct HasIfInHead: use normalizeExpr_if_branch_step_false directly
   all_goals (
     obtain ⟨sf', evs, hsteps, hsil, henv, hheap, hfuncs, hcs, htrace_sf, hpres, ⟨n', m', hnorm'⟩, hewf'⟩ :=
