@@ -1481,7 +1481,11 @@ private theorem closureConvert_init_related
     rfl
   case funcs_supp =>
     -- FuncsSupported: initial funcs = #[logBuiltin], body = .lit .undefined
-    intro i fd hi; simp_all [Core.initialState]
+    intro i fd hi
+    dsimp [Core.initialState] at hi
+    cases i with
+    | zero => simp at hi; rw [← hi]; rfl
+    | succ n => exact absurd hi (by simp)
   case conv =>
     unfold Flat.closureConvert at h
     simp only [Except.ok.injEq] at h
@@ -4121,19 +4125,21 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           rw [hfwd] at hstep
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨-, rfl⟩ := hstep
-          simp only [Core.pushTrace, Core.Expr.supported, hsup_catch, hsup_fin, Bool.and_eq_true,
-            Bool.true_and, and_true, and_self]
-          exact ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-            { s with expr := body } sb .silent (Nat.le_refl _) hsup_body hfuncs_supp h_sub
+          simp only [Core.pushTrace]
+          unfold Core.Expr.supported
+          simp only [Bool.and_eq_true]
+          refine ⟨⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+            { s with expr := body } sb .silent (Nat.le_refl _) hsup_body hfuncs_supp h_sub, hsup_catch⟩, hsup_fin⟩
         | log msg =>
           have hfwd := Core.step_tryCatch_step_body_log body catchParam catchBody finally_ s.env s.heap s.trace s.funcs s.callStack hval_b msg sb h_sub
           rw [hfwd] at hstep
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨-, rfl⟩ := hstep
-          simp only [Core.pushTrace, Core.Expr.supported, hsup_catch, hsup_fin, Bool.and_eq_true,
-            Bool.true_and, and_true, and_self]
-          exact ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-            { s with expr := body } sb (.log msg) (Nat.le_refl _) hsup_body hfuncs_supp h_sub
+          simp only [Core.pushTrace]
+          unfold Core.Expr.supported
+          simp only [Bool.and_eq_true]
+          refine ⟨⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+            { s with expr := body } sb (.log msg) (Nat.le_refl _) hsup_body hfuncs_supp h_sub, hsup_catch⟩, hsup_fin⟩
 
 set_option maxHeartbeats 8000000 in
 private theorem Core_step_preserves_funcs_supported (s s' : Core.State) (ev : Core.TraceEvent)

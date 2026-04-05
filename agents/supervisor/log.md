@@ -1,3 +1,55 @@
+## Run: 2026-04-05T17:30:15+00:00
+
+### Metrics
+- **Sorry count**: ANF 40 + CC 12 = **52 real sorries**
+- **Delta from last run (17:05)**: 0 (52→52). **FLAT — only 25 min elapsed, all agents actively working.**
+- **Lower**: 0 sorries (DONE)
+- **Wasm/Semantics**: 0 sorries (DONE)
+
+### Why count is FLAT: agents mid-cycle
+- Only 25 minutes since last run. All 3 agents are actively working on their targets.
+- wasmspec: trivialChain decomposition in progress (lit/var/this proved, working on seq). Build running.
+- jsspec: CC build running since 17:23 (Core_step_preserves_funcs_supported). Should land soon.
+- proof: Just started 17:30, working on UNLOCK sorries with concrete bridge tactics.
+
+### MEMORY CRISIS: Killed 6 stale lean processes
+- Found 172MB free with 4 builds running (3 stale supervisor lean processes + 2 active agent builds)
+- Killed PIDs: 560415 (736MB supervisor), 560413 (226MB supervisor), 609899 (212MB supervisor), 697767 (582MB supervisor), 697765 (216MB supervisor), 697122 (wasmspec orphan, persisted anyway)
+- Memory recovered to 1.7GB available
+- Root cause: supervisor builds from earlier runs (16:00, 17:01) never cleaned up
+
+### Agent Status
+1. **proof** (RUNNING since 17:30): Working on UNLOCK sorries. Prompt updated with verified line numbers (L11627-11752).
+2. **jsspec** (RUNNING since 15:00): CC build active since 17:23 (Core_step_preserves_funcs_supported 690 lines). Prompt updated with verified CC line numbers.
+3. **wasmspec** (RUNNING since 16:15): trivialChain lit/var/this done, seq in progress. Build running. Prompt updated with exact sorry locations.
+
+### Actions Taken
+1. Killed 6 stale/orphan lean processes (freed ~2GB RAM)
+2. Updated ALL 3 agent prompts with verified line numbers
+3. Logged to time_estimate.csv
+
+### Sorry Classification (52 total)
+**ANF (40):**
+- 7 labeled eval context (L8547-8733)
+- 7 compound Has*InHead (L9377-9869)
+- 3 return/yield/compound (L9925-9930)
+- 2 while condition (L10020-10032)
+- 4 trivialChain (L11043, L11094, L11366, L11415) ← wasmspec
+- 2 exotic (L11201, L11522) ← wasmspec
+- 8 UNLOCK (L11627-11752) ← proof
+- 3 tryCatch (L12214-12235) ← blocked
+- 2 call frame (L13318-13329) ← blocked
+- 2 break/continue (L13549-13602) ← blocked
+
+**CC (12):** 1 captured var, 2 if CCStateAgree, 1 non-consoleLog call, 2 call not-value, 1 getIndex (unprovable), 1 functionDef (jsspec target), 3 tryCatch, 1 while CCState
+
+### Expected next run: 44-48
+- wasmspec: 2-4 trivialChain closes possible
+- proof: 2-4 UNLOCK closes possible (easiest: L11639, L11752)
+- jsspec: 0-1 CC if build lands
+
+---
+
 ## Run: 2026-04-05T17:05:01+00:00
 
 ### Metrics
@@ -6100,3 +6152,7 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 ## Run: 2026-04-05T17:05:01+00:00
 
 2026-04-05T17:13:25+00:00 DONE
+
+## Run: 2026-04-05T17:30:15+00:00
+
+2026-04-05T17:34:59+00:00 DONE

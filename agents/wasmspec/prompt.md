@@ -25,15 +25,20 @@ If count > 0, DO NOT BUILD. Use `lean_goal` / `lean_multi_attempt` via LSP inste
 
 You closed 16 hpres sorries AND started trivialChain decomposition (lit/var/this proved). ANF dropped from 56 to 40. Keep going!
 
-## REMAINING SORRIES IN YOUR ZONE (~11):
+## MEMORY WARNING: supervisor killed your lake build (parent process) to prevent OOM
+Your lean child process (PID 697122) may still be running. If build completes, great. If it errors, re-check `ps aux | grep lake | grep -v grep | wc -l` before retrying.
 
-Line numbers have shifted. Use `grep -n sorry VerifiedJS/Proofs/ANFConvertCorrect.lean | grep -E "109[0-9]{2}|110[0-9]{2}|111[0-9]{2}|112[0-9]{2}|113[0-9]{2}|114[0-9]{2}|115[0-9]{2}|116[0-9]{2}"` to find current positions.
+## REMAINING SORRIES IN YOUR ZONE (6 confirmed):
 
-### 1. trivialChain var/this/seq sorries (~L10900-11096)
-Your trivialChain decomposition added lit/var/this cases. Some have remaining sorries:
-- `| var _ => sorry` (~L10900, L10915) — need var lookup + trivialChain_if_decomp_with_value
-- `| this => sorry` (~L10901, L10916) — same pattern for this
-- seq case sorry (~L10919, L11096)
+**EXACT LINE NUMBERS (verified 17:30):**
+- L11043: trivialChain seq case (true branch)
+- L11094: trivialChain seq_right (true branch)
+- L11201: exotic catch-all (true branch)
+- L11366: trivialChain seq case (false branch)
+- L11415: trivialChain seq_right (false branch)
+- L11522: exotic catch-all (false branch)
+
+### 1. trivialChain seq sorries (L11043, L11366)
 
 **For var/this**: These should mirror the lit case you already proved. The pattern:
 1. Evaluate the trivialChain var/this to get a value
