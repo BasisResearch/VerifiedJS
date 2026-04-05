@@ -29,6 +29,46 @@ private theorem Flat.Steps.append {s1 s2 s3 : Flat.State}
   | refl => exact h2
   | tail hstep _ ih => exact .tail hstep (ih h2)
 
+/-- Compose preservation through appended steps.
+    Given Steps s1 evs1 s2 and Steps s2 evs2 s3 with preservation for each,
+    derives preservation for the appended steps. -/
+private theorem Steps_pres_append {s1 s2 : Flat.State}
+    {evs1 : List Core.TraceEvent}
+    (hsteps1 : Flat.Steps s1 evs1 s2)
+    (hpres1 : ∀ smid evs, Flat.Steps s1 evs smid → evs.length ≤ evs1.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs)
+    {evs2 : List Core.TraceEvent} {s3 : Flat.State}
+    (hsteps2 : Flat.Steps s2 evs2 s3)
+    (hpres2 : ∀ smid evs, Flat.Steps s2 evs smid → evs.length ≤ evs2.length →
+       smid.funcs = s2.funcs ∧ smid.callStack = s2.callStack ∧ smid.trace = s2.trace ++ evs) :
+    ∀ smid evs, Flat.Steps s1 evs smid → evs.length ≤ (evs1 ++ evs2).length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs := by
+  induction hsteps1 with
+  | refl =>
+    intro smid evs hsteps hlen; simp at hlen
+    have ⟨hf, hc, ht⟩ := hpres2 smid evs hsteps hlen
+    exact ⟨hf, hc, ht⟩
+  | @tail s1 s1' s2 t ts hstep rest ih =>
+    intro smid evs hsteps_smid hlen
+    cases hsteps_smid with
+    | refl => exact ⟨rfl, rfl, by simp⟩
+    | @tail _ smid' _ t' ts' hstep' hrest' =>
+      have hdet : Flat.step? s1 = some (t, s1') := hstep.1
+      have hdet' : Flat.step? s1 = some (t', smid') := hstep'.1
+      rw [hdet] at hdet'; simp at hdet'
+      obtain ⟨rfl, rfl⟩ := hdet'
+      have hs1_pres := hpres1 s1' [t] (.tail hstep (.refl _)) (by simp)
+      have hpres1' : ∀ sm ev, Flat.Steps s1' ev sm → ev.length ≤ ts.length →
+          sm.funcs = s1'.funcs ∧ sm.callStack = s1'.callStack ∧ sm.trace = s1'.trace ++ ev := by
+        intro sm ev hst hl
+        have h := hpres1 sm (t :: ev) (.tail hstep hst) (by simp; omega)
+        exact ⟨h.1.trans hs1_pres.1.symm, h.2.1.trans hs1_pres.2.1.symm,
+               by rw [h.2.2, hs1_pres.2.2]; simp [List.append_assoc]⟩
+      have hlen' : ts'.length ≤ (ts ++ evs2).length := by simp at hlen ⊢; omega
+      obtain ⟨hf, hc, ht⟩ := ih hpres1' hpres2 smid ts' hrest' hlen'
+      exact ⟨hf.trans hs1_pres.1, hc.trans hs1_pres.2.1,
+             by rw [ht, hs1_pres.2.2]; simp [List.append_assoc]⟩
+
 /-- Filter trace to observable (non-silent) events.
     ANF conversion preserves observable events but changes the number of
     silent (administrative) steps. -/
