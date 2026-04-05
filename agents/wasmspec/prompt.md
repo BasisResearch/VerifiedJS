@@ -1,4 +1,4 @@
-# wasmspec — Close remaining sorries in normalizeExpr_if_branch_step zone
+# wasmspec — Close 6 remaining sorries in normalizeExpr_if_branch_step zone
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -17,66 +17,58 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 If count > 0, DO NOT BUILD. Use `lean_goal` / `lean_multi_attempt` via LSP instead.
 
 ## CONCURRENCY: proof agent also edits ANFConvertCorrect.lean
-- proof agent works on L11700+ (UNLOCK/compound_sim) and L12100+ (tryCatch, break/continue, call site)
-- **YOU** own L1767-1950 (Steps_ctx_lift infrastructure) AND L8000-11650 (normalizeExpr_if_branch_step zone)
+- proof agent works on L8557-9940 (compound HasXInHead) and L12375+ (tryCatch, break/continue)
+- **YOU** own L1767-1950 (Steps_ctx_lift infrastructure) AND L10944-11532 (normalizeExpr_if_branch_step zone)
 - DO NOT touch lines outside your range
 
-## EXCELLENT WORK THIS CYCLE
+## GREAT PROGRESS: hpres + lit/var/this DONE. ANF down to 32 sorries.
+Your bounded Steps_ctx_lift infrastructure was KEY. Proof agent used it to close all 8 UNLOCK sorries. ANF went 40→32. You have 6 sorries left in your zone.
 
-You closed 16 hpres sorries AND started trivialChain decomposition (lit/var/this proved). ANF dropped from 56 to 40. Keep going!
+## REMAINING 6 SORRIES (verified 18:00):
 
-## MEMORY WARNING: supervisor killed your lake build (parent process) to prevent OOM
-Your lean child process (PID 697122) may still be running. If build completes, great. If it errors, re-check `ps aux | grep lake | grep -v grep | wc -l` before retrying.
+| Line | Category | Description |
+|------|----------|-------------|
+| L11053 | trivialChain seq (true) | Combine steps from helper + if branch step |
+| L11104 | seq_right (true) | eval a + seq discard + IH on b |
+| L11211 | exotic catch-all (true) | binary, unary, getProp, etc. |
+| L11376 | trivialChain seq (false) | Same as L11053, false branch |
+| L11425 | seq_right (false) | Same as L11104, false branch |
+| L11532 | exotic catch-all (false) | Same as L11211, false branch |
 
-## REMAINING SORRIES IN YOUR ZONE (6 confirmed):
+### 1. trivialChain seq (L11053, L11376) — HIGHEST PRIORITY
 
-**EXACT LINE NUMBERS (verified 17:30):**
-- L11043: trivialChain seq case (true branch)
-- L11094: trivialChain seq_right (true branch)
-- L11201: exotic catch-all (true branch)
-- L11366: trivialChain seq case (false branch)
-- L11415: trivialChain seq_right (false branch)
-- L11522: exotic catch-all (false branch)
+You already proved lit, var, this. The seq case for trivialChain means:
+- `trivialChain (.seq a b)` where `a` is a trivialChain sub-expression
+- Need to evaluate `a` (via trivialChain_eval_value or similar), discard result, then evaluate `b`
+- Combine into Steps for the overall `.seq a b` expression
 
-### 1. trivialChain seq sorries (L11043, L11366)
+Use `lean_goal` at L11053 to see exact goal. Then try to combine:
+1. trivialChain_eval_value on `a` to get Steps evaluating a to a value
+2. One step for seq-discard (`.seq (lit v) b` → `b`)
+3. trivialChain_eval_value on `b` (the condition)
+4. Combine all Steps
 
-**For var/this**: These should mirror the lit case you already proved. The pattern:
-1. Evaluate the trivialChain var/this to get a value
-2. One step to resolve var → lit v, then step through .if condition
-3. Wire into the output
+### 2. seq_right (L11104, L11425) — MEDIUM
 
-Use `lean_goal` at each sorry to see exact goal, then `lean_multi_attempt`.
+`.seq a b` where `HasIfInHead b` (not `a`). So `a` must evaluate first:
+1. If `a` is a value: `.seq (lit v) b` → `b` in one step, then IH on b
+2. If not value: `a` must step (trivialChain since ¬HasIfInHead a), lift through `.seq [·] b`
 
-### 2. seq_right (2 sorries) — ~L11147, ~L11512
-- `.seq a b` where `HasIfInHead b` (not a)
-- True branch ~L11147, false branch ~L11512
+Variable ordering may be complex — use `lean_multi_attempt` to test partial tactics.
 
-**Strategy**:
-1. Check if a is a value (exprValue?)
-2. If value: `.seq` steps to b, then IH on b
-3. If not value: a must step (via trivialChain since ¬HasIfInHead a), lift through .seq, recurse
+### 3. exotic catch-all (L11211, L11532) — INVESTIGATE FIRST
 
-### 3. exotic cases (2 sorries) — ~L11254, ~L11619
-- `| _ => sorry` catch-all for remaining HasIfInHead constructors
-
-**TRY THIS FIRST**: Many exotic constructors may be impossible. Test:
+Many exotic constructors may be IMPOSSIBLE (normalizeExpr can't produce `.if` from them):
 ```
-lean_multi_attempt at the sorry line
+lean_multi_attempt at L11211 column 4
 ["cases hif <;> simp_all [ANF.normalizeExpr] <;> sorry"]
 ```
-If some constructors are impossible (normalizeExpr can't produce .if from that constructor), use `exfalso`.
-
-For real cases: follow seq_left pattern (IH on sub-expression + Steps_*_ctx_b lift).
-
-### 4. remaining inner case (~L11439)
-This is in the false branch version, same class as the above.
+If some cases are contradictions, close with `exfalso`. For real cases, follow the IH + Steps_*_ctx_b pattern.
 
 ## PRIORITY ORDER
-1. Close var/this sorries — these are almost done from your lit proof
-2. seq case in trivialChain
-3. seq_right (2)
-4. exotic — investigate which are contradictions
-5. remaining false branch inner
+1. L11053 + L11376 (trivialChain seq)
+2. L11211 + L11532 (exotic — investigate which are contradictions)
+3. L11104 + L11425 (seq_right)
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
