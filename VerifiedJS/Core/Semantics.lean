@@ -11542,6 +11542,30 @@ theorem step_objectLit_allValues (props : List (PropName × Expr)) (env : Env) (
     (step? ⟨.objectLit props, env, heap, trace, funcs, cs⟩).isSome = true := by
   unfold step?; split <;> simp_all
 
+/-- objectLit all-values: result expression is always supported (.lit (.object addr)). -/
+theorem step_objectLit_allValues_result_supported (props : List (PropName × Expr)) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hf : firstNonValueProp props = none)
+    (ev : TraceEvent) (s' : State)
+    (hstep : step? ⟨.objectLit props, env, heap, trace, funcs, cs⟩ = some (ev, s')) :
+    s'.expr.supported = true := by
+  unfold step? at hstep; split at hstep
+  · simp_all [pushTrace]
+  · simp [pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
+
+/-- arrayLit all-values: result expression is always supported (.lit (.object addr)). -/
+theorem step_arrayLit_allValues_result_supported (elems : List Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hf : firstNonValueExpr elems = none)
+    (ev : TraceEvent) (s' : State)
+    (hstep : step? ⟨.arrayLit elems, env, heap, trace, funcs, cs⟩ = some (ev, s')) :
+    s'.expr.supported = true := by
+  unfold step? at hstep; split at hstep
+  · simp_all [pushTrace]
+  · simp [pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
+
 /-- objectLit non-value prop stuck: objectLit is stuck. -/
 theorem step_objectLit_prop_stuck (props : List (PropName × Expr)) (env : Env) (heap : Heap)
     (trace : List TraceEvent) (funcs : Array FuncClosure)

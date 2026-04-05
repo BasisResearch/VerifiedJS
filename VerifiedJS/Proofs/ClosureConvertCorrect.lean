@@ -4020,8 +4020,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
     cases hfnv : Core.firstNonValueProp props with
     | none =>
       -- All values: step allocates object on heap, result is .lit (trivially supported)
-      simp [Core.step?, hfnv, Core.pushTrace] at hstep
-      obtain ⟨-, rfl⟩ := hstep; rfl
+      exact Core.step_objectLit_allValues_result_supported props s.env s.heap s.trace s.funcs s.callStack hfnv ev s' hstep
     | some val =>
       obtain ⟨done, k, target, rest⟩ := val
       cases h_sub : Core.step? { s with expr := target } with
@@ -4046,8 +4045,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
     cases hfnv : Core.firstNonValueExpr elems with
     | none =>
       -- All values: step allocates array on heap, result is .lit (trivially supported)
-      simp [Core.step?, hfnv, Core.pushTrace] at hstep
-      obtain ⟨-, rfl⟩ := hstep; rfl
+      exact Core.step_arrayLit_allValues_result_supported elems s.env s.heap s.trace s.funcs s.callStack hfnv ev s' hstep
     | some val =>
       obtain ⟨done, target, rest⟩ := val
       cases h_sub : Core.step? { s with expr := target } with
@@ -4067,7 +4065,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           { s with expr := target } se t (Nat.le_refl _) htgt_supp h_sub
         exact listSupported_replace_target se.expr hd_supp hse_supp hr_supp
   | tryCatch body catchParam catchBody finally_ =>
-    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+    rw [hexpr] at hsupp; simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
     cases hval_b : Core.exprValue? body with
     | some v =>
