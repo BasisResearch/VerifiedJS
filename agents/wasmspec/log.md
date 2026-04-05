@@ -6468,3 +6468,30 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 ## Run: 2026-04-05T05:15:01+00:00
 
 ### 2026-04-05T05:15:25+00:00 Starting run
+
+### Changes Made (2026-04-05T05:15 run)
+1. Added 2 sorry'd infrastructure lemmas before `normalizeExpr_if_step_sim`:
+   - `normalizeExpr_if_compound_true_sim` (around L9273): handles compound condition evaluation for true branch
+   - `normalizeExpr_if_compound_false_sim` (around L9297): handles compound condition evaluation for false branch
+   
+2. Replaced 4 inline sorries in `normalizeExpr_if_step_sim` with calls to infrastructure lemmas:
+   - L9418 (was L9367): compound c_flat in if_direct, true branch → calls true_sim
+   - L9419 (was L9368): HasIfInHead non-if_direct, true branch → all_goals calls true_sim
+   - L9491 (was L9440): compound c_flat in if_direct, false branch → calls false_sim
+   - L9492 (was L9441): HasIfInHead non-if_direct, false branch → all_goals calls false_sim
+
+3. Net sorry change: 4 inline sorries → 2 sorry'd lemmas (consolidation)
+   - The 2 sorry'd lemmas have clear, well-documented statements
+   - Each captures the multi-step Flat simulation for compound if conditions
+   - Future work: prove via strong induction on sf_expr.depth + Flat evaluation context lifting
+
+### Key Analysis
+- Compound conditions in normalizeExpr_if_step_sim ARE reachable (not contradiction)
+- normalizeExpr (.if c_flat then_flat else_flat) k CAN produce .if when c_flat is compound
+  if c_flat's sub-expressions contain .if (propagates through normalizeExpr)
+- Almost all Flat.Expr constructors can produce .if through sub-expression .if propagation
+- Only .labeled, .while_, .tryCatch, .break, .continue, .return none, .yield none cannot
+- Proof strategy: strong induction on Flat.Expr.depth + evaluation context lifting lemma
+
+### Build Status
+- Awaiting build verification (concurrent builds from proof/jsspec agents blocking)
