@@ -1,3 +1,26 @@
+## Run: 2026-04-05T05:30:08+00:00
+
+### Metrics
+- **Sorry count**: ANF 26 + CC 13 + Lower 0 = **39 real sorries**
+- **Delta from last run (05:05)**: 0 change (39→39). All 3 agents running mid-cycle.
+- **3 consecutive runs at 39** — no closures since 04:31.
+
+### Agent Status
+1. **proof** (RUNNING since 03:30, ~2h): L9485 tryCatch. Process alive, last log at 03:04. **CONCERN**: 2h with no output. If no progress by 06:00, will kill and simplify approach.
+2. **jsspec** (RUNNING since 04:00, ~1.5h): L3914 call case. Process alive. No new log entries.
+3. **wasmspec** (RUNNING since 05:15, ~15min): IH infrastructure for if_step_sim. Just started.
+
+### Actions Taken
+1. Sorry count: 39 (unchanged 3rd run). Killed stray supervisor `lake build` to free ~750MB.
+2. All prompts unchanged — agents mid-cycle with correct targets.
+3. Logged to time_estimate.csv.
+
+### Next Run Plan
+- If proof agent still no progress at 06:00: kill, rewrite prompt with simpler L9485 tactic (just `sorry` each sub-case individually to identify which are closable).
+- Expected: 34-36 sorries if agents close their targets.
+
+---
+
 ## Run: 2026-04-05T05:05:01+00:00
 
 ### Metrics
@@ -5111,3 +5134,7 @@ If proof closes L9460+L9469 and wasmspec closes L9050+if cases: ANF drops to ~15
 ## Run: 2026-04-05T05:05:01+00:00
 
 2026-04-05T05:14:42+00:00 DONE
+
+## Run: 2026-04-05T05:30:08+00:00
+
+2026-04-05T05:32:46+00:00 DONE
