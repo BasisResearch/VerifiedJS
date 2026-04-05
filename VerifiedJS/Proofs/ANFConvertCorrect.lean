@@ -10016,7 +10016,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
                  hac_catch⟩, hac_fin⟩
         · exact absurd hstep (by simp)
   termination_by e.depth
-  decreasing_by all_goals { simp_all [Flat.Expr.depth]; omega }
+  decreasing_by all_goals (simp_all [Flat.Expr.depth] <;> omega)
 
 set_option maxHeartbeats 3200000 in
 /-- Flat single-step preserves NoNestedAbrupt. -/
@@ -10438,7 +10438,7 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
           hbody hfuncs_na hfuncs_ac heq) hcatch hfin
       · exact absurd hstep (by simp)
   termination_by sf.expr.depth
-  decreasing_by all_goals { simp_all [Flat.Expr.depth]; omega }
+  decreasing_by all_goals (simp_all [Flat.Expr.depth] <;> omega)
 
 /-- Flat multi-step preserves NoNestedAbrupt. -/
 private theorem NoNestedAbrupt_steps_preserved {sf sf' : Flat.State} {evs : List Core.TraceEvent}
