@@ -1885,6 +1885,43 @@ private theorem step?_setIndex_obj_ctx (s : Flat.State)
   | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
+/-- Context stepping: if value is not a value and steps (non-error),
+    .setProp (.lit ov) prop value steps with the result wrapped. -/
+private theorem step?_setProp_val_ctx (s : Flat.State)
+    (ov : Flat.Value) (prop : Flat.PropName) (value : Flat.Expr)
+    (hnotval : Flat.exprValue? value = none)
+    (t : Core.TraceEvent) (sv : Flat.State)
+    (hstep : Flat.step? { s with expr := value } = some (t, sv))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    ∃ s', Flat.step? { s with expr := .setProp (.lit ov) prop value } = some (t, s') ∧
+      s'.expr = .setProp (.lit ov) prop sv.expr ∧ s'.env = sv.env ∧ s'.heap = sv.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  have lit_val : ∀ v, Flat.exprValue? (Flat.Expr.lit v) = some v := fun _ => rfl
+  cases ov <;> simp only [Flat.step?, lit_val, hnotval, hstep] <;> (
+    cases t with
+    | error msg => exact absurd rfl (hnoerr msg)
+    | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+    | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩)
+
+/-- Context stepping: if value is not a value and steps (non-error),
+    .setIndex (.lit ov) (.lit iv) value steps with the result wrapped. -/
+private theorem step?_setIndex_val_ctx (s : Flat.State)
+    (ov iv : Flat.Value) (value : Flat.Expr)
+    (hnotval : Flat.exprValue? value = none)
+    (t : Core.TraceEvent) (sv : Flat.State)
+    (hstep : Flat.step? { s with expr := value } = some (t, sv))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    ∃ s', Flat.step? { s with expr := .setIndex (.lit ov) (.lit iv) value } = some (t, s') ∧
+      s'.expr = .setIndex (.lit ov) (.lit iv) sv.expr ∧ s'.env = sv.env ∧ s'.heap = sv.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  cases ov <;> cases iv <;> simp [Flat.step?, hnotval, hstep] <;> (
+    cases t with
+    | error msg => exact absurd rfl (hnoerr msg)
+    | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+    | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩)
+
 /-- Error propagation for seq: when inner step errors, seq propagates. -/
 private theorem step?_seq_error (s : Flat.State) (a b : Flat.Expr)
     (hnotval : Flat.exprValue? a = none)
