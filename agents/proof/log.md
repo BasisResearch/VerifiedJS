@@ -5899,3 +5899,11 @@ The normalizeExpr_tryCatch_step_sim sorry is now split into:
 
 ### 2026-04-05T08:30:12+00:00 Starting run
 2026-04-05T09:30:01+00:00 SKIP: already running
+### 2026-04-05T09:33:32+00:00 Run complete — Partial progress on tryCatch_direct
+- Added normalizeExpr_exprValue_inv inversion lemma
+- Added normalizeExpr_lit_trivial_k' helper lemma
+- Added normalizeExpr_tryCatch_decomp decomposition lemma
+- Proved tryCatch_direct body-is-value cases (both with and without finally)
+- Remaining in tryCatch_direct: body-step, body-error, call-frame edge cases, compound cases
+- Confirmed hasAbruptCompletion_step_preserved and NoNestedAbrupt_step_preserved are already closed
+- Total sorry count: 31 (down from ~27 base + new structure sorries)
