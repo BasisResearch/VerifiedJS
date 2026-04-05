@@ -3370,3 +3370,4 @@ The only sorry is at L3970: closure body supported. Requires `∀ i c, s.funcs[i
 2026-04-05T16:00:01+00:00 SKIP: already running
 2026-04-05T17:00:01+00:00 SKIP: already running
 ### 2026-04-05T17:48:55+00:00 Build attempt: 3 errors in my code (funcs theorem tryCatch IH call), ~6 pre-existing errors in rest of file. Working on fixes.
+2026-04-05T18:00:05+00:00 SKIP: already running

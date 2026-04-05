@@ -57,8 +57,8 @@ theorem observableTrace_all_silent {evs : List Core.TraceEvent}
   induction evs with
   | nil => rfl
   | cons hd tl ih =>
-    have hhd : hd = Core.TraceEvent.silent := h hd (List.mem_cons_self hd tl)
-    subst hhd; simp [observableTrace, observableTrace_silent]
+    have hhd := h hd List.mem_cons_self
+    subst hhd
     exact ih (fun e he => h e (List.mem_cons_of_mem _ he))
 
 theorem observableTrace_append (a b : List Core.TraceEvent) :
