@@ -6605,3 +6605,12 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 **No regressions**: All errors remain outside assigned range (L11060+).
 
 **Sorry count in range**: 25 (net +2 from new lemma bodies, -4 from restructured if_compound sorries now pointing at branch_step)
+### 2026-04-05T12:23:41+00:00 Run complete — normalizeExpr_if_branch_step scaffolding in place
+
+**Summary:**
+- Added `normalizeExpr_if_branch_step` (true) and `normalizeExpr_if_branch_step_false` lemmas with correct signatures and base cases proved
+- Proved `if_direct` (with HasIfInHead c), `if_cond`, and `seq_left` cases using IH + Steps_*_ctx lifting (modulo hpres)
+- Updated `normalizeExpr_if_compound_true_sim` and `false_sim` to reference the new lemmas
+- No new errors introduced — all errors remain at L11060+ (proof agent's range)
+- 12 sorries in normalizeExpr_if_branch_step, most following the proven IH+lift pattern
+- Key remaining work: (1) hpres helper, (2) trivialChain evaluation for ¬HasIfInHead base, (3) fill in throw/return/await/yield/let cases (same pattern as if_cond), (4) prove normalizeExpr_if_branch_step_false (symmetric)
