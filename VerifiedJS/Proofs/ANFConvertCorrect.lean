@@ -10210,17 +10210,6 @@ private theorem normalizeExpr_tryCatch_decomp
           subst hb' hcp' hm
           exact ⟨hcb' ▸ rfl, n1, n2, hb, hc, Or.inr ⟨fin_flat, fin', rfl, hfin'.symm, hf⟩⟩
 
-/-- normalizeExpr (.lit v) k with trivial-preserving k gives .trivial (trivialOfValue v). -/
-private theorem normalizeExpr_lit_trivial_k
-    (v : Flat.Value) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
-    (hk : ∀ t' n', ∃ m', (k t').run n' = .ok (.trivial t', m'))
-    (n : Nat) :
-    ∃ m, (ANF.normalizeExpr (.lit v) k).run n = .ok (.trivial (ANF.trivialOfValue v), m) := by
-  simp only [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue,
-    bind, Bind.bind, StateT.bind, StateT.run, Except.bind,
-    pure, Pure.pure, StateT.pure, Except.pure, StateT.lift, Functor.map, Except.map]
-  exact hk (ANF.trivialOfValue v) n
-
 /-- If normalizeExpr sf.expr k produces .tryCatch body catchParam catchBody finally_
     (with trivial-preserving k), then one ANF step can be simulated by Flat steps. -/
 private theorem normalizeExpr_tryCatch_step_sim
