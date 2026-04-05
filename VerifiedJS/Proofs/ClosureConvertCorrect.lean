@@ -1453,6 +1453,7 @@ private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
   HeapValuesWF sc.heap ∧
   sc.heap.nextAddr = sc.heap.objects.size ∧
   sc.expr.supported = true ∧
+  (∀ i (fd : Core.FuncClosure), sc.funcs[i]? = some fd → fd.body.supported = true) ∧
   ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
     (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
 
@@ -1464,7 +1465,7 @@ private theorem closureConvert_init_related
     (h_supp : s.body.supported = true) :
     CC_SimRel s t (Flat.initialState t) (Core.initialState s) := by
   unfold CC_SimRel Flat.initialState Core.initialState
-  refine ⟨rfl, ⟨id, HeapInj_id _, ?_⟩, h_wf, ?_, ?_, ?_, ?_, h_supp, ?_⟩
+  refine ⟨rfl, ⟨id, HeapInj_id _, ?_⟩, h_wf, ?_, ?_, ?_, ?_, h_supp, ?_, ?_⟩
   · -- EnvCorrInj id: both envs have exactly one binding: "console" → .object 0
     show EnvCorr _ _
     have h_empty : EnvCorr Core.Env.empty Flat.Env.empty := by
@@ -1478,6 +1479,10 @@ private theorem closureConvert_init_related
     intro addr haddr props hprops kv hkv; dsimp at *; simp_all [ValueAddrWF]; rw [← hprops] at hkv; simp at hkv; subst hkv; trivial
   · -- heap.nextAddr = heap.objects.size
     rfl
+  · -- FuncsSupported: initial funcs = #[logBuiltin], body = .lit .undefined
+    intro i fd hi
+    simp [Core.initialState] at hi
+    simp_all [Core.Expr.supported]
   · unfold Flat.closureConvert at h
     simp only [Except.ok.injEq] at h
     let st2 := (Flat.convertFuncDefs s.functions.toList Flat.CCState.empty).fst.foldl
@@ -3460,17 +3465,21 @@ private theorem state_with_expr_eq {s : Core.State} {e : Core.Expr} (h : s.expr 
 
 set_option maxHeartbeats 8000000 in
 private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.TraceEvent)
-    (hsupp : s.expr.supported = true) (hstep : Core.step? s = some (ev, s')) :
+    (hsupp : s.expr.supported = true)
+    (hfuncs_supp : ∀ i (fd : Core.FuncClosure), s.funcs[i]? = some fd → fd.body.supported = true)
+    (hstep : Core.step? s = some (ev, s')) :
     s'.expr.supported = true := by
   -- Prove by strong induction on expression depth (needed for sub-expression stepping cases)
   suffices ∀ (n : Nat) (s s' : Core.State) (ev : Core.TraceEvent),
-      s.expr.depth ≤ n → s.expr.supported = true → Core.step? s = some (ev, s') →
+      s.expr.depth ≤ n → s.expr.supported = true →
+      (∀ i (fd : Core.FuncClosure), s.funcs[i]? = some fd → fd.body.supported = true) →
+      Core.step? s = some (ev, s') →
       s'.expr.supported = true by
-    exact this s.expr.depth s s' ev (Nat.le_refl _) hsupp hstep
+    exact this s.expr.depth s s' ev (Nat.le_refl _) hsupp hfuncs_supp hstep
   intro n
   induction n using Nat.strongRecOn with
   | _ n ih =>
-  intro s s' ev hd hsupp hstep
+  intro s s' ev hd hsupp hfuncs_supp hstep
   cases hexpr : s.expr with
   | lit v =>
     rw [state_with_expr_eq hexpr] at hstep; simp [Core.step?] at hstep
@@ -3530,7 +3539,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           obtain ⟨-, rfl⟩ := hstep
           simp only [Core.pushTrace, Core.Expr.supported]
           exact ih e.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-            { s with expr := e } sa t (Nat.le_refl _) hsupp h_sub
+            { s with expr := e } sa t (Nat.le_refl _) hsupp hfuncs_supp h_sub
   | labeled lbl body =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3571,7 +3580,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         obtain ⟨-, rfl⟩ := hstep
         simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
         exact ⟨ih init.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-          { s with expr := init } sa t (Nat.le_refl _) hsupp.1 h_sub, hsupp.2⟩
+          { s with expr := init } sa t (Nat.le_refl _) hsupp.1 hfuncs_supp h_sub, hsupp.2⟩
   | assign name rhs =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3592,7 +3601,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         obtain ⟨-, rfl⟩ := hstep
         simp only [Core.pushTrace, Core.Expr.supported]
         exact ih rhs.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-          { s with expr := rhs } sa t (Nat.le_refl _) hsupp h_sub
+          { s with expr := rhs } sa t (Nat.le_refl _) hsupp hfuncs_supp h_sub
   | «if» cond then_ else_ =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3615,7 +3624,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         obtain ⟨-, rfl⟩ := hstep
         simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
         exact ⟨⟨ih cond.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-          { s with expr := cond } sa t (Nat.le_refl _) hsupp.1.1 h_sub, hsupp.1.2⟩, hsupp.2⟩
+          { s with expr := cond } sa t (Nat.le_refl _) hsupp.1.1 hfuncs_supp h_sub, hsupp.1.2⟩, hsupp.2⟩
   | seq a b =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3636,7 +3645,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         obtain ⟨-, rfl⟩ := hstep
         simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
         exact ⟨ih a.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-          { s with expr := a } sa t (Nat.le_refl _) hsupp.1 h_sub, hsupp.2⟩
+          { s with expr := a } sa t (Nat.le_refl _) hsupp.1 hfuncs_supp h_sub, hsupp.2⟩
   | throw arg =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3657,7 +3666,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         obtain ⟨-, rfl⟩ := hstep
         simp only [Core.pushTrace, Core.Expr.supported]
         exact ih arg.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-          { s with expr := arg } sa t (Nat.le_refl _) hsupp h_sub
+          { s with expr := arg } sa t (Nat.le_refl _) hsupp hfuncs_supp h_sub
   | typeof arg =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3678,7 +3687,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         obtain ⟨-, rfl⟩ := hstep
         simp only [Core.pushTrace, Core.Expr.supported]
         exact ih arg.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-          { s with expr := arg } sa t (Nat.le_refl _) hsupp h_sub
+          { s with expr := arg } sa t (Nat.le_refl _) hsupp hfuncs_supp h_sub
   | unary op arg =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3699,7 +3708,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         obtain ⟨-, rfl⟩ := hstep
         simp only [Core.pushTrace, Core.Expr.supported]
         exact ih arg.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-          { s with expr := arg } sa t (Nat.le_refl _) hsupp h_sub
+          { s with expr := arg } sa t (Nat.le_refl _) hsupp hfuncs_supp h_sub
   | binary op lhs rhs =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3715,7 +3724,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         obtain ⟨-, rfl⟩ := hstep
         simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
         exact ⟨ih lhs.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-          { s with expr := lhs } sa t (Nat.le_refl _) hsupp.1 h_sub, hsupp.2⟩
+          { s with expr := lhs } sa t (Nat.le_refl _) hsupp.1 hfuncs_supp h_sub, hsupp.2⟩
     | some lv =>
       have hlit_l : lhs = .lit lv := by cases lhs <;> simp [Core.exprValue?] at hval_l; subst hval_l; rfl
       subst hlit_l
@@ -3734,7 +3743,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           obtain ⟨-, rfl⟩ := hstep
           simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
           exact ⟨trivial, ih rhs.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-            { s with expr := rhs } sa t (Nat.le_refl _) hsupp.2 h_sub⟩
+            { s with expr := rhs } sa t (Nat.le_refl _) hsupp.2 hfuncs_supp h_sub⟩
   | deleteProp obj prop =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3757,7 +3766,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         obtain ⟨-, rfl⟩ := hstep
         simp only [Core.pushTrace, Core.Expr.supported]
         exact ih obj.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-          { s with expr := obj } sa t (Nat.le_refl _) hsupp h_sub
+          { s with expr := obj } sa t (Nat.le_refl _) hsupp hfuncs_supp h_sub
   | getProp obj prop =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3780,7 +3789,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         obtain ⟨-, rfl⟩ := hstep
         simp only [Core.pushTrace, Core.Expr.supported]
         exact ih obj.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-          { s with expr := obj } sa t (Nat.le_refl _) hsupp h_sub
+          { s with expr := obj } sa t (Nat.le_refl _) hsupp hfuncs_supp h_sub
   | setProp obj prop value =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported, Bool.and_eq_true] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
@@ -3796,7 +3805,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         obtain ⟨-, rfl⟩ := hstep
         simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
         exact ⟨ih obj.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-          { s with expr := obj } sa t (Nat.le_refl _) hsupp.1 h_sub, hsupp.2⟩
+          { s with expr := obj } sa t (Nat.le_refl _) hsupp.1 hfuncs_supp h_sub, hsupp.2⟩
     | some ov =>
       have hlit : obj = .lit ov := by cases obj <;> simp [Core.exprValue?] at hval_o; subst hval_o; rfl
       subst hlit
@@ -3812,7 +3821,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           obtain ⟨-, rfl⟩ := hstep
           simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
           exact ⟨trivial, ih value.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-            { s with expr := value } sa t (Nat.le_refl _) hsupp.2 h_sub⟩
+            { s with expr := value } sa t (Nat.le_refl _) hsupp.2 hfuncs_supp h_sub⟩
       | some vv =>
         have hlit_v : value = .lit vv := by cases value <;> simp [Core.exprValue?] at hval_v; subst hval_v; rfl
         subst hlit_v
@@ -3834,7 +3843,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         obtain ⟨-, rfl⟩ := hstep
         simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
         exact ⟨ih obj.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-          { s with expr := obj } sa t (Nat.le_refl _) hsupp.1 h_sub, hsupp.2⟩
+          { s with expr := obj } sa t (Nat.le_refl _) hsupp.1 hfuncs_supp h_sub, hsupp.2⟩
     | some ov =>
       have hlit : obj = .lit ov := by cases obj <;> simp [Core.exprValue?] at hval_o; subst hval_o; rfl
       subst hlit
@@ -3852,7 +3861,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           obtain ⟨-, rfl⟩ := hstep
           simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
           exact ⟨trivial, ih idx.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-            { s with expr := idx } sa t (Nat.le_refl _) hsupp.2 h_sub⟩
+            { s with expr := idx } sa t (Nat.le_refl _) hsupp.2 hfuncs_supp h_sub⟩
       | some iv =>
         have hlit_i : idx = .lit iv := by cases idx <;> simp [Core.exprValue?] at hval_i; subst hval_i; rfl
         subst hlit_i
@@ -3874,7 +3883,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         obtain ⟨-, rfl⟩ := hstep
         simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
         exact ⟨⟨ih obj.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-          { s with expr := obj } sa t (Nat.le_refl _) hsupp.1.1 h_sub, hsupp.1.2⟩, hsupp.2⟩
+          { s with expr := obj } sa t (Nat.le_refl _) hsupp.1.1 hfuncs_supp h_sub, hsupp.1.2⟩, hsupp.2⟩
     | some ov =>
       have hlit : obj = .lit ov := by cases obj <;> simp [Core.exprValue?] at hval_o; subst hval_o; rfl
       subst hlit
@@ -3892,7 +3901,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           obtain ⟨-, rfl⟩ := hstep
           simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
           exact ⟨⟨trivial, ih idx.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-            { s with expr := idx } sa t (Nat.le_refl _) hsupp.1.2 h_sub⟩, hsupp.2⟩
+            { s with expr := idx } sa t (Nat.le_refl _) hsupp.1.2 hfuncs_supp h_sub⟩, hsupp.2⟩
       | some iv =>
         have hlit_i : idx = .lit iv := by cases idx <;> simp [Core.exprValue?] at hval_i; subst hval_i; rfl
         subst hlit_i
@@ -3911,7 +3920,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
             obtain ⟨-, rfl⟩ := hstep
             simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
             exact ⟨⟨trivial, trivial⟩, ih value.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-              { s with expr := value } sa t (Nat.le_refl _) hsupp.2 h_sub⟩
+              { s with expr := value } sa t (Nat.le_refl _) hsupp.2 hfuncs_supp h_sub⟩
         | some vv =>
           have hlit_v : value = .lit vv := by cases value <;> simp [Core.exprValue?] at hval_v; subst hval_v; rfl
           subst hlit_v
@@ -3936,7 +3945,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         obtain ⟨-, rfl⟩ := hstep
         simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
         exact ⟨ih callee.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-          { s with expr := callee } sc t (Nat.le_refl _) hsupp.1 h_sub, hsupp.2⟩
+          { s with expr := callee } sc t (Nat.le_refl _) hsupp.1 hfuncs_supp h_sub, hsupp.2⟩
     | some cv =>
       have hlit_c : callee = .lit cv := by cases callee <;> simp [Core.exprValue?] at hval_c; subst hval_c; rfl
       subst hlit_c
@@ -3966,8 +3975,8 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
               simp only [Option.some.injEq, Prod.mk.injEq] at hstep
               obtain ⟨-, rfl⟩ := hstep
               simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-              -- Need closure.body.supported — requires FuncsSupported invariant
-              sorry
+              -- closure.body.supported follows from the FuncsSupported invariant
+              exact ⟨hfuncs_supp idx closure hfunc, trivial⟩
             | none =>
               have hfwd := Core.step_call_func_none idx args argVals s.env s.heap s.trace s.funcs s.callStack
                 hallv hcl hfunc
@@ -4012,7 +4021,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
             have htgt_supp := listSupported_firstNonValueExpr_target hfnv hsupp.2
             have ⟨hd_supp, hr_supp⟩ := listSupported_firstNonValue_parts hfnv hsupp.2
             have hsa_supp := ih target.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; have := Core.firstNonValueExpr_depth hfnv; omega)
-              { s with expr := target } sa t (Nat.le_refl _) htgt_supp h_sub
+              { s with expr := target } sa t (Nat.le_refl _) htgt_supp hfuncs_supp h_sub
             exact ⟨trivial, listSupported_replace_target sa.expr hd_supp hsa_supp hr_supp⟩
   | objectLit props =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
@@ -4037,7 +4046,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         have htgt_supp := propListSupported_firstNonValueProp_target hfnv hsupp
         have ⟨hd_supp, hr_supp⟩ := propListSupported_firstNonValue_parts hfnv hsupp
         have hse_supp := ih target.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; have := Core.firstNonValueProp_depth hfnv; omega)
-          { s with expr := target } se t (Nat.le_refl _) htgt_supp h_sub
+          { s with expr := target } se t (Nat.le_refl _) htgt_supp hfuncs_supp h_sub
         exact propListSupported_replace_target k se.expr hd_supp hse_supp hr_supp
   | arrayLit elems =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
@@ -4062,7 +4071,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         have htgt_supp := listSupported_firstNonValueExpr_target hfnv hsupp
         have ⟨hd_supp, hr_supp⟩ := listSupported_firstNonValue_parts hfnv hsupp
         have hse_supp := ih target.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; have := Core.firstNonValueExpr_depth hfnv; omega)
-          { s with expr := target } se t (Nat.le_refl _) htgt_supp h_sub
+          { s with expr := target } se t (Nat.le_refl _) htgt_supp hfuncs_supp h_sub
         exact listSupported_replace_target se.expr hd_supp hse_supp hr_supp
   | tryCatch body catchParam catchBody finally_ =>
     simp only [hexpr, Core.Expr.supported, Bool.and_eq_true] at hsupp
@@ -4121,7 +4130,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           obtain ⟨-, rfl⟩ := hstep
           simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
           exact ⟨⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-            { s with expr := body } sb .silent (Nat.le_refl _) hsupp.1.1 h_sub, hsupp.1.2⟩, hsupp.2⟩
+            { s with expr := body } sb .silent (Nat.le_refl _) hsupp.1.1 hfuncs_supp h_sub, hsupp.1.2⟩, hsupp.2⟩
         | log msg =>
           have hfwd := Core.step_tryCatch_step_body_log body catchParam catchBody finally_ s.env s.heap s.trace s.funcs s.callStack hval_b msg sb h_sub
           rw [hfwd] at hstep
@@ -4129,7 +4138,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           obtain ⟨-, rfl⟩ := hstep
           simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
           exact ⟨⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-            { s with expr := body } sb (.log msg) (Nat.le_refl _) hsupp.1.1 h_sub, hsupp.1.2⟩, hsupp.2⟩
+            { s with expr := body } sb (.log msg) (Nat.le_refl _) hsupp.1.1 hfuncs_supp h_sub, hsupp.1.2⟩, hsupp.2⟩
 
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)
@@ -4164,12 +4173,14 @@ private theorem closureConvert_step_simulation
         (∃ (st_a st_a' : Flat.CCState),
           (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
           CCStateAgree st st_a ∧ CCStateAgree st' st_a') by
-    intro sf sc ev sf' ⟨htrace, ⟨injMap, hinj, henv⟩, hncfr, hexprwf, henvwf, hheapvwf, hheapna, hsupp, scope, envVar, envMap, st, st', hconv⟩ hstep
+    intro sf sc ev sf' ⟨htrace, ⟨injMap, hinj, henv⟩, hncfr, hexprwf, henvwf, hheapvwf, hheapna, hsupp, hfuncs_supp, scope, envVar, envMap, st, st', hconv⟩ hstep
     obtain ⟨injMap', sc', hcstep, htrace', hinj', henv', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', _, _⟩ :=
       this sc.expr.depth envVar envMap injMap sf sc ev sf' scope st st' rfl htrace hinj henv henvwf hheapvwf hheapna hncfr hexprwf hsupp hconv hstep
     have hsupp' : sc'.expr.supported = true :=
-      Core_step_preserves_supported _ _ _ hsupp (by obtain ⟨h⟩ := hcstep; exact h)
-    exact ⟨sc', hcstep, htrace', ⟨injMap', hinj', henv'⟩, hncfr', hexprwf', henvwf', hheapvwf', hheapna', hsupp', scope, envVar, envMap, st_a, st_a', hconv'⟩
+      Core_step_preserves_supported _ _ _ hsupp hfuncs_supp (by obtain ⟨h⟩ := hcstep; exact h)
+    have hfuncs_supp' : ∀ i (fd : Core.FuncClosure), sc'.funcs[i]? = some fd → fd.body.supported = true :=
+      Core_step_preserves_funcs_supported _ _ _ hsupp hfuncs_supp (by obtain ⟨h⟩ := hcstep; exact h)
+    exact ⟨sc', hcstep, htrace', ⟨injMap', hinj', henv'⟩, hncfr', hexprwf', henvwf', hheapvwf', hheapna', hsupp', hfuncs_supp', scope, envVar, envMap, st_a, st_a', hconv'⟩
   intro n
   induction n using Nat.strongRecOn with
   | _ n ih_depth =>
@@ -8495,7 +8506,7 @@ private theorem closureConvert_halt_preservation
       (∀ (b : String) (o f : Core.Expr), sc.expr ≠ .forIn b o f) →
       (∀ (b : String) (i f : Core.Expr), sc.expr ≠ .forOf b i f) →
       Core.step? sc = none := by
-  intro sf sc ⟨htrace, _, _hncfr, _hexprwf, _henvwf, _hheapvwf, _hheapna, _hsupp, scope, envVar, envMap, st, st', hconv⟩ hhalt hnoForIn hnoForOf
+  intro sf sc ⟨htrace, _, _hncfr, _hexprwf, _henvwf, _hheapvwf, _hheapna, _hsupp, _, scope, envVar, envMap, st, st', hconv⟩ hhalt hnoForIn hnoForOf
   obtain ⟨v, hlit⟩ := step?_none_implies_lit sf hhalt
   rw [hlit] at hconv
   cases hsc : sc.expr with
