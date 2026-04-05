@@ -2741,6 +2741,104 @@ private def Steps_setIndex_val_ctx_b (ov iv : Flat.Value)
     (fun s inner hv t si hs he => step?_setIndex_val_ctx s ov iv inner hv t si hs he)
     hsteps hnoerr hpres
 
+/-- Bounded multi-step lifting through .call (.lit fv) [·] args context. -/
+private def Steps_call_env_ctx_b (fv : Flat.Value) (args : List Flat.Expr)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b (fun e => .call (.lit fv) e args)
+    (fun s inner hv t si hs he => step?_call_env_ctx s fv inner args hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded multi-step lifting through .call funcExpr envExpr (done ++ [·] ++ remaining) context. -/
+private def Steps_call_arg_ctx_b (funcExpr envExpr : Flat.Expr) (done remaining : List Flat.Expr)
+    (hfv : ∃ fv, Flat.exprValue? funcExpr = some fv)
+    (hev : ∃ ev, Flat.exprValue? envExpr = some ev)
+    (hdone : ∀ e ∈ done, ∃ v, e = .lit v)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b (fun e => .call funcExpr envExpr (done ++ [e] ++ remaining))
+    (fun s inner hv t si hs he => step?_call_arg_ctx s funcExpr envExpr done remaining inner hfv hev hdone hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded multi-step lifting through .newObj [·] envExpr args context. -/
+private def Steps_newObj_func_ctx_b (envExpr : Flat.Expr) (args : List Flat.Expr)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b (fun e => .newObj e envExpr args)
+    (fun s inner hv t si hs he => step?_newObj_func_ctx s inner envExpr args hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded multi-step lifting through .newObj (.lit fv) [·] args context. -/
+private def Steps_newObj_env_ctx_b (fv : Flat.Value) (args : List Flat.Expr)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b (fun e => .newObj (.lit fv) e args)
+    (fun s inner hv t si hs he => step?_newObj_env_ctx s fv inner args hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded multi-step lifting through .newObj funcExpr envExpr (done ++ [·] ++ remaining) context. -/
+private def Steps_newObj_arg_ctx_b (funcExpr envExpr : Flat.Expr) (done remaining : List Flat.Expr)
+    (hfv : ∃ fv, Flat.exprValue? funcExpr = some fv)
+    (hev : ∃ ev, Flat.exprValue? envExpr = some ev)
+    (hdone : ∀ e ∈ done, ∃ v, e = .lit v)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b (fun e => .newObj funcExpr envExpr (done ++ [e] ++ remaining))
+    (fun s inner hv t si hs he => step?_newObj_arg_ctx s funcExpr envExpr done remaining inner hfv hev hdone hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded multi-step lifting through .getIndex (.lit ov) [·] context. -/
+private def Steps_getIndex_idx_ctx_b (ov : Flat.Value)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b (fun e => .getIndex (.lit ov) e)
+    (fun s inner hv t si hs he => step?_getIndex_idx_ctx s ov inner hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded multi-step lifting through .setIndex (.lit ov) [·] val context. -/
+private def Steps_setIndex_idx_ctx_b (ov : Flat.Value) (val : Flat.Expr)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b (fun e => .setIndex (.lit ov) e val)
+    (fun s inner hv t si hs he => step?_setIndex_idx_ctx s ov inner val hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded multi-step lifting through .makeEnv (done ++ [·] ++ remaining) context. -/
+private def Steps_makeEnv_values_ctx_b (done remaining : List Flat.Expr)
+    (hdone : ∀ e ∈ done, ∃ v, e = .lit v)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b (fun e => .makeEnv (done ++ [e] ++ remaining))
+    (fun s inner hv t si hs he => step?_makeEnv_values_ctx s done remaining inner hdone hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Bounded multi-step lifting through .arrayLit (done ++ [·] ++ remaining) context. -/
+private def Steps_arrayLit_elem_ctx_b (done remaining : List Flat.Expr)
+    (hdone : ∀ e ∈ done, ∃ v, e = .lit v)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid → evs1.length ≤ evs.length →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift_b (fun e => .arrayLit (done ++ [e] ++ remaining))
+    (fun s inner hv t si hs he => step?_arrayLit_elem_ctx s done remaining inner hdone hv t si hs he)
+    hsteps hnoerr hpres
+
 /-! ## Steps preservation for terminal wrappers
 
     For wrappers where the inner value produces a terminal state (.lit v),
