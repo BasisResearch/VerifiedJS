@@ -3256,3 +3256,6 @@ Added depth induction to `Core_step_preserves_supported` (L3375-3682):
 - For binary rhs non-value: simp converts `(.lit lv).supported = true` to `True` via `Bool.and_eq_true`, requiring `trivial` instead of `rfl`.
 ### 2026-04-05T00:09:50+00:00 Run complete — 10 sorries closed in Core_step_preserves_supported (18→8)
 2026-04-05T00:10:03+00:00 DONE
+
+## Run: 2026-04-05T01:00:01+00:00
+
