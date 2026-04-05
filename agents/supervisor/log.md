@@ -1,3 +1,54 @@
+## Run: 2026-04-05T20:05:14+00:00
+
+### Metrics
+- **Sorry count**: ANF 30 + CC 11 = **41 real sorries**
+- **Delta from last run (19:05)**: -3 (44→41). **DOWN — good progress!**
+- **Lower**: 0 sorries (DONE)
+
+### Why count went DOWN (-3)
+- ANF: 32→30 (-2). wasmspec closed 2 seq_right sorries (true+false branches). Line numbers shifted due to code restructuring.
+- CC: 12→11 (-1). jsspec closed L7917 (functionDef). Remaining lines shifted by ~1.
+
+### Memory Status
+- 1.3GB available after killing 2 supervisor lean builds (PID 971984, 971978) that were duplicate-building alongside agents.
+- wasmspec lean worker (PID 951000) consuming 2.6GB — actively building ANF
+- jsspec lake build (PID 969391) running CC build
+- All 3 agents running: proof (19:30), jsspec (19:00), wasmspec (19:15)
+
+### Agent Status
+1. **proof** (RUNNING since 19:30): Working on normalizeExpr_labeled_or_k infrastructure. No closes yet this cycle. Prompt UPDATED with verified line numbers (Group F shifted to L12857-14245).
+2. **jsspec** (RUNNING since 19:00): CLOSED L7917 (functionDef)! Building CC. Prompt UPDATED: redirected to L5821 (non-consoleLog call) as primary target.
+3. **wasmspec** (RUNNING since 19:15): CLOSED 2 seq_right sorries. Active lean worker building. Prompt UPDATED with new line numbers (L11346, L11453, L11909, L12016).
+
+### Actions Taken
+1. Killed 2 supervisor lean builds (freed ~900MB)
+2. Updated ALL 3 agent prompts with verified line numbers
+3. Redirected jsspec from functionDef (done) to L5821 (non-consoleLog call)
+4. Updated wasmspec line numbers (shifted significantly)
+5. Logged to time_estimate.csv
+
+### Sorry Classification (41 total)
+**ANF (30):**
+- 7 normalizeExpr_labeled_step_sim (L8557-8743) ← proof agent, needs labeled_or_k infrastructure
+- 4 compound HasXInHead catch-all (L9387, 9544, 9721, 9879) ← proof agent
+- 3 compound inner_val/arg (L9538, 9715, 9873) ← proof agent
+- 3 return/yield/compound (L9935-9940) ← proof agent
+- 2 while condition (L10030-10042) ← proof agent
+- 2 trivialChain seq (L11346, L11909) ← wasmspec
+- 2 exotic remaining (L11453, L12016) ← wasmspec
+- 3 tryCatch (L12857-12878) ← blocked
+- 2 call frame (L13961-13972) ← blocked
+- 2 break/continue (L14192-14245) ← blocked
+
+**CC (11):** L4905, L5234, L5257, L5821 (jsspec target), L6029, L6037, L6675 (unprovable), L8075, L8076, L8148, L8256
+
+### Expected next run: 38-40
+- proof: if normalizeExpr_labeled_or_k lands, 2-4 Group A exfalso cases closeable
+- wasmspec: 1-2 trivialChain seq + exotic possible
+- jsspec: 0-1 if L5821 lands (harder than functionDef)
+
+---
+
 ## Run: 2026-04-05T19:05:01+00:00
 
 ### Metrics
@@ -6386,3 +6437,4 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 
 ## Run: 2026-04-05T20:05:09+00:00
 
+2026-04-05T20:09:54+00:00 DONE

@@ -10,8 +10,9 @@
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
-## MEMORY: 7.7GB total, NO swap. ~5GB available.
-Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
+## MEMORY: 7.7GB total, NO swap. ~1.3GB available. VERY TIGHT.
+Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count = 0.
+**Do NOT start builds when wasmspec or jsspec are building. Use LSP tools instead.**
 
 ## BUILD COORDINATION — CRITICAL
 wasmspec is ALSO building ANFConvertCorrect. **Check before building:**
@@ -21,13 +22,13 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 If count > 0, WAIT. Do not start a build. Use `lean_goal` / `lean_multi_attempt` via LSP instead.
 
 ## CONCURRENCY: wasmspec also edits ANFConvertCorrect.lean
-- wasmspec works on L11053-11532 (trivialChain zone — only 4 left)
+- wasmspec works on L11200-12100 (trivialChain zone — only 4 left)
 - **YOU** own everything else
-- DO NOT touch lines 11053-11532
+- DO NOT touch lines 11200-12100
 
-## GREAT WORK — 8 UNLOCK sorries closed last cycle!
+## PROGRESS: Sorry count 41 total (30 ANF + 11 CC). Down from 44 last cycle.
 
-## YOUR 22 SORRIES — CURRENT LINE NUMBERS (verified 19:05)
+## YOUR 19 SORRIES — CURRENT LINE NUMBERS (verified 20:05)
 
 ### GROUP A: normalizeExpr_labeled_step_sim (7 sorries) — NEEDS INFRASTRUCTURE
 | L8557 | return (some non-labeled inner) — eval ctx |
@@ -71,13 +72,14 @@ These need eval context stepping: for each HasXInHead sub-constructor (seq_l, le
 | L10030 | While condition value case |
 | L10042 | Condition-steps case |
 
-### GROUP F: tryCatch/call/break (6 sorries) — BLOCKED
-| L12373 | tryCatch body-error |
-| L12391 | tryCatch body-step |
-| L13477 | noCallFrameReturn |
-| L13488 | body_sim IH |
-| L13708 | break |
-| L13761 | continue |
+### GROUP F: tryCatch/call/break (7 sorries) — BLOCKED
+| L12857 | tryCatch body-error |
+| L12875 | tryCatch body-step |
+| L12878 | compound cases deferred |
+| L13961 | noCallFrameReturn |
+| L13972 | body_sim IH |
+| L14192 | break |
+| L14245 | continue |
 
 ## PRIORITY ORDER
 1. **Build `normalizeExpr_labeled_or_k`** — unlocks ALL 7 Group A sorries
