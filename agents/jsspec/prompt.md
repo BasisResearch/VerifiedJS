@@ -1,4 +1,4 @@
-# jsspec — Close remaining Core_step_preserves_supported cases + CC sorries
+# jsspec — Close call case in Core_step_preserves_supported + remaining CC sorries
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -12,19 +12,19 @@ If build fails: `sleep 60`, retry ONCE. No loops.
 ## MEMORY: 7.7GB total, NO swap. ~3.8GB available.
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
-## STATUS: getIndex + setIndex CLOSED! Great. 4 cases remain in Core_step_preserves_supported.
+## STATUS: objectLit + arrayLit + tryCatch CLOSED! GREAT WORK! Only call remains in Core_step_preserves_supported.
 
-CC has 16 real sorries total:
-- L3914-3917 (4): Core_step_preserves_supported: call, objectLit, arrayLit, tryCatch
-- L3983 (1): captured variable (multi-step sim)
-- L4312, L4335 (2): CCStateAgree if-branches (architecturally blocked)
-- L4899 (1): funcs correspondence
-- L5107, L5115 (2): semantic mismatch (architecturally blocked)
-- L5753 (1): UNPROVABLE getIndex string
-- L6995 (1): functionDef
-- L7152, L7153 (2): tryCatch CCStateAgree (architecturally blocked)
-- L7225 (1): tryCatch inner
-- L7333 (1): while_ CCState threading (architecturally blocked)
+CC has 13 real sorries total:
+- L3914 (1): Core_step_preserves_supported: **call** — PRIORITY 1
+- L4082 (1): captured variable (multi-step sim, staging sorry)
+- L4411, L4434 (2): CCStateAgree if-branches (architecturally blocked)
+- L4998 (1): funcs correspondence
+- L5206, L5214 (2): semantic mismatch (architecturally blocked)
+- L5852 (1): UNPROVABLE getIndex string (SKIP)
+- L7094 (1): functionDef
+- L7251, L7252 (2): tryCatch CCStateAgree (architecturally blocked)
+- L7324 (1): tryCatch inner
+- L7432 (1): while_ CCState threading (architecturally blocked)
 
 ## TASK 1: Close L3914 (call) — HIGHEST PRIORITY
 
@@ -38,49 +38,28 @@ Then in the call case when callee and args are all values and it's a function ca
 - funcDef.body.supported comes from `hfuncs`
 - Thread hfuncs through the IH calls (step? preserves funcs)
 
-**IMPORTANT**: After adding hfuncs, update the `hsupp'` derivation at L3956 to also derive `hfuncs'` from `hfuncs` (since Core.step? preserves funcs).
+**IMPORTANT**: After adding hfuncs, update the `hsupp'` derivation to also derive `hfuncs'` from `hfuncs` (since Core.step? preserves funcs).
 
-## TASK 2: Close L3915/L3916 (objectLit/arrayLit)
+## TASK 2: Close L4082 (captured variable) — MEDIUM PRIORITY
 
-These need list induction via firstNonValue helpers.
+At L4082: captured variable case in closureConvert_step_simulation. Flat produces `.getEnv (.var envVar) idx` which takes 2 steps (var lookup + getEnv), while Core takes 1 step (var lookup). This needs a multi-step simulation: show Flat.Steps sf [.silent, ev] sf' where first step resolves var, second does getEnv.
 
-Pattern for objectLit:
+Use `lean_goal` at L4082 to see the proof state. Pattern:
 ```lean
-| objectLit =>
-  -- split on firstNonValueProp props
-  cases hfnv : Core.firstNonValueProp props with
-  | none =>
-    -- all values: step? produces .lit (.object addr)
-    simp [Core.step?, Core.exprValue?, Core.firstNonValueProp, hfnv, Core.pushTrace] at hstep
-    obtain ⟨-, rfl⟩ := hstep; rfl
-  | some ⟨pre, name, target, post⟩ =>
-    -- stepping target in the prop list
-    cases h_sub : Core.step? { s with expr := target } with
-    | none => simp [Core.step?, hfnv, h_sub] at hstep
-    | some p =>
-      obtain ⟨t, sa⟩ := p
-      -- forward lemma for objectLit stepping
-      -- reconstruct: result is objectLit (pre ++ [(name, sa.expr)] ++ post)
-      -- use IH on target, then propListSupported_append
-      sorry -- fill in with exact tactic sequence
+-- Flat: .getEnv (.var envVar) idx
+-- Step 1: var envVar → .lit envValue (from env lookup)
+-- Step 2: getEnv (.lit envValue) idx → .lit capturedValue
+refine ⟨sf', [.silent, ev], .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)), ?_, ?_, ?_⟩
 ```
 
-Use `lean_local_search` for helper lemma names like `propListSupported_append`, `Core.step_objectLit_step_prop`.
+## TASK 3: Close L7094 (functionDef) — IF TIME
 
-## TASK 3: Close L3917 (tryCatch)
-
-Pattern: case split on body value/error. In each branch, show supported is preserved.
-
-## TASK 4: Close L3983 (captured variable) — IF TIME
-
-This is `| some idx =>` in the var case. Flat produces `.getEnv (.var envVar) idx` which takes 2 steps (var lookup + getEnv), while Core takes 1 step. This needs a multi-step simulation or a different approach.
+Pattern: functionDef case in closureConvert_step_simulation. Core creates a closure and steps to `.lit closureAddr`. Flat does the same but with the converted body. Show CCStateAgree is maintained.
 
 ## PRIORITY ORDER
-1. L3914 (call) — with FuncsSupported invariant
-2. L3915 (objectLit) — list induction
-3. L3916 (arrayLit) — same pattern as objectLit
-4. L3917 (tryCatch) — case split
-5. L3983 (captured variable) — if time
+1. L3914 (call) — last Core_step_preserves_supported case
+2. L4082 (captured variable) — multi-step sim
+3. L7094 (functionDef) — if time
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

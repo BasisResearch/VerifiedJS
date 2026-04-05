@@ -6460,3 +6460,4 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 - The compound condition case in if_direct requires stepping through compound conditions in .if context
 - The HasIfInHead compound cases require evaluation context stepping through outer expressions
 - Both need infrastructure that doesn't exist yet: "if normalizeExpr e k produces form X, flat machine can step e to match"
+### 2026-04-05T04:32:35+00:00 Run complete — L9050 partial: closed 10+ contradiction cases (atoms, break, continue, while_, labeled, tryCatch, return none, yield none), remaining sorry covers compound expressions. L9333/9334/9406/9407 unchanged — require full structural induction infrastructure.
