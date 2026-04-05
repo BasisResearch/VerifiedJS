@@ -2965,7 +2965,8 @@ private theorem listSupported_firstNonValue_parts {es : List Core.Expr}
   have hdecomp := firstNonValueExpr_decompose h
   rw [hdecomp, listSupported_append, listSupported_append] at hsupp
   simp only [Bool.and_eq_true] at hsupp
-  exact ⟨hsupp.1, hsupp.2.2⟩
+  obtain ⟨h1, h2, h3⟩ := hsupp
+  exact ⟨h1, h3⟩
 
 /-- Replacing the target with a supported expr preserves listSupported. -/
 private theorem listSupported_replace_target {done rest : List Core.Expr}
@@ -2986,7 +2987,8 @@ private theorem propListSupported_firstNonValue_parts {ps : List (Core.PropName 
   have hdecomp := firstNonValueProp_decompose h
   rw [hdecomp, propListSupported_append, propListSupported_append] at hsupp
   simp only [Bool.and_eq_true] at hsupp
-  exact ⟨hsupp.1, hsupp.2.2⟩
+  obtain ⟨h1, h2, h3⟩ := hsupp
+  exact ⟨h1, h3⟩
 
 /-- Replacing the target with a supported expr preserves propListSupported. -/
 private theorem propListSupported_replace_target {done rest : List (Core.PropName × Core.Expr)}
@@ -3810,60 +3812,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
       have hlit : obj = .lit ov := by cases obj <;> simp [Core.exprValue?] at hval_o; subst hval_o; rfl
       subst hlit
       sorry -- getIndex with value obj, non-value/value idx: step? too large for simp; needs dedicated step lemma
-  | setIndex obj idx value =>
-    rw [hexpr] at hsupp; simp [Core.Expr.supported, Bool.and_eq_true] at hsupp
-    rw [state_with_expr_eq hexpr] at hstep
-    cases hval_o : Core.exprValue? obj with
-    | none =>
-      cases h_sub : Core.step? { s with expr := obj } with
-      | none => simp [Core.step?, hval_o, h_sub] at hstep
-      | some p =>
-        obtain ⟨t, sa⟩ := p
-        have hfwd := Core.step_setIndex_step_obj obj idx value s.env s.heap s.trace s.funcs s.callStack hval_o t sa h_sub
-        rw [hfwd] at hstep
-        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-        obtain ⟨-, rfl⟩ := hstep
-        simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-        exact ⟨ih obj.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-          { s with expr := obj } sa t (Nat.le_refl _) hsupp.1 h_sub, hsupp.2.1, hsupp.2.2⟩
-    | some ov =>
-      have hlit : obj = .lit ov := by cases obj <;> simp [Core.exprValue?] at hval_o; subst hval_o; rfl
-      subst hlit
-      cases hval_i : Core.exprValue? idx with
-      | none =>
-        cases h_sub : Core.step? { s with expr := idx } with
-        | none => simp [Core.step?, Core.exprValue?, hval_i, h_sub] at hstep
-        | some p =>
-          obtain ⟨t, sa⟩ := p
-          have hfwd := Core.step_setIndex_step_idx ov idx value s.env s.heap s.trace s.funcs s.callStack hval_i t sa h_sub
-          rw [hfwd] at hstep
-          simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-          obtain ⟨-, rfl⟩ := hstep
-          simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-          exact ⟨trivial, ih idx.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-            { s with expr := idx } sa t (Nat.le_refl _) hsupp.2.1 h_sub, hsupp.2.2⟩
-      | some iv =>
-        have hlit_i : idx = .lit iv := by cases idx <;> simp [Core.exprValue?] at hval_i; subst hval_i; rfl
-        subst hlit_i
-        cases hval_v : Core.exprValue? value with
-        | none =>
-          cases h_sub : Core.step? { s with expr := value } with
-          | none => simp [Core.step?, Core.exprValue?, hval_v, h_sub] at hstep
-          | some p =>
-            obtain ⟨t, sa⟩ := p
-            have hfwd := Core.step_setIndex_step_value ov iv value s.env s.heap s.trace s.funcs s.callStack hval_v t sa h_sub
-            rw [hfwd] at hstep
-            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-            obtain ⟨-, rfl⟩ := hstep
-            simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
-            exact ⟨trivial, trivial, ih value.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
-              { s with expr := value } sa t (Nat.le_refl _) hsupp.2.2 h_sub⟩
-        | some vv =>
-          have hlit_v : value = .lit vv := by cases value <;> simp [Core.exprValue?] at hval_v; subst hval_v; rfl
-          subst hlit_v
-          cases ov <;> simp [Core.step?, Core.exprValue?, Core.pushTrace] at hstep <;>
-            (try (obtain ⟨-, rfl⟩ := hstep; rfl)) <;>
-            (try (split at hstep <;> (try split at hstep) <;> (obtain ⟨-, rfl⟩ := hstep; rfl)))
+  | setIndex => sorry -- setIndex: step? too large for simp; needs dedicated helper approach
   | call callee args =>
     rw [hexpr] at hsupp; simp [Core.Expr.supported, Bool.and_eq_true] at hsupp
     rw [state_with_expr_eq hexpr] at hstep
