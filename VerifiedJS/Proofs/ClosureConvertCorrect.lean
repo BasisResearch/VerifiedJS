@@ -1465,7 +1465,7 @@ private theorem closureConvert_init_related
     (h_supp : s.body.supported = true) :
     CC_SimRel s t (Flat.initialState t) (Core.initialState s) := by
   unfold CC_SimRel Flat.initialState Core.initialState
-  refine ⟨rfl, ⟨id, HeapInj_id _, ?_⟩, h_wf, ?_, ?_, ?_, ?_, h_supp, ?_, ?_⟩
+  refine ⟨rfl, ⟨id, HeapInj_id _, ?_⟩, h_wf, ?_, ?_, ?_, ?_, h_supp, ?funcs_supp, ?conv⟩
   · -- EnvCorrInj id: both envs have exactly one binding: "console" → .object 0
     show EnvCorr _ _
     have h_empty : EnvCorr Core.Env.empty Flat.Env.empty := by
@@ -1479,11 +1479,13 @@ private theorem closureConvert_init_related
     intro addr haddr props hprops kv hkv; dsimp at *; simp_all [ValueAddrWF]; rw [← hprops] at hkv; simp at hkv; subst hkv; trivial
   · -- heap.nextAddr = heap.objects.size
     rfl
-  · -- FuncsSupported: initial funcs = #[logBuiltin], body = .lit .undefined
+  case funcs_supp =>
+    -- FuncsSupported: initial funcs = #[logBuiltin], body = .lit .undefined
     intro i fd hi
     simp [Core.initialState] at hi
     simp_all [Core.Expr.supported]
-  · unfold Flat.closureConvert at h
+  case conv =>
+    unfold Flat.closureConvert at h
     simp only [Except.ok.injEq] at h
     let st2 := (Flat.convertFuncDefs s.functions.toList Flat.CCState.empty).fst.foldl
       (fun s f => (s.addFunc f).2) (Flat.convertFuncDefs s.functions.toList Flat.CCState.empty).2
