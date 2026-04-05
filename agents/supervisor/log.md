@@ -4994,3 +4994,58 @@ If proof closes L9460+L9469 and wasmspec closes L9050+if cases: ANF drops to ~15
 
 ## Run: 2026-04-05T04:31:32+00:00
 
+
+## Run: 2026-04-05T04:31:32+00:00
+
+### Metrics
+- **Sorry count**: ANF 26 + CC 13 = **39 real sorries**
+- **Delta from last run (03:30)**: -7 sorries (46→39). CC down from 20→13 (jsspec closed objectLit, arrayLit, tryCatch in Core_step_preserves_supported + helper lemmas). ANF unchanged at 26.
+
+### Agent Status
+1. **proof** (RUNNING, building ANF at 04:20): Working on L9485 (tryCatch step sim). Has correct targets. hasAbrupt/NoNestedAbrupt already proved. **Prompt UPDATED**: Refreshed line numbers to match current file state, clarified tryCatch decomposition pattern.
+
+2. **jsspec** (RUNNING, building CC at 04:10): EXCELLENT progress this cycle — closed objectLit, arrayLit, tryCatch (3 sorries in Core_step_preserves_supported). Only call remains. **Prompt UPDATED**: Acknowledged closures, updated sorry count to 13, refocused on call (L3914) with FuncsSupported invariant, then captured variable (L4082), then functionDef (L7094).
+
+3. **wasmspec** (RUNNING since 03:15): Working on if compound L9367/9368/9440/9441. Analyzed infrastructure last run but no closures yet. **Prompt REWRITTEN**: Gave concrete exfalso+normalizeExpr contradiction approach for compound condition cases. Suggested checking if cases are actually reachable (may be impossible by normalization).
+
+### Actions Taken
+1. Counted sorries: ANF 26 + CC 13 = 39 real sorries. Down 7 from last run.
+2. Killed stray supervisor `lake build` process to free memory.
+3. **Updated jsspec prompt**: Acknowledged 3 closures, updated to 13 sorries, refocused on call case with FuncsSupported approach.
+4. **Updated proof prompt**: Refreshed line numbers, kept tryCatch L9485 as priority.
+5. **Rewrote wasmspec prompt**: Gave exfalso+normalizeExpr contradiction strategy for if compound cases. These may be unreachable by normalization invariant.
+6. Logged to time_estimate.csv: 39 sorries.
+
+### Sorry Breakdown
+
+**ANF (26 sorries, unchanged):**
+- L7701-7887 (7): normalizeExpr_labeled eval context — PARKED
+- L8531-9023 (7): compound HasX — PARKED
+- L9079, 9083, 9084 (3): let compound — **proof target (secondary)**
+- L9174, 9186 (2): while step sim — deferred
+- L9367, 9368, 9440, 9441 (4): if compound — **wasmspec target**
+- L9485 (1): tryCatch step sim — **proof target (PRIORITY 1)**
+- L10785, 10838 (2): break/continue compound — PARKED
+
+**CC (13 sorries, down from 20):**
+- L3914 (1): call — **jsspec target (PRIORITY 1)**
+- L4082 (1): captured variable — **jsspec target**
+- L4411, L4434 (2): CCStateAgree if-branches — architecturally blocked
+- L4998 (1): funcs correspondence
+- L5206, L5214 (2): semantic mismatch — architecturally blocked
+- L5852 (1): UNPROVABLE getIndex string — SKIP
+- L7094 (1): functionDef — **jsspec target (lower priority)**
+- L7251, L7252 (2): tryCatch CCStateAgree — architecturally blocked
+- L7324 (1): tryCatch inner
+- L7432 (1): while_ CCState threading — architecturally blocked
+
+### Critical Assessment
+**7 sorry closures this cycle** — jsspec is delivering consistently. CC went from 30→20→13 across 3 cycles. Proof agent making infrastructure progress (hasAbrupt/NoNestedAbrupt proved) but hasn't closed primary ANF sorries yet. Wasmspec stuck on analysis without closures for 2+ runs — the exfalso approach may unblock it.
+
+**Next cycle expectations:**
+- jsspec: Close call (L3914) + captured variable (L4082) = -2 sorries
+- proof: Close tryCatch (L9485) = -1 sorry
+- wasmspec: Close if compound (L9367/9368/9440/9441) = -4 sorries if exfalso works
+
+**Potential total next run: 32 sorries** (39 - 7 expected closures)
+2026-04-05T04:36:46+00:00 DONE

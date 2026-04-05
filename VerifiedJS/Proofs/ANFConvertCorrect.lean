@@ -9065,14 +9065,14 @@ private theorem normalizeExpr_let_step_sim
   | «continue» _ =>
     exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
   | while_ wc wb =>
-    exfalso; simp only [ANF.normalizeExpr, StateT.run] at hnorm
+    exfalso; simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
     repeat (first | split at hnorm | simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm | exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1)
   | labeled l lbody =>
-    exfalso; simp only [ANF.normalizeExpr, StateT.run] at hnorm
+    exfalso; simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
     repeat (first | split at hnorm | simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm | exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1)
   | tryCatch tbody cp cbody fin =>
-    exfalso; simp only [ANF.normalizeExpr, StateT.run, Functor.map, StateT.map] at hnorm
-    repeat (first | split at hnorm | simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm | exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1)
+    exfalso; simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run, Except.bind, Functor.map, StateT.map, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
+    repeat (first | split at hnorm | simp [pure, Pure.pure, StateT.pure, Except.pure, bind, Bind.bind, StateT.bind, StateT.run, Except.bind, Functor.map, StateT.map] at hnorm | exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1)
   | «return» arg =>
     cases arg with
     | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
