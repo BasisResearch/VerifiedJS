@@ -9738,8 +9738,8 @@ private theorem normalizeExpr_if_compound_true_sim
       ANF_SimRel s t ⟨then_, env, heap, sa_trace ++ [.silent]⟩ sf' ∧
       ExprWellFormed sf'.expr sf'.env := by
   have hif := ANF.normalizeExpr_if_implies_hasIfInHead sf_expr k hk cond then_ else_ n m hnorm
-  cases hif with
-  | if_direct c_flat then_flat else_flat =>
+  cases hif
+  case if_direct c_flat then_flat else_flat =>
     cases c_flat with
     | lit fv =>
       obtain ⟨hcond_eq, n1, hthen_r, _⟩ := normalizeExpr_if_lit_decomp fv then_flat else_flat k n cond then_ else_ m hnorm
@@ -9809,7 +9809,7 @@ private theorem normalizeExpr_if_compound_true_sim
       exfalso; simp only [ANF.normalizeExpr_if'] at hnorm
       exact ANF.normalizeExpr_tryCatch_not_if body' cp cb fin _ cond then_ else_ n m hnorm
     | _ => sorry -- compound c_flat with HasIfInHead: needs eval context lifting / strong induction
-  | _ => sorry -- non-if_direct HasIfInHead: requires structural induction on depth
+  all_goals sorry -- non-if_direct HasIfInHead: requires structural induction on depth
 
 /-- Infrastructure: multi-step Flat simulation for compound if-expressions (false branch).
     Same as normalizeExpr_if_compound_true_sim but for the false/else branch.
@@ -9834,8 +9834,8 @@ private theorem normalizeExpr_if_compound_false_sim
       ANF_SimRel s t ⟨else_, env, heap, sa_trace ++ [.silent]⟩ sf' ∧
       ExprWellFormed sf'.expr sf'.env := by
   have hif := ANF.normalizeExpr_if_implies_hasIfInHead sf_expr k hk cond then_ else_ n m hnorm
-  cases hif with
-  | if_direct c_flat then_flat else_flat =>
+  cases hif
+  case if_direct c_flat then_flat else_flat =>
     cases c_flat with
     | lit fv =>
       obtain ⟨hcond_eq, n1, _, helse_r⟩ := normalizeExpr_if_lit_decomp fv then_flat else_flat k n cond then_ else_ m hnorm
@@ -9905,7 +9905,7 @@ private theorem normalizeExpr_if_compound_false_sim
       exfalso; simp only [ANF.normalizeExpr_if'] at hnorm
       exact ANF.normalizeExpr_tryCatch_not_if body' cp cb fin _ cond then_ else_ n m hnorm
     | _ => sorry -- compound c_flat with HasIfInHead: needs eval context lifting / strong induction
-  | _ => sorry -- non-if_direct HasIfInHead: requires structural induction on depth
+  all_goals sorry -- non-if_direct HasIfInHead: requires structural induction on depth
 
 /-- If normalizeExpr sf.expr k produces .if cond then_ else_ (with trivial-preserving k),
     then one ANF step on the if can be simulated by Flat steps. -/
