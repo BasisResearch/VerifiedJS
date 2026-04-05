@@ -1909,46 +1909,43 @@ private theorem Steps_ctx_lift_pres
       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1 := by
   induction hsteps with
   | refl =>
-    intro smid evs1 hmid hlen
-    simp at hlen; cases evs1 with
-    | nil => cases hmid with | refl => simp
-    | cons => simp at hlen
-  | @tail s1' s2 s3' t rest hstep_i hrest ih =>
-    intro smid evs1 hmid hlen
-    have hstep_eq := hstep_i.1
-    have hnotval := step?_some_implies_not_value hstep_eq
-    have hnoerr_t : ∀ msg, t ≠ .error msg := fun msg => hnoerr t (List.Mem.head rest) msg
-    obtain ⟨ws2, hwstep, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-      single_step s1' s1'.expr hnotval t s2 hstep_eq hnoerr_t
-    have hs2_pres := hpres s2 [t] (.tail hstep_i (.refl _)) (by simp)
-    obtain ⟨hs2f, hs2c, hs2t⟩ := hs2_pres
-    cases evs1 with
-    | nil => cases hmid with | refl => simp
-    | cons ev evs1' =>
-      simp at hlen
-      cases hmid with
-      | @tail _ ws_mid _ _ _ hstep_obj hrest_mid =>
-        have hstep_mid := hstep_obj.1
-        have h_eq : (ev, ws_mid) = (t, ws2) := by
-          have : Flat.step? ⟨wrap s1'.expr, s1'.env, s1'.heap, s1'.trace, s1'.funcs, s1'.callStack⟩
-            = some (t, ws2) := hwstep
-          rw [this] at hstep_mid; exact Option.some.inj hstep_mid
-        obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_eq
-        have hnoerr_rest : ∀ ev ∈ rest, ∀ msg, ev ≠ .error msg :=
-          fun ev hev msg => hnoerr ev (List.mem_cons_of_mem t hev) msg
-        have hpres_s2 : ∀ smid evs1, Flat.Steps s2 evs1 smid → evs1.length ≤ rest.length →
-            smid.funcs = s2.funcs ∧ smid.callStack = s2.callStack ∧ smid.trace = s2.trace ++ evs1 := by
-          intro smid evs1 hsteps_s2 hlen_s2
-          have h := hpres smid (t :: evs1) (.tail hstep_i hsteps_s2) (by simp; omega)
-          exact ⟨h.1.trans hs2f.symm, h.2.1.trans hs2c.symm,
-                 by rw [h.2.2, hs2t, List.append_assoc]; rfl⟩
-        have hws2_eq : ws2 = ⟨wrap s2.expr, s2.env, s2.heap, s2.trace, s2.funcs, s2.callStack⟩ := by
-          cases ws2 with | mk e env heap trace funcs cs =>
-          simp only [Flat.State.mk.injEq] at hwexpr hwenv hwheap hwfuncs hwcs hwtrace ⊢
-          exact ⟨hwexpr, hwenv, hwheap, hwtrace.trans hs2t.symm, hwfuncs.trans hs2f.symm, hwcs.trans hs2c.symm⟩
-        rw [hws2_eq] at hrest_mid
-        have ⟨hf, hc, ht⟩ := ih hnoerr_rest hpres_s2 smid evs1' hrest_mid (by omega)
-        exact ⟨hf.trans hs2f, hc.trans hs2c, by rw [ht, hs2t]; simp [List.append_assoc]⟩
+    intro smid evs1 hsteps_w hlen
+    have hnil : evs1 = [] := by cases evs1 with | nil => rfl | cons => simp at hlen
+    subst hnil; cases hsteps_w; exact ⟨rfl, rfl, by simp⟩
+  | @tail s1 s2 s3 t ts hstep hrest ih =>
+    intro smid evs1 hsteps_w hlen
+    cases hsteps_w with
+    | refl => exact ⟨rfl, rfl, by simp⟩
+    | @tail _ ws2 _ t' ts' hstep_w hrest_w =>
+      have hstep_eq := hstep.1
+      have hnotval := step?_some_implies_not_value hstep_eq
+      have hnoerr_t : ∀ msg, t ≠ .error msg := fun msg => hnoerr t (List.Mem.head ts) msg
+      obtain ⟨ws2_exp, hwstep, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        single_step s1 s1.expr hnotval t s2 hstep_eq hnoerr_t
+      -- Determinism: t' = t, ws2 = ws2_exp
+      have hdet := hstep_w.1; rw [hwstep] at hdet
+      simp only [Option.some.injEq, Prod.mk.injEq] at hdet
+      obtain ⟨rfl, rfl⟩ := hdet
+      -- Inner preservation for s2
+      have hs2_pres := hpres s2 [t] (.tail hstep (.refl _)) (by simp)
+      obtain ⟨hs2f, hs2c, hs2t⟩ := hs2_pres
+      -- ws2_exp = canonical wrapped s2 state
+      have hws2 : ws2_exp = ⟨wrap s2.expr, s2.env, s2.heap, s2.trace, s2.funcs, s2.callStack⟩ := by
+        cases ws2_exp with | mk e env heap trace funcs cs =>
+        simp only [Flat.State.mk.injEq] at hwexpr hwenv hwheap hwfuncs hwcs hwtrace ⊢
+        exact ⟨hwexpr, hwenv, hwheap, hwtrace.trans hs2t.symm, hwfuncs.trans hs2f.symm, hwcs.trans hs2c.symm⟩
+      rw [hws2] at hrest_w
+      have hnoerr_ts : ∀ ev ∈ ts, ∀ msg, ev ≠ .error msg :=
+        fun ev hev msg => hnoerr ev (List.mem_cons_of_mem t hev) msg
+      have hpres_s2 : ∀ smid' evs1', Flat.Steps s2 evs1' smid' → evs1'.length ≤ ts.length →
+          smid'.funcs = s2.funcs ∧ smid'.callStack = s2.callStack ∧ smid'.trace = s2.trace ++ evs1' := by
+        intro smid' evs1' hsteps_s2 hlen2
+        have h := hpres smid' (t :: evs1') (.tail hstep hsteps_s2) (by simp; omega)
+        exact ⟨h.1.trans hs2f.symm, h.2.1.trans hs2c.symm,
+               by rw [h.2.2, hs2t, List.append_assoc]; rfl⟩
+      have hlen_ts : ts'.length ≤ ts.length := by simp at hlen; omega
+      have ⟨hf, hc, ht⟩ := ih hnoerr_ts hpres_s2 smid ts' hrest_w hlen_ts
+      exact ⟨hf.trans hs2f, hc.trans hs2c, by rw [ht, hs2t]; simp [List.append_assoc]⟩
 
 /-- Bounded variant of Steps_ctx_lift: accepts bounded inner hpres. -/
 private theorem Steps_ctx_lift_b

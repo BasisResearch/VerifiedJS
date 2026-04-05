@@ -6004,3 +6004,64 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 ## Run: 2026-04-05T16:00:03+00:00
 
 2026-04-05T16:05:01+00:00 SKIP: already running
+
+### Metrics
+- **Sorry count**: ANF 40 + CC 12 = **52 real sorries**
+- **Delta from last run (15:30)**: -16 (68→52). **COUNT DOWN — wasmspec closed 16 hpres sorries!**
+- **Lower**: 0 sorries (DONE)
+
+### Why count went DOWN (-16): wasmspec hpres fix landed
+- ANF went from 56→40 (-16): wasmspec built Steps_ctx_lift_pres, Steps_*_ctx_b bounded wrappers, and closed ALL 16 hpres sorries. Massive win.
+- CC unchanged at 12: jsspec's Core_step_preserves_funcs_supported build still running (started 15:54).
+
+### Agent Status
+1. **proof** (last completed ~15:30): Built Steps_throw_pres, Steps_return_some_pres, Steps_await_pres, Steps_yield_some_pres infrastructure. These were for hpres but wasmspec closed those independently. Prompt UPDATED: redirected to 8 UNLOCK sorries (L11566-11691) in compound_true/false_sim. Gave concrete proof pattern for each.
+
+2. **jsspec** (RUNNING since 15:00): Core_step_preserves_funcs_supported build running since 15:54. Prompt UPDATED: monitor build, then L7922 (functionDef).
+
+3. **wasmspec** (completed ~15:58): Closed 16 hpres sorries. MASSIVE win. Prompt UPDATED: target trivialChain (L11082/11305, 2 easy wins), seq_right (L11133/11354, 2 medium), exotic (L11240/11461, 2 hard but potentially contradictions).
+
+### Actions Taken
+1. Killed stale supervisor build (freed memory for agent builds)
+2. Updated ALL 3 agent prompts:
+   - wasmspec: New targets — trivialChain (2), seq_right (2), exotic (2). Gave concrete proof patterns for trivialChain (copy L11568-11572 pattern). Suggested exotic cases might be contradictions.
+   - proof: MAJOR redirect — 8 UNLOCK sorries with concrete proof pattern (normalizeExpr_if_branch_step + Steps_if_cond_ctx_b lift). Prioritized L11578/11691 as easiest (direct application, no lift needed).
+   - jsspec: Refreshed line numbers, same priority (build monitoring → L7922)
+3. Logged to time_estimate.csv.
+
+### Sorry Classification (52 total)
+**ANF (40):**
+- 7 compound eval context inner (L8685-8871)
+- 7 compound HasX head (L9515-10007)
+- 3 compound return/yield/misc (L10063-10068)
+- 2 while condition (L10158-10170)
+- 2 trivialChain (L11082, L11305) ← wasmspec targeting
+- 2 seq_right (L11133, L11354) ← wasmspec targeting
+- 2 exotic (L11240, L11461) ← wasmspec targeting
+- 8 UNLOCK (L11566-11691) ← proof targeting
+- 3 tryCatch (L12153-12174) ← architecturally blocked
+- 2 call site (L13257-13268) ← architecturally blocked
+- 2 break/continue (L13488-13541) ← architecturally blocked
+
+**CC (12):**
+- 1 building: L4910 (FuncsSupported — jsspec build running)
+- 1 next: L7922 (functionDef)
+- 1 next: L5826 (FuncsCorr)
+- 1 unprovable: L6680 (getIndex string)
+- 2 architecturally blocked: L5239, L5262 (CCStateAgree)
+- 2 architecturally blocked: L6034, L6042 (semantic mismatch)
+- 3 tryCatch: L8079, L8080, L8152
+- 1 while: L8260
+
+### Critical Assessment
+**Sorry count DOWN 16 is a major milestone.** First significant drop of the day.
+
+**Next cycle potential:**
+- wasmspec: trivialChain (2) should be easy (pattern exists at L11568). seq_right (2) medium. exotic (2) needs investigation. Target: 4-6.
+- proof: UNLOCK (8) — L11578/11691 should be straightforward (direct application). Others need eval context lift wiring. Target: 2-8.
+- jsspec: L4910 build completes → CC drops to 11. Then L7922. Target: 1-2.
+
+**Best case next run: 40-44.** Realistic: 44-48.
+
+---
+2026-04-05T16:08:08+00:00 DONE
