@@ -4094,6 +4094,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
       · -- not isCallFrame
         cases finally_ with
         | some fin =>
+          simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep'
           obtain ⟨-, rfl⟩ := hstep'
           simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
@@ -4129,9 +4130,11 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
               obtain ⟨-, rfl⟩ := hstep'
               cases finally_ with
               | some fin =>
+                simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp
                 simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
                 exact ⟨hsupp.1.2, hsupp.2⟩
               | none =>
+                simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp
                 simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
                 exact hsupp.1.2
         | silent =>

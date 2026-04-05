@@ -5951,3 +5951,60 @@ SimRel reconstruction after body-step requires that `normalizeExpr` produces the
 
 ### 2026-04-05T12:30:15+00:00 Starting run
 2026-04-05T13:30:07+00:00 SKIP: already running
+
+### 2026-04-05T12:30 — Run analysis and documentation
+
+**Build status**: PRE-EXISTING BREAKAGE (44 Lean errors). Not caused by this run.
+VarFreeIn.tryCatch_fin_some renamed to tryCatch_finally but usage at L11375 not updated.
+Multiple other tactic failures in L11147-11399 range (normalizeExpr_tryCatch_decomp, value cases).
+
+**Changes made**:
+1. **L11330 body-error sorry**: Decomposed into structured proof steps:
+   - Step 1: Construct body SimRel ✓
+   - Step 2: ExprWellFormed for body_f ✓  
+   - Step 3: Invoke body_sim ✓
+   - Step 4: Extract SimRel components ✓
+   - Step 5: sorry (lifting body steps through tryCatch + catching error)
+   Added detailed BLOCKER documentation.
+
+2. **L11343 body-step sorry**: Updated comment with detailed BLOCKER analysis:
+   - CallStack propagation issue
+   - Counter alignment issue
+
+3. **L12429 noCallFrameReturn sorry**: Updated comment with detailed analysis of why
+   it can't be proved from current hypotheses and what invariant is needed.
+
+**Key findings — architectural blockers**:
+
+1. **CallStack propagation** (affects body-error AND body-step):
+   Steps_tryCatch_body_ctx requires `smid.callStack = s1.callStack` for all intermediate
+   body states. But body steps with `.call` change callStack (push env onto stack).
+   The tryCatch body-advance step uses the OUTER tryCatch's callStack (fixed via
+   `{ s with ... }`), not the body's callStack. So step? on the tryCatch's internal
+   body state uses a DIFFERENT callStack than the body_sim's Flat.Steps.
+   
+   ROOT CAUSE: Flat.step? for `.call` at L472-478 pushes to callStack. The tryCatch
+   body-advance at L942-945 uses `{ s with ... }` which preserves outer callStack.
+   
+   FIX OPTIONS:
+   (a) Prove body_sim Flat.Steps never change callStack (FALSE for calls)
+   (b) Redesign tryCatch lifting to not require callStack preservation
+   (c) Write a new version of Steps_tryCatch_body_ctx that reconstructs states
+       with the correct (outer) callStack at each step
+
+2. **Counter alignment** (affects body-step):
+   SimRel reconstruction for `.tryCatch sb.expr cp catchBody finally_` needs
+   normalizeExpr (.tryCatch sf_b'.expr cp cb_f fin_f) k at counter n_tc to produce
+   the EXACT same expression. But normalizeExpr uses fresh name counter (freshName),
+   and cb_f/fin_f normalization starts at n_tc ≠ n1 (original counter).
+   Different counters → different _anfN names → different expressions.
+
+3. **NoCallFrameParam invariant** (affects noCallFrameReturn):
+   Need `catchParam ≠ "__call_frame_return__"` but no current hypothesis provides this.
+   Cannot add to NoNestedAbrupt because function call stepping at L12115 constructs
+   `.tryCatch_none (hfuncs_na ...) .var` with "__call_frame_return__" as catch param.
+   Need separate predicate threaded through anfConvert_step_star.
+
+**Sorry count**: No change (my edits decompose sorries but don't close any).
+### 2026-04-05T13:41:40+00:00 Run complete — documented blockers, decomposed body-error sorry, no new errors
+2026-04-05T13:41:49+00:00 DONE

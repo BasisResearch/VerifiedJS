@@ -1893,6 +1893,24 @@ private def Steps_tryCatch_body_ctx (catchParam : String) (catchBody : Flat.Expr
     (fun s inner hv t si hs he => step?_tryCatch_body_ctx s inner catchParam catchBody finally_ hv t si hs he)
     hsteps hnoerr hpres
 
+/-- Multi-step lifting through .unary op [·] context. -/
+private def Steps_unary_ctx (op : Core.UnaryOp)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift (.unary op ·) (fun s inner hv t si hs he => step?_unary_ctx s op inner hv t si hs he)
+    hsteps hnoerr hpres
+
+/-- Multi-step lifting through .binary op [·] rhs context. -/
+private def Steps_binary_lhs_ctx (op : Core.BinOp) (rhs : Flat.Expr)
+    {s1 s3 : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs s3) (hnoerr : ∀ ev ∈ evs, ∀ msg, ev ≠ .error msg)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid →
+       smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :=
+  Steps_ctx_lift (.binary op · rhs) (fun s inner hv t si hs he => step?_binary_lhs_ctx s op inner rhs hv t si hs he)
+    hsteps hnoerr hpres
+
 /-- Build left-associated seq spine: wrapSeqCtx e [a,b,c] = .seq (.seq (.seq e a) b) c -/
 private def wrapSeqCtx (inner : Flat.Expr) : List Flat.Expr → Flat.Expr
   | [] => inner
