@@ -3950,7 +3950,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           | true =>
             -- consoleLog: idx = consoleLogIdx
             have hidx : idx = Core.consoleLogIdx := by
-              have := Nat.eq_of_beq_eq_true hcl; exact this
+              simp [BEq.beq] at hcl; exact hcl
             subst hidx
             obtain ⟨msg, hfwd⟩ := Core.step_call_consoleLog args argVals s.env s.heap s.trace s.funcs s.callStack hallv
             rw [hfwd] at hstep
