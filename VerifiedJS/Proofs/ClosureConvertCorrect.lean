@@ -1453,7 +1453,7 @@ private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
   HeapValuesWF sc.heap ∧
   sc.heap.nextAddr = sc.heap.objects.size ∧
   sc.expr.supported = true ∧
-  (∀ i (fd : Core.FuncClosure), sc.funcs[i]? = some fd → fd.body.supported = true) ∧
+  (∀ (i : Nat) (fd : Core.FuncClosure), sc.funcs[i]? = some fd → fd.body.supported = true) ∧
   ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
     (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
 
@@ -3466,13 +3466,13 @@ private theorem state_with_expr_eq {s : Core.State} {e : Core.Expr} (h : s.expr 
 set_option maxHeartbeats 8000000 in
 private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.TraceEvent)
     (hsupp : s.expr.supported = true)
-    (hfuncs_supp : ∀ i (fd : Core.FuncClosure), s.funcs[i]? = some fd → fd.body.supported = true)
+    (hfuncs_supp : ∀ (i : Nat) (fd : Core.FuncClosure), s.funcs[i]? = some fd → fd.body.supported = true)
     (hstep : Core.step? s = some (ev, s')) :
     s'.expr.supported = true := by
   -- Prove by strong induction on expression depth (needed for sub-expression stepping cases)
   suffices ∀ (n : Nat) (s s' : Core.State) (ev : Core.TraceEvent),
       s.expr.depth ≤ n → s.expr.supported = true →
-      (∀ i (fd : Core.FuncClosure), s.funcs[i]? = some fd → fd.body.supported = true) →
+      (∀ (i : Nat) (fd : Core.FuncClosure), s.funcs[i]? = some fd → fd.body.supported = true) →
       Core.step? s = some (ev, s') →
       s'.expr.supported = true by
     exact this s.expr.depth s s' ev (Nat.le_refl _) hsupp hfuncs_supp hstep
@@ -4173,12 +4173,13 @@ private theorem closureConvert_step_simulation
         (∃ (st_a st_a' : Flat.CCState),
           (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
           CCStateAgree st st_a ∧ CCStateAgree st' st_a') by
-    intro sf sc ev sf' ⟨htrace, ⟨injMap, hinj, henv⟩, hncfr, hexprwf, henvwf, hheapvwf, hheapna, hsupp, hfuncs_supp, scope, envVar, envMap, st, st', hconv⟩ hstep
+    intro sf sc ev sf' hrel hstep
+    obtain ⟨htrace, ⟨injMap, hinj, henv⟩, hncfr, hexprwf, henvwf, hheapvwf, hheapna, hsupp, hfuncs_supp, scope, envVar, envMap, st, st', hconv⟩ := hrel
     obtain ⟨injMap', sc', hcstep, htrace', hinj', henv', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', _, _⟩ :=
       this sc.expr.depth envVar envMap injMap sf sc ev sf' scope st st' rfl htrace hinj henv henvwf hheapvwf hheapna hncfr hexprwf hsupp hconv hstep
     have hsupp' : sc'.expr.supported = true :=
       Core_step_preserves_supported _ _ _ hsupp hfuncs_supp (by obtain ⟨h⟩ := hcstep; exact h)
-    have hfuncs_supp' : ∀ i (fd : Core.FuncClosure), sc'.funcs[i]? = some fd → fd.body.supported = true :=
+    have hfuncs_supp' : ∀ (i : Nat) (fd : Core.FuncClosure), sc'.funcs[i]? = some fd → fd.body.supported = true :=
       sorry -- FuncsSupported preservation: step? either preserves funcs or pushes supported body
     exact ⟨sc', hcstep, htrace', ⟨injMap', hinj', henv'⟩, hncfr', hexprwf', henvwf', hheapvwf', hheapna', hsupp', hfuncs_supp', scope, envVar, envMap, st_a, st_a', hconv'⟩
   intro n

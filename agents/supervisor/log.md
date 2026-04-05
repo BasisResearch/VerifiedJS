@@ -1,3 +1,57 @@
+## Run: 2026-04-05T12:00:06+00:00
+
+### Metrics
+- **Sorry count**: ANF 47 + CC 13 = **60 real sorries**
+- **Delta from last run (11:30)**: +13 (47→60). **COUNT UP — decomposition from wasmspec.**
+- **Lower**: 0 sorries (DONE)
+
+### Why count went UP (+13): Decomposition, not regression
+- ANF went from 34→47 (+13): wasmspec decomposed 2 broad normalizeExpr_if_branch_step sorries into 12 fine-grained sorries at L10563-10643 (hpres, trivialChain wiring, IH applications, exotic cases). Also proof agent net +2 at tryCatch call site (added noCallFrameReturn + body_sim precondition sorries at L12443-12444). Line shifts from insertions.
+- CC unchanged at 13 (jsspec currently building CC, L4182 still open)
+- wasmspec proved 4 NEW lemmas (trivialChain_eval_value, no_if_head_implies_trivial_chain, trivialChain_if_true_sim, trivialChain_if_false_sim). Seq ¬HasIfInHead CLOSED in both branches.
+- proof agent added step?_tryCatch_body_ctx lifting lemma, normalizeExpr_tryCatch_decomp, proved call frame cases. Identified counter-alignment as core blocker for body-step.
+
+### Agent Status
+1. **proof** (completed 11:52): Proved call frame sorries, added tryCatch body context lifting. Counter-alignment identified as blocker for body-step. Prompt UPDATED: redirected to L12443 (noCallFrameReturn, easy) first, then body-error (which avoids counter issue via fresh catch handler SimRel).
+
+2. **jsspec** (BUILDING CC since 11:55): L4182 FuncsSupported still open. Prompt UPDATED: same targets, refreshed line numbers and strategy.
+
+3. **wasmspec** (RUNNING since 11:15): 4 new lemmas proved, heavy decomposition (+12 sorries from expansion). Prompt UPDATED: MAJOR redirect — close the 12 decomposition sorries using their OWN proven infrastructure (trivialChain_eval_value for hpres, trivialChain_if_true_sim for L10571, etc.).
+
+### Actions Taken
+1. **Killed stale supervisor build** (740MB RSS freed → 2.4GB available now)
+2. Updated ALL 3 agent prompts:
+   - proof: Updated line numbers (L11344/11357/11360, L12443/12444), added counter-alignment workaround for body-error (catch handler gets fresh SimRel), prioritized L12443 as easy win
+   - jsspec: Refreshed line numbers, same priority (L4182 first)
+   - wasmspec: MAJOR: redirected to close their OWN 12 decomposition sorries using their 4 proven lemmas. Detailed wiring instructions for each sorry group.
+3. Logged to time_estimate.csv.
+
+### Sorry Classification (60 total)
+**ANF (47):**
+- 7 in proof's zone (tryCatch L11344/11357/11360, preconditions L12443/12444, break/continue L12664/12717)
+- 28 in wasmspec's zone (decomposed if branch L10563-10643 ×12, if compound L10787-10912 ×8, symmetric L10682 ×1, plus 7 labeled inner L8173-8359)
+- 12 systemic compound eval context sorries (L9003-9658 range) — unblocked by wasmspec's general lemma
+
+**CC (13):**
+- 1 closeable: L4182 (FuncsSupported outer — jsspec must close)
+- 1 closeable: L5125 (FuncsCorr)
+- 1 closeable: L7221 (functionDef)
+- 1 unprovable: L5979 (getIndex string)
+- 9 architecturally blocked: L4209/4538/4561/5333/5341/7378/7379/7451/7559
+
+### Critical Assessment
+**Sorry count UP +13 is ALL decomposition.** No real regressions. wasmspec is doing the right thing — breaking broad sorries into tractable pieces. The 4 proved lemmas are exactly the infrastructure needed to close most of the 12 new sorries.
+
+**wasmspec is the #1 lever.** Their proven trivialChain infrastructure can close L10563/10571/10591/10619 almost immediately. If they wire everything in, ANF drops by ~10 this cycle.
+
+**proof agent should target L12443 first (easy noCallFrameReturn win), then body-error.** Body-error avoids the counter-alignment issue because the catch handler gets a fresh normalizeExpr call.
+
+**jsspec building CC — L4182 should close this cycle** since it follows the exact same pattern as L3970 (which they already proved).
+
+**Expected next run: 48-55** (wasmspec closes 5-12 decomposition sorries, proof closes 0-2, jsspec closes 0-1 CC).
+
+---
+
 ## Run: 2026-04-05T11:30:07+00:00
 
 ### Metrics
@@ -5682,3 +5736,4 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 ## Run: 2026-04-05T12:00:06+00:00
 
 2026-04-05T12:05:01+00:00 SKIP: already running
+2026-04-05T12:05:54+00:00 DONE

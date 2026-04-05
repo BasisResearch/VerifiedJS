@@ -10554,17 +10554,13 @@ private theorem normalizeExpr_if_branch_step :
           Steps_if_cond_ctx then_flat else_flat hsteps_c
             (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
             hpres_c
-        refine ⟨ws, evs_c, hwsteps, hsil_c, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-        · exact hwenv.trans henv_c
-        · exact hwheap.trans hheap_c
-        · exact hwfuncs.trans hfuncs_c
-        · exact hwcs.trans hcs_c
-        · rw [hwtrace, htrace_c]
+        refine ⟨ws, evs_c, hwsteps, hsil_c, hwenv.trans henv_c, hwheap.trans hheap_c,
+        hwfuncs, hwcs, by rw [hwtrace, htrace_c], ?_, ?_, ?_⟩
         · sorry -- hpres for ws: follows from structure of lifted steps
         · exact ⟨n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c⟩
         · rw [hwexpr, hwenv, henv_c]; exact fun x hfx => by
             cases hfx with
-            | if_cond _ _ _ _ h => exact hewf_c x h
+            | if_cond _ _ _ _ h => exact henv_c ▸ hewf_c x h
             | if_then _ _ _ _ h => exact hewf x (VarFreeIn.if_then _ _ _ _ h)
             | if_else _ _ _ _ h => exact hewf x (VarFreeIn.if_else _ _ _ _ h)
       · -- ¬HasIfInHead c_flat: c_flat is trivialChain, evaluate to value, then branch
@@ -10582,17 +10578,13 @@ private theorem normalizeExpr_if_branch_step :
         Steps_if_cond_ctx then_flat else_flat hsteps_c
           (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_c
-      refine ⟨ws, evs_c, hwsteps, hsil_c, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-      · exact hwenv.trans henv_c
-      · exact hwheap.trans hheap_c
-      · exact hwfuncs.trans hfuncs_c
-      · exact hwcs.trans hcs_c
-      · rw [hwtrace, htrace_c]
+      refine ⟨ws, evs_c, hwsteps, hsil_c, hwenv.trans henv_c, hwheap.trans hheap_c,
+        hwfuncs, hwcs, by rw [hwtrace, htrace_c], ?_, ?_, ?_⟩
       · sorry -- hpres for ws
       · exact ⟨n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c⟩
       · rw [hwexpr, hwenv, henv_c]; exact fun x hfx => by
           cases hfx with
-          | if_cond _ _ _ _ h => exact hewf_c x h
+          | if_cond _ _ _ _ h => exact henv_c ▸ hewf_c x h
           | if_then _ _ _ _ h => exact hewf x (VarFreeIn.if_then _ _ _ _ h)
           | if_else _ _ _ _ h => exact hewf x (VarFreeIn.if_else _ _ _ _ h)
     | seq_left h_a =>
@@ -10600,22 +10592,16 @@ private theorem normalizeExpr_if_branch_step :
       rename_i a b
       simp only [ANF.normalizeExpr_seq'] at hnorm
       have ha_depth : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
-      -- IH on a with K' = fun _ => normalizeExpr b K
       obtain ⟨sf_a, evs_a, hsteps_a, hsil_a, henv_a, hheap_a, hfuncs_a, hcs_a,
         htrace_a, hpres_a, ⟨n_a, m_a, hnorm_a⟩, hewf_a⟩ :=
         ih a ha_depth h_a env heap trace funcs cs _ n m cond then_ else_ v
           hnorm (fun x hfx => hewf x (VarFreeIn.seq_l _ _ _ hfx)) heval hbool
-      -- Lift through .seq [·] b context
       obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
         Steps_seq_ctx b hsteps_a
           (fun ev hev msg => by rw [hsil_a ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_a
-      refine ⟨ws, evs_a, hwsteps, hsil_a, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-      · exact hwenv.trans henv_a
-      · exact hwheap.trans hheap_a
-      · exact hwfuncs.trans hfuncs_a
-      · exact hwcs.trans hcs_a
-      · rw [hwtrace, htrace_a]
+      refine ⟨ws, evs_a, hwsteps, hsil_a, hwenv.trans henv_a, hwheap.trans hheap_a,
+        hwfuncs, hwcs, by rw [hwtrace, htrace_a], ?_, ?_, ?_⟩
       · sorry -- hpres for ws
       · exact ⟨n_a, m_a, by rw [hwexpr]; simp only [ANF.normalizeExpr_seq']; exact hnorm_a⟩
       · sorry -- ExprWellFormed: ws.expr = .seq sf_a.expr b
