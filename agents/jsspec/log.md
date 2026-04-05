@@ -3371,3 +3371,9 @@ The only sorry is at L3970: closure body supported. Requires `∀ i c, s.funcs[i
 2026-04-05T17:00:01+00:00 SKIP: already running
 ### 2026-04-05T17:48:55+00:00 Build attempt: 3 errors in my code (funcs theorem tryCatch IH call), ~6 pre-existing errors in rest of file. Working on fixes.
 2026-04-05T18:00:05+00:00 SKIP: already running
+### 2026-04-05T18:55:12+00:00 SUCCESS: Closed L4197 (FuncsSupported preservation). Wrote Core_step_preserves_funcs_supported theorem (~690 lines). Also fixed pre-existing tryCatch and initial funcs_supp errors in Core_step_preserves_supported. All errors in my code are resolved. Remaining errors are pre-existing at 8000+ lines (other cases in closureConvert_step_simulation). Sorry count: 12 actual (down from 13).
+### 2026-04-05T18:55:16+00:00 Run complete — closed L4197 FuncsSupported sorry
+2026-04-05T18:56:24+00:00 DONE
+
+## Run: 2026-04-05T19:00:01+00:00
+
