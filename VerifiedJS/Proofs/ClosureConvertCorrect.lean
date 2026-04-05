@@ -1588,6 +1588,74 @@ private theorem propListSupported_firstNonValueProp_target {ps : List (Core.Prop
       simp at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
       exact hsupp.1
 
+/-- listSupported distributes over append. -/
+private theorem listSupported_append (a b : List Core.Expr) :
+    Core.Expr.listSupported (a ++ b) = (Core.Expr.listSupported a && Core.Expr.listSupported b) := by
+  induction a with
+  | nil => simp [Core.Expr.listSupported]
+  | cons e es ih => simp [Core.Expr.listSupported, ih, Bool.and_assoc]
+
+/-- propListSupported distributes over append. -/
+private theorem propListSupported_append (a b : List (Core.PropName × Core.Expr)) :
+    Core.Expr.propListSupported (a ++ b) = (Core.Expr.propListSupported a && Core.Expr.propListSupported b) := by
+  induction a with
+  | nil => simp [Core.Expr.propListSupported]
+  | cons p ps ih => obtain ⟨pn, pe⟩ := p; simp [Core.Expr.propListSupported, ih, Bool.and_assoc]
+
+/-- If firstNonValueExpr decomposes a list and all elements are supported,
+    then done values are supported and rest is supported. -/
+private theorem listSupported_firstNonValue_parts {es : List Core.Expr}
+    {done target rest}
+    (h : Core.firstNonValueExpr es = some (done, target, rest))
+    (hsupp : Core.Expr.listSupported es = true) :
+    Core.Expr.listSupported done = true ∧ Core.Expr.listSupported rest = true := by
+  have hdecomp := firstNonValueExpr_decompose h
+  rw [hdecomp, listSupported_append, listSupported_append] at hsupp
+  simp [Bool.and_eq_true, Core.Expr.listSupported] at hsupp
+  exact ⟨hsupp.1, hsupp.2.2⟩
+
+/-- Replacing the target with a supported expr preserves listSupported. -/
+private theorem listSupported_replace_target {done rest : List Core.Expr}
+    (e : Core.Expr) (hd_supp : Core.Expr.listSupported done = true)
+    (he_supp : e.supported = true)
+    (hr_supp : Core.Expr.listSupported rest = true) :
+    Core.Expr.listSupported (done ++ [e] ++ rest) = true := by
+  rw [listSupported_append, listSupported_append]
+  simp [Bool.and_eq_true, Core.Expr.listSupported, hd_supp, he_supp, hr_supp]
+
+/-- If firstNonValueProp decomposes a prop list and all elements are supported,
+    then done values are supported and rest is supported. -/
+private theorem propListSupported_firstNonValue_parts {ps : List (Core.PropName × Core.Expr)}
+    {done name target rest}
+    (h : Core.firstNonValueProp ps = some (done, name, target, rest))
+    (hsupp : Core.Expr.propListSupported ps = true) :
+    Core.Expr.propListSupported done = true ∧ Core.Expr.propListSupported rest = true := by
+  have hdecomp : ps = done ++ [(name, target)] ++ rest := by
+    induction ps generalizing done with
+    | nil => simp [Core.firstNonValueProp] at h
+    | cons p ps' ih =>
+      obtain ⟨pn, pe⟩ := p; unfold Core.firstNonValueProp at h; split at h
+      · match hrest : Core.firstNonValueProp ps' with
+        | some (d, n, t, r) =>
+          simp only [hrest, Option.some.injEq, Prod.mk.injEq] at h
+          obtain ⟨rfl, rfl, rfl, rfl⟩ := h
+          have := ih hrest; simp [this]
+        | none => simp [hrest] at h
+      · simp at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h; simp
+  rw [hdecomp, propListSupported_append, propListSupported_append] at hsupp
+  simp [Bool.and_eq_true, Core.Expr.propListSupported] at hsupp
+  exact ⟨hsupp.1, hsupp.2.2⟩
+
+/-- Replacing the target with a supported expr preserves propListSupported. -/
+private theorem propListSupported_replace_target {done rest : List (Core.PropName × Core.Expr)}
+    (name : Core.PropName) (e : Core.Expr)
+    (hd_supp : Core.Expr.propListSupported done = true)
+    (he_supp : e.supported = true)
+    (hr_supp : Core.Expr.propListSupported rest = true) :
+    Core.Expr.propListSupported (done ++ [(name, e)] ++ rest) = true := by
+  rw [propListSupported_append, propListSupported_append]
+  simp [Bool.and_eq_true, Core.Expr.propListSupported, hd_supp, he_supp, hr_supp]
+
 -- Helper lemmas for Core.step? on simple expressions (Core.step? is too large for simp in context)
 private theorem Core_step?_this_found (s : Core.State) (v : Core.Value)
     (h : s.env.lookup "this" = some v) :
@@ -3824,10 +3892,192 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           cases ov <;> simp [Core.step?, Core.exprValue?, Core.pushTrace] at hstep <;>
             (try (obtain ⟨-, rfl⟩ := hstep; rfl)) <;>
             (try (split at hstep <;> (try split at hstep) <;> (obtain ⟨-, rfl⟩ := hstep; rfl)))
-  | call => sorry
-  | objectLit => sorry
-  | arrayLit => sorry
-  | tryCatch => sorry
+  | call callee args =>
+    rw [hexpr] at hsupp; simp [Core.Expr.supported, Bool.and_eq_true] at hsupp
+    rw [state_with_expr_eq hexpr] at hstep
+    cases hcval : Core.exprValue? callee with
+    | none =>
+      cases h_sub : Core.step? { s with expr := callee } with
+      | none => simp [Core.step?, hcval, h_sub] at hstep
+      | some p =>
+        obtain ⟨t, sc'⟩ := p
+        have hfwd := Core.step_call_step_callee callee args s.env s.heap s.trace s.funcs s.callStack hcval t sc' h_sub
+        rw [hfwd] at hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep
+        simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
+        exact ⟨ih callee.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          { s with expr := callee } sc' t (Nat.le_refl _) hsupp.1 h_sub, hsupp.2⟩
+    | some cv =>
+      have hlit : callee = .lit cv := by cases callee <;> simp [Core.exprValue?] at hcval; subst hcval; rfl
+      subst hlit
+      cases hallv : Core.allValues args with
+      | some argVals =>
+        -- All args are values: case split on callee value type
+        simp [Core.step?, Core.exprValue?, hallv] at hstep
+        cases cv with
+        | function idx =>
+          simp at hstep
+          split at hstep
+          · -- consoleLog: .lit .undefined
+            simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
+          · -- Non-consoleLog: depends on funcs[idx]
+            split at hstep
+            · -- some closure: .tryCatch closure.body ...
+              -- Need closure.body.supported — not provable from hsupp alone
+              simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep
+              simp [Core.Expr.supported, Bool.and_eq_true]
+              sorry -- closure.body.supported: needs FuncsSupported invariant (all funcs have supported bodies)
+            · -- funcs[idx] = none: .lit .undefined
+              simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
+        | _ =>
+          -- Non-function callee: .lit .undefined
+          simp [Core.pushTrace] at hstep
+          (try (obtain ⟨-, rfl⟩ := hstep; rfl))
+          (try (split at hstep <;> (try split at hstep) <;> (simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl)))
+      | none =>
+        -- Not all values: step first non-value arg
+        cases hfnv : Core.firstNonValueExpr args with
+        | some val =>
+          obtain ⟨done, target, rest⟩ := val
+          cases h_sub : Core.step? { s with expr := target } with
+          | none =>
+            simp [Core.step?, Core.exprValue?, hallv, hfnv, h_sub] at hstep
+          | some p =>
+            obtain ⟨t, sa⟩ := p
+            have hfwd := Core.step_call_step_arg cv args s.env s.heap s.trace s.funcs s.callStack hallv done target rest hfnv t sa h_sub
+            rw [hfwd] at hstep
+            simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+            obtain ⟨-, rfl⟩ := hstep
+            simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
+            have ⟨hd_supp, hr_supp⟩ := listSupported_firstNonValue_parts hfnv hsupp.2
+            have ht_supp := listSupported_firstNonValueExpr_target hfnv hsupp.2
+            have hsa_supp := ih target.depth
+              (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; have := Core.firstNonValueExpr_depth hfnv; omega)
+              { s with expr := target } sa t (Nat.le_refl _) ht_supp h_sub
+            exact ⟨trivial, listSupported_replace_target sa.expr hd_supp hsa_supp hr_supp⟩
+        | none =>
+          -- firstNonValueExpr = none but allValues = none: contradiction
+          exact (Core.allValues_firstNonValue_contra hallv hfnv).elim
+  | objectLit props =>
+    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+    rw [state_with_expr_eq hexpr] at hstep
+    cases hfnv : Core.firstNonValueProp props with
+    | some val =>
+      obtain ⟨done, k, target, rest⟩ := val
+      cases h_sub : Core.step? { s with expr := target } with
+      | none =>
+        simp [Core.step?, hfnv, h_sub] at hstep
+      | some p =>
+        obtain ⟨t, se⟩ := p
+        have hfwd := Core.step_objectLit_step_prop props s.env s.heap s.trace s.funcs s.callStack done k target rest hfnv t se h_sub
+        rw [hfwd] at hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep
+        simp only [Core.pushTrace, Core.Expr.supported]
+        have ⟨hd_supp, hr_supp⟩ := propListSupported_firstNonValue_parts hfnv hsupp
+        have ht_supp := propListSupported_firstNonValueProp_target hfnv hsupp
+        have hse_supp := ih target.depth
+          (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; have := Core.firstNonValueProp_depth hfnv; omega)
+          { s with expr := target } se t (Nat.le_refl _) ht_supp h_sub
+        exact propListSupported_replace_target k se.expr hd_supp hse_supp hr_supp
+    | none =>
+      -- All props are values: allocate object, result is .lit (.object addr)
+      simp [Core.step?, hfnv, Core.pushTrace] at hstep
+      obtain ⟨-, rfl⟩ := hstep; rfl
+  | arrayLit elems =>
+    rw [hexpr] at hsupp; simp [Core.Expr.supported] at hsupp
+    rw [state_with_expr_eq hexpr] at hstep
+    cases hfnv : Core.firstNonValueExpr elems with
+    | some val =>
+      obtain ⟨done, target, rest⟩ := val
+      cases h_sub : Core.step? { s with expr := target } with
+      | none =>
+        simp [Core.step?, hfnv, h_sub] at hstep
+      | some p =>
+        obtain ⟨t, se⟩ := p
+        have hfwd := Core.step_arrayLit_step_elem elems s.env s.heap s.trace s.funcs s.callStack done target rest hfnv t se h_sub
+        rw [hfwd] at hstep
+        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep
+        simp only [Core.pushTrace, Core.Expr.supported]
+        have ⟨hd_supp, hr_supp⟩ := listSupported_firstNonValue_parts hfnv hsupp
+        have ht_supp := listSupported_firstNonValueExpr_target hfnv hsupp
+        have hse_supp := ih target.depth
+          (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; have := Core.firstNonValueExpr_depth hfnv; omega)
+          { s with expr := target } se t (Nat.le_refl _) ht_supp h_sub
+        exact listSupported_replace_target se.expr hd_supp hse_supp hr_supp
+    | none =>
+      -- All elems are values: allocate array, result is .lit (.object addr)
+      simp [Core.step?, hfnv, Core.pushTrace] at hstep
+      obtain ⟨-, rfl⟩ := hstep; rfl
+  | tryCatch body catchParam catchBody finally_ =>
+    rw [hexpr] at hsupp; simp [Core.Expr.supported, Bool.and_eq_true] at hsupp
+    obtain ⟨hsupp_body, hsupp_catch, hsupp_fin⟩ := hsupp
+    rw [state_with_expr_eq hexpr] at hstep
+    cases hbval : Core.exprValue? body with
+    | some v =>
+      have hlit : body = .lit v := by cases body <;> simp [Core.exprValue?] at hbval; subst hbval; rfl
+      subst hlit
+      simp only [Core.step?, Core.exprValue?] at hstep
+      split at hstep
+      · -- isCallFrame: pushTrace { s with expr := .lit v, ... } .silent
+        simp [Core.pushTrace] at hstep
+        obtain ⟨-, rfl⟩ := hstep; rfl
+      · -- not callFrame: match finally_
+        cases finally_ with
+        | some fin =>
+          simp [Core.pushTrace] at hstep
+          obtain ⟨-, rfl⟩ := hstep
+          simp [Core.Expr.supported]; exact hsupp_fin
+        | none =>
+          simp [Core.pushTrace] at hstep
+          obtain ⟨-, rfl⟩ := hstep; rfl
+    | none =>
+      cases h_sub : Core.step? { s with expr := body } with
+      | none => simp [Core.step?, hbval, h_sub] at hstep
+      | some p =>
+        obtain ⟨t, sb⟩ := p
+        cases t with
+        | error msg =>
+          -- Error event: catch handler activated
+          simp [Core.step?, hbval, h_sub] at hstep
+          split at hstep
+          · -- isCallFrame && startsWith "return:": .lit retVal
+            simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
+          · split at hstep
+            · -- isCallFrame: .lit .undefined with error propagation
+              simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep; rfl
+            · -- Regular catch: handler = seq catchBody fin or catchBody
+              cases finally_ with
+              | some fin =>
+                simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep
+                simp [Core.Expr.supported, Bool.and_eq_true]; exact ⟨hsupp_catch, hsupp_fin⟩
+              | none =>
+                simp [Core.pushTrace] at hstep; obtain ⟨-, rfl⟩ := hstep
+                exact hsupp_catch
+        | silent =>
+          -- Silent step: wrap in tryCatch
+          have hfwd := Core.step_tryCatch_step_body_silent body catchParam catchBody finally_
+            s.env s.heap s.trace s.funcs s.callStack hbval sb (by rw [h_sub])
+          rw [hfwd] at hstep
+          simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+          obtain ⟨-, rfl⟩ := hstep
+          simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
+          exact ⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+            { s with expr := body } sb .silent (Nat.le_refl _) hsupp_body h_sub,
+            hsupp_catch, hsupp_fin⟩
+        | log msg =>
+          -- Log step: wrap in tryCatch
+          have hfwd := Core.step_tryCatch_step_body_log body catchParam catchBody finally_
+            s.env s.heap s.trace s.funcs s.callStack hbval msg sb (by rw [h_sub])
+          rw [hfwd] at hstep
+          simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+          obtain ⟨-, rfl⟩ := hstep
+          simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
+          exact ⟨ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+            { s with expr := body } sb (.log msg) (Nat.le_refl _) hsupp_body h_sub,
+            hsupp_catch, hsupp_fin⟩
 
 private theorem closureConvert_step_simulation
     (s : Core.Program) (t : Flat.Program)

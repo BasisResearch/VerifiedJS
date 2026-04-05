@@ -2040,6 +2040,11 @@ theorem step?_newObj_allValues (s : State)
 /-- step? never modifies the funcs field. -/
 theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Flat.State)
     (h : step? sf = some (ev, sf')) : sf'.funcs = sf.funcs := by
-  sorry
+  unfold step? at h
+  split at h <;>
+    (simp_all [pushTrace, allocFreshObject, allocEnvObject, allocObjectWithProps]; done) <;>
+    (split at h <;> (simp_all [pushTrace]; done) <;>
+      (split at h <;> (simp_all [pushTrace]; done) <;>
+        (split at h <;> simp_all [pushTrace])))
 
 end VerifiedJS.Flat
