@@ -13643,6 +13643,26 @@ theorem step_call_step_arg (cv : Value) (args : List Expr)
       some (t, pushTrace { sa with expr := .call (.lit cv) (done ++ [sa.expr] ++ remaining), trace := trace } t) := by
   unfold step?; simp [exprValue?, hallv]; split <;> simp_all [pushTrace]
 
+/-- call with non-value callee that is stuck: whole call is stuck. -/
+theorem step_call_callee_stuck (callee : Expr) (args : List Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hcallee : exprValue? callee = none)
+    (hstuck : step? ⟨callee, env, heap, trace, funcs, cs⟩ = none) :
+    step? ⟨.call callee args, env, heap, trace, funcs, cs⟩ = none := by
+  simp [step?, hcallee, hstuck]
+
+/-- call with value callee, non-all-value args, first non-value stuck: whole call is stuck. -/
+theorem step_call_arg_stuck (cv : Value) (args : List Expr) (env : Env) (heap : Heap)
+    (trace : List TraceEvent) (funcs : Array FuncClosure)
+    (cs : List (List (VarName × Value)))
+    (hallv : allValues args = none)
+    (done : List Expr) (target : Expr) (remaining : List Expr)
+    (hfnv : firstNonValueExpr args = some (done, target, remaining))
+    (hstuck : step? ⟨target, env, heap, trace, funcs, cs⟩ = none) :
+    step? ⟨.call (.lit cv) args, env, heap, trace, funcs, cs⟩ = none := by
+  unfold step?; simp only [exprValue?, hallv]; split <;> simp_all
+
 /-- call with consoleLog: result is .lit .undefined. -/
 theorem step_call_consoleLog (args : List Expr) (argVals : List Value)
     (env : Env) (heap : Heap) (trace : List TraceEvent)

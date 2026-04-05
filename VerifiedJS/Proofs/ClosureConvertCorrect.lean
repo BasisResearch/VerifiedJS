@@ -3925,7 +3925,9 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
     | none =>
       -- Callee is not a value: step the callee
       cases h_sub : Core.step? { s with expr := callee } with
-      | none => simp [Core.step?, hval_c, h_sub] at hstep
+      | none =>
+        have := Core.step_call_callee_stuck callee args s.env s.heap s.trace s.funcs s.callStack hval_c h_sub
+        rw [this] at hstep; exact absurd hstep (by simp)
       | some p =>
         obtain ⟨t, sc⟩ := p
         have hfwd := Core.step_call_step_callee callee args s.env s.heap s.trace s.funcs s.callStack hval_c t sc h_sub
@@ -3972,13 +3974,24 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
               rw [hfwd] at hstep
               simp only [Option.some.injEq, Prod.mk.injEq] at hstep
               obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
-        | null | undefined | bool _ | number _ | string _ | object _ =>
-          -- Non-function callee with all-value args → .lit .undefined
-          have hfwd := Core.step_call_nonfunc_exact _ args argVals s.env s.heap s.trace s.funcs s.callStack
-            (by intro idx h; exact Core.Value.noConfusion h) hallv
-          rw [hfwd] at hstep
-          simp only [Option.some.injEq, Prod.mk.injEq] at hstep
-          obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
+        | null =>
+          have hfwd := Core.step_call_nonfunc_exact Core.Value.null args argVals s.env s.heap s.trace s.funcs s.callStack (fun idx h => Core.Value.noConfusion h) hallv
+          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
+        | undefined =>
+          have hfwd := Core.step_call_nonfunc_exact Core.Value.undefined args argVals s.env s.heap s.trace s.funcs s.callStack (fun idx h => Core.Value.noConfusion h) hallv
+          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
+        | bool b =>
+          have hfwd := Core.step_call_nonfunc_exact (Core.Value.bool b) args argVals s.env s.heap s.trace s.funcs s.callStack (fun idx h => Core.Value.noConfusion h) hallv
+          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
+        | number n =>
+          have hfwd := Core.step_call_nonfunc_exact (Core.Value.number n) args argVals s.env s.heap s.trace s.funcs s.callStack (fun idx h => Core.Value.noConfusion h) hallv
+          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
+        | string str =>
+          have hfwd := Core.step_call_nonfunc_exact (Core.Value.string str) args argVals s.env s.heap s.trace s.funcs s.callStack (fun idx h => Core.Value.noConfusion h) hallv
+          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
+        | object addr =>
+          have hfwd := Core.step_call_nonfunc_exact (Core.Value.object addr) args argVals s.env s.heap s.trace s.funcs s.callStack (fun idx h => Core.Value.noConfusion h) hallv
+          rw [hfwd] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep; obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
       | none =>
         -- Not all args are values: step first non-value arg
         cases hfnv : Core.firstNonValueExpr args with
@@ -3986,7 +3999,9 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         | some val =>
           obtain ⟨done, target, rest⟩ := val
           cases h_sub : Core.step? { s with expr := target } with
-          | none => simp [Core.step?, Core.exprValue?, hallv, hfnv, h_sub] at hstep
+          | none =>
+            have := Core.step_call_arg_stuck cv args s.env s.heap s.trace s.funcs s.callStack hallv done target rest hfnv h_sub
+            rw [this] at hstep; exact absurd hstep (by simp)
           | some p =>
             obtain ⟨t, sa⟩ := p
             have hfwd := Core.step_call_step_arg cv args s.env s.heap s.trace s.funcs s.callStack hallv done target rest hfnv t sa h_sub

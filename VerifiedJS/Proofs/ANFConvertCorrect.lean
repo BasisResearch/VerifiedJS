@@ -7498,6 +7498,448 @@ theorem ANF.normalizeExpr_if_implies_hasIfInHead
 
 end IfInHead
 
+section TryCatchInHead
+
+/-! ## HasTryCatchInHead: tracks .tryCatch in CPS-head position -/
+
+set_option autoImplicit true in
+mutual
+inductive HasTryCatchInHead : Flat.Expr → Prop where
+  | tryCatch_direct : HasTryCatchInHead (.tryCatch body cp cb fin)
+  | seq_left : HasTryCatchInHead a → HasTryCatchInHead (.seq a b)
+  | seq_right : HasTryCatchInHead b → HasTryCatchInHead (.seq a b)
+  | let_init : HasTryCatchInHead init → HasTryCatchInHead (.let name init body)
+  | getProp_obj : HasTryCatchInHead obj → HasTryCatchInHead (.getProp obj prop)
+  | setProp_obj : HasTryCatchInHead obj → HasTryCatchInHead (.setProp obj prop val)
+  | setProp_val : HasTryCatchInHead val → HasTryCatchInHead (.setProp obj prop val)
+  | binary_lhs : HasTryCatchInHead lhs → HasTryCatchInHead (.binary op lhs rhs)
+  | binary_rhs : HasTryCatchInHead rhs → HasTryCatchInHead (.binary op lhs rhs)
+  | unary_arg : HasTryCatchInHead arg → HasTryCatchInHead (.unary op arg)
+  | typeof_arg : HasTryCatchInHead arg → HasTryCatchInHead (.typeof arg)
+  | deleteProp_obj : HasTryCatchInHead obj → HasTryCatchInHead (.deleteProp obj prop)
+  | assign_val : HasTryCatchInHead val → HasTryCatchInHead (.assign name val)
+  | call_func : HasTryCatchInHead f → HasTryCatchInHead (.call f env args)
+  | call_env : HasTryCatchInHead env → HasTryCatchInHead (.call f env args)
+  | call_args : HasTryCatchInHeadList args → HasTryCatchInHead (.call f env args)
+  | newObj_func : HasTryCatchInHead f → HasTryCatchInHead (.newObj f env args)
+  | newObj_env : HasTryCatchInHead env → HasTryCatchInHead (.newObj f env args)
+  | newObj_args : HasTryCatchInHeadList args → HasTryCatchInHead (.newObj f env args)
+  | if_cond : HasTryCatchInHead c → HasTryCatchInHead (.if c t e)
+  | return_some_arg : HasTryCatchInHead v → HasTryCatchInHead (.return (some v))
+  | yield_some_arg : HasTryCatchInHead v → HasTryCatchInHead (.yield (some v) d)
+  | throw_arg : HasTryCatchInHead arg → HasTryCatchInHead (.throw arg)
+  | await_arg : HasTryCatchInHead arg → HasTryCatchInHead (.await arg)
+  | getIndex_obj : HasTryCatchInHead obj → HasTryCatchInHead (.getIndex obj idx)
+  | getIndex_idx : HasTryCatchInHead idx → HasTryCatchInHead (.getIndex obj idx)
+  | setIndex_obj : HasTryCatchInHead obj → HasTryCatchInHead (.setIndex obj idx val)
+  | setIndex_idx : HasTryCatchInHead idx → HasTryCatchInHead (.setIndex obj idx val)
+  | setIndex_val : HasTryCatchInHead val → HasTryCatchInHead (.setIndex obj idx val)
+  | getEnv_env : HasTryCatchInHead env → HasTryCatchInHead (.getEnv env idx)
+  | makeClosure_env : HasTryCatchInHead env → HasTryCatchInHead (.makeClosure funcIdx env)
+  | makeEnv_values : HasTryCatchInHeadList values → HasTryCatchInHead (.makeEnv values)
+  | objectLit_props : HasTryCatchInHeadProps props → HasTryCatchInHead (.objectLit props)
+  | arrayLit_elems : HasTryCatchInHeadList elems → HasTryCatchInHead (.arrayLit elems)
+
+inductive HasTryCatchInHeadList : List Flat.Expr → Prop where
+  | head : HasTryCatchInHead e → HasTryCatchInHeadList (e :: rest)
+  | tail : HasTryCatchInHeadList rest → HasTryCatchInHeadList (e :: rest)
+
+inductive HasTryCatchInHeadProps : List (Flat.PropName × Flat.Expr) → Prop where
+  | head : HasTryCatchInHead e → HasTryCatchInHeadProps ((name, e) :: rest)
+  | tail : HasTryCatchInHeadProps rest → HasTryCatchInHeadProps (p :: rest)
+end
+
+private theorem HasTryCatchInHead_not_value (e : Flat.Expr)
+    (h : HasTryCatchInHead e) : Flat.exprValue? e = none := by
+  cases h <;> simp [Flat.exprValue?]
+
+/-! ## Helper lemmas: certain constructors never produce .tryCatch -/
+
+/-- bindComplex always produces .let, never .tryCatch -/
+theorem ANF.bindComplex_never_tryCatch_general (rhs : ANF.ComplexExpr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (body : ANF.Expr) (catchParam : ANF.VarName) (catchBody : ANF.Expr)
+    (finally_ : Option ANF.Expr) (n m : Nat)
+    (h : (ANF.bindComplex rhs k).run n = .ok (.tryCatch body catchParam catchBody finally_, m)) : False := by
+  unfold ANF.bindComplex at h
+  unfold ANF.freshName at h
+  simp only [bind, Bind.bind, StateT.bind, StateT.run, get, getThe, MonadStateOf.get,
+    StateT.get, Except.bind, set, MonadStateOf.set, StateT.set, pure, Pure.pure,
+    StateT.pure, Except.pure] at h
+  split at h <;> simp_all
+
+/-- normalizeExpr (.labeled l body) k never produces .tryCatch -/
+theorem ANF.normalizeExpr_labeled_not_tryCatch (l : Flat.LabelName) (bdy : Flat.Expr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (body : ANF.Expr)
+    (catchParam : ANF.VarName) (catchBody : ANF.Expr) (finally_ : Option ANF.Expr) (n m : Nat)
+    (h : (ANF.normalizeExpr (.labeled l bdy) k).run n = .ok (.tryCatch body catchParam catchBody finally_, m)) : False := by
+  simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run,
+    Except.bind, pure, Pure.pure, StateT.pure, Except.pure] at h
+  split at h <;> simp_all
+
+/-- normalizeExpr (.while_ cond_ body) k never produces .tryCatch -/
+theorem ANF.normalizeExpr_while_not_tryCatch (cond_ wbdy : Flat.Expr)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (body : ANF.Expr)
+    (catchParam : ANF.VarName) (catchBody : ANF.Expr) (finally_ : Option ANF.Expr) (n m : Nat)
+    (h : (ANF.normalizeExpr (.while_ cond_ wbdy) k).run n = .ok (.tryCatch body catchParam catchBody finally_, m)) : False := by
+  simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run,
+    Except.bind, pure, Pure.pure, StateT.pure, Except.pure] at h
+  split at h <;> (try split at h) <;> (try split at h) <;> simp_all
+
+/-! ## List/Props helpers for tryCatch -/
+
+/-- normalizeExprList: .tryCatch in result comes from some element or from k. -/
+theorem normalizeExprList_tryCatch_or_k
+    (es : List Flat.Expr)
+    (ih : ∀ e, e ∈ es → ∀ (k' : ANF.Trivial → ANF.ConvM ANF.Expr) (body : ANF.Expr)
+      (catchParam : ANF.VarName) (catchBody : ANF.Expr) (finally_ : Option ANF.Expr) (n m : Nat),
+      (ANF.normalizeExpr e k').run n = .ok (.tryCatch body catchParam catchBody finally_, m) →
+      HasTryCatchInHead e ∨ ∃ (t : ANF.Trivial) (n' m' : Nat), (k' t).run n' = .ok (.tryCatch body catchParam catchBody finally_, m'))
+    (k : List ANF.Trivial → ANF.ConvM ANF.Expr) (body : ANF.Expr)
+    (catchParam : ANF.VarName) (catchBody : ANF.Expr) (finally_ : Option ANF.Expr) (n m : Nat)
+    (h : (ANF.normalizeExprList es k).run n = .ok (.tryCatch body catchParam catchBody finally_, m)) :
+    HasTryCatchInHeadList es ∨ ∃ (ts : List ANF.Trivial) (n' m' : Nat), (k ts).run n' = .ok (.tryCatch body catchParam catchBody finally_, m') := by
+  induction es generalizing k body catchParam catchBody finally_ n m with
+  | nil => right; simp only [ANF.normalizeExprList] at h; exact ⟨[], n, m, h⟩
+  | cons e rest ih_list =>
+    simp only [ANF.normalizeExprList] at h
+    rcases ih e (@List.mem_cons_self _ e rest) _ _ _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+    · exact Or.inl (HasTryCatchInHeadList.head hleft)
+    · rcases ih_list (fun e' he' => ih e' (List.mem_cons_of_mem _ he')) _ _ _ _ _ _ _ hkt with hleft | hright
+      · exact Or.inl (HasTryCatchInHeadList.tail hleft)
+      · obtain ⟨ts, n'', m'', hkts⟩ := hright
+        exact Or.inr ⟨t :: ts, n'', m'', hkts⟩
+
+/-- normalizeProps: .tryCatch in result comes from some prop value or from k. -/
+theorem normalizeProps_tryCatch_or_k
+    (props : List (Flat.PropName × Flat.Expr))
+    (ih : ∀ (name : Flat.PropName) (e : Flat.Expr), (name, e) ∈ props →
+      ∀ (k' : ANF.Trivial → ANF.ConvM ANF.Expr) (body : ANF.Expr)
+      (catchParam : ANF.VarName) (catchBody : ANF.Expr) (finally_ : Option ANF.Expr) (n m : Nat),
+      (ANF.normalizeExpr e k').run n = .ok (.tryCatch body catchParam catchBody finally_, m) →
+      HasTryCatchInHead e ∨ ∃ (t : ANF.Trivial) (n' m' : Nat), (k' t).run n' = .ok (.tryCatch body catchParam catchBody finally_, m'))
+    (k : List (ANF.PropName × ANF.Trivial) → ANF.ConvM ANF.Expr) (body : ANF.Expr)
+    (catchParam : ANF.VarName) (catchBody : ANF.Expr) (finally_ : Option ANF.Expr) (n m : Nat)
+    (h : (ANF.normalizeProps props k).run n = .ok (.tryCatch body catchParam catchBody finally_, m)) :
+    HasTryCatchInHeadProps props ∨ ∃ (ts : List (ANF.PropName × ANF.Trivial)) (n' m' : Nat), (k ts).run n' = .ok (.tryCatch body catchParam catchBody finally_, m') := by
+  induction props generalizing k body catchParam catchBody finally_ n m with
+  | nil => right; simp only [ANF.normalizeProps] at h; exact ⟨[], n, m, h⟩
+  | cons p rest ih_list =>
+    unfold ANF.normalizeProps at h
+    rcases ih p.1 p.2 (@List.mem_cons_self _ _ rest) _ _ _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+    · exact Or.inl (HasTryCatchInHeadProps.head hleft)
+    · rcases ih_list (fun name e he => ih name e (List.mem_cons_of_mem _ he)) _ _ _ _ _ _ _ hkt with hleft | hright
+      · exact Or.inl (HasTryCatchInHeadProps.tail hleft)
+      · obtain ⟨ts, n'', m'', hkts⟩ := hright
+        exact Or.inr ⟨(p.1, t) :: ts, n'', m'', hkts⟩
+
+/-! ## Main theorem: normalizeExpr_tryCatch_or_k -/
+
+/-- If normalizeExpr e k produces .tryCatch body catchParam catchBody finally_, then either e has
+    tryCatch in CPS-head position or k produced .tryCatch. -/
+theorem ANF.normalizeExpr_tryCatch_or_k
+    (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (body : ANF.Expr) (catchParam : ANF.VarName) (catchBody : ANF.Expr)
+    (finally_ : Option ANF.Expr) (n m : Nat)
+    (h : (ANF.normalizeExpr e k).run n = .ok (.tryCatch body catchParam catchBody finally_, m)) :
+    HasTryCatchInHead e ∨ ∃ (t : ANF.Trivial) (n' m' : Nat), (k t).run n' = .ok (.tryCatch body catchParam catchBody finally_, m') :=
+  normalizeExpr_tryCatch_or_k_aux e.depth e (Nat.le_refl _) k body catchParam catchBody finally_ n m h
+where
+  /-- Helper: general tryCatch characterization by strong induction on expression depth. -/
+  normalizeExpr_tryCatch_or_k_aux (d : Nat) (e : Flat.Expr) (hd : e.depth ≤ d)
+      (k : ANF.Trivial → ANF.ConvM ANF.Expr) (body : ANF.Expr)
+      (catchParam : ANF.VarName) (catchBody : ANF.Expr) (finally_ : Option ANF.Expr)
+      (n m : Nat)
+      (h : (ANF.normalizeExpr e k).run n = .ok (.tryCatch body catchParam catchBody finally_, m)) :
+      HasTryCatchInHead e ∨ ∃ (t : ANF.Trivial) (n' m' : Nat), (k t).run n' = .ok (.tryCatch body catchParam catchBody finally_, m') := by
+    induction d generalizing e k body catchParam catchBody finally_ n m with
+    | zero =>
+      cases e with
+      | var name => right; simp only [ANF.normalizeExpr] at h; exact ⟨.var name, n, m, h⟩
+      | this => right; simp only [ANF.normalizeExpr] at h; exact ⟨.var "this", n, m, h⟩
+      | lit v =>
+        right; simp only [ANF.normalizeExpr] at h
+        cases htv : ANF.trivialOfFlatValue v with
+        | error msg =>
+          rw [htv] at h
+          change StateT.lift (Except.error msg) n = _ at h
+          simp [StateT.lift, Functor.map, Except.map] at h
+        | ok triv => rw [htv] at h; exact ⟨triv, n, m, h⟩
+      | «break» l =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+        exact absurd h (by simp)
+      | «continue» l =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+        exact absurd h (by simp)
+      | tryCatch _ _ _ _ =>
+        exact Or.inl HasTryCatchInHead.tryCatch_direct
+      | «return» arg_r =>
+        cases arg_r with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+          exact absurd h (by simp)
+        | some _ => simp [Flat.Expr.depth] at hd
+      | yield arg_y _ =>
+        cases arg_y with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+          exact absurd h (by simp)
+        | some _ => simp [Flat.Expr.depth] at hd
+      | throw _ => simp [Flat.Expr.depth] at hd
+      | await _ => simp [Flat.Expr.depth] at hd
+      | «if» _ _ _ => simp [Flat.Expr.depth] at hd; try omega
+      | _ => simp [Flat.Expr.depth] at hd; try omega
+    | succ d' ih =>
+      cases e with
+      | tryCatch _ _ _ _ =>
+        exact Or.inl HasTryCatchInHead.tryCatch_direct
+      | var name => right; simp only [ANF.normalizeExpr] at h; exact ⟨.var name, n, m, h⟩
+      | this => right; simp only [ANF.normalizeExpr] at h; exact ⟨.var "this", n, m, h⟩
+      | lit v =>
+        right; simp only [ANF.normalizeExpr] at h
+        cases htv : ANF.trivialOfFlatValue v with
+        | error msg =>
+          rw [htv] at h
+          change StateT.lift (Except.error msg) n = _ at h
+          simp [StateT.lift, Functor.map, Except.map] at h
+        | ok triv => rw [htv] at h; exact ⟨triv, n, m, h⟩
+      | «break» l =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+        exact absurd h (by simp)
+      | «continue» l =>
+        simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+        exact absurd h (by simp)
+      | «return» arg_r =>
+        cases arg_r with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+          exact absurd h (by simp)
+        | some v =>
+          simp only [ANF.normalizeExpr] at h
+          have hv : v.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+          rcases ih v hv _ _ _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+          · exact Or.inl (HasTryCatchInHead.return_some_arg hleft)
+          · simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hkt
+      | yield arg_y dlg =>
+        cases arg_y with
+        | none =>
+          simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h
+          exact absurd h (by simp)
+        | some v =>
+          simp only [ANF.normalizeExpr] at h
+          have hv : v.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+          rcases ih v hv _ _ _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+          · exact Or.inl (HasTryCatchInHead.yield_some_arg hleft)
+          · simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hkt
+      | throw arg_t =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : arg_t.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih arg_t ha _ _ _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasTryCatchInHead.throw_arg hleft)
+        · simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hkt
+      | await arg_a =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : arg_a.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih arg_a ha _ _ _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasTryCatchInHead.await_arg hleft)
+        · simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hkt
+      | seq a b =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : a.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hb : b.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih a ha _ _ _ _ _ _ _ h with hleft | ⟨_, n', m', hkb⟩
+        · exact Or.inl (HasTryCatchInHead.seq_left hleft)
+        · rcases ih b hb _ _ _ _ _ _ _ hkb with hleft | hright
+          · exact Or.inl (HasTryCatchInHead.seq_right hleft)
+          · exact Or.inr hright
+      | «let» name init bdy =>
+        simp only [ANF.normalizeExpr] at h
+        have hi : init.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih init hi _ _ _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasTryCatchInHead.let_init hleft)
+        · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure,
+            Except.pure, Except.bind] at hkt
+          split at hkt <;> simp_all
+      | labeled l bdy =>
+        exact absurd h (ANF.normalizeExpr_labeled_not_tryCatch l bdy k body catchParam catchBody finally_ n m)
+      | while_ c b =>
+        exact absurd h (ANF.normalizeExpr_while_not_tryCatch c b k body catchParam catchBody finally_ n m)
+      | «if» c t e =>
+        simp only [ANF.normalizeExpr] at h
+        have hc : c.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih c hc _ _ _ _ _ _ _ h with hleft | ⟨t_val, n', m', hkt⟩
+        · exact Or.inl (HasTryCatchInHead.if_cond hleft)
+        · simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind,
+            pure, Pure.pure, StateT.pure, Except.pure] at hkt
+          split at hkt <;> (try split at hkt) <;> simp_all
+      | assign name val =>
+        simp only [ANF.normalizeExpr] at h
+        have hv : val.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih val hv _ _ _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasTryCatchInHead.assign_val hleft)
+        · exact absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)
+      | getProp obj prop =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasTryCatchInHead.getProp_obj hleft)
+        · exact absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)
+      | deleteProp obj prop =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasTryCatchInHead.deleteProp_obj hleft)
+        · exact absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)
+      | typeof arg_t =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : arg_t.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih arg_t ha _ _ _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasTryCatchInHead.typeof_arg hleft)
+        · exact absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)
+      | unary op arg_u =>
+        simp only [ANF.normalizeExpr] at h
+        have ha : arg_u.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih arg_u ha _ _ _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasTryCatchInHead.unary_arg hleft)
+        · exact absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)
+      | getEnv envPtr idx =>
+        simp only [ANF.normalizeExpr] at h
+        have he : envPtr.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih envPtr he _ _ _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasTryCatchInHead.getEnv_env hleft)
+        · exact absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)
+      | makeClosure funcIdx env =>
+        simp only [ANF.normalizeExpr] at h
+        have he : env.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih env he _ _ _ _ _ _ _ h with hleft | ⟨t, n', m', hkt⟩
+        · exact Or.inl (HasTryCatchInHead.makeClosure_env hleft)
+        · exact absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)
+      | setProp obj prop val =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hv : val.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasTryCatchInHead.setProp_obj hleft)
+        · rcases ih val hv _ _ _ _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasTryCatchInHead.setProp_val hleft)
+          · exact absurd hk₂ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)
+      | binary op lhs rhs =>
+        simp only [ANF.normalizeExpr] at h
+        have hl : lhs.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hr : rhs.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih lhs hl _ _ _ _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasTryCatchInHead.binary_lhs hleft)
+        · rcases ih rhs hr _ _ _ _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasTryCatchInHead.binary_rhs hleft)
+          · exact absurd hk₂ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)
+      | getIndex obj idx =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hi : idx.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasTryCatchInHead.getIndex_obj hleft)
+        · rcases ih idx hi _ _ _ _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasTryCatchInHead.getIndex_idx hleft)
+          · exact absurd hk₂ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)
+      | setIndex obj idx val =>
+        simp only [ANF.normalizeExpr] at h
+        have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hi : idx.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hv : val.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih obj ho _ _ _ _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasTryCatchInHead.setIndex_obj hleft)
+        · rcases ih idx hi _ _ _ _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasTryCatchInHead.setIndex_idx hleft)
+          · rcases ih val hv _ _ _ _ _ _ _ hk₂ with hleft | ⟨t₃, n₃, m₃, hk₃⟩
+            · exact Or.inl (HasTryCatchInHead.setIndex_val hleft)
+            · exact absurd hk₃ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)
+      | call f env args =>
+        simp only [ANF.normalizeExpr] at h
+        have hf : f.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have henv : env.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hargs : Flat.Expr.listDepth args ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih f hf _ _ _ _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasTryCatchInHead.call_func hleft)
+        · rcases ih env henv _ _ _ _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasTryCatchInHead.call_env hleft)
+          · have args_ih : ∀ e, e ∈ args → ∀ k' (body' : ANF.Expr) (catchParam' : ANF.VarName)
+                (catchBody' : ANF.Expr) (finally_' : Option ANF.Expr) (n m : Nat),
+                (ANF.normalizeExpr e k').run n = .ok (.tryCatch body' catchParam' catchBody' finally_', m) →
+                HasTryCatchInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.tryCatch body' catchParam' catchBody' finally_', m') :=
+              fun e he => ih e (by have := Flat.Expr.mem_listDepth_lt he; omega)
+            rcases normalizeExprList_tryCatch_or_k args args_ih _ _ _ _ _ _ _ hk₂ with hleft | ⟨ts, n₃, m₃, hk₃⟩
+            · exact Or.inl (HasTryCatchInHead.call_args hleft)
+            · exact absurd hk₃ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)
+      | newObj f env args =>
+        simp only [ANF.normalizeExpr] at h
+        have hf : f.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have henv : env.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have hargs : Flat.Expr.listDepth args ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        rcases ih f hf _ _ _ _ _ _ _ h with hleft | ⟨t₁, n₁, m₁, hk₁⟩
+        · exact Or.inl (HasTryCatchInHead.newObj_func hleft)
+        · rcases ih env henv _ _ _ _ _ _ _ hk₁ with hleft | ⟨t₂, n₂, m₂, hk₂⟩
+          · exact Or.inl (HasTryCatchInHead.newObj_env hleft)
+          · have args_ih : ∀ e, e ∈ args → ∀ k' (body' : ANF.Expr) (catchParam' : ANF.VarName)
+                (catchBody' : ANF.Expr) (finally_' : Option ANF.Expr) (n m : Nat),
+                (ANF.normalizeExpr e k').run n = .ok (.tryCatch body' catchParam' catchBody' finally_', m) →
+                HasTryCatchInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.tryCatch body' catchParam' catchBody' finally_', m') :=
+              fun e he => ih e (by have := Flat.Expr.mem_listDepth_lt he; omega)
+            rcases normalizeExprList_tryCatch_or_k args args_ih _ _ _ _ _ _ _ hk₂ with hleft | ⟨ts, n₃, m₃, hk₃⟩
+            · exact Or.inl (HasTryCatchInHead.newObj_args hleft)
+            · exact absurd hk₃ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)
+      | makeEnv values =>
+        simp only [ANF.normalizeExpr] at h
+        have hvals : Flat.Expr.listDepth values ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have vals_ih : ∀ e, e ∈ values → ∀ k' (body' : ANF.Expr) (catchParam' : ANF.VarName)
+            (catchBody' : ANF.Expr) (finally_' : Option ANF.Expr) (n m : Nat),
+            (ANF.normalizeExpr e k').run n = .ok (.tryCatch body' catchParam' catchBody' finally_', m) →
+            HasTryCatchInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.tryCatch body' catchParam' catchBody' finally_', m') :=
+          fun e he => ih e (by have := Flat.Expr.mem_listDepth_lt he; omega)
+        rcases normalizeExprList_tryCatch_or_k values vals_ih _ _ _ _ _ _ _ h with hleft | ⟨ts, n', m', hk⟩
+        · exact Or.inl (HasTryCatchInHead.makeEnv_values hleft)
+        · exact absurd hk (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)
+      | objectLit props =>
+        simp only [ANF.normalizeExpr] at h
+        have hprops : Flat.Expr.propListDepth props ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have props_ih : ∀ (name : Flat.PropName) (e : Flat.Expr), (name, e) ∈ props →
+            ∀ k' (body' : ANF.Expr) (catchParam' : ANF.VarName)
+            (catchBody' : ANF.Expr) (finally_' : Option ANF.Expr) (n m : Nat),
+            (ANF.normalizeExpr e k').run n = .ok (.tryCatch body' catchParam' catchBody' finally_', m) →
+            HasTryCatchInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.tryCatch body' catchParam' catchBody' finally_', m') :=
+          fun name e he => ih e (by have := Flat.Expr.mem_propListDepth_lt he; omega)
+        rcases normalizeProps_tryCatch_or_k props props_ih _ _ _ _ _ _ _ h with hleft | ⟨ts, n', m', hk⟩
+        · exact Or.inl (HasTryCatchInHead.objectLit_props hleft)
+        · exact absurd hk (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)
+      | arrayLit elems =>
+        simp only [ANF.normalizeExpr] at h
+        have helems : Flat.Expr.listDepth elems ≤ d' := by simp [Flat.Expr.depth] at hd; omega
+        have elems_ih : ∀ e, e ∈ elems → ∀ k' (body' : ANF.Expr) (catchParam' : ANF.VarName)
+            (catchBody' : ANF.Expr) (finally_' : Option ANF.Expr) (n m : Nat),
+            (ANF.normalizeExpr e k').run n = .ok (.tryCatch body' catchParam' catchBody' finally_', m) →
+            HasTryCatchInHead e ∨ ∃ t n' m', (k' t).run n' = .ok (.tryCatch body' catchParam' catchBody' finally_', m') :=
+          fun e he => ih e (by have := Flat.Expr.mem_listDepth_lt he; omega)
+        rcases normalizeExprList_tryCatch_or_k elems elems_ih _ _ _ _ _ _ _ h with hleft | ⟨ts, n', m', hk⟩
+        · exact Or.inl (HasTryCatchInHead.arrayLit_elems hleft)
+        · exact absurd hk (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)
+
+/-- MASTER INVERSION (tryCatch):
+    If normalizeExpr e k = .ok (.tryCatch body catchParam catchBody finally_, m) with trivial-preserving k,
+    then e has .tryCatch in evaluation-head position. -/
+theorem ANF.normalizeExpr_tryCatch_implies_hasTryCatchInHead
+    (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (hk : ∀ (t : ANF.Trivial) (n : Nat), ∃ m, (k t).run n = .ok (.trivial t, m))
+    (body : ANF.Expr) (catchParam : ANF.VarName) (catchBody : ANF.Expr)
+    (finally_ : Option ANF.Expr) (n m : Nat)
+    (h : (ANF.normalizeExpr e k).run n = .ok (.tryCatch body catchParam catchBody finally_, m)) :
+    HasTryCatchInHead e := by
+  rcases ANF.normalizeExpr_tryCatch_or_k e k body catchParam catchBody finally_ n m h with hleft | ⟨t, n', m', hk_tc⟩
+  · exact hleft
+  · obtain ⟨m'', hm''⟩ := hk t n'
+    rw [hm''] at hk_tc
+    exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hk_tc)).1
+
+end TryCatchInHead
+
 /-- When normalizeExpr sf.expr k produces .labeled label body, there exist Flat steps
     from sf to sf' such that normalizeExpr sf'.expr k' produces body (with k' trivial-preserving).
     The .labeled may be embedded inside .seq chains or compound expression prefixes;
@@ -9645,9 +10087,10 @@ private theorem normalizeExpr_tryCatch_step_sim
       ANF_SimRel s t sa' sf' ∧
       ExprWellFormed sf'.expr sf'.env := by
   subst hheap henv
-  -- tryCatch step involves body evaluation, error catching, and finally handling
-  -- Structural decomposition deferred: needs characterization of what produces .tryCatch
-  sorry
+  have htc_head := ANF.normalizeExpr_tryCatch_implies_hasTryCatchInHead sf.expr k hk body catchParam catchBody finally_ n m hnorm
+  cases htc_head with
+  | tryCatch_direct => sorry -- MAIN CASE: direct tryCatch simulation
+  | _ => sorry -- compound cases: deferred
 
 set_option maxHeartbeats 3200000 in
 private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
