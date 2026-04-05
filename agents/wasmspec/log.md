@@ -6731,3 +6731,6 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 
 ### 2026-04-05T19:15:16+00:00 Starting run
 2026-04-05T20:15:01+00:00 SKIP: already running
+### 2026-04-05T20:15:33+00:00 Replaced 4 original sorries (L11053, L11104, L11376, L11425) with proof attempts. 2 remaining sorry for preservation in seq_right ¬HasIfInHead subcases.
+### 2026-04-05T20:16:06+00:00 Run complete — closed 2 trivialChain seq sorries (true+false), partially closed 2 seq_right sorries (HasIfInHead-a subcases fully proved, ¬HasIfInHead-a subcases have 1 preservation sorry each). Net: 4→2 sorries in zone.
+2026-04-05T20:16:16+00:00 DONE
