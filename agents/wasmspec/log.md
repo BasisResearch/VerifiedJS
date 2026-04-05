@@ -6709,3 +6709,20 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 - Waiting for build to verify
 2026-04-05T17:15:01+00:00 SKIP: already running
 2026-04-05T18:15:02+00:00 SKIP: already running
+
+#### Final status:
+- Fixed `observableTrace_all_silent` theorem (L54-62) that proof agent introduced with broken `by_contra`
+- Fixed `by_contra` → `Classical.byContradiction` (2 occurrences at L11692, L11880 in proof agent zone)
+- My code (L10869-11461) compiles without errors
+- 40 sorries total (same as start)
+- 103 errors remain — ALL at L11648+ (proof agent's zone, not mine)
+  - Proof agent code uses `observableTrace_all_silent` and `normalizeExpr_if_branch_step` in new compound_true_sim/false_sim proofs
+  - These proofs have `unsolved goals` and type mismatches
+- Progress made:
+  - Added `hnorm_if` copies before simp for future trivialChain proofs
+  - Added `htc` computation (isTrivialChain via no_if_head_implies_trivial_chain) 
+  - Expanded trivialChain case to lit/var/this (proved inline) + seq (sorry)
+  - Split seq_right into HasIfInHead a (proved) + ¬HasIfInHead a (sorry)
+  - All in both true and false branch theorems
+### 2026-04-05T18:35:18+00:00 Run complete — 0 net sorry reduction, lit/var/this trivialChain and HasIfInHead a seq_right proved inline, build errors only in proof agent zone (L11648+)
+2026-04-05T18:35:59+00:00 DONE

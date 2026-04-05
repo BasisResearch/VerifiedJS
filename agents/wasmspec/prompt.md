@@ -21,10 +21,10 @@ If count > 0, DO NOT BUILD. Use `lean_goal` / `lean_multi_attempt` via LSP inste
 - **YOU** own L1767-1950 (Steps_ctx_lift infrastructure) AND L10944-11532 (normalizeExpr_if_branch_step zone)
 - DO NOT touch lines outside your range
 
-## GREAT PROGRESS: hpres + lit/var/this DONE. ANF down to 32 sorries.
-Your bounded Steps_ctx_lift infrastructure was KEY. Proof agent used it to close all 8 UNLOCK sorries. ANF went 40→32. You have 6 sorries left in your zone.
+## PROGRESS SNAPSHOT: lit/var/this DONE, hpres DONE, 6 sorries remain
+Your bounded Steps_ctx_lift infrastructure was KEY. ANF is at 32 total.
 
-## REMAINING 6 SORRIES (verified 18:00):
+## YOUR 6 SORRIES (verified 18:30):
 
 | Line | Category | Description |
 |------|----------|-------------|
@@ -37,37 +37,35 @@ Your bounded Steps_ctx_lift infrastructure was KEY. Proof agent used it to close
 
 ### 1. trivialChain seq (L11053, L11376) — HIGHEST PRIORITY
 
-You already proved lit, var, this. The seq case for trivialChain means:
+You already proved lit, var, this. The seq case:
 - `trivialChain (.seq a b)` where `a` is a trivialChain sub-expression
-- Need to evaluate `a` (via trivialChain_eval_value or similar), discard result, then evaluate `b`
-- Combine into Steps for the overall `.seq a b` expression
+- Evaluate `a` (via trivialChain_eval_value), discard result, evaluate `b`
+- Combine into Steps for the overall `.seq a b`
 
-Use `lean_goal` at L11053 to see exact goal. Then try to combine:
-1. trivialChain_eval_value on `a` to get Steps evaluating a to a value
+Use `lean_goal` at L11053 to see exact goal. Then combine:
+1. trivialChain_eval_value on `a` → Steps evaluating a to a value
 2. One step for seq-discard (`.seq (lit v) b` → `b`)
 3. trivialChain_eval_value on `b` (the condition)
-4. Combine all Steps
+4. Combine all Steps via Steps.trans
 
-### 2. seq_right (L11104, L11425) — MEDIUM
-
-`.seq a b` where `HasIfInHead b` (not `a`). So `a` must evaluate first:
-1. If `a` is a value: `.seq (lit v) b` → `b` in one step, then IH on b
-2. If not value: `a` must step (trivialChain since ¬HasIfInHead a), lift through `.seq [·] b`
-
-Variable ordering may be complex — use `lean_multi_attempt` to test partial tactics.
-
-### 3. exotic catch-all (L11211, L11532) — INVESTIGATE FIRST
+### 2. exotic catch-all (L11211, L11532) — INVESTIGATE CONTRADICTIONS
 
 Many exotic constructors may be IMPOSSIBLE (normalizeExpr can't produce `.if` from them):
 ```
-lean_multi_attempt at L11211 column 4
+lean_multi_attempt at line 11211 column 4
 ["cases hif <;> simp_all [ANF.normalizeExpr] <;> sorry"]
 ```
 If some cases are contradictions, close with `exfalso`. For real cases, follow the IH + Steps_*_ctx_b pattern.
 
+### 3. seq_right (L11104, L11425)
+
+`.seq a b` where `HasIfInHead b` (not `a`). Evaluate `a` first:
+- If value: `.seq (lit v) b` → `b` in one step, then IH on b
+- If not value: `a` must step (trivialChain), lift through `.seq [·] b`
+
 ## PRIORITY ORDER
-1. L11053 + L11376 (trivialChain seq)
-2. L11211 + L11532 (exotic — investigate which are contradictions)
+1. L11053 + L11376 (trivialChain seq) — should be mechanical
+2. L11211 + L11532 (exotic — investigate contradictions first)
 3. L11104 + L11425 (seq_right)
 
 ## LOG YOUR WORK

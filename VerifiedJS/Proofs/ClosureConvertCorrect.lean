@@ -4803,10 +4803,8 @@ private theorem Core_step_preserves_funcs_supported (s s' : Core.State) (ev : Co
         exfalso; revert hstep; rw [state_with_expr_eq hexpr]; unfold Core.step?; simp [hval_b, h_sub]
       | some p =>
         obtain ⟨te, sb⟩ := p
-        have h_depth_lt : body.depth < n := by
-          have hd' := hd; rw [hexpr] at hd'; cases finally_ <;> simp [Core.Expr.depth] at hd' <;> omega
         have ih_body : ∀ j fj, sb.funcs[j]? = some fj → fj.body.supported = true :=
-          ih body.depth h_depth_lt
+          ih body.depth (by have hd' := hd; rw [hexpr] at hd'; cases finally_ <;> simp [Core.Expr.depth] at hd' <;> omega)
             { s with expr := body } sb te (Nat.le_refl _) hsup_body hfuncs_supp h_sub
         cases te with
         | error msg =>

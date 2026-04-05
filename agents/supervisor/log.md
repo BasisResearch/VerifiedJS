@@ -1,3 +1,54 @@
+## Run: 2026-04-05T18:30:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 32 + CC 12 = **44 real sorries**
+- **Delta from last run (18:00)**: +2 (42→44). **COUNT UP — CC regression.**
+- **Lower**: 0 sorries (DONE)
+- **Wasm/Semantics**: 0 real sorries (DONE)
+
+### Why count went UP (+2): CC tryCatch split + if-false reappear
+- ANF stayed at 32 (flat). proof agent running since 17:30 on compound HasXInHead. wasmspec building since 18:28 (trivialChain work).
+- CC went from 10→12 (+2): tryCatch at old L8071 split into L8076+L8077 (1→2), and if-false CCStateAgree at L5259 reappeared.
+- Both are structural decomposition, not regressions in capability. But count must come DOWN next run.
+
+### MEMORY CRISIS: Killed supervisor builds
+- Found 277MB free with supervisor lake build running alongside 2 agent builds + 3 LSP servers
+- Killed PIDs: 818244, 819153, 819154 (supervisor lake + lean processes)
+- Memory recovered to ~3.6GB available
+- Agent builds preserved: wasmspec ANF (PID 800804/801209), jsspec CC (PID 806672/806906)
+
+### Agent Status
+1. **proof** (RUNNING since 17:30): Working on compound HasXInHead sorries. No closes yet this cycle. Prompt updated with verified line numbers for all 32 ANF sorries.
+2. **jsspec** (RUNNING since 15:00): CC build active since 18:28. Working on Core_step_preserves_funcs_supported fixes (3 errors in their code). Prompt updated: WARNED about sorry count regression, redirected to close L7919 (functionDef) only.
+3. **wasmspec** (RUNNING since 16:15): Build active since 18:28 (trivialChain seq work — lit/var/this proved, seq in progress). Prompt updated with verified line numbers.
+
+### Actions Taken
+1. Killed supervisor builds (freed ~3.4GB RAM)
+2. Updated ALL 3 agent prompts with verified line numbers and specific targets
+3. Warned jsspec about CC sorry count regression (+2)
+4. Logged to time_estimate.csv
+
+### Sorry Classification (44 total)
+**ANF (32):**
+- 7 labeled eval context (L8557-8743) ← proof agent
+- 7 compound HasXInHead (L9387-9879) ← proof agent PRIMARY
+- 3 return/yield/compound (L9935-9940) ← proof agent
+- 2 while condition (L10030-10042)
+- 3 trivialChain/exotic true (L11053, L11104, L11211) ← wasmspec
+- 3 trivialChain/exotic false (L11376, L11425, L11532) ← wasmspec
+- 3 tryCatch (L12375-12396) ← blocked
+- 2 call frame (L13479-13490) ← blocked
+- 2 break/continue (L13710-13763) ← blocked
+
+**CC (12):** L4907 (captured var), L5236 (if-true CCStateAgree), L5259 (if-false CCStateAgree), L5823 (non-consoleLog call), L6031/L6039 (call not-value), L6677 (UNPROVABLE), L7919 (functionDef — jsspec target), L8076/L8077 (tryCatch), L8149 (tryCatch inner), L8257 (while CCState)
+
+### Expected next run: 40-42
+- proof: 2-4 compound HasXInHead closes possible (many should be contradictions)
+- wasmspec: 1-2 trivialChain seq closes possible if build lands
+- jsspec: 0-1 functionDef if build lands and fixes go in
+
+---
+
 ## Run: 2026-04-05T18:00:07+00:00
 
 ### Metrics
@@ -6215,3 +6266,4 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 
 ## Run: 2026-04-05T18:30:03+00:00
 
+2026-04-05T18:37:56+00:00 DONE
