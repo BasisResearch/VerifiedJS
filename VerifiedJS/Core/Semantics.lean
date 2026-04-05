@@ -13643,16 +13643,13 @@ theorem step_call_step_arg (cv : Value) (args : List Expr)
       some (t, pushTrace { sa with expr := .call (.lit cv) (done ++ [sa.expr] ++ remaining), trace := trace } t) := by
   unfold step?; simp [exprValue?, hallv]; split <;> simp_all [pushTrace]
 
-/-- call with consoleLog: produces log event and .lit .undefined. -/
+/-- call with consoleLog: result is .lit .undefined. -/
 theorem step_call_consoleLog (args : List Expr) (argVals : List Value)
     (env : Env) (heap : Heap) (trace : List TraceEvent)
     (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
     (hargs : allValues args = some argVals) :
-    step? ⟨.call (.lit (.function consoleLogIdx)) args, env, heap, trace, funcs, cs⟩ =
-      some (
-        .log (match argVals with | [v] => valueToString v | vs => String.intercalate " " (vs.map valueToString)),
-        pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩
-          (.log (match argVals with | [v] => valueToString v | vs => String.intercalate " " (vs.map valueToString)))) := by
+    ∃ msg, step? ⟨.call (.lit (.function consoleLogIdx)) args, env, heap, trace, funcs, cs⟩ =
+      some (.log msg, pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ (.log msg)) := by
   simp [step?, exprValue?, hargs, consoleLogIdx]
 
 /-- call with function (non-consoleLog) and closure found: enters closure body. -/
@@ -13684,17 +13681,6 @@ theorem step_call_func_none (idx : FuncIdx) (args : List Expr) (argVals : List V
     step? ⟨.call (.lit (.function idx)) args, env, heap, trace, funcs, cs⟩ =
       some (.silent, pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ .silent) := by
   simp [step?, exprValue?, hargs, hnotcl, hfunc]
-
-/-- call with non-function value callee and all-value args: returns undefined. -/
-theorem step_call_nonfunc_exact (v : Value) (args : List Expr) (argVals : List Value)
-    (env : Env) (heap : Heap) (trace : List TraceEvent)
-    (funcs : Array FuncClosure) (cs : List (List (VarName × Value)))
-    (hv : ∀ idx, v ≠ .function idx) (hargs : allValues args = some argVals) :
-    step? ⟨.call (.lit v) args, env, heap, trace, funcs, cs⟩ =
-      some (.silent, pushTrace ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ .silent) := by
-  cases v with
-  | function idx => exact absurd rfl (hv idx)
-  | _ => simp [step?, exprValue?, hargs]
 
 /-- §13.2.5.4 When some prop value is not a value, step the first non-value prop. -/
 theorem step_objectLit_step_prop (props : List (PropName × Expr))

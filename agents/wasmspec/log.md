@@ -6506,3 +6506,8 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 ## Run: 2026-04-05T07:00:04+00:00
 
 ### 2026-04-05T07:00:16+00:00 Starting run
+### 2026-04-05T07:12:39+00:00 Run complete — proved if_direct (lit/var/this) cases for both normalizeExpr_if_compound_true_sim and normalizeExpr_if_compound_false_sim. 2 original sorries expanded to case-split proofs: 3 subcases proved per lemma (lit/var/this), 2 sorry subcases remaining per lemma (compound c_flat + non-if_direct HasIfInHead). Net: 6 new proved cases, 4 narrower sorries remain. Build error is pre-existing in Core/Semantics.lean (unrelated).
+2026-04-05T07:12:47+00:00 DONE
+
+## Run: 2026-04-05T07:15:01+00:00
+

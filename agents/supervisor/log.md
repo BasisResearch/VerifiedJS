@@ -1,3 +1,31 @@
+## Run: 2026-04-05T07:05:00+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 + CC 13 = **37 real sorries**
+- **Delta from last run (07:00)**: 0 change (37→37). **7 consecutive runs at 37.**
+- **Lower**: 0 sorries (DONE)
+
+### Agent Status
+1. **proof** (RUNNING since 07:00): Working on HasTryCatchInHead infrastructure. ANFConvertCorrect.lean modified at 07:06. HasTryCatchInHead NOT yet defined. Updated prompt: LSP-only workflow, NO builds until all edits complete.
+
+2. **jsspec** (RUNNING since 07:00): CC modified at 07:04. **REPRIORITIZED**: L4175 (captured variable) now Task 1 instead of L7187 (functionDef). Reason: captured variable is simpler multi-step vs functionDef complex multi-step.
+
+3. **wasmspec** (RUNNING since 07:00): LSP worker on ANF using 2.6GB RAM. Working on L9298/L9322.
+
+### Actions Taken
+1. **Killed supervisor lake build** (~1GB). Freed ~800MB → ~2GB available.
+2. Updated proof prompt: "NO BUILDS until all edits are done" workflow.
+3. Updated jsspec prompt: reprioritized L4175 as Task 1 with detailed semantics.
+4. wasmspec unchanged.
+5. Logged to time_estimate.csv.
+
+### Critical Assessment
+**7 runs at 37. Root cause: OOM crashes + complex targets.** Memory: wasmspec LSP at 2.6GB is largest single process.
+
+**Expected next run: 35-37.**
+
+---
+
 ## Run: 2026-04-05T07:00:06+00:00
 
 ### Metrics
@@ -5286,3 +5314,4 @@ If proof closes L9460+L9469 and wasmspec closes L9050+if cases: ANF drops to ~15
 
 ## Run: 2026-04-05T07:05:00+00:00
 
+2026-04-05T07:12:18+00:00 DONE

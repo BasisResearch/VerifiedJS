@@ -3943,34 +3943,46 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
         -- All args are values, callee is a value
         cases cv with
         | function idx =>
-          -- Function callee
-          unfold Core.step? at hstep
-          simp only [Core.exprValue?, Core.allValues, hallv] at hstep
-          split at hstep
-          · -- consoleLog
+          -- Function callee: case split on consoleLog vs non-consoleLog
+          cases hcl : idx == Core.consoleLogIdx with
+          | true =>
+            -- consoleLog: idx = consoleLogIdx
+            have hidx : idx = Core.consoleLogIdx := by
+              simp [BEq.beq, Core.consoleLogIdx] at hcl; exact hcl
+            subst hidx
+            obtain ⟨msg, hfwd⟩ := Core.step_call_consoleLog args argVals s.env s.heap s.trace s.funcs s.callStack hallv
+            rw [hfwd] at hstep
             simp only [Option.some.injEq, Prod.mk.injEq] at hstep
             obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
-          · -- not consoleLog
+          | false =>
+            -- not consoleLog
             cases hfunc : s.funcs[idx]? with
             | some closure =>
-              simp only [hfunc, Option.some.injEq, Prod.mk.injEq] at hstep
+              have hfwd := Core.step_call_func_closure idx args argVals s.env s.heap s.trace s.funcs s.callStack
+                closure hallv (by simp [hcl]) hfunc
+              rw [hfwd] at hstep
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
               obtain ⟨-, rfl⟩ := hstep
               simp only [Core.pushTrace, Core.Expr.supported, Bool.and_eq_true]
               -- Need closure.body.supported — requires FuncsSupported invariant
               sorry
             | none =>
-              simp only [hfunc, Option.some.injEq, Prod.mk.injEq] at hstep
+              have hfwd := Core.step_call_func_none idx args argVals s.env s.heap s.trace s.funcs s.callStack
+                hallv (by simp [hcl]) hfunc
+              rw [hfwd] at hstep
+              simp only [Option.some.injEq, Prod.mk.injEq] at hstep
               obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
-        | _ =>
+        | null | undefined | bool _ | number _ | string _ | object _ =>
           -- Non-function callee with all-value args → .lit .undefined
-          unfold Core.step? at hstep
-          simp only [Core.exprValue?, Core.allValues, hallv] at hstep
+          have hfwd := Core.step_call_nonfunc_exact _ args argVals s.env s.heap s.trace s.funcs s.callStack
+            (by intro idx h; exact Core.Value.noConfusion h) hallv
+          rw [hfwd] at hstep
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨-, rfl⟩ := hstep; simp [Core.pushTrace]
       | none =>
         -- Not all args are values: step first non-value arg
         cases hfnv : Core.firstNonValueExpr args with
-        | none => simp [Core.step?, Core.exprValue?, hallv, hfnv] at hstep
+        | none => exact (Core.allValues_firstNonValue_contra hallv hfnv).elim
         | some val =>
           obtain ⟨done, target, rest⟩ := val
           cases h_sub : Core.step? { s with expr := target } with

@@ -1,4 +1,4 @@
-# jsspec — STOP working on call. Close functionDef (L7119) NOW.
+# jsspec — Close captured variable (L4175) FIRST, then functionDef (L7187)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -19,47 +19,48 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 ```
 If count > 1, wait 60s then check again. Only ONE build at a time or everything OOMs.
 
-## STATUS: You have been stuck on call (L3921) for 6+ HOURS across multiple runs. STOP.
+## STATUS: CC has 13 real sorries. You are reassigned from call.
 
-CC has 13 real sorries. You are reassigned.
+## TASK 1: Close L4175 (captured variable) — DO THIS FIRST
 
-## TASK 1: Close L7119 (functionDef) — DO THIS FIRST
+Line 4175: `sorry` inside `closureConvert_step_simulation`, var case, captured branch.
 
-Line 7119: `| functionDef fname params body isAsync isGen => sorry`
+Context: `lookupEnv envMap name = some idx`, so convertExpr gives `.getEnv (.var envVar) idx`.
 
-This is `closureConvert_step_simulation` for the functionDef case.
+**Core side**: `Core.step? (.var name) env` → looks up `name` in `env.bindings`, returns the value.
+
+**Flat side**: `.getEnv (.var envVar) idx` needs multi-step simulation:
+1. Step `.getEnv (.var envVar) idx` — first `.var envVar` evaluates to environment object pointer
+2. `.getEnv (.lit (.object envPtr)) idx` — looks up idx-th value in heap object
+
+**Key hypotheses you'll need**:
+- `EnvCorrInj injMap sc.env sf.env` — relates Core env bindings to Flat env
+- `HeapInj injMap sc.heap sf.heap` — heap correspondence
+- The envMap maps Core variable names to Flat env indices
 
 Steps:
-1. `lean_goal` at line 7119 to see exact proof state
-2. Core.step? for functionDef allocates a closure on the heap and binds the name
-3. Flat.convertExpr for functionDef creates a makeClosure + let binding
-4. Show the Flat side can step to match
+1. `lean_goal` at L4175 to see exact proof state
+2. Unfold Flat.step? for `.getEnv (.var envVar) idx`
+3. Show `.var envVar` steps to the env object (via `sf.env` lookup)
+4. Show getEnv on the object gives the right value (via HeapInj + EnvCorrInj)
+5. Construct the multi-step simulation using Flat.Steps
 
-Key context: look at how other cases in this theorem are proved (e.g., `throw` at L7120-7139). Follow the same pattern:
-- Extract conversion info from hconv
-- Show sf has the right form
-- Show Flat.step? matches
-- Build the output SimRel
+## TASK 2: Close L7187 (functionDef) — ONLY if Task 1 is done
 
-## TASK 2: Close L4107 (captured variable)
+Line 7187: `| functionDef fname params body isAsync isGen => sorry`
 
-Line 4107: captured variable case in `closureConvert_step_simulation`.
+This is complex (multi-step: makeEnv evaluates captured exprs, then makeClosure creates closure). Only attempt after Task 1.
 
-When `lookupEnv envMap name = some idx`, convertExpr gives `.getEnv (.var envVar) idx`.
-The Core side does `env.lookup name = some v`. The Flat side needs to:
-1. Step `.getEnv (.var envVar) idx` — first step looks up envVar in env
-2. Second step does getEnv on the closure environment
+**Core side** (L8594 Core/Semantics.lean): creates FuncClosure from params+body+env, pushes to funcs, result = `.lit (.function idx)`
 
-Use `lean_goal` at L4107 to see what you need. The `EnvCorr` hypothesis should give you the value correspondence.
+**Flat side** (L231 Flat/ClosureConvert.lean): creates `(.makeClosure funcIdx (.makeEnv capturedExprs), st3)`
 
-## TASK 3: L3921 (call) — ONLY if Tasks 1-2 are done
-
-Leave call for last. It requires FuncsSupported invariant changes.
+## TASK 3: L3960 (call) — ONLY if Tasks 1-2 are done
 
 ## PRIORITY ORDER
-1. L7119 (functionDef) — freshest target, highest chance of closure
-2. L4107 (captured variable) — captured env lookup
-3. L3921 (call) — only if time remains
+1. L4175 (captured variable) — most tractable, single variable lookup
+2. L7187 (functionDef) — complex multi-step
+3. L3960 (call) — only if time remains
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`
