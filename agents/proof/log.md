@@ -6053,3 +6053,53 @@ The `_` discards the `evs1.length ≤ evs.length` constraint (our lemmas prove t
 These require proving callStack preservation for Steps that go PAST the evaluation context into the continuation (then_/else_, b, body). The theorem has a length constraint `evs1.length ≤ evs.length` which restricts to prefixes of the known Steps. This makes the if/seq/let cases PROVABLE via a Steps_ctx_pres lemma that tracks the correspondence between inner and wrapped Steps lengths. This needs a new `Steps_ctx_pres` general lemma (different from the prompt's version).
 
 **Status**: Infrastructure in place. wasmspec can use it to close 8/16 hpres sorries. The other 8 need `Steps_ctx_pres` which requires tracking Step-length correspondence.
+### 2026-04-05T16:15:22+00:00 Run complete — Fixed Steps_ctx_lift_pres, closed 16 hpres sorries (56→40)
+
+## Run: 2026-04-05T14:30+00:00
+- **BUILD: PASSES** ✓ (no errors in my zone)
+- **ANF Sorries: 40** (was 56 — 16 hpres sorries eliminated)
+
+### What was done
+
+#### 1. Flat/Semantics.lean — General trace infrastructure
+- **`step?_trace_append`**: every `step?` appends exactly one event to trace
+- **`Steps_trace_append`**: multi-step trace accumulation `sf'.trace = sf.trace ++ evs`
+
+#### 2. ANFConvertCorrect.lean — Fixed `Steps_ctx_lift_pres` (L1889)
+Another agent (wasmspec) had added `Steps_ctx_lift_pres` with the right signature but a buggy proof (errors at L1935: `Option.some.inj` doesn't exist, variable scoping issues after `obtain`). I rewrote the tail case using:
+- Determinism via `simp only [Option.some.injEq, Prod.mk.injEq]` instead of `Option.some.inj`
+- Fresh variable names (`smid'`, `evs1'`) in inner `have` blocks to avoid shadowing
+- Same proof structure: induction on inner Steps, determinism to identify the wrapped step, canonical state reconstruction
+
+#### 3. ANFConvertCorrect.lean — Terminal wrapper preservation (L2068+)
+Added **unbounded** callStack preservation for terminal wrappers (throw, return_some, await, yield_some):
+- `step?_throw_callStack_inv`, `step?_return_some_callStack_inv`, `step?_await_callStack_inv`, `step?_yield_some_callStack_inv`
+- `Steps_callStack_pres_of_inv`: general invariant-based induction
+- `Steps_throw_pres`, `Steps_return_some_pres`, `Steps_await_pres`, `Steps_yield_some_pres`
+
+These prove the STRONGER unconditional version (no length bound needed) for terminal wrappers.
+
+### Key insight: bounded vs unbounded hpres
+The theorem `normalizeExpr_if_branch_step` has a **bounded** hpres:
+```
+∀ smid evs1, Steps ⟨e, ...⟩ evs1 smid → evs1.length ≤ evs.length → ...
+```
+The length constraint means Steps never go past the evaluation context. This makes **all** 16 cases provable (not just terminal wrappers), because:
+- step? is deterministic → any bounded Steps is a prefix of the known Steps
+- All prefix states have `wrap(inner)` as expression → callStack preserved
+
+### Sorry classification (40 total)
+
+| Lines | Count | Category |
+|-------|-------|----------|
+| L8547-8733 | 7 | normalizeExpr_labeled_step_sim (eval ctx lifting) |
+| L9377 | 1 | throw compound HasThrowInHead |
+| L9528-9534 | 2 | return compound |
+| L9705-9711 | 2 | await compound |
+| L9863-9869 | 2 | yield compound |
+| L9925-9930 | 3 | normalizeExpr_step_sim (return/yield/compound) |
+| L10020-10032 | 2 | while condition simulation |
+| L10944-11323 | 7 | normalizeExpr_if_branch_step/false inner cases |
+| L11428-11553 | 8 | UNLOCK sorries (need if_branch_step proof) |
+| L12015-12036 | 3 | tryCatch body simulation |
+| L13119-13403 | 3 | tryCatch frame + end-to-end |

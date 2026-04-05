@@ -1483,10 +1483,8 @@ private theorem closureConvert_init_related
     -- FuncsSupported: initial funcs = #[logBuiltin], body = .lit .undefined
     intro i fd hi
     dsimp at hi
-    simp only [Array.getElem?_push] at hi
-    split at hi
-    · simp only [Option.some.injEq] at hi; subst hi; rfl
-    · simp at hi
+    simp at hi
+    subst hi; rfl
   case conv =>
     unfold Flat.closureConvert at h
     simp only [Except.ok.injEq] at h
@@ -4079,11 +4077,8 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           { s with expr := target } se t (Nat.le_refl _) htgt_supp hfuncs_supp h_sub
         exact listSupported_replace_target se.expr hd_supp hse_supp hr_supp
   | tryCatch body catchParam catchBody finally_ =>
-    rw [hexpr] at hsupp
-    have hsup_body : body.supported = true := by simp [Core.Expr.supported] at hsupp; exact hsupp.1.1
-    have hsup_catch : catchBody.supported = true := by simp [Core.Expr.supported] at hsupp; exact hsupp.1.2
-    have hsup_fin : (match finally_ with | some x => x.supported | none => true) = true := by
-      simp [Core.Expr.supported] at hsupp; exact hsupp.2
+    simp only [hexpr, Core.Expr.supported, Bool.and_eq_true] at hsupp
+    obtain ⟨⟨hsup_body, hsup_catch⟩, hsup_fin⟩ := hsupp
     rw [state_with_expr_eq hexpr] at hstep
     cases hval_b : Core.exprValue? body with
     | some v =>
@@ -4785,8 +4780,8 @@ private theorem Core_step_preserves_funcs_supported (s s' : Core.State) (ev : Co
           { s with expr := target } se t (Nat.le_refl _) htgt_supp hfuncs_supp h_sub i fd
           (by simpa [Core.pushTrace] using hfd)
   | tryCatch body catchParam catchBody finally_ =>
-    rw [hexpr] at hsupp
-    have hsup_body : body.supported = true := by simp [Core.Expr.supported] at hsupp; exact hsupp.1.1
+    simp only [hexpr, Core.Expr.supported, Bool.and_eq_true] at hsupp
+    obtain ⟨⟨hsup_body, _⟩, _⟩ := hsupp
     rw [state_with_expr_eq hexpr] at hstep
     cases hval_b : Core.exprValue? body with
     | some v =>
