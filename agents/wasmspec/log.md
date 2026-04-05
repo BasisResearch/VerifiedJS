@@ -6578,3 +6578,30 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 
 ### 2026-04-05T11:15:15+00:00 Starting run
 2026-04-05T12:15:01+00:00 SKIP: already running
+
+### 2026-04-05T11:15:01+00:00 — normalizeExpr_if_branch_step lemma design & scaffolding
+
+**Key contribution: normalizeExpr_if_branch_step** — a general lemma for stepping compound expressions with HasIfInHead through eval contexts.
+
+**Signature:**
+```
+∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d → HasIfInHead e → ...
+→ ∃ sf' evs, Flat.Steps ⟨e,...⟩ evs sf' ∧ (all silent) ∧ (env/heap/funcs/cs preserved)
+  ∧ (normalizeExpr sf'.expr K = then_) ∧ ExprWellFormed sf'.expr sf'.env
+```
+
+**Cases proved (modulo hpres sorry):**
+- `if_direct` with HasIfInHead condition: IH on condition + Steps_if_cond_ctx lift ✓
+- `if_cond`: same pattern ✓
+- `seq_left`: IH on a + Steps_seq_ctx lift ✓ (structure)
+
+**Cases with sorry:**
+- `if_direct` ¬HasIfInHead condition: needs trivialChain evaluation
+- `seq_right`: needs Classical.em on HasIfInHead a
+- `let_init`, `throw_arg`, `return_some_arg`, `await_arg`, `yield_some_arg`: same IH+lift pattern
+- Exotic cases (binary, unary, getProp, etc.): need new Steps_*_ctx infrastructure
+- `hpres` property: universal across all cases, needs separate helper
+
+**No regressions**: All errors remain outside assigned range (L11060+).
+
+**Sorry count in range**: 25 (net +2 from new lemma bodies, -4 from restructured if_compound sorries now pointing at branch_step)
