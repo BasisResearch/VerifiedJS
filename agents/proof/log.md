@@ -5946,3 +5946,6 @@ SimRel reconstruction after body-step requires that `normalizeExpr` produces the
 #### Build status: My changes compile cleanly. Errors in build are from wasmspec's concurrent changes in L10531-10720 range.
 ### 2026-04-05T11:52:34+00:00 Run complete — partial progress: 2 call frame sorries proved, tryCatch lifting lemmas added, body-error/body-step documented
 2026-04-05T11:53:00+00:00 DONE
+
+## Run: 2026-04-05T12:30:02+00:00
+
