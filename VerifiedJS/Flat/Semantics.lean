@@ -2037,4 +2037,9 @@ theorem step?_newObj_allValues (s : State)
         s.trace ++ [.silent], s.funcs, s.callStack⟩) := by
   unfold step?; simp only [hf, he, hvs, allocFreshObject, pushTrace]
 
+/-- step? never modifies the funcs field. -/
+theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Flat.State)
+    (h : step? sf = some (ev, sf')) : sf'.funcs = sf.funcs := by
+  sorry
+
 end VerifiedJS.Flat
