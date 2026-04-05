@@ -6110,3 +6110,46 @@ The length constraint means Steps never go past the evaluation context. This mak
 
 ### 2026-04-05T17:30:32+00:00 Starting run
 2026-04-05T18:30:01+00:00 SKIP: already running
+### 2026-04-05T18:45:00+00:00 Run complete — 8 UNLOCK sorries closed
+
+- **BUILD: PASSES** ✓ (no new errors in proof agent's range)
+- **ANF Sorries: 32** (was 40 — 8 UNLOCK sorries eliminated)
+
+### What was done: compound_true/false_sim UNLOCK sorries
+
+Closed all 8 UNLOCK sorries in `normalizeExpr_if_compound_true_sim` (4) and `normalizeExpr_if_compound_false_sim` (4).
+
+#### 1. Infrastructure: `observableTrace_all_silent` helper (L54)
+New lemma: if all events in a list are `.silent`, then `observableTrace evs = []`.
+Uses induction with `subst` on the silent event proof.
+
+#### 2. Non-if_direct cases (2 × `all_goals sorry` → proved)
+For all non-`if_direct` HasIfInHead constructors (seq_left, seq_right, let_init, etc.):
+- Added `have hif_copy := hif` before `cases hif` to preserve HasIfInHead proof
+- Applied `normalizeExpr_if_branch_step[_false]` directly with `hif_copy`
+- Bridged output to ANF_SimRel using `observableTrace_all_silent` and trace append lemmas
+
+#### 3. Eval-context-lift cases (6 individual sorries → proved)
+For if_direct with compound condition (seq+HasIfInHead, nested if, catch-all):
+- **seq+HasIfInHead**: Applied `normalizeExpr_if_branch_step` on `.seq a_c b_c` with `hif_seq`, lifted through `Steps_if_cond_ctx_b`, wired to SimRel
+- **nested if** (`| «if» c' t' e'`): Used `rw [normalizeExpr_if']` (not `simp only`) to unfold only ONE level (avoids double-unfolding). Applied branch_step with `HasIfInHead.if_direct`
+- **catch-all** (`| _`): Proved `HasIfInHead` by contradiction via `Classical.byContradiction` — `no_if_head_implies_trivial_chain` gives `isTrivialChain = true` but all catch-all constructors have `isTrivialChain = false`
+
+Key insight for nested if: `simp only [normalizeExpr_if']` fires recursively and unfolds inner `.if` too. Use `rw [normalizeExpr_if']` for single-level unfolding.
+
+### Sorry classification (32 total)
+
+| Lines | Count | Category |
+|-------|-------|----------|
+| L8557-8743 | 7 | normalizeExpr_labeled_step_sim (eval ctx lifting) |
+| L9387 | 1 | throw compound HasThrowInHead |
+| L9538-9544 | 2 | return compound |
+| L9715-9721 | 2 | await compound |
+| L9873-9879 | 2 | yield compound |
+| L9935-9940 | 3 | normalizeExpr_step_sim (return/yield/compound) |
+| L10030-10042 | 2 | while condition simulation |
+| L11053-11211 | 3 | normalizeExpr_if_branch_step inner (wasmspec range) |
+| L11376-11532 | 3 | normalizeExpr_if_branch_step_false inner (wasmspec range) |
+| L12373-12394 | 3 | tryCatch body simulation |
+| L13477-13761 | 4 | tryCatch frame + end-to-end |
+2026-04-05T18:49:58+00:00 DONE
