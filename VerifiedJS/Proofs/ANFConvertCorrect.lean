@@ -10256,9 +10256,45 @@ private theorem normalizeExpr_tryCatch_step_sim
       -- body must be .trivial t (non-var). This means body_f = .lit v_f.
       split at hstep_eq
       · -- Case 1a: finally_ = some fin — ev = .silent, sa' = .seq fin (.trivial (trivialOfValue v))
-        rename_i fin hfin_eq
         obtain ⟨rfl, rfl⟩ := hstep_eq
-        sorry -- tryCatch body-value with finally: Flat steps .tryCatch (.lit v) cp cb (some fin_f) → .seq fin_f (.lit v)
+        -- Eliminate absurd first branch of hfin_norm (some = none is False)
+        rcases hfin_norm with ⟨_, habs, _⟩ | ⟨fin_flat, fin_anf, hfin_f_eq, hfin_eq', hfin_norm'⟩
+        · exact absurd habs (by simp)
+        · -- fin_f = some fin_flat, finally_ = some fin_anf, and normalizeExpr of fin_flat
+          subst hfin_f_eq
+          -- fin_anf is the finally ANF expression
+          have hfin_match := Option.some.inj hfin_eq'
+          -- body_f = .lit v by inversion
+          have hbf_lit := normalizeExpr_exprValue_inv body_f body k n n1 v hk hbody_norm hval
+          subst hbf_lit
+          -- Construct one Flat step: .tryCatch (.lit v) cp cb (some fin_flat) → .seq fin_flat (.lit v)
+          by_cases hcf : catchParam = "__call_frame_return__"
+          · sorry -- call frame: shouldn't occur in source programs
+          · have hflat_step : Flat.step? ⟨.tryCatch (.lit v) catchParam cb_f (some fin_flat), env, heap, trace, funcs, cs⟩ =
+              some (.silent, ⟨.seq fin_flat (.lit v), env, heap, trace ++ [.silent], funcs, cs⟩) := by
+              unfold Flat.step?; simp [Flat.exprValue?, beq_eq_false_iff_ne, hcf, Flat.pushTrace]
+            -- Compute normalizeExpr equation for SimRel
+            obtain ⟨m_k, hk_val⟩ := hk (ANF.trivialOfValue v) m
+            have hnorm_seq : (ANF.normalizeExpr (.seq fin_flat (.lit v)) k).run n2 =
+                .ok (.seq fin_anf (.trivial (ANF.trivialOfValue v)), m_k) := by
+              simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run, Except.bind]
+              rw [hfin_norm']
+              simp only [ANF.normalizeExpr, trivialOfFlatValue_eq_trivialOfValue,
+                bind, Bind.bind, StateT.bind, StateT.run, Except.bind,
+                pure, Pure.pure, StateT.pure, Except.pure, StateT.lift, Functor.map, Except.map]
+              rw [hk_val]; rfl
+            refine ⟨⟨.seq fin_flat (.lit v), env, heap, trace ++ [.silent], funcs, cs⟩, [.silent],
+              .tail ⟨hflat_step⟩ (.refl _), rfl, ?_, ?_⟩
+            · -- ANF_SimRel
+              rw [hfin_match]
+              exact ⟨rfl, rfl,
+                by simp only [observableTrace_append, observableTrace_silent, observableTrace_nil]; exact htrace,
+                k, n2, m_k, hnorm_seq, hk⟩
+            · -- ExprWellFormed (.seq fin_flat (.lit v)) env
+              intro x hfx
+              cases hfx with
+              | seq_l _ _ _ h => exact hewf x (VarFreeIn.tryCatch_fin_some _ _ _ _ _ h)
+              | seq_r _ _ _ h => cases h
       · -- Case 1b: finally_ = none — ev = .silent, sa' = .trivial (trivialOfValue v)
         rename_i hfin_eq
         obtain ⟨rfl, rfl⟩ := hstep_eq
