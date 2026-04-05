@@ -1923,6 +1923,79 @@ private theorem step?_setIndex_val_ctx (s : Flat.State)
     | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩)
 
+/-- If all elements of done are .lit values and inner is not a value,
+    then valuesFromExprList? on the combined list is none. -/
+private theorem valuesFromExprList?_none_of_nonvalue
+    (done remaining : List Flat.Expr) (inner : Flat.Expr)
+    (hdone : ∀ e ∈ done, ∃ v, e = .lit v)
+    (hnotval : Flat.exprValue? inner = none) :
+    Flat.valuesFromExprList? (done ++ [inner] ++ remaining) = none := by
+  induction done with
+  | nil =>
+    simp only [List.nil_append, List.singleton_append]
+    unfold Flat.valuesFromExprList?
+    simp only [hnotval]
+    rfl
+  | cons d ds ih =>
+    have ⟨v, hv⟩ := hdone d (.head ..)
+    subst hv
+    simp only [List.cons_append, Flat.valuesFromExprList?, Flat.exprValue?,
+      ih (fun e he => hdone e (.tail _ he))]
+
+/-- If all elements of done are .lit values and inner is not a .lit,
+    then firstNonValueExpr reconstructs (done, inner, remaining). -/
+private theorem firstNonValueExpr_of_done_lit
+    (done remaining : List Flat.Expr) (inner : Flat.Expr)
+    (hdone : ∀ e ∈ done, ∃ v, e = .lit v)
+    (hnotlit : ∀ v, inner ≠ .lit v) :
+    Flat.firstNonValueExpr (done ++ [inner] ++ remaining) = some (done, inner, remaining) := by
+  induction done with
+  | nil =>
+    simp only [List.nil_append, Flat.firstNonValueExpr]
+    match inner, hnotlit with
+    | .lit v, h => exact absurd rfl (h v)
+    | .var _, _ | .«let» _ _ _, _ | .assign _ _, _ | .«if» _ _ _, _ | .seq _ _, _
+    | .call _ _ _, _ | .newObj _ _ _, _ | .getProp _ _, _ | .setProp _ _ _, _
+    | .getIndex _ _, _ | .setIndex _ _ _, _ | .deleteProp _ _, _ | .typeof _, _
+    | .getEnv _ _, _ | .makeEnv _, _ | .makeClosure _ _, _
+    | .objectLit _, _ | .arrayLit _, _ | .throw _, _ | .tryCatch _ _ _ _, _ | .while_ _ _, _
+    | .«break» _, _ | .«continue» _, _ | .labeled _ _, _ | .«return» _, _ | .yield _ _, _
+    | .await _, _ | .this, _ | .unary _ _, _ | .binary _ _ _, _ => rfl
+  | cons d ds ih =>
+    have ⟨v, hv⟩ := hdone d (.head ..)
+    subst hv
+    simp only [List.cons_append, Flat.firstNonValueExpr,
+      ih (fun e he => hdone e (.tail _ he))]
+
+/-- Context stepping: call arg position — when funcExpr and envExpr are values,
+    done elements are all literals, and inner is not a value, stepping inner
+    produces a step of the full call expression. -/
+private theorem step?_call_arg_ctx (s : Flat.State)
+    (funcExpr envExpr : Flat.Expr) (done remaining : List Flat.Expr) (inner : Flat.Expr)
+    (hfv : ∃ fv, Flat.exprValue? funcExpr = some fv)
+    (hev : ∃ ev, Flat.exprValue? envExpr = some ev)
+    (hdone : ∀ e ∈ done, ∃ v, e = .lit v)
+    (hnotval : Flat.exprValue? inner = none)
+    (t : Core.TraceEvent) (sa : Flat.State)
+    (hstep : Flat.step? { s with expr := inner } = some (t, sa))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    ∃ s', Flat.step? { s with expr := .call funcExpr envExpr (done ++ [inner] ++ remaining) } = some (t, s') ∧
+      s'.expr = .call funcExpr envExpr (done ++ [sa.expr] ++ remaining) ∧
+      s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [t] := by
+  obtain ⟨fv, hfv⟩ := hfv
+  obtain ⟨ev, hev⟩ := hev
+  have hnotlit : ∀ v, inner ≠ .lit v := fun v h => by subst h; simp [Flat.exprValue?] at hnotval
+  have hvnone := valuesFromExprList?_none_of_nonvalue done remaining inner hdone hnotval
+  have hfirst := firstNonValueExpr_of_done_lit done remaining inner hdone hnotlit
+  rw [Flat.step?.eq_1]
+  simp only [hfv, hev, hvnone, hfirst, hstep]
+  cases t with
+  | error msg => exact absurd rfl (hnoerr msg)
+  | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
 /-- Error propagation for seq: when inner step errors, seq propagates. -/
 private theorem step?_seq_error (s : Flat.State) (a b : Flat.Expr)
     (hnotval : Flat.exprValue? a = none)
