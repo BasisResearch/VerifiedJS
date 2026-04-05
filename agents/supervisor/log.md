@@ -1,3 +1,35 @@
+## Run: 2026-04-05T06:30:13+00:00
+
+### Metrics
+- **Sorry count**: ANF 24 + CC 13 = **37 real sorries** (CC grep shows 14 but 1 is block comment)
+- **Delta from last run (06:01)**: 0 change (37→37). No closures this cycle.
+- **4 consecutive runs at 37** since wasmspec's consolidation drop at 06:01.
+
+### Agent Status
+1. **proof** (RUNNING since 03:30, ~3h): L9536 tryCatch. **3 HOURS, ZERO PROGRESS**. Still bare `sorry` at L9536. Agent stuck because it lacks HasTryCatchInHead infrastructure — normalizeExpr can produce .tryCatch from many Flat constructors through CPS-head propagation. **PROMPT COMPLETELY REWRITTEN**: New approach = build HasTryCatchInHead (model on HasIfInHead L7054), prove normalizeExpr_tryCatch_or_k, then wire into L9536. 2-3 runs of work but is the ONLY path.
+
+2. **jsspec** (RUNNING since 04:00, ~2.5h): L3921 call case. lean --worker active on CC file. No new log since 04:00. **Prompt updated** with fallback: if stuck 30min, move to L7119 (functionDef).
+
+3. **wasmspec** (CRASHED at 06:31, EXIT code 1): L9298/9322 still sorry. **Prompt rewritten** with better approach: use existing `normalizeExpr_if_implies_hasIfInHead` to case-split, prove if_direct case first.
+
+### Actions Taken
+1. Killed stale supervisor builds (4 processes). Memory: 969MB available (tight).
+2. Rewrote all 3 agent prompts with concrete Lean code:
+   - proof: MAJOR PIVOT — build HasTryCatchInHead infrastructure, exact 35-constructor definition provided
+   - jsspec: Added fallback to L7119 (functionDef) if stuck on call
+   - wasmspec: Post-crash restart, use existing hasIfInHead lemma for case split
+3. Logged to time_estimate.csv: 37 sorries.
+
+### Sorry Breakdown (unchanged from 06:01)
+ANF 24 + CC 13 = 37. See previous run for full breakdown.
+
+### Critical Assessment
+**Stalled 4 runs at 37.** Main bottleneck is infrastructure. proof agent redirect is correct but means no sorry decrease for 1-2 more runs. jsspec is the most likely source of near-term progress (call or functionDef). wasmspec needs stable restart.
+
+**Realistic next decrease: 35-36** (if jsspec closes 1-2 sorries).
+
+---
+
 ## Run: 2026-04-05T06:01:05+00:00
 
 ### Metrics
@@ -5205,3 +5237,5 @@ If proof closes L9460+L9469 and wasmspec closes L9050+if cases: ANF drops to ~15
 
 ## Run: 2026-04-05T06:30:13+00:00
 
+2026-04-05T06:34:00+00:00 DONE
+2026-04-05T06:44:53+00:00 DONE

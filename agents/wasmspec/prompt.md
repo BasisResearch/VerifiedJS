@@ -13,57 +13,61 @@
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
 ## CONCURRENCY: proof agent also edits ANFConvertCorrect.lean
-- proof agent works on L9536 (tryCatch step sim) and L9079-9084 (let compound)
-- **YOU** own L9273-9322 (infrastructure lemmas) and L9326+ (normalizeExpr_if_step_sim)
-- DO NOT touch lines 9060-9090 or 9508-9540
+- proof agent is INSERTING new definitions around L7100 (HasTryCatchInHead) and working on L9536
+- **YOU** own L9273-9322 (infrastructure lemmas) and L9326+ (normalizeExpr_if_step_sim usage)
+- DO NOT touch lines 7046-7500 or 9508-9540
+- **NOTE**: proof agent's insertions will SHIFT your line numbers. Use `grep -n "normalizeExpr_if_compound_true_sim"` to find current lines.
 
-## STATUS: GREAT PROGRESS — 4 inline sorries → 2 infrastructure lemmas (net -2)
+## STATUS: CRASHED at 06:31 (EXIT code 1). Restarting.
 
-You successfully consolidated the 4 if compound inline sorries into 2 well-typed infrastructure lemmas:
-- `normalizeExpr_if_compound_true_sim` (L9273-9298) — sorry
-- `normalizeExpr_if_compound_false_sim` (L9300-9322) — sorry
+You previously consolidated 4 inline sorries → 2 infrastructure lemmas (net -2). L9298 and L9322 still sorry.
 
 ## YOUR TASK: Prove these 2 infrastructure lemmas
 
-Both lemmas have the same structure. The goal is:
-Given `normalizeExpr sf_expr k` produces `.if cond then_ else_`, and `evalTrivial env cond = .ok v`,
-show that Flat can step from `⟨sf_expr, env, heap, trace, funcs, cs⟩` to a state matching `then_` (or `else_`).
+`normalizeExpr_if_compound_true_sim` and `normalizeExpr_if_compound_false_sim`.
 
 ### Proof strategy: case analysis on sf_expr
 
-1. **Use `lean_goal` at L9298 to see exact proof state**
+1. **Find your lemmas**: `grep -n "normalizeExpr_if_compound_true_sim" VerifiedJS/Proofs/ANFConvertCorrect.lean`
 
-2. **Key insight**: Only `.if` in sf_expr can produce `.if` through normalizeExpr.
-   - `normalizeExpr (.if c t e) k` normalizes c, then wraps in .if
-   - No other constructor produces .if (seq→.let, let→.let, etc.)
+2. **Use `lean_goal` at the sorry line** to see exact proof state.
 
-3. **Case split on sf_expr**:
-   - Most constructors: derive contradiction (normalizeExpr doesn't produce .if)
-   - `.if c_flat then_flat else_flat`: the actual case to prove
-     - normalizeExpr normalizes c_flat → trivial cond
-     - Flat steps: `.if c_flat ...` → evaluate c_flat to value → branch
-     - If c_flat is already a value (lit/var/this): single Flat step
-     - If c_flat is compound: need multi-step sim (this is the hard part — can sorry initially)
+3. **Key insight**: Only `.if` in sf_expr can produce `.if` through normalizeExpr.
+   Use `ANF.normalizeExpr_if_implies_hasIfInHead` (already exists!) to get `HasIfInHead sf_expr`.
 
-4. **Start with the easy path**: prove the case where c_flat is already a trivial expression (lit/var/this). Sorry the compound sub-case. Even proving the trivial case narrows what's left.
-
-### Template:
+4. **Case split on HasIfInHead**:
 ```lean
-  cases sf_expr with
-  | lit | var | this | break | continue | while_ | labeled | tryCatch | return | throw | yield | await =>
-    -- These don't produce .if through normalizeExpr
-    simp [ANF.normalizeExpr] at hnorm
-    -- (may need more work for some constructors)
-    sorry  -- placeholder for contradiction derivation
-  | «if» c_flat then_flat else_flat =>
-    -- The real case: normalizeExpr (.if c t e) k normalizes c then wraps
-    sorry -- main proof here
-  | _ => sorry -- remaining constructors: derive contradiction
+  have hif := ANF.normalizeExpr_if_implies_hasIfInHead sf_expr k hk cond then_ else_ n m hnorm
+  cases hif with
+  | if_direct =>
+    -- sf_expr = .if c_flat then_flat else_flat
+    -- This is the main case: prove simulation directly
+    sorry
+  | _ =>
+    -- Compound cases (seq, let, etc.)
+    -- These are harder — sorry for now
+    sorry
 ```
 
+5. **For if_direct case**: sf_expr = `.if c_flat then_flat else_flat`.
+   - normalizeExpr (.if c t e) k normalizes c to a trivial condTriv
+   - The `cond` in the ANF .if IS condTriv
+   - For the true branch: Flat.step? (.if c_flat ...) evaluates c_flat
+   - If c_flat is value (lit): single step, trivial
+   - If c_flat is var: two steps (lookup + branch)
+   - If c_flat is this: two steps (lookup + branch)
+   - Model on the existing normalizeExpr_if_step_sim proof (L9343+) which handles exactly this
+
+6. **Even if you can only prove if_direct**: That's still progress — narrows the sorry to compound cases only.
+
+### IMPORTANT: Use existing decomp lemmas
+- `normalizeExpr_if_lit_decomp`, `normalizeExpr_if_var_decomp`, `normalizeExpr_if_this_decomp` — these extract cond/then_/else_ info from the normalizeExpr result
+- `Flat_step?_if_cond_step` — Flat step for if-condition
+- `Flat.step?_if_true`, `Flat.step?_if_false` — Flat step for branch selection
+
 ## PRIORITY ORDER
-1. L9298 (true branch infrastructure) — prove or narrow
-2. L9322 (false branch) — structurally identical to true
+1. L9298 (true branch infrastructure) — prove if_direct case, sorry compounds
+2. L9322 (false branch) — structurally identical
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
