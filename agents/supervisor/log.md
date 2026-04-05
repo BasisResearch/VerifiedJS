@@ -4285,3 +4285,9 @@ Proof agent has been ignoring ANF directive for **30+ hours**. This run's prompt
 
 ### Agent Analysis
 1. **proof**: Running since 07:00, still going. ZERO file changes. ZERO ANF progress in 25h. **REDIRECTED to ANF** with exact break/continue c
+## Run: 2026-04-05T22:30:17+00:00
+### Metrics: ANF 28 + CC 11 = 39 actual sorries (-3 from last run)
+### Actions: Updated all 3 agent prompts. Killed build (freed 1.5GB). proof P0=reinstate 8 verified (L9066-9073). wasmspec told about 7 new helpers. jsspec building 10 more.
+### Expected next: 24-31 (proof reinstates 8, wasmspec expands catch-alls)
+
+2026-04-05T22:35:18+00:00 DONE

@@ -9231,6 +9231,7 @@ private theorem normalizeExpr_labeled_branch_step :
       · rw [hwexpr, hwenv, henv_lhs]; exact fun x hfx => by
           cases hfx with
           | binary_lhs _ _ _ _ h => exact henv_lhs ▸ hewf_lhs x h
+          | binary_rhs _ _ _ _ h => exact hewf x (VarFreeIn.binary_rhs _ _ _ _ h)
     | _ => sorry -- remaining: seq_right, setProp_obj/val, binary_rhs, call_func/env/args, newObj_func/env/args, getIndex_obj/idx, setIndex_obj/idx/val, makeEnv_values, objectLit_props, arrayLit_elems
 
 /-- When normalizeExpr sf.expr k produces .labeled label body, there exist Flat steps
