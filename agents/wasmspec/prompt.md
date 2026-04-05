@@ -5,7 +5,7 @@
 - **DO NOT** edit Flat/Semantics.lean — it's DONE (0 sorries), leave it alone
 - **DO NOT** run `lake build` anything large
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
-- MEMORY: 7.7GB total, NO swap. ~1.4GB available.
+- MEMORY: 7.7GB total, NO swap. ~3.6GB available.
 - You CAN edit ANFConvertCorrect.lean ONLY
 - Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
@@ -21,65 +21,64 @@ If count > 0, DO NOT BUILD. Use `lean_goal` / `lean_multi_attempt` via LSP inste
 - **YOU** own L8000-10912 (normalizeExpr step sim infrastructure)
 - DO NOT touch lines outside your range
 
-## YOUR ZONE: 36 sorries. You built great infrastructure — now close the sorries!
+## YOUR ZONE: 36 sorries in L8000-10898. CLOSE THEM.
 
-### Proved infrastructure (USE THESE):
-- `trivialChain_eval_value` — eval trivial chain to value, preserves state
-- `no_if_head_implies_trivial_chain` — ¬HasIfInHead → trivial chain
-- `trivialChain_if_true_sim` — true branch simulation
-- `trivialChain_if_false_sim` — false branch simulation
-- `step?_tryCatch_body_ctx` — tryCatch body context stepping
-- `Steps_tryCatch_body_ctx` — multi-step tryCatch body context
-- `Steps_if_cond_ctx` (L1828) — multi-step if condition context
+## IMMEDIATE TARGETS — GROUP E FIRST (5 sorries, L10615-10628)
 
-## IMMEDIATE TARGETS — normalizeExpr_if_branch_step (12 sorries, L10559-10629)
+These all follow the EXACT same pattern as the proven `seq_left` case (L10590-10607). Copy that pattern:
 
-### GROUP A: hpres sorries (L10559, L10583, L10605) — 3 sorries
-State preservation after lifted steps. Should follow from `trivialChain_eval_value` which proves env/heap/funcs/cs preservation. Try:
-```
-lean_multi_attempt at L10559
-["exact ⟨rfl, rfl, rfl, rfl⟩", "exact trivialChain_eval_value ... |>.2.2"]
-```
-
-### GROUP B: L10567 — trivialChain → value → branch .if → then_flat (1 sorry)
-This IS what `trivialChain_if_true_sim` proves. Wire it in:
-```
-lean_multi_attempt at L10567
-["exact trivialChain_if_true_sim ...", "apply trivialChain_if_true_sim"]
-```
-
-### GROUP C: L10607 — ExprWellFormed (1 sorry)
-ExprWellFormed for `ws.expr = .seq sf_a.expr b`. Should follow from ExprWellFormed composition.
-
-### GROUP D: L10611 — core recursion (1 sorry)
-¬HasIfInHead a → trivialChain eval → IH on b; or HasIfInHead a → IH on a.
-Use `Classical.em (HasIfInHead a)` then apply IH in each branch.
-
-### GROUP E: L10615-10628 — IH through eval contexts (5 sorries)
-All follow the SAME pattern: apply IH + lift through `Steps_*_ctx`.
+### TEMPLATE (from seq_left at L10590):
 ```lean
--- L10615: IH on init + Steps_let_init_ctx
--- L10619: IH on arg + Steps_throw_ctx
--- L10622: IH on v + Steps_return_some_ctx
--- L10625: IH on arg + Steps_await_ctx
--- L10628: IH on v + Steps_yield_some_ctx
+    | let_init h_init =>
+      rename_i name init body
+      simp only [ANF.normalizeExpr_let'] at hnorm
+      have hinit_depth : init.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      obtain ⟨sf_init, evs_init, hsteps_init, hsil_init, henv_init, hheap_init, hfuncs_init, hcs_init,
+        htrace_init, hpres_init, ⟨n_init, m_init, hnorm_init⟩, hewf_init⟩ :=
+        ih init hinit_depth h_init env heap trace funcs cs _ n m cond then_ else_ v
+          hnorm (fun x hfx => hewf x (VarFreeIn.let_init _ _ _ _ hfx)) heval hbool
+      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        Steps_let_init_ctx name body hsteps_init
+          (fun ev hev msg => by rw [hsil_init ev hev]; exact Core.TraceEvent.noConfusion)
+          hpres_init
+      refine ⟨ws, evs_init, hwsteps, hsil_init, hwenv.trans henv_init, hwheap.trans hheap_init,
+        hwfuncs, hwcs, by rw [hwtrace, htrace_init], ?_, ?_, ?_⟩
+      · sorry -- hpres (same as all other hpres sorries)
+      · exact ⟨n_init, m_init, by rw [hwexpr]; simp only [ANF.normalizeExpr_let']; exact hnorm_init⟩
+      · sorry -- ExprWellFormed (same pattern)
 ```
 
-### GROUP F: L10629 — exotic cases (1 sorry)
-Binary, unary, getProp, etc. Most should be contradictions (no HasIfInHead for these).
-```
+For each case, adapt:
+- **L10615 let_init**: `Steps_let_init_ctx name body`, `VarFreeIn.let_init`, `normalizeExpr_let'`
+- **L10619 throw_arg**: `Steps_throw_ctx`, `VarFreeIn.throw_arg`, `normalizeExpr_throw'`
+- **L10622 return_some_arg**: `Steps_return_some_ctx`, `VarFreeIn.return_some_arg`, `normalizeExpr_return_some'`
+- **L10625 await_arg**: `Steps_await_ctx`, `VarFreeIn.await_arg`, `normalizeExpr_await'`
+- **L10628 yield_some_arg**: `Steps_yield_some_ctx delegate`, `VarFreeIn.yield_some_arg`, `normalizeExpr_yield_some'`
+
+Check signatures with `lean_hover_info` at each `Steps_*_ctx` before writing. The key is matching the argument order.
+
+## AFTER GROUP E: GROUP F (L10629 exotic cases)
+Binary, unary, getProp, etc. should be contradictions — these can't have HasIfInHead:
+```lean
 lean_multi_attempt at L10629
-["next => cases hif", "next => simp [HasIfInHead] at hif"]
+["next => cases hif", "next h => cases h"]
 ```
 
-### AFTER branch_step: L10668 (false version) — copy with true→false substitutions
+## AFTER GROUP F: GROUP A (hpres, L10559/10583/10605) + GROUP C (ExprWellFormed L10607)
+These repeat across all cases. Once you prove one, copy it everywhere.
+For hpres: the Steps_*_ctx lemmas should give preservation directly. Check the `hpres_a` and `hpres_init` structures.
 
-### AFTER both: UNLOCK sorries (L10773-10898, 8 sorries) cascade automatically
+## AFTER hpres: GROUP D (L10611 seq_right) and GROUP B (L10567 trivialChain)
+- L10611: `Classical.em (HasIfInHead a)` → true: IH on a; false: trivialChain_eval_value on a + IH on b
+- L10567: `trivialChain_if_true_sim` directly
+
+## FINALLY: L10668 (false version) — mechanically copy true → false substitutions
+Then UNLOCK sorries (L10773-10898) cascade.
 
 ## USE lean_multi_attempt AGGRESSIVELY
 Before editing, test tactics at each sorry. This avoids rebuilds.
 
-## PRIORITY: Groups A→B→E→F→D→C, then false version, then UNLOCKs
+## PRIORITY ORDER: E → F → A → C → B → D → false → UNLOCKs
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

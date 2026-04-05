@@ -5800,3 +5800,61 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 
 ## Run: 2026-04-05T13:05:02+00:00
 
+
+### Metrics
+- **Sorry count**: ANF 47 + CC 13 = **60 sorries**
+- **Delta from last run (12:30)**: 0 (60→60). FLAT — no regressions, no closures.
+- **Lower**: 0 sorries (DONE)
+
+### Why count FLAT: agents running, no edits landed
+- proof running since 12:30, no file changes yet (still working)
+- jsspec running since 11:00 (2+ hours!), building CC since 12:56
+- wasmspec IDLE since 12:33 — finished run, not restarted!
+
+### Agent Status
+1. **proof** (RUNNING since 12:30): Working on L12429/L11330. No file changes detected yet. Prompt refreshed with same targets.
+
+2. **jsspec** (RUNNING since 11:00): 2+ hour runtime, building CC at 12:56. 11+ runs with 0 CC sorry closures. Prompt SCREAMED at again. Updated line numbers to L4188.
+
+3. **wasmspec** (IDLE since 12:33): Completed last run with 4 proved lemmas and branch_step scaffolding. **NOT restarted!** This is the #1 lever — needs to close Group E (5 eval context sorries) using the exact same pattern as proved seq_left.
+
+### Actions Taken
+1. **Killed 6 stale supervisor lean builds** (3.3GB freed → 3.6GB available now)
+2. Updated ALL 3 agent prompts:
+   - proof: Same targets, updated memory estimate
+   - jsspec: Updated line numbers (L4188, L5131, L7227), ESCALATED further
+   - wasmspec: MAJOR UPDATE — provided concrete template code for Group E (5 eval context sorries) copied from proved seq_left pattern. Priority reordered: E→F→A→C→B→D→false→UNLOCKs
+3. Logged to time_estimate.csv.
+4. **wasmspec needs restart** — it is IDLE and is the highest-leverage agent.
+
+### Sorry Classification (60 total — UNCHANGED)
+
+| Category | Count | Lines | Owner |
+|----------|-------|-------|-------|
+| Eval context lifting | 7 | L8173-8359 | wasmspec |
+| Compound throw/return/await/yield | 9 | L9003-9556 | wasmspec |
+| While simulation | 2 | L9646, 9658 | unowned |
+| normalizeExpr_if_branch_step | 12 | L10559-10629 | wasmspec (ACTIVE) |
+| if_branch_step_false | 1 | L10668 | wasmspec |
+| UNLOCK true | 4 | L10773-10785 | wasmspec |
+| UNLOCK false | 4 | L10887-10898 | wasmspec |
+| TryCatch subcases | 3 | L11330-11346 | proof |
+| Call site params | 2 | L12429-12430 | proof |
+| Break/continue | 2 | L12650-12703 | proof |
+| CC closeable | 3 | L4188, L5131, L7227 | jsspec |
+| CC blocked | 10 | various | architecturally blocked |
+
+### Critical Assessment
+**Sorry count flat at 60.** No regressions, but no closures either. All 3 agents either running or idle.
+
+**wasmspec IDLE is the biggest problem.** It has the template (seq_left proved), it has the infrastructure (4 lemmas), and Group E (5 sorries) is mechanical copy-paste. If restarted, ANF could drop 5 sorries immediately. With hpres resolved, that's 8 more. Then false version + UNLOCKs cascade: potentially 60 → ~35 in 2 cycles.
+
+**proof agent should deliver L12429 this cycle.** noCallFrameReturn is likely a simple fact about source programs.
+
+**jsspec is the weak link.** 11+ runs, 0 closures. L4188 should be a case split. If jsspec doesn't close it this run, something is fundamentally wrong with its approach.
+
+**Expected next run: 55-58** (wasmspec closes 2-5 Group E if restarted, proof closes L12429, jsspec maybe closes L4188)
+
+---
+2026-04-05T13:08:35+00:00 DONE
+2026-04-05T13:08:44+00:00 DONE
