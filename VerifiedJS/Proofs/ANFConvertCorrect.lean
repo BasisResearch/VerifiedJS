@@ -9415,8 +9415,8 @@ private theorem normalizeExpr_if_step_sim
           · rfl
           · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace_silent, observableTrace_nil]; exact htrace, k, n, n1, hthen_r, hk⟩
           · intro x hfx; exact hewf x (VarFreeIn.if_then _ _ _ _ hfx)
-        | _ => sorry -- compound condition: multi-step
-      all_goals sorry -- compound HasIfInHead
+        | _ => exact normalizeExpr_if_compound_true_sim _ s t env heap trace sa_trace funcs cs k n m cond then_ else_ v hnorm hk hewf heval htrace (by revert hbool_anf; cases v <;> exact id)
+      all_goals exact normalizeExpr_if_compound_true_sim _ s t env heap trace sa_trace funcs cs k n m cond then_ else_ v hnorm hk hewf heval htrace (by revert hbool_anf; cases v <;> exact id)
     · -- toBoolean v = false: step to else_
       rename_i hbool_anf
       obtain ⟨rfl, rfl⟩ := hstep_eq
@@ -9488,8 +9488,8 @@ private theorem normalizeExpr_if_step_sim
           · rfl
           · exact ⟨rfl, rfl, by simp [observableTrace_append, observableTrace_silent, observableTrace_nil]; exact htrace, k, n1, _, helse_r, hk⟩
           · intro x hfx; exact hewf x (VarFreeIn.if_else _ _ _ _ hfx)
-        | _ => sorry -- compound condition: multi-step
-      all_goals sorry -- compound HasIfInHead
+        | _ => exact normalizeExpr_if_compound_false_sim _ s t env heap trace sa_trace funcs cs k n m cond then_ else_ v hnorm hk hewf heval htrace (by revert hbool_anf; cases v <;> exact fun h => by first | rfl | exact Bool.eq_false_iff.mpr h | exact absurd rfl h)
+      all_goals exact normalizeExpr_if_compound_false_sim _ s t env heap trace sa_trace funcs cs k n m cond then_ else_ v hnorm hk hewf heval htrace (by revert hbool_anf; cases v <;> exact fun h => by first | rfl | exact Bool.eq_false_iff.mpr h | exact absurd rfl h)
   · -- evalTrivial env cond = .error msg
     rename_i msg herr
     obtain ⟨rfl, rfl⟩ := hstep_eq
