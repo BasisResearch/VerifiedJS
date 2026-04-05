@@ -11645,7 +11645,7 @@ private theorem normalizeExpr_if_compound_true_sim
             (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
             hpres_c
         have h_obs_nil := observableTrace_all_silent hsil_c
-        refine ⟨ws, evs_c, hwsteps, by simp [observableTrace, h_obs_nil], ?_, ?_⟩
+        refine ⟨ws, evs_c, hwsteps, by simp only [observableTrace_silent, observableTrace_nil, h_obs_nil], ?_, ?_⟩
         · exact ⟨(hwheap.trans hheap_c).symm, (hwenv.trans henv_c).symm,
             by rw [hwtrace, htrace_c]; simp [observableTrace_append, h_obs_nil, observableTrace_silent, observableTrace_nil]; exact htrace,
             k, n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c, hk⟩
@@ -11663,7 +11663,7 @@ private theorem normalizeExpr_if_compound_true_sim
           htc (Nat.le_refl _) hnorm_if hk hewf heval htrace hbool
     | «if» c' t' e' =>
       have hnorm_if := hnorm
-      simp only [ANF.normalizeExpr_if'] at hnorm
+      rw [ANF.normalizeExpr_if'] at hnorm
       obtain ⟨sf_c, evs_c, hsteps_c, hsil_c, henv_c, hheap_c, hfuncs_c, hcs_c,
         htrace_c, hpres_c, ⟨n_c, m_c, hnorm_c⟩, hewf_c⟩ :=
         normalizeExpr_if_branch_step _ _ (Nat.le_refl _) HasIfInHead.if_direct
@@ -11674,7 +11674,7 @@ private theorem normalizeExpr_if_compound_true_sim
           (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_c
       have h_obs_nil := observableTrace_all_silent hsil_c
-      refine ⟨ws, evs_c, hwsteps, by simp [observableTrace, h_obs_nil], ?_, ?_⟩
+      refine ⟨ws, evs_c, hwsteps, by simp only [observableTrace_silent, observableTrace_nil, h_obs_nil], ?_, ?_⟩
       · exact ⟨(hwheap.trans hheap_c).symm, (hwenv.trans henv_c).symm,
           by rw [hwtrace, htrace_c]; simp [observableTrace_append, h_obs_nil, observableTrace_silent, observableTrace_nil]; exact htrace,
           k, n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c, hk⟩
@@ -11702,7 +11702,7 @@ private theorem normalizeExpr_if_compound_true_sim
           (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_c
       have h_obs_nil := observableTrace_all_silent hsil_c
-      refine ⟨ws, evs_c, hwsteps, by simp [observableTrace, h_obs_nil], ?_, ?_⟩
+      refine ⟨ws, evs_c, hwsteps, by simp only [observableTrace_silent, observableTrace_nil, h_obs_nil], ?_, ?_⟩
       · exact ⟨(hwheap.trans hheap_c).symm, (hwenv.trans henv_c).symm,
           by rw [hwtrace, htrace_c]; simp [observableTrace_append, h_obs_nil, observableTrace_silent, observableTrace_nil]; exact htrace,
           k, n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c, hk⟩
@@ -11718,7 +11718,7 @@ private theorem normalizeExpr_if_compound_true_sim
       normalizeExpr_if_branch_step _ _ (Nat.le_refl _) hif_copy
         env heap trace funcs cs k n m cond then_ else_ v hnorm hewf heval hbool
     have h_obs_nil := observableTrace_all_silent hsil
-    refine ⟨sf', evs, hsteps, by simp [observableTrace, h_obs_nil], ?_, hewf'⟩
+    refine ⟨sf', evs, hsteps, by simp only [observableTrace_silent, observableTrace_nil, h_obs_nil], ?_, hewf'⟩
     exact ⟨hheap.symm, henv.symm,
       by rw [htrace_sf]; simp [observableTrace_append, h_obs_nil, observableTrace_silent, observableTrace_nil]; exact htrace,
       k, n', m', hnorm', hk⟩
@@ -11835,7 +11835,7 @@ private theorem normalizeExpr_if_compound_false_sim
             (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
             hpres_c
         have h_obs_nil := observableTrace_all_silent hsil_c
-        refine ⟨ws, evs_c, hwsteps, by simp [observableTrace, h_obs_nil], ?_, ?_⟩
+        refine ⟨ws, evs_c, hwsteps, by simp only [observableTrace_silent, observableTrace_nil, h_obs_nil], ?_, ?_⟩
         · exact ⟨(hwheap.trans hheap_c).symm, (hwenv.trans henv_c).symm,
             by rw [hwtrace, htrace_c]; simp [observableTrace_append, h_obs_nil, observableTrace_silent, observableTrace_nil]; exact htrace,
             k, n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c, hk⟩
@@ -11852,7 +11852,7 @@ private theorem normalizeExpr_if_compound_false_sim
           htc (Nat.le_refl _) hnorm_if hk hewf heval htrace hbool
     | «if» c' t' e' =>
       have hnorm_if := hnorm
-      simp only [ANF.normalizeExpr_if'] at hnorm
+      rw [ANF.normalizeExpr_if'] at hnorm
       obtain ⟨sf_c, evs_c, hsteps_c, hsil_c, henv_c, hheap_c, hfuncs_c, hcs_c,
         htrace_c, hpres_c, ⟨n_c, m_c, hnorm_c⟩, hewf_c⟩ :=
         normalizeExpr_if_branch_step_false _ _ (Nat.le_refl _) HasIfInHead.if_direct
@@ -11863,7 +11863,7 @@ private theorem normalizeExpr_if_compound_false_sim
           (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_c
       have h_obs_nil := observableTrace_all_silent hsil_c
-      refine ⟨ws, evs_c, hwsteps, by simp [observableTrace, h_obs_nil], ?_, ?_⟩
+      refine ⟨ws, evs_c, hwsteps, by simp only [observableTrace_silent, observableTrace_nil, h_obs_nil], ?_, ?_⟩
       · exact ⟨(hwheap.trans hheap_c).symm, (hwenv.trans henv_c).symm,
           by rw [hwtrace, htrace_c]; simp [observableTrace_append, h_obs_nil, observableTrace_silent, observableTrace_nil]; exact htrace,
           k, n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c, hk⟩
@@ -11890,7 +11890,7 @@ private theorem normalizeExpr_if_compound_false_sim
           (fun ev hev msg => by rw [hsil_c ev hev]; exact Core.TraceEvent.noConfusion)
           hpres_c
       have h_obs_nil := observableTrace_all_silent hsil_c
-      refine ⟨ws, evs_c, hwsteps, by simp [observableTrace, h_obs_nil], ?_, ?_⟩
+      refine ⟨ws, evs_c, hwsteps, by simp only [observableTrace_silent, observableTrace_nil, h_obs_nil], ?_, ?_⟩
       · exact ⟨(hwheap.trans hheap_c).symm, (hwenv.trans henv_c).symm,
           by rw [hwtrace, htrace_c]; simp [observableTrace_append, h_obs_nil, observableTrace_silent, observableTrace_nil]; exact htrace,
           k, n_c, m_c, by rw [hwexpr]; simp only [ANF.normalizeExpr_if']; exact hnorm_c, hk⟩
@@ -11906,7 +11906,7 @@ private theorem normalizeExpr_if_compound_false_sim
       normalizeExpr_if_branch_step_false _ _ (Nat.le_refl _) hif_copy
         env heap trace funcs cs k n m cond then_ else_ v hnorm hewf heval hbool
     have h_obs_nil := observableTrace_all_silent hsil
-    refine ⟨sf', evs, hsteps, by simp [observableTrace, h_obs_nil], ?_, hewf'⟩
+    refine ⟨sf', evs, hsteps, by simp only [observableTrace_silent, observableTrace_nil, h_obs_nil], ?_, hewf'⟩
     exact ⟨hheap.symm, henv.symm,
       by rw [htrace_sf]; simp [observableTrace_append, h_obs_nil, observableTrace_silent, observableTrace_nil]; exact htrace,
       k, n', m', hnorm', hk⟩
