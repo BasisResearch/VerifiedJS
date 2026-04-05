@@ -1,4 +1,4 @@
-# jsspec — Close L3970 (FuncsSupported) + remaining Core_step_preserves_supported cases
+# jsspec — L3970 CLOSED! Now close L4203 (HeapInj staging) and L5119 (non-consoleLog call)
 
 ## RULES
 - **DO NOT** run `lake build VerifiedJS` (full build). OOMs.
@@ -9,7 +9,7 @@
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 If build fails: `sleep 60`, retry ONCE. No loops.
 
-## MEMORY: 7.7GB total, NO swap. ~2.6GB available.
+## MEMORY: 7.7GB total, NO swap. ~1.5GB available.
 Check with: `ps aux | grep "lake build" | grep -v grep | wc -l` — only build if count ≤ 1.
 
 ## BUILD COORDINATION
@@ -19,46 +19,55 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 ```
 If count > 1, wait 60s then check again. Only ONE build at a time or everything OOMs.
 
-## STATUS: You expanded call from 1 sorry to 1 targeted sorry. Now close L3970.
+## STATUS: CC now 12 sorries. L3970 CLOSED (great work!). objectLit/arrayLit FIXED.
 
-You're also fixing objectLit/arrayLit — good. Keep going.
+## CC 12 sorries remaining:
+- L4203: HeapInj refactor staging sorry
+- L4532, L4555: if CCStateAgree (architecturally blocked)
+- L5119: non-consoleLog function call (FuncsCorr needed)
+- L5327, L5335: semantic mismatch call (architecturally blocked)
+- L5973: getIndex string (UNPROVABLE)
+- L7215: functionDef
+- L7372, L7373: tryCatch CCStateAgree (architecturally blocked)
+- L7445: tryCatch inner
+- L7553: while_ CCState threading (architecturally blocked)
 
-## CC has 13 sorries. Current targets:
+### TASK 1: L4203 — HeapInj staging sorry (PRIORITY 1)
+This is in `closureConvert_step_simulation` at L4139. The comment says it was "temporarily sorry'd during HeapInj refactor" and "will be restored with HeapInj types."
 
-### TASK 1: L3970 — closure.body.supported (PRIORITY 1 — CLOSE IT)
-The only remaining sorry in the call case of Core_step_preserves_supported.
+**Strategy**:
+1. `lean_goal` at L4203 to see what's needed
+2. The proof was working before the HeapInj refactor — check git history for the old proof
+3. The new proof needs `injMap` threading through ~30 cases
+4. This is likely a LARGE sorry that covers the entire closureConvert_step_simulation body
+5. If it's the main proof body, focus on the cases that have the clearest path
 
-**What you need**: `closure.body.supported = true` where `closure = s.funcs[idx]`.
+### TASK 2: L5119 — non-consoleLog function call (FuncsCorr)
+```lean
+sorry -- non-consoleLog function call: needs sf.funcs[idx] ↔ sc.funcs[idx] correspondence
+```
+**Strategy**:
+1. `lean_goal` at L5119
+2. Need: if `sf.funcs[idx]? = some fd_flat` then `sc.funcs[idx]? = some fd_core` with body correspondence
+3. Check if CC_SimRel already has a FuncsCorr component, or if you need to add one
+4. The FuncsSupported invariant pattern (from L3464) is a good model
 
-**Approach (try in order)**:
-1. `lean_goal` at L3970 to see exact state
-2. **Option A (preferred)**: Add `(hfuncs_supp : ∀ i fd, s.funcs[i]? = some fd → fd.body.supported = true)` parameter to `Core_step_preserves_supported`
-3. At L3970: `exact hfuncs_supp idx closure hfunc` (adjust names to match goal)
-4. At the call site (~L4175 in closureConvert_step_simulation), prove the invariant holds:
-   - Initial program: all funcs supported (from program.supported)
-   - After functionDef step: new func has supported body (from the expr being supported)
-   - After all other steps: funcs unchanged → invariant preserved
-5. **Option B**: Check if there's already enough in scope — `lean_hover_info` on hypotheses at L3970
-
-### TASK 2: Finish objectLit/arrayLit/tryCatch in Core_step_preserves_supported
-You're already working on this. Close the remaining 6 sorry cases:
-- getIndex, setIndex (heap lookup value cases)
-- call (DONE except L3970)
-- objectLit, arrayLit (you're fixing these now)
-- tryCatch (error event interception)
-
-### TASK 3: L5114 — non-consoleLog function call (only if Tasks 1-2 done)
-Uses similar FuncsCorr invariant between `sf.funcs` and `sc.funcs`.
-
-### TASK 4: L7210 — functionDef case (only if Tasks 1-3 done)
+### TASK 3: L7215 — functionDef case
+```lean
+| functionDef fname params body isAsync isGen => sorry
+```
+1. `lean_goal` at L7215
+2. functionDef adds a new closure to s.funcs
+3. Need to show Flat closureConvert of functionDef matches Core functionDef step
+4. May need CCState updates for the new function
 
 ## ARCHITECTURALLY BLOCKED (DO NOT TOUCH)
-- L4527/4550: CCStateAgree if-branches
-- L5322/5330: semantic mismatch (Core allocates vs Flat steps)
-- L5968: UNPROVABLE getIndex string
-- L7367/7368: tryCatch CCStateAgree
-- L7440: tryCatch inner
-- L7548: while_ CCState threading
+- L4532/4555: CCStateAgree if-branches
+- L5327/5335: semantic mismatch (Core allocates vs Flat steps)
+- L5973: UNPROVABLE getIndex string
+- L7372/7373: tryCatch CCStateAgree
+- L7445: tryCatch inner
+- L7553: while_ CCState threading
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

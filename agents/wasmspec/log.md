@@ -6546,3 +6546,33 @@ theorem step?_preserves_funcs (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Fl
 
 ### 2026-04-05T09:15:10+00:00 Starting run
 2026-04-05T10:15:01+00:00 SKIP: already running
+
+### 2026-04-05T09:15:01+00:00 — Run progress
+
+#### New infrastructure added (L9716-10500):
+
+1. **`trivialChain_eval_value`** (~160 lines, PROVED): Evaluates a trivial chain to a `.lit` value, preserving env/heap/funcs/cs. All events are `.silent`. Also proves intermediate state preservation needed by `Steps_if_cond_ctx`.
+
+2. **`no_if_head_implies_trivial_chain`** (~220 lines, PROVED): If `normalizeExpr e k` produces `.if` and `¬HasIfInHead e`, then `isTrivialChain e = true`. Mirrors `no_throw_head_implies_trivial_chain` with systematic substitutions (HasThrowInHead→HasIfInHead, bindComplex_never_throw→bindComplex_never_if, etc.).
+
+3. **`trivialChain_if_true_sim`** (~185 lines, PROVED): When a trivial chain tc is the condition of `.if tc then_flat else_flat`, and ANF normalizes to `.if cond then_ else_` with `toBoolean v = true`, Flat can step to `then_flat` preserving SimRel. By induction on trivialChainCost.
+
+4. **`trivialChain_if_false_sim`** (~185 lines, PROVED): Mirror of above for the false/else branch.
+
+#### Sorries resolved:
+
+- **`normalizeExpr_if_compound_true_sim`**: Split `| _ => sorry` into:
+  - `| seq a_c b_c =>` with ¬HasIfInHead sub-case **PROVED** using trivialChain_if_true_sim
+  - `| seq a_c b_c =>` with HasIfInHead sub-case still sorry
+  - `| «if» c' t' e' =>` still sorry (always HasIfInHead)
+  - `| _ =>` still sorry (other compound, all need HasIfInHead eval context stepping)
+  - `all_goals sorry` unchanged (non-if_direct HasIfInHead)
+
+- **`normalizeExpr_if_compound_false_sim`**: Same split as true version.
+
+#### Net change: 4 new fully-proved lemmas (~750 lines). The ¬HasIfInHead trivial-chain sub-case of the seq constructor is now closed. Remaining sorries all require eval context stepping through HasIfInHead expressions.
+### 2026-04-05T11:13:15+00:00 Run complete — 4 new proved lemmas, seq ¬HasIfInHead closed in both true/false if compound sim
+2026-04-05T11:13:27+00:00 DONE
+
+## Run: 2026-04-05T11:15:01+00:00
+

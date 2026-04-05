@@ -10593,6 +10593,8 @@ private theorem normalizeExpr_if_compound_true_sim
       exact ANF.normalizeExpr_tryCatch_not_if body' cp cb fin _ cond then_ else_ n m hnorm
     | seq a_c b_c =>
       -- c_flat = .seq a_c b_c in the if condition position
+      have hnorm_if := hnorm
+      simp only [ANF.normalizeExpr_if'] at hnorm
       by_cases hif_seq : HasIfInHead (Flat.Expr.seq a_c b_c)
       · sorry -- HasIfInHead inside seq condition: needs eval context stepping
       · -- ¬HasIfInHead: .seq a_c b_c is a trivial chain
@@ -10600,13 +10602,10 @@ private theorem normalizeExpr_if_compound_true_sim
           _ cond then_ else_ n m hnorm hif_seq
         exact trivialChain_if_true_sim (trivialChainCost (Flat.Expr.seq a_c b_c)) (Flat.Expr.seq a_c b_c)
           then_flat else_flat s t env heap trace sa_trace funcs cs k n m cond then_ else_ v
-          htc (Nat.le_refl _) hnorm hk hewf heval htrace hbool
+          htc (Nat.le_refl _) hnorm_if hk hewf heval htrace hbool
     | «if» c' t' e' =>
       sorry -- nested if in condition: always HasIfInHead, needs eval context stepping
     | _ =>
-      -- All remaining compound constructors: HasIfInHead must hold
-      -- (by no_if_head_implies_trivial_chain, ¬HasIfInHead → isTrivialChain = true,
-      -- but isTrivialChain is false for these → contradiction).
       sorry -- compound c_flat with HasIfInHead: needs eval context lifting
   all_goals sorry -- non-if_direct HasIfInHead: requires structural induction on depth
 
@@ -10706,13 +10705,15 @@ private theorem normalizeExpr_if_compound_false_sim
       exfalso; simp only [ANF.normalizeExpr_if'] at hnorm
       exact ANF.normalizeExpr_tryCatch_not_if body' cp cb fin _ cond then_ else_ n m hnorm
     | seq a_c b_c =>
+      have hnorm_if := hnorm
+      simp only [ANF.normalizeExpr_if'] at hnorm
       by_cases hif_seq : HasIfInHead (Flat.Expr.seq a_c b_c)
       · sorry -- HasIfInHead inside seq condition: needs eval context stepping
       · have htc := no_if_head_implies_trivial_chain (Flat.Expr.seq a_c b_c).depth (Flat.Expr.seq a_c b_c) (Nat.le_refl _)
           _ cond then_ else_ n m hnorm hif_seq
         exact trivialChain_if_false_sim (trivialChainCost (Flat.Expr.seq a_c b_c)) (Flat.Expr.seq a_c b_c)
           then_flat else_flat s t env heap trace sa_trace funcs cs k n m cond then_ else_ v
-          htc (Nat.le_refl _) hnorm hk hewf heval htrace hbool
+          htc (Nat.le_refl _) hnorm_if hk hewf heval htrace hbool
     | «if» c' t' e' =>
       sorry -- nested if in condition: always HasIfInHead, needs eval context stepping
     | _ =>

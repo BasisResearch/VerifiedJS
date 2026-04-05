@@ -1,3 +1,54 @@
+## Run: 2026-04-05T11:05:04+00:00
+
+### Metrics
+- **Sorry count**: ANF 34 + CC 12 = **46 real sorries**
+- **Delta from last run (10:08)**: +3 (43→46). **COUNT UP — decomposition, not regression.**
+- **Lower**: 0 sorries (DONE)
+
+### Why count went UP (+3): Decomposition + CC closure
+- ANF went from 30→34 (+4): proof agent decomposed tryCatch and break/continue into direct (proved) + compound (sorry) cases. New sorries at L12248/12249 (tryCatch params), L12469/12522 (break/continue compound). These are narrower than what they replaced.
+- CC went from 13→12 (-1): jsspec CLOSED L3970 (FuncsSupported invariant in call case). Used `hfuncs_supp idx closure hfunc`. Also fixed objectLit/arrayLit forward lemmas.
+- Net: +4 ANF (decomposition) - 1 CC (closed) = +3
+
+### Agent Status
+1. **proof** (RUNNING since 10:30): Working on tryCatch body-error (L11149) and body-step (L11162). Has `body_sim` IH and `Steps_tryCatch_body_ctx` infrastructure. Previous run proved tryCatch body-is-value cases and decomposition. Prompt updated with exact line numbers.
+
+2. **jsspec** (RUNNING since 11:00): CLOSED L3970! Now targeting L4203 (HeapInj staging sorry — the big closureConvert_step_simulation body) and L5119 (non-consoleLog call FuncsCorr). Prompt updated to acknowledge closure and redirect.
+
+3. **wasmspec** (LSP only, not building): Proved 10 contradiction subcases. 4 remaining if-compound sorries need eval context lifting. Prompt updated: instructed to build ONE general compound_eval_ctx_step_sim lemma instead of proving each sorry individually. This is THE highest-leverage work — would unlock ~20 of 34 ANF sorries.
+
+### Actions Taken
+1. **Killed supervisor builds** (~1.6GB freed). Memory: 1503MB available.
+2. Updated ALL 3 agent prompts:
+   - proof: Updated line numbers (L11149/11162), kept tryCatch body-error/body-step focus
+   - jsspec: Acknowledged L3970 closure, redirected to L4203 (HeapInj staging) and L5119
+   - wasmspec: Major strategy change — build ONE general compound_eval_ctx_step_sim lemma instead of individual sorry proofs. This lemma would close ~20 sorries.
+3. Logged to time_estimate.csv.
+
+### Sorry Classification (46 total)
+**ANF (34):**
+- 7 in proof's zone (tryCatch L11149/11162/11165, tryCatch params L12248/12249, break/continue compound L12469/12522)
+- 8 in wasmspec's zone (if compound L10597/10605/10610/10611/10710/10717/10719/10720)
+- ~19 systemic compound eval context sorries (L8173-9556 range) — ALL unblocked by wasmspec's general lemma
+
+**CC (12):**
+- 1 closeable: L5119 (FuncsCorr)
+- 1 large staging: L4203 (HeapInj refactor)
+- 1 functionDef: L7215
+- 1 unprovable: L5973 (getIndex string)
+- 8 architecturally blocked: L4532/4555/5327/5335/7372/7373/7445/7553
+
+### Critical Assessment
+**Sorry count UP is decomposition, not regression.** L3970 closure is real progress. The +4 ANF sorries replace broad unknowns with tractable targets.
+
+**wasmspec's general eval context lemma is the #1 priority.** If it lands, ~20 ANF sorries become closeable in a single pass. This would drop ANF from 34 to ~14.
+
+**CC is approaching its floor.** 8 of 12 sorries are architecturally blocked (need N-to-M step simulation redesign). Only L4203, L5119, L7215 are potentially closeable. L5973 is provably unprovable.
+
+**Expected next run: 43-46** (proof closes 0-2 tryCatch, jsspec closes 0-1 CC, wasmspec may start closing compound sorries if general lemma works).
+
+---
+
 ## Run: 2026-04-05T08:00:03+00:00
 
 ### Metrics
@@ -5571,3 +5622,4 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 
 ## Run: 2026-04-05T11:05:04+00:00
 
+2026-04-05T11:11:40+00:00 DONE

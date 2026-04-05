@@ -5,7 +5,7 @@
 - **DO NOT** edit Flat/Semantics.lean — it's DONE (0 sorries), leave it alone
 - **DO NOT** run `lake build` anything large
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
-- MEMORY: 7.7GB total, NO swap. ~2.6GB available.
+- MEMORY: 7.7GB total, NO swap. ~1.5GB available.
 - You CAN edit ANFConvertCorrect.lean ONLY
 - Build: `lake build VerifiedJS.Proofs.ANFConvertCorrect`
 
@@ -17,65 +17,88 @@ ps aux | grep "lake build" | grep -v grep | wc -l
 If count > 0, DO NOT BUILD. Use `lean_goal` / `lean_multi_attempt` via LSP instead. Wait 60s then check again.
 
 ## CONCURRENCY: proof agent also edits ANFConvertCorrect.lean
-- proof agent works on L10400-10555 (tryCatch) and L11840-11910 (break/continue)
-- **YOU** own L7700-10135 (normalizeExpr step sim infrastructure)
+- proof agent works on L11023-11165 (tryCatch) and L12240-12522 (break/continue/return)
+- **YOU** own L7700-10720 (normalizeExpr step sim infrastructure)
 - DO NOT touch lines outside your range
 
-## STATUS: 10 contradiction subcases proved (great!). 4 if-compound sorries remain. ~17 other sorries share same blocker.
-
-You proved break/continue/labeled/while_/tryCatch contradiction cases in both normalizeExpr_if_compound_true_sim and normalizeExpr_if_compound_false_sim. 4 remaining sorries at L10033/10034/10131/10132 need strong induction + eval context lifting.
+## STATUS: 10 contradiction subcases proved. 4 if-compound sorries remain at L10597/10605/10610/10611 and L10710/10717/10719/10720. ~17 other sorries share same blocker.
 
 ## THE SYSTEMIC BLOCKER: Eval Context Stepping Through Compound Expressions
 
-~17 of 30 ANF sorries say "needs eval context lifting" or "needs strong induction on depth". The pattern is:
+~20 of 34 ANF sorries say "needs eval context lifting" or "needs strong induction on depth". The pattern is:
 1. sf.expr is compound (seq, let, if, call, etc.)
 2. It has some construct (throw/return/if/tryCatch) in HEAD position
 3. Flat.step? steps the inner expression one step
 4. Need to show ANF also steps, preserving SimRel
 5. Requires lifting the inner step through the eval context wrapper
 
-**Existing infrastructure (L1800-1863)**:
-- `Steps_seq_ctx` (L1800): lifts through `.seq · b`
-- `Steps_throw_ctx` (L1809): lifts through `.throw`
-- `Steps_let_init_ctx` (L1818): lifts through `.let name · body`
-- `Steps_if_cond_ctx` (L1828): lifts through `.if · then_ else_`
-- `Steps_return_some_ctx` (L1838), `Steps_yield_some_ctx` (L1848), `Steps_await_ctx` (L1858)
+**Existing infrastructure (L1820-1894)**:
+- `Steps_seq_ctx` (L1820): lifts through `.seq · b`
+- `Steps_throw_ctx` (L1829): lifts through `.throw`
+- `Steps_let_init_ctx` (L1838): lifts through `.let name · body`
+- `Steps_if_cond_ctx` (L1848): lifts through `.if · then_ else_`
+- `Steps_return_some_ctx` (L1858), `Steps_yield_some_ctx` (L1868), `Steps_await_ctx` (L1878)
+- `Steps_tryCatch_body_ctx` (L1887): lifts through `.tryCatch [·] cp cb fin`
 
-## YOUR TASK: Prove eval context stepping for L9813 then generalize
+## YOUR TASK: Build the general compound_head_step_sim lemma
 
-### Step 1: Prove L10033 (if compound true, strong induction on depth)
-1. `lean_goal` at L10033 to see exact state
-2. c_flat is compound with HasIfInHead. Flat.step? steps c_flat one step.
-3. By strong induction on `c_flat.depth`:
-   - c_flat must be some compound expr (seq, let, etc.) with .if in head
-   - Flat.step? steps the head subexpression
-   - Inner step produces c_flat' with smaller depth
-   - Use `Steps_if_cond_ctx` to lift through `.if [·] then_ else_`
-   - Apply IH (smaller depth)
-4. Pattern: follow `normalizeExpr_if_or_k_aux` (L7219) for strong induction setup
+### CRITICAL INSIGHT: Don't prove each sorry individually. Build ONE general lemma.
 
-### Step 2: Prove L10131 (mirror of L10033 for false branch)
-Identical structure, just different branch.
+The pattern for EVERY compound sorry is:
+```
+sf.expr = E[inner] where E is an eval context (seq/let/if/etc.)
+inner has HasXInHead (for some X: If, Throw, Return, etc.)
+Flat.step? steps inner one step → inner'
+normalizeExpr inner k produces X construct
+Need: Flat can step E[inner] and ANF preserves SimRel
+```
 
-### Step 3: Prove L10034/L10132 (non-if_direct HasIfInHead through wrappers)
-These need eval context through seq/let wrappers. Same strong induction.
+### Step 1: Define compound_eval_ctx_step_sim (NEW LEMMA)
+```lean
+private theorem compound_eval_ctx_step_sim
+    (sf : Flat.State) (s : ANF.State) (t : Core.TraceEvent) (sa : ANF.State)
+    (k : ANF.Trivial → ANF.NormM ANF.Expr)
+    (n m : Nat) ...
+    -- When sf.expr is compound with some HasXInHead in head position,
+    -- and ANF steps to sa producing event t,
+    -- then Flat also produces corresponding steps preserving SimRel
+```
+This should work by strong induction on `sf.expr.depth`:
+1. sf.expr is compound: case split on outermost constructor
+2. For `.seq inner rest`: Flat steps inner via IH (smaller depth), lift through `Steps_seq_ctx`
+3. For `.let name init body`: Flat steps init via IH, lift through `Steps_let_init_ctx`
+4. For `.if cond then_ else_`: Flat steps cond via IH, lift through `Steps_if_cond_ctx`
+5. Base case: sf.expr IS the HasXInHead construct directly → use the direct case proof
 
-### Step 4: Extract general `compound_head_step_sim` lemma
-Once L9813 works, factor out the approach. The same pattern applies to:
-- L8973 (compound HasThrowInHead)
-- L9130 (compound HasReturnInHead)
-- L9307 (compound HasAwaitInHead)
-- L9465 (compound HasYieldInHead)
-- L8143/8176/8268/8301 (normalizeExpr_labeled inner value)
-- L8187/8312/8329 (compound/bindComplex)
+### Step 2: Apply to L10597/10605/10610/10611 (if compound true)
+Replace all 4 sorries with calls to the general lemma.
 
-That's **17 sorries** unlocked by one general approach!
+### Step 3: Apply to L10710/10717/10719/10720 (if compound false)
+Same application.
+
+### Step 4: Apply to ALL other compound sorries
+- L9003 (compound HasThrowInHead)
+- L9154/9160 (compound HasReturnInHead)
+- L9331/9337 (compound HasAwaitInHead)
+- L9489/9495 (compound HasYieldInHead)
+- L8173/8206/8217/8298/8331/8342/8359 (normalizeExpr_labeled inner value / compound)
+- L9551/9555/9556 (return/yield compound)
+
+That's **~20 sorries** unlockable by one general lemma!
+
+### Step 5: If general lemma is too hard, at least prove one concrete case
+If the general approach stalls, prove L10610 directly:
+1. `lean_goal` at L10610
+2. c_flat is compound, has HasIfInHead
+3. By strong induction on depth: case split on c_flat constructor
+4. For each compound constructor, use corresponding Steps_X_ctx to lift
+5. Once one case works, the pattern is clear for all others
 
 ## PRIORITY ORDER
-1. L10033 (if compound true) — PROVE THE PATTERN
-2. L10131 (if compound false) — mirror
-3. L10034/L10132 (non-if_direct) — wrappers
-4. Extract general lemma + apply to other compound sorries
+1. Build general compound_eval_ctx_step_sim lemma
+2. Apply to if compound sorries (L10597-10720)
+3. Apply to other compound sorries (~15 more)
+4. If general lemma blocked, prove L10610 directly
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
