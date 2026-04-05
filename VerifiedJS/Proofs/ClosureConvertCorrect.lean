@@ -4125,7 +4125,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           rw [hfwd] at hstep
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨-, rfl⟩ := hstep
-          have hih := ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          have hih := ih body.depth (by have hd' := hd; rw [hexpr] at hd'; cases finally_ <;> simp [Core.Expr.depth] at hd' <;> omega)
             { s with expr := body } sb .silent (Nat.le_refl _) hsup_body hfuncs_supp h_sub
           simp [Core.pushTrace, Core.Expr.supported, hih, hsup_catch, hsup_fin]
         | log msg =>
@@ -4133,7 +4133,7 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           rw [hfwd] at hstep
           simp only [Option.some.injEq, Prod.mk.injEq] at hstep
           obtain ⟨-, rfl⟩ := hstep
-          have hih := ih body.depth (by rw [hexpr] at hd; simp [Core.Expr.depth] at hd; omega)
+          have hih := ih body.depth (by have hd' := hd; rw [hexpr] at hd'; cases finally_ <;> simp [Core.Expr.depth] at hd' <;> omega)
             { s with expr := body } sb (.log msg) (Nat.le_refl _) hsup_body hfuncs_supp h_sub
           simp [Core.pushTrace, Core.Expr.supported, hih, hsup_catch, hsup_fin]
 
@@ -4798,7 +4798,7 @@ private theorem Core_step_preserves_funcs_supported (s s' : Core.State) (ev : Co
       | some p =>
         obtain ⟨te, sb⟩ := p
         have h_depth_lt : body.depth < n := by
-          have hd' := hd; rw [hexpr] at hd'; simp [Core.Expr.depth] at hd'; omega
+          have hd' := hd; rw [hexpr] at hd'; cases finally_ <;> simp [Core.Expr.depth] at hd' <;> omega
         have ih_body : ∀ j fj, sb.funcs[j]? = some fj → fj.body.supported = true :=
           ih body.depth h_depth_lt
             { s with expr := body } sb te (Nat.le_refl _) hsup_body hfuncs_supp h_sub

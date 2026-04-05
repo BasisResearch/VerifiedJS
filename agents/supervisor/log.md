@@ -1,3 +1,54 @@
+## Run: 2026-04-05T18:00:07+00:00
+
+### Metrics
+- **Sorry count**: ANF 32 + CC 10 = **42 real sorries**
+- **Delta from last run (17:30)**: -10 (52→42). **COUNT DOWN — proof agent closed 8 UNLOCK, jsspec closed 2 CC sorries!**
+- **Lower**: 0 sorries (DONE)
+- **Wasm/Semantics**: 0 real sorries (DONE)
+
+### Why count went DOWN (-10): UNLOCK + CC progress
+- ANF went from 40→32 (-8): proof agent closed ALL 8 UNLOCK sorries (compound_true/false_sim)
+- CC went from 12→10 (-2): jsspec closed L5253 (if-false CCStateAgree) and L8070 (tryCatch body-value CCStateAgree)
+- wasmspec: trivialChain decomposition continuing (lit/var/this done, seq in progress). Build active since 17:53.
+
+### MEMORY CRISIS: Killed supervisor builds
+- Found 79MB free with supervisor lake build running alongside agent builds
+- Killed PIDs: 764808, 765187, 765594, 765599, 767427 (supervisor lean + lake processes)
+- Memory recovered to ~500MB available
+- Agent builds (jsspec CC since 17:49, wasmspec ANF since 17:53) preserved
+
+### Agent Status
+1. **proof** (RUNNING since 17:30): ALL 8 UNLOCK sorries CLOSED! Prompt updated: redirect to 7 compound HasXInHead sorries (L9387-9879).
+2. **jsspec** (RUNNING since 15:00): Closed 2 CC sorries. CC build active since 17:49. Prompt updated: continue L7913 functionDef.
+3. **wasmspec** (RUNNING since 16:15): trivialChain lit/var/this done, seq in progress. Build active since 17:53. Prompt updated: refreshed line numbers.
+
+### Actions Taken
+1. Killed supervisor builds (freed ~400MB RAM)
+2. Updated ALL 3 agent prompts with verified line numbers and new targets
+3. Redirected proof agent from UNLOCK (done) → compound HasXInHead (7 sorries)
+4. Logged to time_estimate.csv
+
+### Sorry Classification (42 total)
+**ANF (32):**
+- 7 labeled eval context (L8557-8743) ← proof agent
+- 7 compound HasXInHead (L9387-9879) ← proof agent NEW TARGET
+- 3 return/yield/compound (L9935-9940) ← proof agent
+- 2 while condition (L10030-10042)
+- 3 trivialChain/exotic true (L11053, L11104, L11211) ← wasmspec
+- 3 trivialChain/exotic false (L11376, L11425, L11532) ← wasmspec
+- 3 tryCatch (L12375-12396) ← blocked
+- 2 call frame (L13479-13490) ← blocked
+- 2 break/continue (L13710-13763) ← blocked
+
+**CC (10):** L4901 (captured var), L5230 (if CCStateAgree), L5817 (non-consoleLog call), L6025/L6033 (call not-value), L6671 (unprovable), L7913 (functionDef — jsspec target), L8071/L8143 (tryCatch), L8251 (while CCState)
+
+### Expected next run: 36-40
+- proof: 2-4 compound HasXInHead closes possible (many cases may be contradictions)
+- wasmspec: 1-2 trivialChain seq closes possible
+- jsspec: 0-1 functionDef if build lands
+
+---
+
 ## Run: 2026-04-05T17:30:15+00:00
 
 ### Metrics
@@ -6160,3 +6211,4 @@ This is the highest-leverage work. If wasmspec proves this pattern on L9813 and 
 ## Run: 2026-04-05T18:00:07+00:00
 
 2026-04-05T18:05:07+00:00 SKIP: already running
+2026-04-05T18:06:23+00:00 DONE
