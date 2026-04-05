@@ -4127,7 +4127,9 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           obtain ⟨-, rfl⟩ := hstep
           have hih := ih body.depth (by have hd' := hd; rw [hexpr] at hd'; cases finally_ <;> simp [Core.Expr.depth] at hd' <;> omega)
             { s with expr := body } sb .silent (Nat.le_refl _) hsup_body hfuncs_supp h_sub
-          simp [Core.pushTrace, Core.Expr.supported, hih, hsup_catch, hsup_fin]
+          show Core.pushTrace _ _ |>.expr.supported = true
+          simp only [Core.pushTrace_expand, Core.Expr.supported]
+          rw [hih, hsup_catch, hsup_fin]; rfl
         | log msg =>
           have hfwd := Core.step_tryCatch_step_body_log body catchParam catchBody finally_ s.env s.heap s.trace s.funcs s.callStack hval_b msg sb h_sub
           rw [hfwd] at hstep
@@ -4135,7 +4137,9 @@ private theorem Core_step_preserves_supported (s s' : Core.State) (ev : Core.Tra
           obtain ⟨-, rfl⟩ := hstep
           have hih := ih body.depth (by have hd' := hd; rw [hexpr] at hd'; cases finally_ <;> simp [Core.Expr.depth] at hd' <;> omega)
             { s with expr := body } sb (.log msg) (Nat.le_refl _) hsup_body hfuncs_supp h_sub
-          simp [Core.pushTrace, Core.Expr.supported, hih, hsup_catch, hsup_fin]
+          show Core.pushTrace _ _ |>.expr.supported = true
+          simp only [Core.pushTrace_expand, Core.Expr.supported]
+          rw [hih, hsup_catch, hsup_fin]; rfl
 
 set_option maxHeartbeats 8000000 in
 private theorem Core_step_preserves_funcs_supported (s s' : Core.State) (ev : Core.TraceEvent)
