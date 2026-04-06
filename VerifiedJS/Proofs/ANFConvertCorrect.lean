@@ -4240,7 +4240,7 @@ private theorem hasAbruptCompletion_lit_false (v : Flat.Value) :
     Source programs satisfy this predicate since "__call_frame_return__" is only introduced by
     Flat.step? during function call evaluation. -/
 mutual
-private def noCallFrameReturn : Flat.Expr → Bool
+def noCallFrameReturn : Flat.Expr → Bool
   | .tryCatch body cp cb fin =>
     cp != "__call_frame_return__" &&
     noCallFrameReturn body && noCallFrameReturn cb &&
@@ -4272,11 +4272,11 @@ private def noCallFrameReturn : Flat.Expr → Bool
   | .labeled _ b => noCallFrameReturn b
   | _ => true
 
-private def noCallFrameReturnList : List Flat.Expr → Bool
+def noCallFrameReturnList : List Flat.Expr → Bool
   | [] => true
   | e :: rest => noCallFrameReturn e && noCallFrameReturnList rest
 
-private def noCallFrameReturnProps : List (Flat.PropName × Flat.Expr) → Bool
+def noCallFrameReturnProps : List (Flat.PropName × Flat.Expr) → Bool
   | [] => true
   | (_, e) :: rest => noCallFrameReturn e && noCallFrameReturnProps rest
 end
@@ -4292,7 +4292,7 @@ private theorem noCallFrameReturn_tryCatch_param {body cb : Flat.Expr} {cp : Str
 /-- noCallFrameReturn for literals is trivially true. -/
 private theorem noCallFrameReturn_lit (v : Flat.Value) :
     noCallFrameReturn (.lit v) = true := by
-  simp [noCallFrameReturn]
+  rfl
 
 private theorem firstNonValueExpr_eq_append {args : List Flat.Expr}
     {done : List Flat.Expr} {target : Flat.Expr} {remaining : List Flat.Expr}
