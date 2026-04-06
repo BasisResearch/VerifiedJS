@@ -9819,7 +9819,85 @@ private theorem normalizeExpr_labeled_branch_step :
           cases hfx with
           | binary_lhs _ _ _ _ h => exact henv_lhs ▸ hewf_lhs x h
           | binary_rhs _ _ _ _ h => exact hewf x (VarFreeIn.binary_rhs _ _ _ _ h)
-    | seq_right h_right => sorry -- needs seq decomposition (second sub-expression)
+    | seq_right h_right =>
+      rename_i a b    -- a = right part (has HasLabeledInHead), b = left part
+      simp only [ANF.normalizeExpr_seq'] at hnorm
+      rcases Classical.em (HasLabeledInHead b label) with h_b_lab | h_b_nolab
+      · -- HasLabeledInHead b label: recurse on b through .seq · a context
+        have hb_depth : b.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+        obtain ⟨sf_b, evs_b, hsteps_b, hsil_b, henv_b, hheap_b, hfuncs_b, hcs_b,
+          htrace_b, hpres_b, ⟨n_b, m_b, hnorm_b⟩, hewf_b⟩ :=
+          ih b hb_depth label h_b_lab env heap trace funcs cs _ n m body
+            hnorm (fun x hfx => hewf x (VarFreeIn.seq_l _ _ _ hfx))
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_seq_ctx_b a hsteps_b
+            (fun ev hev msg => by rw [hsil_b ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_b
+        refine ⟨ws, evs_b, hwsteps, hsil_b, hwenv.trans henv_b, hwheap.trans hheap_b,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_b], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (.seq · a)
+            (fun s inner hv t si hs he => step?_seq_ctx s inner a hv t si hs he)
+            hsteps_b (fun ev hev msg => by rw [hsil_b ev hev]; exact Core.TraceEvent.noConfusion) hpres_b
+        · exact ⟨n_b, m_b, by rw [hwexpr]; simp only [ANF.normalizeExpr_seq']; exact hnorm_b⟩
+        · rw [hwexpr, hwenv, henv_b]; exact fun x hfx => by
+            cases hfx with
+            | seq_l _ _ _ h => exact henv_b ▸ hewf_b x h
+            | seq_r _ _ _ h => exact hewf x (VarFreeIn.seq_r _ _ _ h)
+      · -- ¬HasLabeledInHead b label: b is trivialChain, evaluate + discard + IH on a
+        have htc_b := no_labeled_head_implies_trivial_chain b.depth b (Nat.le_refl _)
+          (fun _ => ANF.normalizeExpr a K) label body n m hnorm h_b_nolab
+        have hnorm_a : (ANF.normalizeExpr a K).run n = .ok (.labeled label body, m) := by
+          rwa [normalizeExpr_trivialChain_passthrough b.depth b (Nat.le_refl _) htc_b] at hnorm
+        obtain ⟨v_b, evs_b, hsteps_b, hnoerr_b, hobs_b, hpres_b⟩ :=
+          trivialChain_eval_value (trivialChainCost b) b env heap trace funcs cs
+            htc_b (Nat.le_refl _) (fun x hfx => hewf x (VarFreeIn.seq_l _ _ _ hfx))
+        have hsil_b : ∀ ev ∈ evs_b, ev = Core.TraceEvent.silent := by
+          intro ev hev; by_contra hne
+          have : ev ∈ observableTrace evs_b := by
+            simp [observableTrace, List.mem_filter, bne]
+            exact ⟨hev, hne⟩
+          rw [hobs_b] at this; exact List.not_mem_nil ev this
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_seq_ctx_b a hsteps_b
+            (fun ev hev msg => by rw [hsil_b ev hev]; exact Core.TraceEvent.noConfusion)
+            (fun smid evs1 h _ => hpres_b smid evs1 h)
+        have hws_eq : ws = ⟨.seq (.lit v_b) a, env, heap, trace ++ evs_b, funcs, cs⟩ := by
+          cases ws; simp_all
+        rw [hws_eq] at hwsteps
+        have hdisc : Flat.step? ⟨.seq (.lit v_b) a, env, heap, trace ++ evs_b, funcs, cs⟩ =
+          some (.silent, ⟨a, env, heap, (trace ++ evs_b) ++ [.silent], funcs, cs⟩) := by
+          simp [Flat.step?, Flat.exprValue?]
+        have ha_depth : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+        obtain ⟨sf_a, evs_a, hsteps_a, hsil_a, henv_a, hheap_a, hfuncs_a, hcs_a,
+          htrace_a, hpres_a, hnorm_a', hewf_a⟩ :=
+          ih a ha_depth label h_right env heap ((trace ++ evs_b) ++ [.silent]) funcs cs K n m body
+            hnorm_a (fun x hfx => hewf x (VarFreeIn.seq_r _ _ _ hfx))
+        refine ⟨sf_a, evs_b ++ .silent :: evs_a,
+          Flat.Steps.append hwsteps (.tail ⟨hdisc⟩ hsteps_a), ?_, henv_a, hheap_a, hfuncs_a, hcs_a, ?_, ?_, hnorm_a', hewf_a⟩
+        · intro ev hev; simp [List.mem_append] at hev
+          rcases hev with hev | hev | hev
+          · exact hsil_b ev hev
+          · simp at hev; exact hev
+          · exact hsil_a ev hev
+        · simp [List.append_assoc] at htrace_a ⊢; exact htrace_a
+        · have hw_pres := Steps_ctx_lift_pres (.seq · a)
+            (fun s inner hv t si hs he => step?_seq_ctx s inner a hv t si hs he)
+            hsteps_b (fun ev hev msg => by rw [hsil_b ev hev]; exact Core.TraceEvent.noConfusion)
+            (fun smid evs1 h _ => hpres_b smid evs1 h)
+          have htail_pres : ∀ smid evs,
+              Flat.Steps ⟨.seq (.lit v_b) a, env, heap, trace ++ evs_b, funcs, cs⟩ evs smid →
+              evs.length ≤ (.silent :: evs_a).length →
+              smid.funcs = funcs ∧ smid.callStack = cs ∧
+              smid.trace = (trace ++ evs_b) ++ evs := by
+            intro smid evs hst hlen
+            cases hst with
+            | refl => exact ⟨rfl, rfl, by simp⟩
+            | @tail _ smid' _ t' ts' hstep' hrest' =>
+              have := hstep'.1; rw [hdisc] at this; simp at this; obtain ⟨rfl, rfl⟩ := this
+              have hlen' : ts'.length ≤ evs_a.length := by simp at hlen; omega
+              obtain ⟨hf, hc, ht⟩ := hpres_a smid ts' hrest' hlen'
+              exact ⟨hf, hc, by rw [ht]; simp [List.append_assoc]⟩
+          exact Steps_pres_append hwsteps hw_pres (.tail ⟨hdisc⟩ hsteps_a) htail_pres
     | binary_rhs h_rhs => sorry -- second-position: needs lhs→value decomposition
     | setProp_obj h_obj =>
       rename_i obj prop val
