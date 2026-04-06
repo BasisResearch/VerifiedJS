@@ -6368,3 +6368,20 @@ After flat stepping `.var x` → `.lit v`, the trivial changes from `.var x` to 
 
 **This affects ALL 7 remaining second-position cases:** binary_rhs, setProp_val, getIndex_idx, setIndex_idx, setIndex_val, call_env, newObj_env. The theorem statement may need revision for these cases (e.g., allowing body to differ by trivial equivalence, or restricting HasLabeledInHead to exclude non-lit trivialChain first sub-expressions).
 
+
+### Partial proofs for 7 second-position cases (first branches only)
+
+Added first-branch proofs (HasLabeledInHead in first sub-expression) for:
+- binary_rhs: IH on lhs + Steps_binary_lhs_ctx_b
+- setProp_val: IH on obj + Steps_setProp_obj_ctx_b
+- getIndex_idx: IH on obj + Steps_getIndex_obj_ctx_b
+- setIndex_idx: IH on obj + Steps_setIndex_obj_ctx_b
+- setIndex_val: IH on obj + Steps_setIndex_obj_ctx_b
+- call_env: IH on funcE + Steps_call_func_ctx_b
+- newObj_env: IH on funcE + Steps_newObj_func_ctx_b
+
+Each case's second branch (¬HasLabeledInHead in first sub-expression) remains sorry, blocked by the trivial mismatch issue documented above.
+
+### Sorry count: 55 (was 56, net -1 from seq_right proof)
+
+### 2026-04-06T01:15:00+00:00 Run complete — seq_right fully proved, 7 second-position first branches added, trivial mismatch blocker documented

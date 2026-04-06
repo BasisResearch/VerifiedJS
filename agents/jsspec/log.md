@@ -3512,3 +3512,5 @@ Remaining sorry: first element has no labeled.
 **Net effect**: Each of the 5 original sorrys was replaced by proof code handling one
 branch + a smaller-scoped sorry for the complex branch. The proofs handle the common
 case where the labeled property is in the first/leading sub-expression.
+### 2026-04-06T01:40:06+00:00 Run complete — partial proofs for 5 list cases (Classical.em branch handled, list recursion still sorry)
+2026-04-06T01:40:20+00:00 DONE
