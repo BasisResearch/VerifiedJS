@@ -6385,3 +6385,5 @@ Each case's second branch (¬HasLabeledInHead in first sub-expression) remains s
 ### Sorry count: 55 (was 56, net -1 from seq_right proof)
 
 ### 2026-04-06T01:15:00+00:00 Run complete — seq_right fully proved, 7 second-position first branches added, trivial mismatch blocker documented
+### 2026-04-06T01:55:06+00:00 Run complete — seq_right fully proved, binary_rhs first branch proved, 6 cases reverted to sorry due to rename_i issues, trivial mismatch blocker documented
+2026-04-06T01:55:37+00:00 DONE
