@@ -6773,3 +6773,31 @@ Build started, waiting for result.
 ## Run: 2026-04-06T00:15:01+00:00
 
 ### 2026-04-06T00:15:11+00:00 Starting run
+
+#### Progress
+- Partially proved 7 second-position cases in both `normalizeExpr_if_branch_step` and `normalizeExpr_if_branch_step_false`:
+  - `binary_rhs`: HasIfInHead lhs sub-case proved (mirrors binary_lhs pattern)
+  - `call_env`: HasIfInHead f sub-case proved (mirrors call_func pattern)
+  - `newObj_env`: HasIfInHead f sub-case proved (mirrors newObj_func pattern)
+  - `setProp_val`: HasIfInHead obj sub-case proved (mirrors setProp_obj pattern)
+  - `getIndex_idx`: HasIfInHead obj sub-case proved (mirrors getIndex_obj pattern)
+  - `setIndex_idx`: HasIfInHead obj sub-case proved (mirrors setIndex_obj pattern)
+  - `setIndex_val`: HasIfInHead obj sub-case proved (mirrors setIndex_obj pattern)
+- Each case uses Classical.em (HasIfInHead first_subexpr) case split
+- The ¬HasIfInHead sub-case remains sorry (requires new normalization equivalence lemma infrastructure)
+- 5 list cases unchanged: call_args, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems
+- No build breakage — all pre-existing errors are in proof agent's zones (L9642-10703)
+
+#### Analysis: Why ¬HasIfInHead sub-cases are hard
+For second-position cases (e.g., binary_rhs with ¬HasIfInHead lhs):
+- lhs is a trivial chain (var x, this, seq ...)
+- normalizeExpr uses normTrivial(lhs) in the continuation
+- Flat stepping lhs to .lit v changes normTrivial to trivialOfFlatValue(v)
+- The theorem requires producing the ORIGINAL then_ (which embeds normTrivial(lhs))
+- After stepping lhs, normalizeExpr produces DIFFERENT then_ (with trivialOfFlatValue(v))
+- New infrastructure needed: either a general normalizeExpr_trivialChain_apply lemma or a normalization equivalence approach
+### 2026-04-06T01:13:15+00:00 Run complete — 14 sub-cases proved (7 per theorem), remaining sorries require new lemma infrastructure
+2026-04-06T01:13:26+00:00 DONE
+
+## Run: 2026-04-06T01:15:01+00:00
+
