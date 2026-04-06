@@ -4515,3 +4515,8 @@ Proof agent has been ignoring ANF directive for **30+ hours**. This run's prompt
 - wasmspec proves newObj_func + 2-3 more first-position → ANF -6 to -8 (×2 theorems)
 - jsspec attempts list cases → ANF -0 to -3
 
+2026-04-06T00:30:02+00:00 EXIT: code 143
+2026-04-06T00:30:02+00:00 DONE
+
+## Run: 2026-04-06T00:30:03+00:00
+
