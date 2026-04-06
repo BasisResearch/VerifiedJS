@@ -9243,7 +9243,15 @@ private theorem no_labeled_head_implies_trivial_chain :
     | «continue» _ =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
-    | labeled l body_lab => exfalso; exact hno HasLabeledInHead.labeled_direct
+    | labeled l body_lab =>
+      exfalso
+      simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run,
+        pure, Pure.pure, StateT.pure, Except.pure, Except.bind] at h
+      split at h
+      · simp at h
+      · have heq := (Prod.mk.inj (Except.ok.inj h)).1
+        cases heq
+        exact hno HasLabeledInHead.labeled_direct
     | «throw» arg_t =>
       exfalso; simp only [ANF.normalizeExpr] at h
       rcases ANF.normalizeExpr_labeled_or_k arg_t _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
@@ -9344,39 +9352,39 @@ private theorem no_labeled_head_implies_trivial_chain :
       · exact absurd hkt (ANF.bindComplex_not_labeled _ _ _ _ _ _)
     | setProp obj _ val =>
       exfalso; simp only [ANF.normalizeExpr] at h
-      rcases ANF.normalizeExpr_labeled_or_k obj _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      rcases ANF.normalizeExpr_labeled_or_k obj _ label body _ _ h with hleft | ⟨_, _, _, body', hkt⟩
       · exact hno (HasLabeledInHead.setProp_obj hleft)
-      · rcases ANF.normalizeExpr_labeled_or_k val _ label body _ _ hkt with hleft | ⟨_, _, _, _, hkt₂⟩
+      · rcases ANF.normalizeExpr_labeled_or_k val _ label body' _ _ hkt with hleft | ⟨_, _, _, _, hkt₂⟩
         · exact hno (HasLabeledInHead.setProp_val hleft)
         · exact absurd hkt₂ (ANF.bindComplex_not_labeled _ _ _ _ _ _)
     | binary _ lhs rhs =>
       exfalso; simp only [ANF.normalizeExpr] at h
-      rcases ANF.normalizeExpr_labeled_or_k lhs _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      rcases ANF.normalizeExpr_labeled_or_k lhs _ label body _ _ h with hleft | ⟨_, _, _, body', hkt⟩
       · exact hno (HasLabeledInHead.binary_lhs hleft)
-      · rcases ANF.normalizeExpr_labeled_or_k rhs _ label body _ _ hkt with hleft | ⟨_, _, _, _, hkt₂⟩
+      · rcases ANF.normalizeExpr_labeled_or_k rhs _ label body' _ _ hkt with hleft | ⟨_, _, _, _, hkt₂⟩
         · exact hno (HasLabeledInHead.binary_rhs hleft)
         · exact absurd hkt₂ (ANF.bindComplex_not_labeled _ _ _ _ _ _)
     | getIndex obj idx =>
       exfalso; simp only [ANF.normalizeExpr] at h
-      rcases ANF.normalizeExpr_labeled_or_k obj _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      rcases ANF.normalizeExpr_labeled_or_k obj _ label body _ _ h with hleft | ⟨_, _, _, body', hkt⟩
       · exact hno (HasLabeledInHead.getIndex_obj hleft)
-      · rcases ANF.normalizeExpr_labeled_or_k idx _ label body _ _ hkt with hleft | ⟨_, _, _, _, hkt₂⟩
+      · rcases ANF.normalizeExpr_labeled_or_k idx _ label body' _ _ hkt with hleft | ⟨_, _, _, _, hkt₂⟩
         · exact hno (HasLabeledInHead.getIndex_idx hleft)
         · exact absurd hkt₂ (ANF.bindComplex_not_labeled _ _ _ _ _ _)
     | setIndex obj idx val =>
       exfalso; simp only [ANF.normalizeExpr] at h
-      rcases ANF.normalizeExpr_labeled_or_k obj _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      rcases ANF.normalizeExpr_labeled_or_k obj _ label body _ _ h with hleft | ⟨_, _, _, body₁, hkt⟩
       · exact hno (HasLabeledInHead.setIndex_obj hleft)
-      · rcases ANF.normalizeExpr_labeled_or_k idx _ label body _ _ hkt with hleft | ⟨_, _, _, _, hkt₂⟩
+      · rcases ANF.normalizeExpr_labeled_or_k idx _ label body₁ _ _ hkt with hleft | ⟨_, _, _, body₂, hkt₂⟩
         · exact hno (HasLabeledInHead.setIndex_idx hleft)
-        · rcases ANF.normalizeExpr_labeled_or_k val _ label body _ _ hkt₂ with hleft | ⟨_, _, _, _, hkt₃⟩
+        · rcases ANF.normalizeExpr_labeled_or_k val _ label body₂ _ _ hkt₂ with hleft | ⟨_, _, _, _, hkt₃⟩
           · exact hno (HasLabeledInHead.setIndex_val hleft)
           · exact absurd hkt₃ (ANF.bindComplex_not_labeled _ _ _ _ _ _)
     | call f env args =>
       exfalso; simp only [ANF.normalizeExpr] at h
-      rcases ANF.normalizeExpr_labeled_or_k f _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      rcases ANF.normalizeExpr_labeled_or_k f _ label body _ _ h with hleft | ⟨_, _, _, body₁, hkt⟩
       · exact hno (HasLabeledInHead.call_func hleft)
-      · rcases ANF.normalizeExpr_labeled_or_k env _ label body _ _ hkt with hleft | ⟨_, _, _, _, hkt₂⟩
+      · rcases ANF.normalizeExpr_labeled_or_k env _ label body₁ _ _ hkt with hleft | ⟨_, _, _, body₂, hkt₂⟩
         · exact hno (HasLabeledInHead.call_env hleft)
         · have args_ih : ∀ e, e ∈ args → ∀ k' (label' : String) (body' : ANF.Expr) n m,
               (ANF.normalizeExpr e k').run n = .ok (.labeled label' body', m) →
@@ -9387,9 +9395,9 @@ private theorem no_labeled_head_implies_trivial_chain :
           · exact absurd hkt₃ (ANF.bindComplex_not_labeled _ _ _ _ _ _)
     | newObj f env args =>
       exfalso; simp only [ANF.normalizeExpr] at h
-      rcases ANF.normalizeExpr_labeled_or_k f _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      rcases ANF.normalizeExpr_labeled_or_k f _ label body _ _ h with hleft | ⟨_, _, _, body₁, hkt⟩
       · exact hno (HasLabeledInHead.newObj_func hleft)
-      · rcases ANF.normalizeExpr_labeled_or_k env _ label body _ _ hkt with hleft | ⟨_, _, _, _, hkt₂⟩
+      · rcases ANF.normalizeExpr_labeled_or_k env _ label body₁ _ _ hkt with hleft | ⟨_, _, _, body₂, hkt₂⟩
         · exact hno (HasLabeledInHead.newObj_env hleft)
         · have args_ih : ∀ e, e ∈ args → ∀ k' (label' : String) (body' : ANF.Expr) n m,
               (ANF.normalizeExpr e k').run n = .ok (.labeled label' body', m) →
