@@ -1,4 +1,4 @@
-# proof — 46 ANF sorries. L9585 catch-all is YOUR #1 job.
+# proof — 25 provable ANF sorries in YOUR zones. Close them.
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY (and Flat/Semantics.lean for infrastructure)
@@ -8,95 +8,75 @@
 ## !! CRITICAL: DO NOT USE WHILE/UNTIL LOOPS !!
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 
-## MEMORY: 7.7GB total, NO swap. ~100MB free. USE LSP ONLY — no `lake build`.
+## MEMORY: 7.7GB total, NO swap. ~3GB free. USE LSP ONLY — no `lake build`.
 
 ## CONCURRENCY: wasmspec also edits ANFConvertCorrect.lean
-- wasmspec works on L13231-13243 and L14139-14151 zones (if_branch individual cases)
+- wasmspec works on L13355-13367 and L14263-14275 zones (if_branch individual cases)
 - **YOU** own everything else
 - DO NOT touch those lines
 
-## PROGRESS: You closed 8 sorries last run — great work! Now decompose L9585.
+## L9585 CATCH-ALL: DECOMPOSED! Well done! 5 first-position proved!
 
-## ===== PRIORITY 0: DECOMPOSE L9585 CATCH-ALL =====
+The catch-all is now 13 individual sorry cases at L9584-9709.
 
-**THIS IS YOUR #1 JOB.** Line 9585 has:
-```
-    | _ => sorry -- remaining: seq_right, setProp_obj/val, binary_rhs, call_func/env/args, ...
-```
+## ===== PRIORITY 0: SECOND-POSITION CASES (L9584-9709) =====
 
-**Replace with explicit cases.** Follow the EXACT pattern of `binary_lhs` at L9560-9584:
+These 8 cases need a value from the first sub-expression. Use `lean_goal` at each line to see what's in scope.
 
-### First-position cases (follow binary_lhs pattern exactly):
-| Constructor | Steps helper | step? helper | VarFreeIn |
-|-------------|-------------|-------------|-----------|
-| setProp_obj h_obj | Steps_setProp_obj_ctx_b prop val | step?_setProp_obj_ctx | setProp_obj, setProp_value |
-| getIndex_obj h_obj | Steps_getIndex_obj_ctx_b idx | step?_getIndex_obj_ctx | getIndex_obj, getIndex_idx |
-| setIndex_obj h_obj | Steps_setIndex_obj_ctx_b idx val | step?_setIndex_obj_ctx | setIndex_obj, setIndex_idx, setIndex_value |
-| call_func h_f | Steps_call_func_ctx_b envExpr args | step?_call_func_ctx | call_func, call_env, call_arg |
-| newObj_func h_f | Steps_newObj_func_ctx_b envExpr args | step?_newObj_func_ctx | newObj_func, newObj_env, newObj_arg |
-
-### Second-position cases (harder — need value from first position):
-| Constructor | Steps helper | Notes |
-|-------------|-------------|-------|
-| binary_rhs h_rhs | Steps_binary_rhs_ctx_b op lv | need lv: use `lean_goal` to find how lhs value is available |
-| setProp_val h_val | Steps_setProp_val_ctx_b ov prop | need ov from obj position |
-| getIndex_idx h_idx | Steps_getIndex_idx_ctx_b ov | need ov |
-| setIndex_idx h_idx | Steps_setIndex_idx_ctx_b ov val | need ov |
-| setIndex_val h_val | Steps_setIndex_val_ctx_b ov iv | need ov AND iv |
-| call_env h_env | Steps_call_env_ctx_b fv args | need fv |
-| newObj_env h_env | Steps_newObj_env_ctx_b fv args | need fv |
-
-### List-based (KEEP AS SORRY):
-| call_args, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems |
-
-### seq_right case:
-`seq_right h_right` — similar to already-proved seq_left. Use Steps_seq_ctx_b.
-
-### APPROACH:
-1. Use `lean_goal` at L9585 to see the exact proof state
-2. Replace `| _ => sorry` with explicit constructor cases
-3. Do ALL first-position cases first (easy wins — follow binary_lhs template)
-4. For second-position: use `lean_goal` to understand what values are available
-5. Use `lean_multi_attempt` to test proofs
-6. List cases: leave as individual `sorry`
-
-### Template for first-position (e.g. setProp_obj):
+### seq_right (L9584):
 ```lean
-    | setProp_obj h_obj =>
-      rename_i obj prop val
-      simp only [ANF.normalizeExpr] at hnorm
-      have hobj_depth : obj.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
-      obtain ⟨sf_obj, evs_obj, hsteps_obj, hsil_obj, henv_obj, hheap_obj, hfuncs_obj, hcs_obj,
-        htrace_obj, hpres_obj, ⟨n_obj, m_obj, hnorm_obj⟩, hewf_obj⟩ :=
-        ih obj hobj_depth label h_obj env heap trace funcs cs _ n m body
-          hnorm (fun x hfx => hewf x (VarFreeIn.setProp_obj _ _ _ _ hfx))
-      obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-        Steps_setProp_obj_ctx_b prop val hsteps_obj
-          (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion)
-          hpres_obj
-      refine ⟨ws, evs_obj, hwsteps, hsil_obj, hwenv.trans henv_obj, hwheap.trans hheap_obj,
-        hwfuncs, hwcs, by rw [hwtrace, htrace_obj], ?_, ?_, ?_⟩
-      · exact Steps_ctx_lift_pres (fun e => .setProp e prop val)
-          (fun s inner hv t si hs he => step?_setProp_obj_ctx s inner prop val hv t si hs he)
-          hsteps_obj (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion) hpres_obj
-      · exact ⟨n_obj, m_obj, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_obj⟩
-      · rw [hwexpr, hwenv, henv_obj]; exact fun x hfx => by
-          cases hfx with
-          | setProp_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
-          | setProp_value _ _ _ _ h => exact hewf x (VarFreeIn.setProp_value _ _ _ _ h)
+    | seq_right h_right =>
+      rename_i a b
+      -- a must be a value (seq evaluates left first). Check lean_goal for h_aval or similar.
+      -- Use Steps_seq_ctx_b like seq_left but on right sub-expression
+      sorry
 ```
+Use `lean_goal` at L9584 to find how `a` being a value is available. Then apply IH on `b` with Steps_seq_ctx_b.
 
-## PRIORITY 1: Groups B-E (after L9585)
-Lower priority — only attempt if L9585 is done:
-- L10832, L10989, L11166, L11324: compound HasXInHead
-- L10983, L11160, L11318: compound inner_val/inner_arg
-- L11380, L11384, L11385: return/yield/compound
-- L11475, L11487: while condition
+### binary_rhs (L9585):
+The left operand is already a value. Use `lean_goal` to find the hypothesis. Apply IH on rhs, lift with Steps_binary_rhs_ctx_b.
+
+### setProp_val (L9608):
+Object is a value. Use Steps_setProp_val_ctx_b.
+
+### getIndex_idx (L9631):
+Object is a value. Use Steps_getIndex_idx_ctx_b.
+
+### setIndex_idx (L9655), setIndex_val (L9656):
+Previous positions are values. Use Steps_setIndex_idx_ctx_b, Steps_setIndex_val_ctx_b.
+
+### call_env (L9680):
+func is a value. Use Steps_call_env_ctx_b.
+
+### newObj_env (L9705):
+func is a value. Use Steps_newObj_env_ctx_b.
+
+### APPROACH for each:
+1. `lean_goal` at the sorry line
+2. Identify value hypothesis for the first sub-expression
+3. Apply IH on the stepping sub-expression
+4. Lift with the corresponding Steps_*_ctx_b helper
+5. Wire VarFreeIn cases (look at how nearby proved cases handle this)
+6. `lean_multi_attempt` to test
+
+## ===== PRIORITY 1: LIST CASES (LEAVE AS SORRY) =====
+call_args (L9681), newObj_args (L9706), makeEnv_values (L9707), objectLit_props (L9708), arrayLit_elems (L9709) — these need list decomposition helpers that jsspec is building. Skip for now.
+
+## ===== PRIORITY 2: COMPOUND CASES (L10956-L11611) =====
+After finishing P0, work on:
+- L10956: throw compound HasThrowInHead
+- L11107, L11284, L11442: inner_val/inner_arg
+- L11113, L11290, L11448: return/await/yield compound
+- L11504, L11508, L11509: return/yield/compound
+- L11599, L11611: while condition
+
+These need eval context stepping through compound expressions. The normalizeExpr_labeled_branch_step and normalizeExpr_if_branch_step infrastructure already exists — adapt it.
 
 ## DO NOT TOUCH (blocked or wasmspec-owned):
-- L13231-13243, L14139-14151 (wasmspec)
-- L14992, L15010, L15013 (tryCatch — blocked)
-- L16096, L16107, L16327, L16380 (call frame/break/continue — blocked)
+- L13355-13367, L14263-14275 (wasmspec — if_branch individual cases)
+- L15116, L15134, L15137 (tryCatch — blocked)
+- L16220, L16231 (call frame — blocked)
+- L16451, L16504 (break/continue — blocked)
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

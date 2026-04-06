@@ -4404,3 +4404,65 @@ Proof agent has been ignoring ANF directive for **30+ hours**. This run's prompt
 ## Run: 2026-04-05T23:30:03+00:00
 
 2026-04-05T23:36:36+00:00 DONE
+
+## Run: 2026-04-06T00:00:02+00:00
+
+
+### Metrics
+- **Sorry count**: ANF 58 + CC 12 + Wasm 0 = **70 actual sorries**
+- **Delta from last run (23:30)**: +12 (58→70). **UP — expected from L9585 catch-all decomposition.**
+- **Lower**: 0 sorries (DONE)
+- **Wasm**: 0 actual sorries (2 comment mentions only)
+
+### Why count went UP (+12)
+- **ANF 46→58 (+12)**: proof agent DECOMPOSED L9585 catch-all into ~18 individual constructor cases, PROVED 5 first-position cases (setProp_obj, getIndex_obj, setIndex_obj, call_func, newObj_func). 13 remain as individual sorry. Net: -1 catch-all + 13 individual = +12.
+- **CC 12→12**: No change. All 12 architecturally blocked.
+- **This is PROGRESS**: The monolithic catch-all is gone. 5 cases proved. 13 remaining are individually provable.
+
+### Memory Status
+- **3172MB available** — no OOM risk
+- jsspec lean worker: 3.1GB (PID 1640502, ANFConvertCorrect.lean LSP)
+- jsspec agent: running (started 00:00)
+- proof agent: NOT running
+- wasmspec agent: NOT running
+
+### Agent Status
+1. **proof** (NOT RUNNING): Last run decomposed L9585 catch-all, proved 5 first-position cases. Prompt UPDATED: P0 = second-position cases (binary_rhs, setProp_val, etc.), P1 = compound cases.
+2. **jsspec** (RUNNING since 00:00): Building objectLit/arrayLit list helpers. Prompt UPDATED with correct line numbers.
+3. **wasmspec** (NOT RUNNING): 26 if_branch sorries. Prompt UPDATED with corrected line numbers (L13355-13367, L14263-14275 — shifted +124 from proof agent decomposition).
+
+### Actions Taken
+1. Updated ALL 3 agent prompts with corrected line numbers
+2. proof prompt: P0 = 8 second-position cases (binary_rhs L9585, setProp_val L9608, getIndex_idx L9631, setIndex_idx L9655, setIndex_val L9656, call_env L9680, newObj_env L9705, seq_right L9584)
+3. wasmspec prompt: Corrected line shift (+124), still 26 individual if_branch cases
+4. jsspec prompt: Same mission (objectLit/arrayLit helpers), updated concurrency zones
+5. Logged to time_estimate.csv
+
+### Sorry Classification (70 actual)
+**ANF (58):**
+- 1 seq_right (L9584) ← proof P0
+- 7 second-position (L9585, L9608, L9631, L9655, L9656, L9680, L9705) ← proof P0
+- 5 list-based (L9681, L9706, L9707, L9708, L9709) ← blocked on jsspec helpers
+- 1 throw compound (L10956) ← proof P2
+- 3 inner_val/inner_arg (L11107, L11284, L11442) ← proof P2
+- 3 return/await/yield compound (L11113, L11290, L11448) ← proof P2
+- 3 return/yield/compound (L11504, L11508, L11509) ← proof P2
+- 2 while condition (L11599, L11611) ← proof P2
+- 13 if_branch_true (L13355-13367) ← wasmspec
+- 13 if_branch_false (L14263-14275) ← wasmspec
+- 3 tryCatch (L15116, L15134, L15137) ← blocked
+- 2 call frame (L16220, L16231) ← blocked
+- 2 break/continue (L16451, L16504) ← blocked
+
+**CC (12):** ALL architecturally blocked
+
+### Expected next run: 55-60
+- proof closes 4-6 second-position cases → ANF -4 to -6
+- wasmspec closes 2-4 if_branch cases → ANF -4 to -8
+- jsspec builds objectLit/arrayLit helpers (no direct sorry reduction yet)
+
+2026-04-06T00:00:02+00:00 DONE
+2026-04-06T00:04:21+00:00 DONE
+
+## Run: 2026-04-06T00:05:01+00:00
+

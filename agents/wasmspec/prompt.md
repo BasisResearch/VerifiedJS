@@ -7,32 +7,34 @@
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
 - You CAN edit ANFConvertCorrect.lean ONLY
 
-## MEMORY: ~100MB free. USE LSP ONLY — no builds.
+## MEMORY: ~3GB free. USE LSP ONLY — no builds.
 
 ## CONCURRENCY: proof agent also edits ANFConvertCorrect.lean
-- proof agent works on L9585 zone + L10832-11487 zone
-- **YOU** own L13231-13243 and L14139-14151 ONLY
+- proof agent works on L9584-9709 zone + L10956-11611 zone
+- **YOU** own L13355-13367 and L14263-14275 ONLY
+
+## !! LINE NUMBERS SHIFTED !! Old L13231→L13355, Old L14139→L14263 (+124 lines from proof agent decomposition)
 
 ## YOUR 26 SORRIES (13 per theorem):
 
-### normalizeExpr_if_branch_step (true branch) — L13231-13243:
+### normalizeExpr_if_branch_step (true branch) — L13355-13367:
 ```
-    | binary_rhs => sorry      -- L13231
-    | call_env => sorry        -- L13232
-    | call_args => sorry       -- L13233
-    | newObj_func => sorry     -- L13234
-    | newObj_env => sorry      -- L13235
-    | newObj_args => sorry     -- L13236
-    | setProp_val => sorry     -- L13237
-    | getIndex_idx => sorry    -- L13238
-    | setIndex_idx => sorry    -- L13239
-    | setIndex_val => sorry    -- L13240
-    | makeEnv_values => sorry  -- L13241
-    | objectLit_props => sorry -- L13242
-    | arrayLit_elems => sorry  -- L13243
+    | binary_rhs => sorry      -- L13355
+    | call_env => sorry        -- L13356
+    | call_args => sorry       -- L13357
+    | newObj_func => sorry     -- L13358
+    | newObj_env => sorry      -- L13359
+    | newObj_args => sorry     -- L13360
+    | setProp_val => sorry     -- L13361
+    | getIndex_idx => sorry    -- L13362
+    | setIndex_idx => sorry    -- L13363
+    | setIndex_val => sorry    -- L13364
+    | makeEnv_values => sorry  -- L13365
+    | objectLit_props => sorry -- L13366
+    | arrayLit_elems => sorry  -- L13367
 ```
 
-### normalizeExpr_if_branch_step_false — L14139-14151 (mirror of above)
+### normalizeExpr_if_branch_step_false — L14263-14275 (mirror of above)
 
 ## HELPERS AVAILABLE (ALL EXIST):
 | Helper | For case |
@@ -51,8 +53,10 @@
 
 ## APPROACH
 
-### First-position cases you can prove NOW (newObj_func):
-Follow the setProp_obj pattern at L13164-13185. Template:
+### First use `lean_goal` at L13355 to see the exact proof state. Line numbers may have shifted slightly — verify with `lean_diagnostic_messages` first.
+
+### First-position cases (newObj_func at L13358):
+Follow the setProp_obj pattern. Template:
 ```lean
     | newObj_func h_f =>
       rename_i f envExpr args
@@ -80,10 +84,10 @@ Follow the setProp_obj pattern at L13164-13185. Template:
 ```
 
 ### Second-position cases (binary_rhs, call_env, newObj_env, setProp_val, getIndex_idx, setIndex_idx, setIndex_val):
-These need the first sub-expression to be a value. Use `lean_goal` at each sorry to see what's available. The HasIfInHead structure means the INNER expression has the if, so the outer first-position sub-expression may have been reduced already. Check with LSP.
+Use `lean_goal` at each sorry. The HasIfInHead means the INNER expression has the if. Check with LSP what values are available.
 
 ### List-based cases (call_args, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems):
-These require list decomposition. Leave as sorry if too complex.
+Leave as sorry if too complex — jsspec is building list helpers.
 
 ### PRIORITY ORDER:
 1. newObj_func (first-position, straightforward)
@@ -91,7 +95,7 @@ These require list decomposition. Leave as sorry if too complex.
 3. setProp_val, getIndex_idx, setIndex_idx, setIndex_val (second/third-position)
 4. List cases — attempt if time permits
 
-### DO BOTH THEOREMS: Each case solved in if_branch_step (L13231-13243) should be mirrored in if_branch_step_false (L14139-14151) with the same structure.
+### DO BOTH THEOREMS: Each case solved in if_branch_step (L13355-13367) should be mirrored in if_branch_step_false (L14263-14275).
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

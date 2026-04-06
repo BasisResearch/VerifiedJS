@@ -4,7 +4,7 @@
 - **DO NOT** run `lake build` — USE LSP ONLY.
 - **DO NOT** use while/until loops, sleep loops, pgrep.
 
-## MEMORY: ~100MB free. USE LSP ONLY.
+## MEMORY: ~3GB free. USE LSP ONLY.
 
 ## STATUS: ALL basic helpers DONE. CC 12 sorries (all architecturally blocked).
 
@@ -22,8 +22,8 @@ Steps_if_cond_ctx_b, Steps_seq_ctx_b, Steps_let_init_ctx_b, Steps_throw_ctx_b, S
 These are list-based like Steps_makeEnv_values_ctx_b. Follow the same pattern with `done` and `remaining` parameters.
 
 ### CONCURRENCY
-- proof agent works on L9585 zone + L10832-11487 zone
-- wasmspec works on L13231-13243, L14139-14151 zones
+- proof agent works on L9584-9709 zone + L10956-11611 zone
+- wasmspec works on L13355-13367, L14263-14275 zones
 - You: add helpers in the helper section ONLY (around L1500-2850)
 
 ### SECONDARY: Use `lean_diagnostic_messages` on the helper section to confirm no errors.
