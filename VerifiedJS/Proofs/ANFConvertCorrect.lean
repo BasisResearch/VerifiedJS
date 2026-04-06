@@ -4288,12 +4288,28 @@ private theorem noCallFrameReturn_tryCatch_param {body cb : Flat.Expr} {cp : Str
     cp ≠ "__call_frame_return__" := by
   unfold noCallFrameReturn at h
   simp [Bool.and_eq_true, bne_iff_ne] at h
-  exact h.1
+  exact h.1.1.1
 
 /-- noCallFrameReturn for literals is trivially true. -/
 private theorem noCallFrameReturn_lit (v : Flat.Value) :
     noCallFrameReturn (.lit v) = true := by
   rfl
+
+/-- When normalizeExpr produces a tryCatch from a direct tryCatch_direct case,
+    noCallFrameReturn on the flat expression implies catchParam ≠ "__call_frame_return__".
+    This is the bridge lemma for the tryCatch_direct case in normalizeExpr_tryCatch_step_sim.
+    For compound HasTryCatchInHead cases, the tryCatch sorry (L16312) is the blocker. -/
+private theorem noCallFrameReturn_tryCatch_direct_bridge
+    {body_f : Flat.Expr} {cp : Flat.VarName} {cb_f : Flat.Expr} {fin_f : Option Flat.Expr}
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+    (body : ANF.Expr) (catchParam : ANF.VarName) (catchBody : ANF.Expr) (finally_ : Option ANF.Expr)
+    (hnorm : (ANF.normalizeExpr (.tryCatch body_f cp cb_f fin_f) k).run n =
+      .ok (.tryCatch body catchParam catchBody finally_, m))
+    (hncfr : noCallFrameReturn (.tryCatch body_f cp cb_f fin_f) = true) :
+    catchParam ≠ "__call_frame_return__" := by
+  have hdecomp := normalizeExpr_tryCatch_decomp body_f cp cb_f fin_f k n m body catchParam catchBody finally_ hnorm
+  rw [hdecomp.1]
+  exact noCallFrameReturn_tryCatch_param hncfr
 
 private theorem firstNonValueExpr_eq_append {args : List Flat.Expr}
     {done : List Flat.Expr} {target : Flat.Expr} {remaining : List Flat.Expr}
