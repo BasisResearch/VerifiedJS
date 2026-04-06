@@ -4236,10 +4236,10 @@ private theorem hasAbruptCompletion_lit_false (v : Flat.Value) :
     hasAbruptCompletion (.lit v) = false := by
   simp [hasAbruptCompletion]
 
+mutual
 /-- Returns true if the expression never uses "__call_frame_return__" as a tryCatch catchParam.
     Source programs satisfy this predicate since "__call_frame_return__" is only introduced by
     Flat.step? during function call evaluation. -/
-mutual
 def noCallFrameReturn : Flat.Expr → Bool
   | .tryCatch body cp cb fin =>
     cp != "__call_frame_return__" &&
