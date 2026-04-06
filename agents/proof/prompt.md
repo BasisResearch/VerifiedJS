@@ -8,89 +8,99 @@
 ## !! CRITICAL: DO NOT USE WHILE/UNTIL LOOPS !!
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 
-## MEMORY: 7.7GB total, NO swap. ~2.5GB free. USE LSP ONLY — no `lake build`.
+## MEMORY: 7.7GB total, NO swap. ~2.3GB free. USE LSP ONLY — no `lake build`.
 
 ## CONCURRENCY: wasmspec also edits ANFConvertCorrect.lean
-- wasmspec works on L13593-13627 and L14523-14557 zones (if_branch individual cases)
-- jsspec may work on list cases (L9919, L9944-9947)
-- **YOU** own L9822-9918 and L9943 (second-position + newObj_env)
+- wasmspec works on L13671-13705 and L14601-14635 zones (if_branch individual cases)
+- jsspec may work on list cases (L9997, L10022-10025)
+- **YOU** own L9901-L9996 (second-position cases)
 - DO NOT touch wasmspec or jsspec zones
 
-## ===== YOUR 8 SORRIES (all second-position) =====
+## ===== YOUR 6 SORRIES (all second-position) =====
 
-These are at lines: L9822 (seq_right), L9823 (binary_rhs), L9846 (setProp_val), L9869 (getIndex_idx), L9893 (setIndex_idx), L9894 (setIndex_val), L9918 (call_env), L9943 (newObj_env).
+These are at lines:
+- L9901: `binary_rhs h_rhs => sorry`
+- L9924: `setProp_val h_val => sorry`
+- L9947: `getIndex_idx h_idx => sorry`
+- L9971: `setIndex_idx h_idx => sorry`
+- L9972: `setIndex_val h_val => sorry`
+- L9996: `call_env h_env => sorry`
 
-## ===== EXACT TEMPLATE: seq_right at L13155-13226 =====
+## ===== EXACT TEMPLATE: seq_right ¬HasIfInHead case at L13256-13304 =====
 
-The if_branch_step `seq_right` case at L13155-13226 is the EXACT pattern. Adapt it:
-- Replace `HasIfInHead` with `HasLabeledInHead`
-- Replace `no_if_head_implies_trivial_chain` with `no_labeled_head_implies_trivial_chain` (L9201)
-- Replace `cond then_ else_ v` parameters with `label body` parameters
-- The trivialChain machinery is identical
+This is the EXACT pattern for second-position. The if_branch seq_right at L13256-13304 shows how:
+1. `no_X_head_implies_trivial_chain` to get trivialChain for first sub
+2. `normalizeExpr_trivialChain_passthrough` to recover IH normalizeExpr for second sub
+3. `trivialChain_eval_value` to get the first sub's value
+4. `Steps_*_ctx_b` to lift through the context
+5. Construct the discard step (e.g., `.seq (.lit v) a → a`)
+6. IH on second sub
+7. `Steps.append` + `Steps_pres_append` to compose
 
-### Pattern for seq_right (L9822):
+### For binary_rhs (L9901):
+Replace `HasIfInHead` with `HasLabeledInHead`, `cond then_ else_ v` with `label body`:
 ```lean
-    | seq_right h_right =>
-      rename_i a b  -- b=left (seq first), a=right (has label)
-      simp only [ANF.normalizeExpr_seq'] at hnorm
-      rcases Classical.em (HasLabeledInHead b label) with h_b_lab | h_b_nolab
-      · -- HasLabeledInHead b: IH on b, wrap in .seq · a
-        have hb_depth : b.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
-        obtain ⟨sf_b, evs_b, hsteps_b, hsil_b, henv_b, hheap_b, hfuncs_b, hcs_b,
-          htrace_b, hpres_b, ⟨n_b, m_b, hnorm_b⟩, hewf_b⟩ :=
-          ih b hb_depth label h_b_lab env heap trace funcs cs _ n m body
-            hnorm (fun x hfx => hewf x (VarFreeIn.seq_l _ _ _ hfx))
+    | binary_rhs h_rhs =>
+      rename_i lhs rhs op  -- CHECK order with lean_goal!
+      simp only [ANF.normalizeExpr] at hnorm
+      rcases Classical.em (HasLabeledInHead lhs label) with h_lhs_lab | h_lhs_nolab
+      · -- HasLabeledInHead lhs: IH + Steps_binary_lhs_ctx_b
+        have hlhs_depth : lhs.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+        obtain ⟨sf_lhs, evs_lhs, hsteps_lhs, hsil_lhs, henv_lhs, hheap_lhs, hfuncs_lhs, hcs_lhs,
+          htrace_lhs, hpres_lhs, ⟨n_lhs, m_lhs, hnorm_lhs⟩, hewf_lhs⟩ :=
+          ih lhs hlhs_depth label h_lhs_lab env heap trace funcs cs _ n m body
+            hnorm (fun x hfx => hewf x (VarFreeIn.binary_lhs _ _ _ _ hfx))
         obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-          Steps_seq_ctx_b a hsteps_b
-            (fun ev hev msg => by rw [hsil_b ev hev]; exact Core.TraceEvent.noConfusion)
-            hpres_b
-        refine ⟨ws, evs_b, hwsteps, hsil_b, hwenv.trans henv_b, hwheap.trans hheap_b,
-          hwfuncs, hwcs, by rw [hwtrace, htrace_b], ?_, ?_, ?_⟩
-        · exact Steps_ctx_lift_pres (.seq · a)
-            (fun s inner hv t si hs he => step?_seq_ctx s inner a hv t si hs he)
-            hsteps_b (fun ev hev msg => by rw [hsil_b ev hev]; exact Core.TraceEvent.noConfusion) hpres_b
-        · exact ⟨n_b, m_b, by rw [hwexpr]; simp only [ANF.normalizeExpr_seq']; exact hnorm_b⟩
-        · rw [hwexpr, hwenv, henv_b]; exact fun x hfx => by
+          Steps_binary_lhs_ctx_b op rhs hsteps_lhs
+            (fun ev hev msg => by rw [hsil_lhs ev hev]; exact Core.TraceEvent.noConfusion) hpres_lhs
+        refine ⟨ws, evs_lhs, hwsteps, hsil_lhs, hwenv.trans henv_lhs, hwheap.trans hheap_lhs,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_lhs], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (.binary op · rhs)
+            (fun s inner hv t si hs he => step?_binary_lhs_ctx s op inner rhs hv t si hs he)
+            hsteps_lhs (fun ev hev msg => by rw [hsil_lhs ev hev]; exact Core.TraceEvent.noConfusion) hpres_lhs
+        · exact ⟨n_lhs, m_lhs, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_lhs⟩
+        · rw [hwexpr, hwenv, henv_lhs]; exact fun x hfx => by
             cases hfx with
-            | seq_l _ _ _ h => exact henv_b ▸ hewf_b x h
-            | seq_r _ _ _ h => exact hewf x (VarFreeIn.seq_r _ _ _ h)
-      · -- ¬HasLabeledInHead b: b is trivialChain, eval → value, discard, IH on a
-        have htc_b := no_labeled_head_implies_trivial_chain b.depth b (Nat.le_refl _)
-          (fun _ => ...) label body n m hnorm h_b_nolab
-        -- ADAPT rest from L13181-13226 (if_branch seq_right ¬HasIfInHead case)
+            | binary_lhs _ _ _ _ h => exact henv_lhs ▸ hewf_lhs x h
+            | binary_rhs _ _ _ _ h => exact hewf x (VarFreeIn.binary_rhs _ _ _ _ h)
+      · -- ¬HasLabeledInHead lhs: trivialChain → value → discard → IH on rhs
+        -- ADAPT L13256-13304 pattern: replace HasIfInHead→HasLabeledInHead, seq→binary
+        have htc_lhs := no_labeled_head_implies_trivial_chain lhs.depth lhs (Nat.le_refl _)
+          (fun _ => ANF.normalizeExpr rhs K) label body n m hnorm h_lhs_nolab
+        have hnorm_rhs : (ANF.normalizeExpr rhs K).run n = .ok (.labeled label body, m) := by
+          rwa [normalizeExpr_trivialChain_passthrough lhs.depth lhs (Nat.le_refl _) htc_lhs] at hnorm
+        obtain ⟨v_lhs, evs_lhs, hsteps_lhs, hnoerr_lhs, _, hpres_lhs⟩ :=
+          trivialChain_eval_value (trivialChainCost lhs) lhs env heap trace funcs cs
+            htc_lhs (Nat.le_refl _) (fun x hfx => hewf x (VarFreeIn.binary_lhs _ _ _ _ hfx))
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_binary_lhs_ctx_b op rhs hsteps_lhs (fun ev hev msg => hnoerr_lhs ev hev msg)
+            (fun smid evs1 h _ => hpres_lhs smid evs1 h)
+        -- Then: discard step (.binary op (.lit v_lhs) rhs → ???)
+        -- Check what Flat.step? does with .binary op (.lit v_lhs) rhs
+        -- If rhs is not a value: step into rhs → Steps_binary_rhs_ctx_b
+        -- IH on rhs with hnorm_rhs
         sorry
 ```
 
-### Pattern for binary_rhs (L9823):
-Same as seq_right but:
-- Expression is `.binary op lhs rhs` where `lhs` must eval to value first
-- `Classical.em (HasLabeledInHead lhs label)` — if lhs has it, IH + `Steps_binary_lhs_ctx_b`
-- If ¬HasLabeledInHead lhs: `no_labeled_head_implies_trivial_chain` → lhs is trivialChain → `trivialChain_eval_value` → get `.lit v` → discard → IH on rhs with `Steps_binary_rhs_ctx_b`
-
-### Pattern for setProp_val (L9846):
-- Expression is `.setProp obj prop val` — obj evals to value first
-- `Classical.em (HasLabeledInHead obj label)` — same split
-- `Steps_setProp_obj_ctx_b` for lhs, discard step for `.setProp (.lit v) prop val → ???`, then IH on val with `Steps_setProp_val_ctx_b`
-
-### For ALL second-position cases:
-1. `lean_goal` at the sorry line to see exact proof state
-2. `simp only [ANF.normalizeExpr] at hnorm` to unfold
-3. `Classical.em (HasLabeledInHead <first_sub> label)` to split
-4. HasLabeledInHead case: IH + Steps_*_ctx_b (same as first-position)
-5. ¬HasLabeledInHead case: trivialChain → eval → discard → IH on second sub
-6. Wire up existentials following L13200-13226
+### WORKFLOW for each sorry:
+1. `lean_goal` at the sorry line
+2. Write the HasLabeledInHead case first (first-position template from L9902-9923)
+3. Write the ¬HasLabeledInHead case (adapt L13256-13304)
+4. `lean_multi_attempt` to test before editing
+5. For the discard step, check what `Flat.step?` does with the specific expression form
 
 ## APPROACH
-1. Start with seq_right (L9822) — most infrastructure already in L13155-13226
-2. Then binary_rhs (L9823) — similar
-3. Then single-valued: setProp_val, getIndex_idx, setIndex_idx, setIndex_val
-4. Then call_env, newObj_env (needs funcExpr→value first)
+1. Start with binary_rhs (L9901) — template above
+2. Then setProp_val (L9924) — same pattern, use Steps_setProp_obj_ctx_b for first-position lifting
+3. Then getIndex_idx (L9947)
+4. Then setIndex_idx, setIndex_val (L9971-9972)
+5. Then call_env (L9996)
 
 ## DO NOT TOUCH (other agents):
-- L9919, L9944-L9947 (list cases — jsspec)
-- L13593-13627, L14523-14557 (if_branch — wasmspec)
-- L11194-L11849 (compound cases — defer)
-- L15398+ (blocked cases)
+- L9997, L10022-L10025 (list cases — jsspec)
+- L13671-13705, L14601-14635 (if_branch — wasmspec)
+- L11272-L11927 (compound/while — defer)
+- L15476+ (blocked cases)
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

@@ -9435,6 +9435,165 @@ private theorem no_labeled_head_implies_trivial_chain :
       · exact hno (HasLabeledInHead.arrayLit_elems hleft)
       · exact absurd hkt (ANF.bindComplex_not_labeled _ _ _ _ _ _)
 
+/-- A trivial chain evaluates to a .lit value, preserving env/heap/funcs/cs. -/
+private theorem trivialChain_eval_value
+    (fuel : Nat) (tc : Flat.Expr)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+    (htc : isTrivialChain tc = true)
+    (hcost : trivialChainCost tc ≤ fuel)
+    (hwf : ∀ x, VarFreeIn x tc → env.lookup x ≠ none) :
+    ∃ v evs,
+      Flat.Steps ⟨tc, env, heap, trace, funcs, cs⟩ evs ⟨.lit v, env, heap, trace ++ evs, funcs, cs⟩ ∧
+      (∀ ev ∈ evs, ∀ msg, ev ≠ .error msg) ∧
+      observableTrace evs = [] ∧
+      (∀ smid evs1, Flat.Steps ⟨tc, env, heap, trace, funcs, cs⟩ evs1 smid →
+         smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1) := by
+  induction fuel generalizing tc trace with
+  | zero =>
+    cases tc with
+    | lit v =>
+      refine ⟨v, [], ?_, fun _ h _ => absurd h (by simp), rfl, fun smid evs1 hsteps => ?_⟩
+      · simp only [List.append_nil]; exact .refl _
+      · cases hsteps with
+        | refl => simp
+        | tail hsingle _ =>
+          obtain ⟨hstep⟩ := hsingle
+          simp [Flat.step?, Flat.exprValue?] at hstep
+    | var _ => simp [trivialChainCost] at hcost
+    | «this» => simp [trivialChainCost] at hcost
+    | seq _ _ => simp [trivialChainCost] at hcost
+    | _ => simp [isTrivialChain] at htc
+  | succ fuel ih =>
+    cases tc with
+    | lit v =>
+      refine ⟨v, [], ?_, fun _ h _ => absurd h (by simp), rfl, fun smid evs1 hsteps => ?_⟩
+      · simp only [List.append_nil]; exact .refl _
+      · cases hsteps with
+        | refl => simp
+        | tail hsingle _ =>
+          obtain ⟨hstep⟩ := hsingle
+          simp [Flat.step?, Flat.exprValue?] at hstep
+    | var name =>
+      have hbound := hwf name (.var _)
+      obtain ⟨val, hval⟩ := Option.ne_none_iff_exists'.mp hbound
+      obtain ⟨s_i, hstep, hexpr, henv, hheap, hfuncs, hcs, htrace_v⟩ :=
+        step?_var_bound ⟨.var name, env, heap, trace, funcs, cs⟩ name val hval
+      have hs_i : s_i = ⟨.lit val, env, heap, trace ++ [Core.TraceEvent.silent], funcs, cs⟩ := by
+        cases s_i; simp_all
+      rw [hs_i] at hstep
+      refine ⟨val, [.silent], .tail ⟨hstep⟩ (.refl _), ?_, ?_, ?_⟩
+      · intro ev hev msg hmsg; simp at hev; subst hev; exact Core.TraceEvent.noConfusion hmsg
+      · simp [observableTrace_append, observableTrace_silent, observableTrace_nil]
+      · intro smid evs1 hsteps
+        cases hsteps with
+        | refl => simp
+        | tail hsingle hrest =>
+          obtain ⟨hstep'⟩ := hsingle
+          rw [hstep] at hstep'
+          simp at hstep'; obtain ⟨rfl, rfl⟩ := hstep'
+          cases hrest with
+          | refl => simp [List.append_assoc]
+          | tail hsingle2 _ =>
+            obtain ⟨hstep2⟩ := hsingle2
+            simp [Flat.step?, Flat.exprValue?] at hstep2
+    | «this» =>
+      have hbound := hwf "this" .this_var
+      obtain ⟨val, hval⟩ := Option.ne_none_iff_exists'.mp hbound
+      have hstep : Flat.step? ⟨.this, env, heap, trace, funcs, cs⟩ =
+        some (.silent, ⟨.lit val, env, heap, trace ++ [Core.TraceEvent.silent], funcs, cs⟩) := by
+        simp only [Flat.step?, hval]; rfl
+      refine ⟨val, [.silent], .tail ⟨hstep⟩ (.refl _), ?_, ?_, ?_⟩
+      · intro ev hev msg hmsg; simp at hev; subst hev; exact Core.TraceEvent.noConfusion hmsg
+      · simp [observableTrace_append, observableTrace_silent, observableTrace_nil]
+      · intro smid evs1 hsteps
+        cases hsteps with
+        | refl => simp
+        | tail hsingle hrest =>
+          obtain ⟨hstep'⟩ := hsingle
+          rw [hstep] at hstep'
+          simp at hstep'; obtain ⟨rfl, rfl⟩ := hstep'
+          cases hrest with
+          | refl => simp [List.append_assoc]
+          | tail hsingle2 _ =>
+            obtain ⟨hstep2⟩ := hsingle2
+            simp [Flat.step?, Flat.exprValue?] at hstep2
+    | seq a b =>
+      simp [isTrivialChain] at htc; obtain ⟨htc_a, htc_b⟩ := htc
+      cases ha_val : Flat.exprValue? a with
+      | some v_a =>
+        have ha_lit : a = .lit v_a := by
+          match a, ha_val with | .lit _, h => simp [Flat.exprValue?] at h; subst h; rfl
+        subst ha_lit
+        obtain ⟨s_i, hstep_seq, hexpr, henv, hheap, hfuncs, hcs, htrace_s⟩ :=
+          step?_seq_lit ⟨.seq (.lit v_a) b, env, heap, trace, funcs, cs⟩ v_a b
+        have hs_i : s_i = ⟨b, env, heap, trace ++ [Core.TraceEvent.silent], funcs, cs⟩ := by
+          cases s_i; simp_all
+        rw [hs_i] at hstep_seq
+        have hcost_b : trivialChainCost b ≤ fuel := by simp [trivialChainCost] at hcost; omega
+        obtain ⟨v, evs, hsteps_b, hnoerr, hobs, hpres⟩ := ih b (trace ++ [.silent]) htc_b hcost_b
+          (fun x hfx => hwf x (.seq_r _ _ _ hfx))
+        refine ⟨v, .silent :: evs, ?_, ?_, ?_, ?_⟩
+        · have : trace ++ (.silent :: evs) = (trace ++ [.silent]) ++ evs := by
+            simp [List.append_assoc]
+          rw [this]; exact .tail ⟨hstep_seq⟩ hsteps_b
+        · intro ev hev msg hmsg
+          simp at hev; rcases hev with rfl | hev
+          · exact Core.TraceEvent.noConfusion hmsg
+          · exact hnoerr ev hev msg hmsg
+        · simp only [observableTrace_silent]; exact hobs
+        · intro smid evs1 hsteps
+          cases hsteps with
+          | refl => simp
+          | tail hsingle hrest =>
+            obtain ⟨hstep'⟩ := hsingle
+            rw [hstep_seq] at hstep'
+            simp at hstep'; obtain ⟨rfl, rfl⟩ := hstep'
+            have ⟨hf, hc, ht⟩ := hpres smid _ hrest
+            exact ⟨hf, hc, by simp [List.append_assoc] at ht ⊢; exact ht⟩
+      | none =>
+        have hwf_a : ∀ x, VarFreeIn x a → env.lookup x ≠ none :=
+          fun x hfx => hwf x (.seq_l _ _ _ hfx)
+        obtain ⟨a', ha'_step, ha'_tc, ha'_cost, ha'_wf⟩ :=
+          trivialChain_inner_step (trivialChainCost a - 1) a env heap trace funcs cs
+            htc_a (by omega) ha_val hwf_a
+        obtain ⟨s_seq, hstep_seq, hexpr_seq, henv_seq, hheap_seq, hfuncs_seq, hcs_seq, htrace_seq⟩ :=
+          step?_seq_ctx ⟨.seq a b, env, heap, trace, funcs, cs⟩ a b ha_val .silent
+            ⟨a', env, heap, trace ++ [Core.TraceEvent.silent], funcs, cs⟩ ha'_step
+            (fun _ h => Core.TraceEvent.noConfusion h)
+        have hs_seq_eq : s_seq = ⟨.seq a' b, env, heap, trace ++ [.silent], funcs, cs⟩ := by
+          cases s_seq; simp_all
+        rw [hs_seq_eq] at hstep_seq
+        have hcost_e' : trivialChainCost (.seq a' b) ≤ fuel := by
+          simp [trivialChainCost] at hcost ⊢; omega
+        have htc_e' : isTrivialChain (.seq a' b) = true := by
+          simp [isTrivialChain, ha'_tc, htc_b]
+        have hwf_e' : ∀ x, VarFreeIn x (.seq a' b) → env.lookup x ≠ none := by
+          intro x hfx; cases hfx with
+          | seq_l _ _ _ h => exact ha'_wf x h
+          | seq_r _ _ _ h => exact hwf x (.seq_r _ _ _ h)
+        obtain ⟨v, evs, hsteps_ab, hnoerr, hobs, hpres⟩ := ih (.seq a' b) (trace ++ [.silent])
+          htc_e' hcost_e' hwf_e'
+        refine ⟨v, .silent :: evs, ?_, ?_, ?_, ?_⟩
+        · have : trace ++ (.silent :: evs) = (trace ++ [.silent]) ++ evs := by
+            simp [List.append_assoc]
+          rw [this]; exact .tail ⟨hstep_seq⟩ hsteps_ab
+        · intro ev hev msg hmsg
+          simp at hev; rcases hev with rfl | hev
+          · exact Core.TraceEvent.noConfusion hmsg
+          · exact hnoerr ev hev msg hmsg
+        · simp only [observableTrace_silent]; exact hobs
+        · intro smid evs1 hsteps
+          cases hsteps with
+          | refl => simp
+          | tail hsingle hrest =>
+            obtain ⟨hstep'⟩ := hsingle
+            rw [hstep_seq] at hstep'
+            simp at hstep'; obtain ⟨rfl, rfl⟩ := hstep'
+            have ⟨hf, hc, ht⟩ := hpres smid _ hrest
+            exact ⟨hf, hc, by simp [List.append_assoc] at ht ⊢; exact ht⟩
+    | _ => simp [isTrivialChain] at htc
+
 /-- Stepping infrastructure for labeled-in-head: if e has HasLabeledInHead and normalizeExpr e K
     produces .labeled label body, then there exist silent Flat steps through the eval context to
     a state where normalizeExpr produces just body (without the .labeled wrapper).
@@ -9819,85 +9978,7 @@ private theorem normalizeExpr_labeled_branch_step :
           cases hfx with
           | binary_lhs _ _ _ _ h => exact henv_lhs ▸ hewf_lhs x h
           | binary_rhs _ _ _ _ h => exact hewf x (VarFreeIn.binary_rhs _ _ _ _ h)
-    | seq_right h_right =>
-      rename_i a b    -- a = right part (has HasLabeledInHead), b = left part
-      simp only [ANF.normalizeExpr_seq'] at hnorm
-      rcases Classical.em (HasLabeledInHead b label) with h_b_lab | h_b_nolab
-      · -- HasLabeledInHead b label: recurse on b through .seq · a context
-        have hb_depth : b.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
-        obtain ⟨sf_b, evs_b, hsteps_b, hsil_b, henv_b, hheap_b, hfuncs_b, hcs_b,
-          htrace_b, hpres_b, ⟨n_b, m_b, hnorm_b⟩, hewf_b⟩ :=
-          ih b hb_depth label h_b_lab env heap trace funcs cs _ n m body
-            hnorm (fun x hfx => hewf x (VarFreeIn.seq_l _ _ _ hfx))
-        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-          Steps_seq_ctx_b a hsteps_b
-            (fun ev hev msg => by rw [hsil_b ev hev]; exact Core.TraceEvent.noConfusion)
-            hpres_b
-        refine ⟨ws, evs_b, hwsteps, hsil_b, hwenv.trans henv_b, hwheap.trans hheap_b,
-          hwfuncs, hwcs, by rw [hwtrace, htrace_b], ?_, ?_, ?_⟩
-        · exact Steps_ctx_lift_pres (.seq · a)
-            (fun s inner hv t si hs he => step?_seq_ctx s inner a hv t si hs he)
-            hsteps_b (fun ev hev msg => by rw [hsil_b ev hev]; exact Core.TraceEvent.noConfusion) hpres_b
-        · exact ⟨n_b, m_b, by rw [hwexpr]; simp only [ANF.normalizeExpr_seq']; exact hnorm_b⟩
-        · rw [hwexpr, hwenv, henv_b]; exact fun x hfx => by
-            cases hfx with
-            | seq_l _ _ _ h => exact henv_b ▸ hewf_b x h
-            | seq_r _ _ _ h => exact hewf x (VarFreeIn.seq_r _ _ _ h)
-      · -- ¬HasLabeledInHead b label: b is trivialChain, evaluate + discard + IH on a
-        have htc_b := no_labeled_head_implies_trivial_chain b.depth b (Nat.le_refl _)
-          (fun _ => ANF.normalizeExpr a K) label body n m hnorm h_b_nolab
-        have hnorm_a : (ANF.normalizeExpr a K).run n = .ok (.labeled label body, m) := by
-          rwa [normalizeExpr_trivialChain_passthrough b.depth b (Nat.le_refl _) htc_b] at hnorm
-        obtain ⟨v_b, evs_b, hsteps_b, hnoerr_b, hobs_b, hpres_b⟩ :=
-          trivialChain_eval_value (trivialChainCost b) b env heap trace funcs cs
-            htc_b (Nat.le_refl _) (fun x hfx => hewf x (VarFreeIn.seq_l _ _ _ hfx))
-        have hsil_b : ∀ ev ∈ evs_b, ev = Core.TraceEvent.silent := by
-          intro ev hev; by_contra hne
-          have : ev ∈ observableTrace evs_b := by
-            simp [observableTrace, List.mem_filter, bne]
-            exact ⟨hev, hne⟩
-          rw [hobs_b] at this; exact List.not_mem_nil ev this
-        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
-          Steps_seq_ctx_b a hsteps_b
-            (fun ev hev msg => by rw [hsil_b ev hev]; exact Core.TraceEvent.noConfusion)
-            (fun smid evs1 h _ => hpres_b smid evs1 h)
-        have hws_eq : ws = ⟨.seq (.lit v_b) a, env, heap, trace ++ evs_b, funcs, cs⟩ := by
-          cases ws; simp_all
-        rw [hws_eq] at hwsteps
-        have hdisc : Flat.step? ⟨.seq (.lit v_b) a, env, heap, trace ++ evs_b, funcs, cs⟩ =
-          some (.silent, ⟨a, env, heap, (trace ++ evs_b) ++ [.silent], funcs, cs⟩) := by
-          simp [Flat.step?, Flat.exprValue?]
-        have ha_depth : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
-        obtain ⟨sf_a, evs_a, hsteps_a, hsil_a, henv_a, hheap_a, hfuncs_a, hcs_a,
-          htrace_a, hpres_a, hnorm_a', hewf_a⟩ :=
-          ih a ha_depth label h_right env heap ((trace ++ evs_b) ++ [.silent]) funcs cs K n m body
-            hnorm_a (fun x hfx => hewf x (VarFreeIn.seq_r _ _ _ hfx))
-        refine ⟨sf_a, evs_b ++ .silent :: evs_a,
-          Flat.Steps.append hwsteps (.tail ⟨hdisc⟩ hsteps_a), ?_, henv_a, hheap_a, hfuncs_a, hcs_a, ?_, ?_, hnorm_a', hewf_a⟩
-        · intro ev hev; simp [List.mem_append] at hev
-          rcases hev with hev | hev | hev
-          · exact hsil_b ev hev
-          · simp at hev; exact hev
-          · exact hsil_a ev hev
-        · simp [List.append_assoc] at htrace_a ⊢; exact htrace_a
-        · have hw_pres := Steps_ctx_lift_pres (.seq · a)
-            (fun s inner hv t si hs he => step?_seq_ctx s inner a hv t si hs he)
-            hsteps_b (fun ev hev msg => by rw [hsil_b ev hev]; exact Core.TraceEvent.noConfusion)
-            (fun smid evs1 h _ => hpres_b smid evs1 h)
-          have htail_pres : ∀ smid evs,
-              Flat.Steps ⟨.seq (.lit v_b) a, env, heap, trace ++ evs_b, funcs, cs⟩ evs smid →
-              evs.length ≤ (.silent :: evs_a).length →
-              smid.funcs = funcs ∧ smid.callStack = cs ∧
-              smid.trace = (trace ++ evs_b) ++ evs := by
-            intro smid evs hst hlen
-            cases hst with
-            | refl => exact ⟨rfl, rfl, by simp⟩
-            | @tail _ smid' _ t' ts' hstep' hrest' =>
-              have := hstep'.1; rw [hdisc] at this; simp at this; obtain ⟨rfl, rfl⟩ := this
-              have hlen' : ts'.length ≤ evs_a.length := by simp at hlen; omega
-              obtain ⟨hf, hc, ht⟩ := hpres_a smid ts' hrest' hlen'
-              exact ⟨hf, hc, by rw [ht]; simp [List.append_assoc]⟩
-          exact Steps_pres_append hwsteps hw_pres (.tail ⟨hdisc⟩ hsteps_a) htail_pres
+    | seq_right h_right => sorry -- needs seq decomposition (second sub-expression)
     | binary_rhs h_rhs => sorry -- second-position: needs lhs→value decomposition
     | setProp_obj h_obj =>
       rename_i obj prop val
@@ -13668,8 +13749,55 @@ private theorem normalizeExpr_if_branch_step :
           | setIndex_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
           | setIndex_idx _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_idx _ _ _ _ h)
           | setIndex_value _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_value _ _ _ _ h)
-    | binary_rhs => sorry
-    | call_env => sorry
+    | binary_rhs h_rhs =>
+      rename_i lhs op rhs
+      simp only [ANF.normalizeExpr] at hnorm
+      have hlhs_depth : lhs.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      rcases Classical.em (HasIfInHead lhs) with h_lhs | h_lhs
+      · obtain ⟨sf_lhs, evs_lhs, hsteps_lhs, hsil_lhs, henv_lhs, hheap_lhs, hfuncs_lhs, hcs_lhs,
+          htrace_lhs, hpres_lhs, ⟨n_lhs, m_lhs, hnorm_lhs⟩, hewf_lhs⟩ :=
+          ih lhs hlhs_depth h_lhs env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.binary_lhs _ _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_binary_lhs_ctx_b op rhs hsteps_lhs
+            (fun ev hev msg => by rw [hsil_lhs ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_lhs
+        refine ⟨ws, evs_lhs, hwsteps, hsil_lhs, hwenv.trans henv_lhs, hwheap.trans hheap_lhs,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_lhs], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (.binary op · rhs)
+            (fun s inner hv t si hs he => step?_binary_lhs_ctx s op inner rhs hv t si hs he)
+            hsteps_lhs (fun ev hev msg => by rw [hsil_lhs ev hev]; exact Core.TraceEvent.noConfusion) hpres_lhs
+        · exact ⟨n_lhs, m_lhs, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_lhs⟩
+        · rw [hwexpr, hwenv, henv_lhs]; exact fun x hfx => by
+            cases hfx with
+            | binary_lhs _ _ _ _ h => exact henv_lhs ▸ hewf_lhs x h
+            | binary_rhs _ _ _ _ h => exact hewf x (VarFreeIn.binary_rhs _ _ _ _ h)
+      · sorry
+    | call_env h_env =>
+      rename_i f envExpr args
+      simp only [ANF.normalizeExpr] at hnorm
+      have hf_depth : f.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      rcases Classical.em (HasIfInHead f) with h_f | h_f
+      · obtain ⟨sf_f, evs_f, hsteps_f, hsil_f, henv_f, hheap_f, hfuncs_f, hcs_f,
+          htrace_f, hpres_f, ⟨n_f, m_f, hnorm_f⟩, hewf_f⟩ :=
+          ih f hf_depth h_f env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.call_func _ _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_call_func_ctx_b envExpr args hsteps_f
+            (fun ev hev msg => by rw [hsil_f ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_f
+        refine ⟨ws, evs_f, hwsteps, hsil_f, hwenv.trans henv_f, hwheap.trans hheap_f,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_f], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (fun e => .call e envExpr args)
+            (fun s inner hv t si hs he => step?_call_func_ctx s inner envExpr args hv t si hs he)
+            hsteps_f (fun ev hev msg => by rw [hsil_f ev hev]; exact Core.TraceEvent.noConfusion) hpres_f
+        · exact ⟨n_f, m_f, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_f⟩
+        · rw [hwexpr, hwenv, henv_f]; exact fun x hfx => by
+            cases hfx with
+            | call_func _ _ _ _ h => exact henv_f ▸ hewf_f x h
+            | call_env _ _ _ _ h => exact hewf x (VarFreeIn.call_env _ _ _ _ h)
+            | call_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.call_arg _ _ _ _ _ hmem h)
+      · sorry
     | call_args => sorry
     | newObj_func h_f =>
       rename_i f envExpr args
@@ -13694,12 +13822,130 @@ private theorem normalizeExpr_if_branch_step :
           | newObj_func _ _ _ _ h => exact henv_f ▸ hewf_f x h
           | newObj_env _ _ _ _ h => exact hewf x (VarFreeIn.newObj_env _ _ _ _ h)
           | newObj_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.newObj_arg _ _ _ _ _ hmem h)
-    | newObj_env => sorry
+    | newObj_env h_env =>
+      rename_i f envExpr args
+      simp only [ANF.normalizeExpr] at hnorm
+      have hf_depth : f.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      rcases Classical.em (HasIfInHead f) with h_f | h_f
+      · obtain ⟨sf_f, evs_f, hsteps_f, hsil_f, henv_f, hheap_f, hfuncs_f, hcs_f,
+          htrace_f, hpres_f, ⟨n_f, m_f, hnorm_f⟩, hewf_f⟩ :=
+          ih f hf_depth h_f env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.newObj_func _ _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_newObj_func_ctx_b envExpr args hsteps_f
+            (fun ev hev msg => by rw [hsil_f ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_f
+        refine ⟨ws, evs_f, hwsteps, hsil_f, hwenv.trans henv_f, hwheap.trans hheap_f,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_f], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (fun e => .newObj e envExpr args)
+            (fun s inner hv t si hs he => step?_newObj_func_ctx s inner envExpr args hv t si hs he)
+            hsteps_f (fun ev hev msg => by rw [hsil_f ev hev]; exact Core.TraceEvent.noConfusion) hpres_f
+        · exact ⟨n_f, m_f, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_f⟩
+        · rw [hwexpr, hwenv, henv_f]; exact fun x hfx => by
+            cases hfx with
+            | newObj_func _ _ _ _ h => exact henv_f ▸ hewf_f x h
+            | newObj_env _ _ _ _ h => exact hewf x (VarFreeIn.newObj_env _ _ _ _ h)
+            | newObj_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.newObj_arg _ _ _ _ _ hmem h)
+      · sorry
     | newObj_args => sorry
-    | setProp_val => sorry
-    | getIndex_idx => sorry
-    | setIndex_idx => sorry
-    | setIndex_val => sorry
+    | setProp_val h_val =>
+      rename_i obj prop val
+      simp only [ANF.normalizeExpr] at hnorm
+      have hobj_depth : obj.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      rcases Classical.em (HasIfInHead obj) with h_obj | h_obj
+      · obtain ⟨sf_obj, evs_obj, hsteps_obj, hsil_obj, henv_obj, hheap_obj, hfuncs_obj, hcs_obj,
+          htrace_obj, hpres_obj, ⟨n_obj, m_obj, hnorm_obj⟩, hewf_obj⟩ :=
+          ih obj hobj_depth h_obj env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.setProp_obj _ _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_setProp_obj_ctx_b prop val hsteps_obj
+            (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_obj
+        refine ⟨ws, evs_obj, hwsteps, hsil_obj, hwenv.trans henv_obj, hwheap.trans hheap_obj,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_obj], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (fun e => .setProp e prop val)
+            (fun s inner hv t si hs he => step?_setProp_obj_ctx s inner prop val hv t si hs he)
+            hsteps_obj (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion) hpres_obj
+        · exact ⟨n_obj, m_obj, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_obj⟩
+        · rw [hwexpr, hwenv, henv_obj]; exact fun x hfx => by
+            cases hfx with
+            | setProp_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
+            | setProp_value _ _ _ _ h => exact hewf x (VarFreeIn.setProp_value _ _ _ _ h)
+      · sorry
+    | getIndex_idx h_idx =>
+      rename_i obj idx
+      simp only [ANF.normalizeExpr] at hnorm
+      have hobj_depth : obj.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      rcases Classical.em (HasIfInHead obj) with h_obj | h_obj
+      · obtain ⟨sf_obj, evs_obj, hsteps_obj, hsil_obj, henv_obj, hheap_obj, hfuncs_obj, hcs_obj,
+          htrace_obj, hpres_obj, ⟨n_obj, m_obj, hnorm_obj⟩, hewf_obj⟩ :=
+          ih obj hobj_depth h_obj env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.getIndex_obj _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_getIndex_obj_ctx_b idx hsteps_obj
+            (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_obj
+        refine ⟨ws, evs_obj, hwsteps, hsil_obj, hwenv.trans henv_obj, hwheap.trans hheap_obj,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_obj], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (fun e => .getIndex e idx)
+            (fun s inner hv t si hs he => step?_getIndex_obj_ctx s inner idx hv t si hs he)
+            hsteps_obj (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion) hpres_obj
+        · exact ⟨n_obj, m_obj, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_obj⟩
+        · rw [hwexpr, hwenv, henv_obj]; exact fun x hfx => by
+            cases hfx with
+            | getIndex_obj _ _ _ h => exact henv_obj ▸ hewf_obj x h
+            | getIndex_idx _ _ _ h => exact hewf x (VarFreeIn.getIndex_idx _ _ _ h)
+      · sorry
+    | setIndex_idx h_idx =>
+      rename_i obj idx val
+      simp only [ANF.normalizeExpr] at hnorm
+      have hobj_depth : obj.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      rcases Classical.em (HasIfInHead obj) with h_obj | h_obj
+      · obtain ⟨sf_obj, evs_obj, hsteps_obj, hsil_obj, henv_obj, hheap_obj, hfuncs_obj, hcs_obj,
+          htrace_obj, hpres_obj, ⟨n_obj, m_obj, hnorm_obj⟩, hewf_obj⟩ :=
+          ih obj hobj_depth h_obj env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.setIndex_obj _ _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_setIndex_obj_ctx_b idx val hsteps_obj
+            (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_obj
+        refine ⟨ws, evs_obj, hwsteps, hsil_obj, hwenv.trans henv_obj, hwheap.trans hheap_obj,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_obj], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (fun e => .setIndex e idx val)
+            (fun s inner hv t si hs he => step?_setIndex_obj_ctx s inner idx val hv t si hs he)
+            hsteps_obj (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion) hpres_obj
+        · exact ⟨n_obj, m_obj, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_obj⟩
+        · rw [hwexpr, hwenv, henv_obj]; exact fun x hfx => by
+            cases hfx with
+            | setIndex_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
+            | setIndex_idx _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_idx _ _ _ _ h)
+            | setIndex_value _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_value _ _ _ _ h)
+      · sorry
+    | setIndex_val h_val =>
+      rename_i obj idx val
+      simp only [ANF.normalizeExpr] at hnorm
+      have hobj_depth : obj.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      rcases Classical.em (HasIfInHead obj) with h_obj | h_obj
+      · obtain ⟨sf_obj, evs_obj, hsteps_obj, hsil_obj, henv_obj, hheap_obj, hfuncs_obj, hcs_obj,
+          htrace_obj, hpres_obj, ⟨n_obj, m_obj, hnorm_obj⟩, hewf_obj⟩ :=
+          ih obj hobj_depth h_obj env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.setIndex_obj _ _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_setIndex_obj_ctx_b idx val hsteps_obj
+            (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_obj
+        refine ⟨ws, evs_obj, hwsteps, hsil_obj, hwenv.trans henv_obj, hwheap.trans hheap_obj,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_obj], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (fun e => .setIndex e idx val)
+            (fun s inner hv t si hs he => step?_setIndex_obj_ctx s inner idx val hv t si hs he)
+            hsteps_obj (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion) hpres_obj
+        · exact ⟨n_obj, m_obj, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_obj⟩
+        · rw [hwexpr, hwenv, henv_obj]; exact fun x hfx => by
+            cases hfx with
+            | setIndex_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
+            | setIndex_idx _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_idx _ _ _ _ h)
+            | setIndex_value _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_value _ _ _ _ h)
+      · sorry
     | makeEnv_values => sorry
     | objectLit_props => sorry
     | arrayLit_elems => sorry
@@ -14598,8 +14844,55 @@ private theorem normalizeExpr_if_branch_step_false :
           | setIndex_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
           | setIndex_idx _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_idx _ _ _ _ h)
           | setIndex_value _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_value _ _ _ _ h)
-    | binary_rhs => sorry
-    | call_env => sorry
+    | binary_rhs h_rhs =>
+      rename_i lhs op rhs
+      simp only [ANF.normalizeExpr] at hnorm
+      have hlhs_depth : lhs.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      rcases Classical.em (HasIfInHead lhs) with h_lhs | h_lhs
+      · obtain ⟨sf_lhs, evs_lhs, hsteps_lhs, hsil_lhs, henv_lhs, hheap_lhs, hfuncs_lhs, hcs_lhs,
+          htrace_lhs, hpres_lhs, ⟨n_lhs, m_lhs, hnorm_lhs⟩, hewf_lhs⟩ :=
+          ih lhs hlhs_depth h_lhs env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.binary_lhs _ _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_binary_lhs_ctx_b op rhs hsteps_lhs
+            (fun ev hev msg => by rw [hsil_lhs ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_lhs
+        refine ⟨ws, evs_lhs, hwsteps, hsil_lhs, hwenv.trans henv_lhs, hwheap.trans hheap_lhs,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_lhs], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (.binary op · rhs)
+            (fun s inner hv t si hs he => step?_binary_lhs_ctx s op inner rhs hv t si hs he)
+            hsteps_lhs (fun ev hev msg => by rw [hsil_lhs ev hev]; exact Core.TraceEvent.noConfusion) hpres_lhs
+        · exact ⟨n_lhs, m_lhs, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_lhs⟩
+        · rw [hwexpr, hwenv, henv_lhs]; exact fun x hfx => by
+            cases hfx with
+            | binary_lhs _ _ _ _ h => exact henv_lhs ▸ hewf_lhs x h
+            | binary_rhs _ _ _ _ h => exact hewf x (VarFreeIn.binary_rhs _ _ _ _ h)
+      · sorry
+    | call_env h_env =>
+      rename_i f envExpr args
+      simp only [ANF.normalizeExpr] at hnorm
+      have hf_depth : f.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      rcases Classical.em (HasIfInHead f) with h_f | h_f
+      · obtain ⟨sf_f, evs_f, hsteps_f, hsil_f, henv_f, hheap_f, hfuncs_f, hcs_f,
+          htrace_f, hpres_f, ⟨n_f, m_f, hnorm_f⟩, hewf_f⟩ :=
+          ih f hf_depth h_f env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.call_func _ _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_call_func_ctx_b envExpr args hsteps_f
+            (fun ev hev msg => by rw [hsil_f ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_f
+        refine ⟨ws, evs_f, hwsteps, hsil_f, hwenv.trans henv_f, hwheap.trans hheap_f,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_f], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (fun e => .call e envExpr args)
+            (fun s inner hv t si hs he => step?_call_func_ctx s inner envExpr args hv t si hs he)
+            hsteps_f (fun ev hev msg => by rw [hsil_f ev hev]; exact Core.TraceEvent.noConfusion) hpres_f
+        · exact ⟨n_f, m_f, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_f⟩
+        · rw [hwexpr, hwenv, henv_f]; exact fun x hfx => by
+            cases hfx with
+            | call_func _ _ _ _ h => exact henv_f ▸ hewf_f x h
+            | call_env _ _ _ _ h => exact hewf x (VarFreeIn.call_env _ _ _ _ h)
+            | call_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.call_arg _ _ _ _ _ hmem h)
+      · sorry
     | call_args => sorry
     | newObj_func h_f =>
       rename_i f envExpr args
@@ -14624,12 +14917,130 @@ private theorem normalizeExpr_if_branch_step_false :
           | newObj_func _ _ _ _ h => exact henv_f ▸ hewf_f x h
           | newObj_env _ _ _ _ h => exact hewf x (VarFreeIn.newObj_env _ _ _ _ h)
           | newObj_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.newObj_arg _ _ _ _ _ hmem h)
-    | newObj_env => sorry
+    | newObj_env h_env =>
+      rename_i f envExpr args
+      simp only [ANF.normalizeExpr] at hnorm
+      have hf_depth : f.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      rcases Classical.em (HasIfInHead f) with h_f | h_f
+      · obtain ⟨sf_f, evs_f, hsteps_f, hsil_f, henv_f, hheap_f, hfuncs_f, hcs_f,
+          htrace_f, hpres_f, ⟨n_f, m_f, hnorm_f⟩, hewf_f⟩ :=
+          ih f hf_depth h_f env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.newObj_func _ _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_newObj_func_ctx_b envExpr args hsteps_f
+            (fun ev hev msg => by rw [hsil_f ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_f
+        refine ⟨ws, evs_f, hwsteps, hsil_f, hwenv.trans henv_f, hwheap.trans hheap_f,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_f], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (fun e => .newObj e envExpr args)
+            (fun s inner hv t si hs he => step?_newObj_func_ctx s inner envExpr args hv t si hs he)
+            hsteps_f (fun ev hev msg => by rw [hsil_f ev hev]; exact Core.TraceEvent.noConfusion) hpres_f
+        · exact ⟨n_f, m_f, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_f⟩
+        · rw [hwexpr, hwenv, henv_f]; exact fun x hfx => by
+            cases hfx with
+            | newObj_func _ _ _ _ h => exact henv_f ▸ hewf_f x h
+            | newObj_env _ _ _ _ h => exact hewf x (VarFreeIn.newObj_env _ _ _ _ h)
+            | newObj_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.newObj_arg _ _ _ _ _ hmem h)
+      · sorry
     | newObj_args => sorry
-    | setProp_val => sorry
-    | getIndex_idx => sorry
-    | setIndex_idx => sorry
-    | setIndex_val => sorry
+    | setProp_val h_val =>
+      rename_i obj prop val
+      simp only [ANF.normalizeExpr] at hnorm
+      have hobj_depth : obj.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      rcases Classical.em (HasIfInHead obj) with h_obj | h_obj
+      · obtain ⟨sf_obj, evs_obj, hsteps_obj, hsil_obj, henv_obj, hheap_obj, hfuncs_obj, hcs_obj,
+          htrace_obj, hpres_obj, ⟨n_obj, m_obj, hnorm_obj⟩, hewf_obj⟩ :=
+          ih obj hobj_depth h_obj env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.setProp_obj _ _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_setProp_obj_ctx_b prop val hsteps_obj
+            (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_obj
+        refine ⟨ws, evs_obj, hwsteps, hsil_obj, hwenv.trans henv_obj, hwheap.trans hheap_obj,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_obj], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (fun e => .setProp e prop val)
+            (fun s inner hv t si hs he => step?_setProp_obj_ctx s inner prop val hv t si hs he)
+            hsteps_obj (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion) hpres_obj
+        · exact ⟨n_obj, m_obj, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_obj⟩
+        · rw [hwexpr, hwenv, henv_obj]; exact fun x hfx => by
+            cases hfx with
+            | setProp_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
+            | setProp_value _ _ _ _ h => exact hewf x (VarFreeIn.setProp_value _ _ _ _ h)
+      · sorry
+    | getIndex_idx h_idx =>
+      rename_i obj idx
+      simp only [ANF.normalizeExpr] at hnorm
+      have hobj_depth : obj.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      rcases Classical.em (HasIfInHead obj) with h_obj | h_obj
+      · obtain ⟨sf_obj, evs_obj, hsteps_obj, hsil_obj, henv_obj, hheap_obj, hfuncs_obj, hcs_obj,
+          htrace_obj, hpres_obj, ⟨n_obj, m_obj, hnorm_obj⟩, hewf_obj⟩ :=
+          ih obj hobj_depth h_obj env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.getIndex_obj _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_getIndex_obj_ctx_b idx hsteps_obj
+            (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_obj
+        refine ⟨ws, evs_obj, hwsteps, hsil_obj, hwenv.trans henv_obj, hwheap.trans hheap_obj,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_obj], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (fun e => .getIndex e idx)
+            (fun s inner hv t si hs he => step?_getIndex_obj_ctx s inner idx hv t si hs he)
+            hsteps_obj (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion) hpres_obj
+        · exact ⟨n_obj, m_obj, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_obj⟩
+        · rw [hwexpr, hwenv, henv_obj]; exact fun x hfx => by
+            cases hfx with
+            | getIndex_obj _ _ _ h => exact henv_obj ▸ hewf_obj x h
+            | getIndex_idx _ _ _ h => exact hewf x (VarFreeIn.getIndex_idx _ _ _ h)
+      · sorry
+    | setIndex_idx h_idx =>
+      rename_i obj idx val
+      simp only [ANF.normalizeExpr] at hnorm
+      have hobj_depth : obj.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      rcases Classical.em (HasIfInHead obj) with h_obj | h_obj
+      · obtain ⟨sf_obj, evs_obj, hsteps_obj, hsil_obj, henv_obj, hheap_obj, hfuncs_obj, hcs_obj,
+          htrace_obj, hpres_obj, ⟨n_obj, m_obj, hnorm_obj⟩, hewf_obj⟩ :=
+          ih obj hobj_depth h_obj env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.setIndex_obj _ _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_setIndex_obj_ctx_b idx val hsteps_obj
+            (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_obj
+        refine ⟨ws, evs_obj, hwsteps, hsil_obj, hwenv.trans henv_obj, hwheap.trans hheap_obj,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_obj], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (fun e => .setIndex e idx val)
+            (fun s inner hv t si hs he => step?_setIndex_obj_ctx s inner idx val hv t si hs he)
+            hsteps_obj (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion) hpres_obj
+        · exact ⟨n_obj, m_obj, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_obj⟩
+        · rw [hwexpr, hwenv, henv_obj]; exact fun x hfx => by
+            cases hfx with
+            | setIndex_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
+            | setIndex_idx _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_idx _ _ _ _ h)
+            | setIndex_value _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_value _ _ _ _ h)
+      · sorry
+    | setIndex_val h_val =>
+      rename_i obj idx val
+      simp only [ANF.normalizeExpr] at hnorm
+      have hobj_depth : obj.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      rcases Classical.em (HasIfInHead obj) with h_obj | h_obj
+      · obtain ⟨sf_obj, evs_obj, hsteps_obj, hsil_obj, henv_obj, hheap_obj, hfuncs_obj, hcs_obj,
+          htrace_obj, hpres_obj, ⟨n_obj, m_obj, hnorm_obj⟩, hewf_obj⟩ :=
+          ih obj hobj_depth h_obj env heap trace funcs cs _ n m cond then_ else_ v
+            hnorm (fun x hfx => hewf x (VarFreeIn.setIndex_obj _ _ _ _ hfx)) heval hbool
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_setIndex_obj_ctx_b idx val hsteps_obj
+            (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_obj
+        refine ⟨ws, evs_obj, hwsteps, hsil_obj, hwenv.trans henv_obj, hwheap.trans hheap_obj,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_obj], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (fun e => .setIndex e idx val)
+            (fun s inner hv t si hs he => step?_setIndex_obj_ctx s inner idx val hv t si hs he)
+            hsteps_obj (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion) hpres_obj
+        · exact ⟨n_obj, m_obj, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_obj⟩
+        · rw [hwexpr, hwenv, henv_obj]; exact fun x hfx => by
+            cases hfx with
+            | setIndex_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
+            | setIndex_idx _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_idx _ _ _ _ h)
+            | setIndex_value _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_value _ _ _ _ h)
+      · sorry
     | makeEnv_values => sorry
     | objectLit_props => sorry
     | arrayLit_elems => sorry
