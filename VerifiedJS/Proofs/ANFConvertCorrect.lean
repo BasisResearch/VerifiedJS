@@ -4236,6 +4236,64 @@ private theorem hasAbruptCompletion_lit_false (v : Flat.Value) :
     hasAbruptCompletion (.lit v) = false := by
   simp [hasAbruptCompletion]
 
+/-- Returns true if the expression never uses "__call_frame_return__" as a tryCatch catchParam.
+    Source programs satisfy this predicate since "__call_frame_return__" is only introduced by
+    Flat.step? during function call evaluation. -/
+mutual
+private def noCallFrameReturn : Flat.Expr → Bool
+  | .tryCatch body cp cb fin =>
+    cp != "__call_frame_return__" &&
+    noCallFrameReturn body && noCallFrameReturn cb &&
+    match fin with | some f => noCallFrameReturn f | none => true
+  | .seq a b => noCallFrameReturn a && noCallFrameReturn b
+  | .«if» c t e => noCallFrameReturn c && noCallFrameReturn t && noCallFrameReturn e
+  | .while_ c b => noCallFrameReturn c && noCallFrameReturn b
+  | .«let» _ i b => noCallFrameReturn i && noCallFrameReturn b
+  | .assign _ v => noCallFrameReturn v
+  | .call f e args => noCallFrameReturn f && noCallFrameReturn e && noCallFrameReturnList args
+  | .newObj f e args => noCallFrameReturn f && noCallFrameReturn e && noCallFrameReturnList args
+  | .getProp o _ => noCallFrameReturn o
+  | .setProp o _ v => noCallFrameReturn o && noCallFrameReturn v
+  | .getIndex o i => noCallFrameReturn o && noCallFrameReturn i
+  | .setIndex o i v => noCallFrameReturn o && noCallFrameReturn i && noCallFrameReturn v
+  | .deleteProp o _ => noCallFrameReturn o
+  | .typeof a => noCallFrameReturn a
+  | .getEnv e _ => noCallFrameReturn e
+  | .makeEnv vals => noCallFrameReturnList vals
+  | .makeClosure _ e => noCallFrameReturn e
+  | .objectLit props => noCallFrameReturnProps props
+  | .arrayLit elems => noCallFrameReturnList elems
+  | .throw a => noCallFrameReturn a
+  | .«return» (some a) => noCallFrameReturn a
+  | .yield (some a) _ => noCallFrameReturn a
+  | .await a => noCallFrameReturn a
+  | .unary _ a => noCallFrameReturn a
+  | .binary _ l r => noCallFrameReturn l && noCallFrameReturn r
+  | .labeled _ b => noCallFrameReturn b
+  | _ => true
+
+private def noCallFrameReturnList : List Flat.Expr → Bool
+  | [] => true
+  | e :: rest => noCallFrameReturn e && noCallFrameReturnList rest
+
+private def noCallFrameReturnProps : List (Flat.PropName × Flat.Expr) → Bool
+  | [] => true
+  | (_, e) :: rest => noCallFrameReturn e && noCallFrameReturnProps rest
+end
+
+/-- If noCallFrameReturn holds for a tryCatch, the catch parameter is not "__call_frame_return__". -/
+private theorem noCallFrameReturn_tryCatch_param {body cb : Flat.Expr} {cp : String}
+    {fin : Option Flat.Expr}
+    (h : noCallFrameReturn (.tryCatch body cp cb fin) = true) :
+    cp ≠ "__call_frame_return__" := by
+  simp [noCallFrameReturn, Bool.and_eq_true, bne_iff_ne] at h
+  exact h.1
+
+/-- noCallFrameReturn for literals is trivially true. -/
+private theorem noCallFrameReturn_lit (v : Flat.Value) :
+    noCallFrameReturn (.lit v) = true := by
+  simp [noCallFrameReturn]
+
 private theorem firstNonValueExpr_eq_append {args : List Flat.Expr}
     {done : List Flat.Expr} {target : Flat.Expr} {remaining : List Flat.Expr}
     (h : Flat.firstNonValueExpr args = some (done, target, remaining)) :
