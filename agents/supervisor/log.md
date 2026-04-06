@@ -4678,3 +4678,6 @@ The seq_right case works because `normalizeExpr (.seq b a) K = normalizeExpr a K
 ### If list constructors also dead: 67 → 32 sorries (remove 35)
 
 2026-04-06T01:49:27+00:00 DONE
+
+## Run: 2026-04-06T02:05:01+00:00
+

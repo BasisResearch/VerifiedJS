@@ -6802,3 +6802,33 @@ For second-position cases (e.g., binary_rhs with ¬HasIfInHead lhs):
 ## Run: 2026-04-06T01:15:01+00:00
 
 ### 2026-04-06T01:15:34+00:00 Starting run
+
+### 2026-04-06T01:15:01+00:00 Starting run
+
+### 2026-04-06T02:30:00+00:00 Run complete — normalizeExpr_trivialChain_apply lemma proved; 24 sorries remain blocked
+
+**Contribution**: Proved `normalizeExpr_trivialChain_apply` (L1466-1493 in ANFConvertCorrect.lean):
+```
+∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d → isTrivialChain e = true →
+∃ (t : ANF.Trivial), ∀ (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n : Nat),
+(ANF.normalizeExpr e k).run n = (k t).run n
+```
+This is strictly stronger than `normalizeExpr_trivialChain_passthrough` (which only handles `fun _ => K`).
+The lemma shows a unique trivial `t` exists for each trivial chain, independent of continuation `k`.
+
+**Analysis of the 24 second-position sorries**:
+All 24 sorries (12 in normalizeExpr_if_branch_step, 12 in normalizeExpr_if_branch_step_false) share the same fundamental blocker:
+
+- **Normalization side** (SOLVED by normalizeExpr_trivialChain_apply): When lhs is a trivial chain, normalizeExpr_trivialChain_apply gives ∃ t_lhs such that normalizeExpr lhs k = k t_lhs for ALL k. This means normalizing `.binary op lhs sf_rhs.expr` with K uses the SAME t_lhs regardless of whether the inner expr is rhs or sf_rhs.expr.
+
+- **Flat stepping side** (BLOCKED): When lhs = `.var x`, flat semantics steps it to `.lit (env[x])`. The final state has `.binary op (.lit (env[x])) sf_rhs.expr`. But normalizing this uses trivialOfFlatValue(env[x]), NOT t_lhs = .var x. Since then_ has t_lhs baked in, the normalization produces then_'' ≠ then_.
+
+- **Root cause**: The theorem requires syntactic equality of then_ between hypothesis and conclusion. But stepping a non-literal trivial chain changes the compile-time trivial, making the exact then_ unreachable.
+
+- **The same blocker exists in normalizeExpr_labeled_branch_step** (L10128, confirmed by existing comment: "blocked: trivialChain passthrough doesn't apply (continuation uses lhsTriv)").
+
+**Possible resolution paths** (for future work):
+1. Weaken theorem conclusion to allow then_' semantically equivalent to then_ (requires theorem refactoring)
+2. Prove that the trivial change doesn't affect the downstream ANF simulation (may be possible at a higher level)
+3. Restrict the theorem to cases where lhs is already a value (covers .lit but not .var/.this)
+2026-04-06T02:02:18+00:00 DONE
