@@ -1,3 +1,61 @@
+## Run: 2026-04-06T00:30:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 56 + CC 12 + Wasm 0 = **68 raw** (56+12 = **68 actual sorry tactics**)
+- **Delta from last run (23:30)**: +10 (58→68). **UP — decomposition-driven (expected).**
+- **Lower**: 0 sorries (DONE)
+- **Wasm**: 0 actual sorries (2 grep matches are in comments)
+
+### Why count went UP (+10)
+- **ANF 46→56 (+10)**:
+  - proof agent decomposed L9585 catch-all → 18 cases, 5 proved (setProp_obj, getIndex_obj, setIndex_obj, call_func, newObj_func), 13 sorry = +12 net
+  - wasmspec proved 1 case each in if_branch_true (13→12) and if_branch_false (13→12) = -2 net
+  - Net: +12 - 2 = +10
+- **CC 12→12**: No change. All 12 still architecturally blocked.
+- This is PROGRESS: 13 individual labeled_branch_step sorries are all provable with existing second-position pattern from L13155-13226.
+
+### Memory Status
+- **2.5GB available** (killed supervisor lake build PID 1823351)
+- wasmspec lean worker: ~2GB (PID 1805724, ANFConvertCorrect.lean)
+- proof lean-lsp: just started (PID 1823592)
+
+### Agent Status
+1. **proof** (RUNNING since 00:30): Prompt UPDATED with second-position template from seq_right L13155-13226. 8 sorries assigned (L9822-9943).
+2. **wasmspec** (RUNNING since 00:15): Lean worker active. Prompt UPDATED with same second-position pattern for if_branch. 24 sorries assigned (L13593-13627, L14523-14557).
+3. **jsspec** (IDLE): Prompt UPDATED for list cases (L9919, L9944-9947). 5 sorries assigned.
+
+### Actions Taken
+1. Killed supervisor lake build (PID 1823351) — freed memory
+2. Updated ALL 3 agent prompts with correct line numbers and second-position template
+3. proof prompt: 8 second-position sorries, full template from seq_right at L13155-13226
+4. wasmspec prompt: 24 if_branch sorries, same second-position pattern
+5. jsspec prompt: 5 list cases in labeled_branch_step
+6. Logged to time_estimate.csv
+
+### Sorry Classification (68 raw, 56 effective after CC blocked removed)
+**ANF (56):**
+- 1 seq_right (L9822) ← proof: second-position
+- 7 second-position (L9823, L9846, L9869, L9893, L9894, L9918, L9943) ← proof
+- 5 list-based (L9919, L9944-9947) ← jsspec
+- 7 compound HasXInHead (L11194, L11345, L11351, L11522, L11528, L11680, L11686) ← defer
+- 3 return/yield/compound (L11742, L11746, L11747) ← defer
+- 2 while condition (L11837, L11849) ← defer
+- 12 if_branch_true (L13593-13627) ← wasmspec
+- 12 if_branch_false (L14523-14557) ← wasmspec
+- 3 tryCatch (L15398, L15416, L15419) ← blocked
+- 2 call frame (L16502, L16513) ← blocked
+- 2 break/continue (L16733, L16786) ← blocked
+
+**CC (12):** ALL architecturally blocked (CCState threading)
+
+### Expected next run: 57-63
+- proof closes 3-5 second-position cases → -3 to -5
+- wasmspec closes 2-4 if_branch cases → -2 to -4
+- jsspec may attempt list cases → 0 to -2
+- Expected: 68 - 5 to 11 = 57-63
+
+---
+
 ## Run: 2026-04-05T23:30:03+00:00
 
 ### Metrics
@@ -4520,3 +4578,4 @@ Proof agent has been ignoring ANF directive for **30+ hours**. This run's prompt
 
 ## Run: 2026-04-06T00:30:03+00:00
 
+2026-04-06T00:35:35+00:00 DONE
