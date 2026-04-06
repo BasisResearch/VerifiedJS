@@ -6333,3 +6333,38 @@ Pre-existing errors at L9245, L9289 etc. (from labeled_direct, let_init cases) w
 
 ### 2026-04-06T00:30:19+00:00 Starting run
 2026-04-06T01:30:03+00:00 SKIP: already running
+### 2026-04-06T00:30:01+00:00 Starting run
+
+### Infrastructure: moved trivialChain_eval_value before normalizeExpr_labeled_branch_step
+
+Moved the `trivialChain_eval_value` theorem (~160 lines) from after `normalizeExpr_labeled_step_sim` to just before `normalizeExpr_labeled_branch_step` (now at L9438). This makes it available for use in the labeled_branch_step second-position proofs. All dependencies (step?_var_bound, step?_seq_lit, etc.) are defined earlier. No errors introduced.
+
+### Proved: seq_right in normalizeExpr_labeled_branch_step
+
+Replaced the sorry at `| seq_right h_right =>` with a full proof (~75 lines). The proof follows the exact pattern from `normalizeExpr_if_branch_step` seq_right (L13256-13304):
+
+**First branch (HasLabeledInHead b label):**
+- Recurse on b (left part) with IH
+- Lift through .seq · a context via Steps_seq_ctx_b
+- Standard first-position lifting pattern
+
+**Second branch (¬HasLabeledInHead b label):**
+- `no_labeled_head_implies_trivial_chain` shows b is trivialChain
+- `normalizeExpr_trivialChain_passthrough` derives hnorm_a (since seq continuation is `fun _ => ...`)
+- `trivialChain_eval_value` steps b to .lit v_b
+- Lift through .seq · a, then discard step (.seq (.lit v_b) a → a)
+- IH on a (right part, has label)
+- Steps_pres_append for full preservation
+
+Key helper for silent events proof: cases on ev (silent→rfl, error→absurd via hnoerr_b, log→absurd via observableTrace = [])
+
+### Analysis: binary_rhs and other non-seq second-position cases are BLOCKED
+
+**Root cause:** For seq, the continuation is `fun _ => normalizeExpr b k` (ignoring the trivial). For binary/setProp/getIndex/etc., the continuation USES the first sub-expression's trivial: `fun lhsTriv => normalizeExpr rhs (fun rhsTriv => bindComplex (.binary op lhsTriv rhsTriv) K)`.
+
+After flat stepping `.var x` → `.lit v`, the trivial changes from `.var x` to `trivialOfFlatValue v`. This produces a structurally different ANF body. The theorem requires `∃ n' m', (normalizeExpr sf'.expr K).run n' = .ok (body, m')` where body is fixed from the hypothesis. With a different trivial, the body changes, making the conclusion unsatisfiable.
+
+**Concrete example:** For `.binary .add (.var "x") (.labeled "foo" (.lit 42))`, the body contains `.binary .add (.var "x") (.litNum 42)`. After stepping, `.binary .add (.lit v) (.lit 42)` normalizes with `.binary .add (trivialOfFlatValue v) (.litNum 42)` — structurally different.
+
+**This affects ALL 7 remaining second-position cases:** binary_rhs, setProp_val, getIndex_idx, setIndex_idx, setIndex_val, call_env, newObj_env. The theorem statement may need revision for these cases (e.g., allowing body to differ by trivial equivalence, or restricting HasLabeledInHead to exclude non-lit trivialChain first sub-expressions).
+
