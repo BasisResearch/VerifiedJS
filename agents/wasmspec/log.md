@@ -6861,3 +6861,5 @@ Full analysis written inline since /opt/verifiedjs/agents/wasmspec/ directory is
 ## Run: 2026-04-06T03:15:01+00:00
 
 ### 2026-04-06T03:15:17+00:00 Starting run
+2026-04-06T03:20:23+00:00 EXIT: code 1
+2026-04-06T03:20:23+00:00 DONE
