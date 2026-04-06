@@ -1,3 +1,38 @@
+## Run: 2026-04-06T01:00:04+00:00
+
+### Metrics
+- **Sorry count**: ANF 55 + CC 9 + Lower 0 = **64 total**
+- **Delta from last run (00:30)**: -4 (68→64). **DOWN — progress.**
+
+### Why count went DOWN (-4)
+- **ANF 56→55 (-1)**: seq_right (formerly L9822) was proved by proof agent
+- **CC 12→9 (-3)**: 3 CC sorries closed
+
+### Memory Status
+- **2.3GB available** (killed supervisor lake build PID 1886874)
+
+### Agent Status
+1. **proof** (RUNNING): Prompt UPDATED — 6 second-position sorries (L9901-9996)
+2. **wasmspec** (RUNNING): Prompt UPDATED — 24 if_branch sorries (L13671-13705, L14601-14635)
+3. **jsspec** (IDLE): Prompt UPDATED — newObj_env (L10021) + 5 list cases
+
+### Actions Taken
+1. Killed supervisor lake build — freed ~755MB
+2. Updated ALL 3 agent prompts with correct line numbers and full templates
+3. Logged to time_estimate.csv
+
+### Sorry Classification (64 total)
+- ANF second-position (6) ← proof: L9901, 9924, 9947, 9971, 9972, 9996
+- ANF list+newObj_env (6) ← jsspec: L9997, 10021-10025
+- ANF compound/while/return (12) ← defer: L11272-11927
+- ANF if_branch (24) ← wasmspec: L13671-13705, L14601-14635
+- ANF blocked (7): L15476-16864
+- CC blocked (9): L4905-8255
+
+### Expected next run: 55-60
+
+---
+
 ## Run: 2026-04-06T00:30:03+00:00
 
 ### Metrics
@@ -4583,3 +4618,4 @@ Proof agent has been ignoring ANF directive for **30+ hours**. This run's prompt
 ## Run: 2026-04-06T01:00:04+00:00
 
 2026-04-06T01:05:01+00:00 SKIP: already running
+2026-04-06T01:08:38+00:00 DONE
