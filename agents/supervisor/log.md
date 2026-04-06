@@ -1,3 +1,63 @@
+## Run: 2026-04-06T03:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 55 + CC 12 + Lower 0 = **67 total**
+- **Delta from last run (01:00)**: +3 (64→67). **UP — CC recount (was undercounted at 9, actually 12).**
+- ANF: 55 (unchanged since 01:00)
+- CC: 12 actual sorry tactics (previous run counted 9 — likely excluded some inline sorries)
+- Lower: 0
+
+### Why count went UP (+3)
+- **Not a regression.** CC has had 12 sorry tactics since at least the 00:05 run (time_estimate.csv shows "ANF55+CC12=67"). The 01:00 run undercounted CC at 9. Actual count is 12 and has been stable.
+
+### Memory Status
+- **1.6GB available** (killed stale supervisor lake build PID 1887436)
+- proof lean worker: ~1.9GB (PID 2319635, ANFConvertCorrect.lean)
+- jsspec lean worker: ~900MB (PID 2316065, ClosureConvertCorrect.lean)
+- No wasmspec lean worker visible
+
+### Agent Status
+1. **proof** (RUNNING): Worker active on ANFConvertCorrect.lean. Prompt REWRITTEN — depth induction refactor for throw/return/await/yield step_sim. This is the KEY UNBLOCK for 11 compound sorries.
+2. **wasmspec** (IDLE — no lean worker): Prompt REWRITTEN — focused on 10 list cases in if_branch (call_args, newObj_args, etc.)
+3. **jsspec** (RUNNING): Worker active on ClosureConvertCorrect.lean. Prompt REWRITTEN — CC sorry triage (12 sorries, ~3 potentially provable)
+
+### Actions Taken
+1. Killed stale supervisor lake build (PID 1887436) — freed ~1.1GB
+2. **REWROTE ALL 3 agent prompts** with major strategic redirect:
+   - **proof**: Identified root cause of all 11 compound sorries — throw/return/await/yield step_sim lack depth induction. Provided complete refactoring template based on if_branch_step pattern.
+   - **wasmspec**: Redirected from K-mismatch research to list cases (10 sorries). Provided helper lemma skeleton.
+   - **jsspec**: Redirected to CC sorry triage with classification (3 potentially provable, 9 blocked).
+3. Logged to time_estimate.csv
+
+### Sorry Classification (67 total)
+
+**ANF (55):**
+- 1 trivialChain passthrough (L10186) — BLOCKED
+- 6 second-position K-mismatch (L10209-10330) — BLOCKED
+- 5 list/func cases (L10306-10449) — jsspec/wasmspec
+- 11 compound throw/return/await/yield (L11696-12249) — **proof: depth induction refactor**
+- 2 while (L12339, 12351) — proof
+- 12 if_branch_true second-position + list (L13959-14274) — wasmspec
+- 12 if_branch_false second-position + list (L15193-15508) — wasmspec
+- 3 tryCatch + compound (L16349-16370) — proof
+- 2 call frame (L17453, 17464) — blocked
+- 2 break/continue (L17684, 17737) — proof
+
+**CC (12):** ~3 potentially provable, ~9 architecturally blocked
+
+### Strategic Assessment
+- **The depth induction refactor is the single highest-leverage change.** If proof agent successfully converts normalizeExpr_throw_step_sim to depth induction and proves compound cases, the same pattern applies to return/await/yield — potentially closing 11 sorries.
+- wasmspec list cases (10 sorries) are the next highest leverage.
+- CC is mostly architecturally blocked; focus on the 3 potentially provable ones.
+
+### Expected next run: 60-67
+- If proof starts refactoring: likely 0 closures this run (structural change)
+- If wasmspec attempts list cases: 0-2 closures
+- If jsspec triages CC: 0-3 closures
+- Conservative: 67 (no change). Optimistic: 60.
+
+---
+
 ## Run: 2026-04-06T01:00:04+00:00
 
 ### Metrics
@@ -4743,3 +4803,4 @@ Call chain: anfConvert_step_star → normalizeExpr_labeled_step_sim → normaliz
 
 ## Run: 2026-04-06T03:05:01+00:00
 
+2026-04-06T03:13:28+00:00 DONE

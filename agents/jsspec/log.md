@@ -3564,3 +3564,68 @@ The `normalizeExprList_labeled_or_k` helper can produce both `.head` and `.tail`
 ## Run: 2026-04-06T03:00:01+00:00
 
 ### 2026-04-06T03:00:14+00:00 Starting run
+
+### CC Sorry Classification (12 sorries in ClosureConvertCorrect.lean)
+
+All 12 sorries are **architecturally blocked**. None are provable with current infrastructure.
+
+#### Category 1: CCStateAgree blocked (6 sorries)
+These need the output CCState to match the input CCState threading through convertExpr, but the
+theorem's existential `∃ st_a st_a'` doesn't have enough flexibility when sub-expressions
+consume CCState differently on each branch.
+
+- **L5234** — `if` true branch: `CCStateAgree st' vs then_-only state`
+- **L5257** — `if` false branch: same issue, `else_` branch state skips `then_` conversion
+- **L8074** — `tryCatch` body-value, no finally: `CCStateAgree st st1` where body conversion changes nextId
+- **L8075** — `tryCatch` body-value, with finally: same class
+- **L8147** — `tryCatch` error-catch: `CCStateAgree st st1` for catch body after error
+- **L8255** — `while_`: desugars to `if cond (seq body (while_ cond body)) undef`, duplicating cond/body conversions with different CCState
+
+#### Category 2: Multi-step simulation mismatch (1 sorry)
+- **L4905** — Captured variable (`lookupEnv envMap name = some idx`): Flat expression is `.getEnv (.var envVar) idx`. This takes 2 Flat steps (resolve var, then getEnv lookup) but Core `.var name` takes 1 step. After the first Flat step, `sf'.expr = .getEnv (.lit envObj) idx` which is NOT `convertExpr` of any Core expression, breaking the simulation invariant.
+
+#### Category 3: Core/Flat semantic mismatch (2 sorries)
+Core evaluates sub-expressions eagerly (all at once), while Flat steps them one at a time.
+- **L6029** — `newObj` f not a value: Core allocates immediately, Flat steps f first
+- **L6037** — `newObj` non-value arg: same — Core allocates, Flat steps arg
+
+#### Category 4: Missing FuncsCorr infrastructure (2 sorries)
+- **L5821** — Non-consoleLog function call: needs `sf.funcs[idx] ↔ sc.funcs[idx]` correspondence (FuncsCorr invariant not yet defined)
+- **L7917** — `functionDef` (entire case): needs FuncsCorr + makeClosure/makeEnv simulation infrastructure. Most complex single sorry — involves closure creation, free variable capture, and CCState mutation (addFunc).
+
+#### Category 5: Unprovable (1 sorry)
+- **L6675** — `getIndex` string both-values: `Float.toString n ≠ "length"` is unprovable because `Float.toString` is an opaque native function. Needs either semantic alignment in Flat/Core string-getIndex or an axiom.
+
+### Summary
+| Category | Count | Fix needed |
+|----------|-------|------------|
+| CCStateAgree | 6 | Restructure existential or prove CCState-independence lemma |
+| Multi-step mismatch | 1 | Lock-step simulation or multi-step simulation support |
+| Semantic mismatch | 2 | Align Core/Flat newObj semantics |
+| Missing FuncsCorr | 2 | Define and thread FuncsCorr invariant |
+| Unprovable | 1 | Axiom or semantic alignment |
+
+No sorry is provable without architectural changes.
+
+### ANF List Case Investigation Summary
+
+#### Blocked sub-cases (K-mismatch, L10248-L10391)
+5 "no labeled" sub-cases in ANFConvertCorrect.lean are blocked by K-mismatch:
+- **L10248** — `call_args`
+- **L10297** — `newObj_args`
+- **L10328** — `makeEnv_values`
+- **L10360** — `objectLit_props`
+- **L10391** — `arrayLit_elems`
+
+All share the same root cause: after stepping preceding list elements to values, the continuation changes (trivialOfFlat changes), making the body different from the hypothesis. This is unsatisfiable without K-independence.
+
+#### First-position sub-cases
+The first-position (`.head`) sub-cases were already handled by existing code — these don't have the K-mismatch issue since no preceding element stepping is needed.
+
+#### Partial proofs
+The investigation confirmed the structural approach is correct but the K-mismatch is fundamental to the second-position pattern in the ANF normalization. Resolution requires one of:
+1. A K-independence lemma for labeled bodies (not generally true)
+2. Restructuring the theorem statement
+3. Making ANF normalization K-insensitive for labeled bodies
+### 2026-04-06T03:13:56+00:00 Run complete — all 12 CC sorries classified as architecturally blocked, ANF list cases documented
+2026-04-06T03:14:02+00:00 DONE

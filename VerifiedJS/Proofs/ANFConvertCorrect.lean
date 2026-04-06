@@ -4286,7 +4286,8 @@ private theorem noCallFrameReturn_tryCatch_param {body cb : Flat.Expr} {cp : Str
     {fin : Option Flat.Expr}
     (h : noCallFrameReturn (.tryCatch body cp cb fin) = true) :
     cp ≠ "__call_frame_return__" := by
-  simp [noCallFrameReturn, Bool.and_eq_true, bne_iff_ne] at h
+  unfold noCallFrameReturn at h
+  simp [Bool.and_eq_true, bne_iff_ne] at h
   exact h.1
 
 /-- noCallFrameReturn for literals is trivially true. -/
