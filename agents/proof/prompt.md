@@ -1,4 +1,4 @@
-# proof — K-independence lemma + compound cases
+# proof — Compound cases + K-mismatch redesign investigation
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY (and Flat/Semantics.lean for infrastructure)
@@ -8,64 +8,64 @@
 ## !! CRITICAL: DO NOT USE WHILE/UNTIL LOOPS !!
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 
-## MEMORY: 7.7GB total, NO swap. ~2.3GB free. USE LSP ONLY — no `lake build`.
+## MEMORY: 7.7GB total, NO swap. ~800MB free. USE LSP ONLY — no `lake build`.
 
 ## CONCURRENCY: wasmspec also edits ANFConvertCorrect.lean
-- wasmspec works on L13697+ and L14792+ zones (if_branch individual cases)
-- jsspec may work on list cases (L10159, L10183-10187)
-- **YOU** own L10063-L10158 (second-position cases) AND compound zones (L11434+)
+- wasmspec works on L13901+ and L14996+ zones (if_branch individual cases)
+- jsspec may work on list cases (L10248, L10297, L10328, L10360, L10391)
+- **YOU** own compound zones (L11638+) AND while/tryCatch/callframe/break zones
 - DO NOT touch wasmspec or jsspec zones
 
-## ===== CRITICAL DISCOVERY: K-MISMATCH IN SECOND-POSITION CASES =====
+## ===== K-MISMATCH STATUS: CONFIRMED UNFIXABLE WITHOUT THEOREM REDESIGN =====
 
-**The ¬HasLabeledInHead sub-cases for second-position are BLOCKED by a fundamental issue.**
+**All 7 second-position cases (binary_rhs, setProp_val, etc.) in labeled_branch_step are PROVABLY UNSATISFIABLE as stated.** The `body` parameter is load-bearing through anfConvert_step_star → normalizeExpr_labeled_step_sim → normalizeExpr_labeled_branch_step. Changing the conclusion to existentially quantify body' would require refactoring the ENTIRE chain including ANF_SimRel.
 
-The seq_right case works because `normalizeExpr (.seq b a) K = normalizeExpr a K` — the continuation K passes through UNCHANGED. After stepping b→value and discarding, `normalizeExpr a K` uses the SAME K.
+**DO NOT spend time on second-position sorry cases.** They cannot be proved without theorem redesign.
 
-For binary_rhs: `normalizeExpr (.binary op lhs rhs) K = normalizeExpr rhs K_rhs` where
-`K_rhs = fun rhsTriv => bindComplex (.binary op (trivialOfFlat lhs) rhsTriv) K`. After stepping lhs (.var x) → (.lit v): `normalizeExpr (.binary op (.lit v) rhs) K = normalizeExpr rhs K_rhs'` where
-`K_rhs' = fun rhsTriv => bindComplex (.binary op (trivialOfFlatValue v) rhsTriv) K`.
+## ===== YOUR PRIORITY: COMPOUND CASES (11 sorries) =====
 
-**K_rhs ≠ K_rhs'** because `trivialOfFlat (.var x) = .var x` but `trivialOfFlatValue v = .litNum/.litBool/...`. The ANF body CHANGES when lhs is evaluated. The theorem conclusion needs the SAME body, so it's UNSATISFIABLE.
+These are NOT blocked by K-mismatch. They are in normalizeExpr_throw_step_sim and similar:
 
-### Option A: Prove a K-independence lemma (PREFERRED)
-If normalizeExpr e K = .ok (.labeled label body, m) and HasLabeledInHead e label, then .labeled comes from e, not K. So for any K': normalizeExpr e K' = .ok (.labeled label body', m') where body' may differ from body. But the OUTER .labeled label wrapper is preserved.
+```
+L11638: sorry -- compound HasThrowInHead cases
+L11789: | _ => sorry -- compound inner_val
+L11795: sorry -- compound HasReturnInHead cases
+L11966: | _ => sorry -- compound inner_arg
+L11972: sorry -- compound HasAwaitInHead cases
+L12124: | _ => sorry -- compound inner_val
+L12130: sorry -- compound HasYieldInHead cases
+L12186: | some val => sorry -- return (some val): compound
+L12190: | some val => sorry -- yield (some val): compound
+L12191: | _ => sorry -- compound expressions catch-all
+```
 
-The theorem conclusion needs `normalizeExpr sf'.expr K = .ok (body, m')` — body WITHOUT .labeled wrapper. Since body depends on K (the labeled body is `normalizeExpr inner K`), and K changes after stepping... this option is HARD.
+### Approach for compound cases:
+The compound cases handle expressions like `.seq a b`, `.let n i b`, `.assign n v`, `.if c t e`, `.call f e args` where `HasThrowInHead`/`HasReturnInHead` etc. is nested deeper inside.
 
-### Option B: Case-split on whether lhs is already a value
-When lhs = .lit v (already a value), there's NO K-mismatch! `trivialOfFlat (.lit v) = trivialOfFlatValue v`. This case is directly provable. For lhs NOT a value: leave sorry or prove impossible from ExprWellFormed + normalizeExpr structure.
+For each compound case:
+1. Use `lean_goal` to see the exact proof state
+2. The expression e has HasThrowInHead (or similar) deep inside
+3. Flat stepping evaluates left-to-right, entering the sub-expression that has the throw/return/etc.
+4. Use IH on the sub-expression, then lift through the eval context
 
-### Option C: Restrict HasLabeledInHead
-Remove binary_rhs and other second-position constructors. This would require showing the downstream usage never needs them.
+**Key pattern**: `Has*InHead` for compound expressions uses constructors like `seq_left`, `let_init`, `if_cond`, `assign_val`, etc. Case-split on the constructor, apply IH + eval context lifting.
 
-## ===== PRIORITY: INVESTIGATE AND UNBLOCK =====
+## ALSO YOURS: While + tryCatch + callframe + break/continue (9 sorries)
 
-**P0: Determine if second-position cases are truly needed.**
-1. Check ALL call sites of `normalizeExpr_labeled_branch_step` (~L10700, L10770, L10816)
-2. At each call site, check what `hlh : HasLabeledInHead` is passed
-3. If `hlh` is always a first-position constructor, second-position cases are DEAD CODE
-4. If second-position IS needed, investigate Option B (case-split on lhs being a value)
+```
+L12281: sorry -- While condition value case
+L12293: sorry -- Condition-steps case
+L16013: sorry -- tryCatch body-error
+L16031: sorry -- tryCatch body-step
+L16034: | _ => sorry -- compound cases: deferred
+L17117: sorry -- noCallFrameReturn
+L17128: sorry -- body_sim IH
+L17348: sorry -- break
+L17401: sorry -- continue
+```
 
-**P1: If second-position is dead code, remove the constructors.**
-Remove binary_rhs, setProp_val, getIndex_idx, setIndex_idx, setIndex_val, call_env, newObj_env, call_args, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems from HasLabeledInHead. This eliminates 12 sorries instantly.
-
-**P2: If second-position IS needed, try Option B.**
-For each second-position case, add `cases lhs with | lit v => ... | _ => sorry`.
-The `.lit v` sub-case is directly provable (K matches). Leave others as sorry.
-
-## YOUR 6 SECOND-POSITION SORRIES (may be removable):
-- L10063: `binary_rhs h_rhs => sorry`
-- L10086: `setProp_val h_val => sorry`
-- L10109: `getIndex_idx h_idx => sorry`
-- L10133: `setIndex_idx h_idx => sorry`
-- L10134: `setIndex_val h_val => sorry`
-- L10158: `call_env h_env => sorry`
-
-## DO NOT TOUCH (other agents):
-- L10159, L10183-L10187 (list cases — jsspec)
-- L13697+, L14792+ (if_branch — wasmspec)
-- L15809+ (blocked cases)
+## P2 (LOW PRIORITY): Investigate K-mismatch resolution
+If you finish compound cases, investigate whether `ANF_SimRel` (L114-121) can be weakened to relate flat and ANF states modulo trivial substitution. The issue: when flat steps `.var x → .lit v`, the ANF body has `.var x` baked in, but the new normalizeExpr produces `trivialOfFlatValue v`. A SimRel that allows `.var x` ↔ `trivialOfFlatValue (env[x])` would unblock ~39 sorries.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

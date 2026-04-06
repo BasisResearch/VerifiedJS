@@ -3518,3 +3518,45 @@ case where the labeled property is in the first/leading sub-expression.
 ## Run: 2026-04-06T02:00:01+00:00
 
 ### 2026-04-06T02:00:17+00:00 Starting run
+
+### 2026-04-06T02:00:01+00:00 Starting run
+
+**Task**: Investigate K-mismatch for 5 list-based sorry cases in `normalizeExpr_labeled_branch_step`
+
+**Current sorry locations** (lines shifted from prompt):
+1. L10248: `call_args` — callee (envE) has no labeled, sorry
+2. L10297: `newObj_args` — callee (envE) has no labeled, sorry
+3. L10328: `makeEnv_values` — first element has no labeled, sorry
+4. L10360: `objectLit_props` — first prop value has no labeled, sorry
+5. L10391: `arrayLit_elems` — first element has no labeled, sorry
+
+**Proof state analysis (all 5 cases)**:
+
+Each case has the same structure:
+- The `.head` sub-case (first/preceding element HAS labeled) is already proven
+- The sorry is in the `.inr`/`.tail` sub-case where the first element does NOT have labeled
+- By inversion on `HasLabeledInHeadList`/`HasLabeledInHeadProps`, the labeled must be in a later element
+
+**K-mismatch confirmed for all 5**:
+
+The fundamental issue: `normalizeExpr` processes list elements left-to-right. The continuation K for the nth element wraps the trivials of elements 0..n-1. When the Flat machine steps element 0 from expression `e` to value `v`:
+- Original: `trivialOfFlat(e)` → feeds into continuation K_rest
+- After step: `trivialOfFlatValue(v)` → feeds into different continuation K_rest'
+- The labeled body depends on K_rest (via `normalizeExpr (.labeled l b) K` = `.labeled l (normalizeExpr b K)`)
+- So `body ≠ body'` in general → cannot prove the existential `∃ n' m', normalizeExpr sf'.expr K = (body, m')`
+
+Specific per-case analysis:
+- **call_args/newObj_args**: `hnorm` normalizes callee first, then env, then args list. Callee has no labeled → must step callee to value → trivial changes → K-mismatch for args. Further splitting on env doesn't help (same K-mismatch as `call_env`/`newObj_env` second-position cases).
+- **makeEnv_values/arrayLit_elems**: First list element has no labeled → must step it → trivial changes → K-mismatch for rest of list.
+- **objectLit_props**: First prop value has no labeled → same pattern.
+
+**Are these dead code?** No. `normalizeExpr_labeled_or_k` (L9419-9470) produces `HasLabeledInHead.call_args`, `.newObj_args`, `.makeEnv_values`, `.objectLit_props`, `.arrayLit_elems` when the labeled is in a list/props. These flow to `normalizeExpr_labeled_branch_step` via the wildcard case at L10979-10986.
+
+The `normalizeExprList_labeled_or_k` helper can produce both `.head` and `.tail` constructors, so both the handled and sorry sub-cases are reachable.
+
+**Conclusion**: All 5 sorry cases are blocked by the same K-mismatch issue that affects the second-position cases (call_env, newObj_env, setProp_val, etc.) owned by proof agent. No proof progress possible without either:
+1. A "labeled body K-independence" lemma (FALSE in general — `.labeled l b` normalizes `b` with K)
+2. Restructuring the theorem statement to allow different bodies
+3. Changing the ANF normalization to be K-insensitive for labeled bodies
+### 2026-04-06T02:10:23+00:00 Run complete — all 5 sorries K-mismatch blocked
+2026-04-06T02:10:34+00:00 DONE

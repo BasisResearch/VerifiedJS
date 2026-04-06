@@ -1,4 +1,4 @@
-# wasmspec — Investigate K-mismatch + close provable if_branch cases
+# wasmspec — if_branch provable cases + K-mismatch architecture
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -7,67 +7,49 @@
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
 - You CAN edit ANFConvertCorrect.lean ONLY
 
-## MEMORY: ~2.3GB free. USE LSP ONLY — no builds.
+## MEMORY: ~800MB free. USE LSP ONLY — no builds. DO NOT launch lean_build.
 
 ## CONCURRENCY: proof agent also edits ANFConvertCorrect.lean
-- proof agent works on L10063-10158 (labeled_branch_step second-position)
-- jsspec may work on list cases (L10159, L10183-10187)
-- **YOU** own L13697+ and L14792+ ONLY (if_branch zones)
+- proof agent works on L11638+ (compound cases), L12281+ (while), L16013+ (tryCatch), L17117+ (callframe/break)
+- jsspec may work on list cases (L10248, L10297, L10328, L10360, L10391)
+- **YOU** own L13901+ and L14996+ ONLY (if_branch zones)
 
-## ===== CRITICAL: K-MISMATCH BLOCKS ¬HasIfInHead SUB-CASES =====
+## ===== K-MISMATCH STATUS =====
 
-The ¬HasIfInHead sub-cases for second-position constructors (binary_rhs, call_env, etc.) have a **fundamental K-mismatch issue**, same as in labeled_branch_step.
+Your `normalizeExpr_trivialChain_apply` lemma (L1466-1493) was a great contribution. However, the K-mismatch is confirmed UNSATISFIABLE for second-position cases. The `body` parameter is load-bearing through anfConvert_step_star → normalizeExpr_labeled_step_sim → normalizeExpr_labeled_branch_step → normalizeExpr_if_branch_step. Existentially quantifying body' would require refactoring the entire chain.
 
-For `normalizeExpr (.binary op lhs rhs) K`: after lhs trivialChain passthrough, K for rhs becomes `fun rhsTriv => bindComplex (.binary op (trivialOfFlat lhs) rhsTriv) K`. After stepping lhs→(.lit v), K becomes `fun rhsTriv => bindComplex (.binary op (trivialOfFlatValue v) rhsTriv) K`. These differ because `trivialOfFlat (.var x) ≠ trivialOfFlatValue v`.
+**The 14 second-position sorry cases (7 per theorem) CANNOT be proved without theorem redesign.** Do not spend more time on them.
 
-The theorem conclusion needs the SAME body, but body depends on K. **The ¬HasIfInHead sub-cases are UNPROVABLE as stated when the first sub-expression is not already a .lit value.**
+## ===== YOUR PRIORITY: ARCHITECTURAL INVESTIGATION =====
 
-## ===== YOUR STRATEGY =====
+### P0: Design the ANF_SimRel weakening (RESEARCH ONLY, no code changes yet)
 
-### P0: Check if second-position constructors are needed in HasIfInHead
-1. Check ALL call sites of `normalizeExpr_if_branch_step` and `normalizeExpr_if_branch_step_false`
-2. At each call site, determine what HasIfInHead derivation is passed
-3. If only first-position constructors are ever used, the second-position cases are DEAD CODE
-4. If dead code: remove binary_rhs, call_env, newObj_env, setProp_val, getIndex_idx, setIndex_idx, setIndex_val from HasIfInHead. This removes 14 sorries (7 per theorem).
-
-### P1: Close list cases if helpers exist
-The list cases (call_args, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems) may be provable with existing list-based infrastructure:
-- `Steps_call_arg_ctx_b`, `Steps_newObj_arg_ctx_b`, `Steps_makeEnv_values_ctx_b`
-- `Steps_objectLit_val_ctx_b`, `Steps_arrayLit_elem_ctx_b`
-
-For list cases: the HasIfInHeadList means SOME element has HasIfInHead. Elements before it are trivialChains. The approach:
-1. Evaluate preceding elements to values (trivialChain_eval_value)
-2. IH on the labeled element
-3. Lift through the list context
-4. BUT: same K-mismatch may apply for preceding elements!
-
-Check if list cases have the same K issue before investing time.
-
-### P2: If constructors ARE needed, try .lit v sub-case
-For each sorry, case-split: if the first sub-expression is already .lit v, the K matches perfectly. This sub-case IS provable. Leave the non-.lit sub-case as sorry.
-
-## YOUR SORRIES (7 second-position + 5 list per theorem):
-
-### normalizeExpr_if_branch_step — around L13697+:
+The fundamental issue: `ANF_SimRel` (around L114-121) requires:
 ```
-Second-position (K-mismatch blocked):
-  binary_rhs L13697 · sorry
-  call_env L13722 · sorry
-  newObj_env L13771 · sorry
-  setProp_val L13796 · sorry
-  getIndex_idx L13820 · sorry
-  setIndex_idx L13845 · sorry
-  setIndex_val L13870 · sorry
-List-based:
-  call_args L13723
-  newObj_args L13772
-  makeEnv_values L13871
-  objectLit_props L13872
-  arrayLit_elems L13873
+(ANF.normalizeExpr sf.expr k).run n = Except.ok (sa.expr, m)
 ```
+This means `sa.expr` is EXACTLY the output of normalizeExpr. When flat stepping changes a `.var x` to `.lit v`, the normalizeExpr output changes (trivialOfFlat(.var x) = .var x ≠ trivialOfFlatValue v).
 
-### normalizeExpr_if_branch_step_false — around L14792+:
-Mirror of above.
+**Investigate**: Can ANF_SimRel be changed to allow the ANF body to contain `.var x` while the flat state has `.lit (env[x])`? This would require:
+1. A "trivial equivalence" relation on ANF.Expr: body ~ body' iff they differ only in trivials that agree under the current environment
+2. Showing that ANF stepping preserves this equivalence
+3. Showing that the final behavior (trace) is unchanged
+
+**Write your analysis** to agents/wasmspec/k_mismatch_analysis.md. Include:
+- Exact definition of proposed weaker SimRel
+- Which theorems would need to change
+- Estimated number of lines affected
+- Whether this is feasible in < 1 day of work
+
+### P1: Close list cases in if_branch (5 per theorem = 10 total)
+
+The list cases (call_args, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems) may be partially provable using the same Classical.em approach as jsspec used in labeled_branch_step. Even proving the first-position sub-case would be progress.
+
+Your sorries:
+```
+if_branch_step: L13927 call_args, L13976 newObj_args, L14075 makeEnv_values, L14076 objectLit_props, L14077 arrayLit_elems
+if_branch_step_false: L15022 call_args, L15071 newObj_args, L15170 makeEnv_values, L15171 objectLit_props, L15172 arrayLit_elems
+```
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`

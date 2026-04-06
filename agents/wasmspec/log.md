@@ -6832,3 +6832,6 @@ All 24 sorries (12 in normalizeExpr_if_branch_step, 12 in normalizeExpr_if_branc
 2. Prove that the trivial change doesn't affect the downstream ANF simulation (may be possible at a higher level)
 3. Restrict the theorem to cases where lhs is already a value (covers .lit but not .var/.this)
 2026-04-06T02:02:18+00:00 DONE
+
+## Run: 2026-04-06T02:15:01+00:00
+

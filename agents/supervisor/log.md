@@ -4681,3 +4681,62 @@ The seq_right case works because `normalizeExpr (.seq b a) K = normalizeExpr a K
 
 ## Run: 2026-04-06T02:05:01+00:00
 
+
+### Metrics
+- **Sorry count**: ANF 55 + CC 12 = **67 effective sorries**
+- **Delta from last run (01:30)**: 0 change. Only jsspec ran (02:00-present, still active).
+- **Lower**: 0 sorries (DONE)
+- **Wasm/Semantics**: 0 (DONE)
+
+### Why count unchanged
+- jsspec started at 02:00, still running. No other agents ran.
+- proof agent last ran 00:30-01:55 (proved seq_right, added partial second-position proofs)
+- wasmspec last ran 01:15-02:02 (proved normalizeExpr_trivialChain_apply, analyzed K-mismatch)
+
+### ===== CRITICAL FINDING: K-MISMATCH IS UNSATISFIABLE =====
+
+**Supervisor investigation confirms: second-position cases are NOT dead code AND the `body` parameter is load-bearing through the entire proof chain.**
+
+Call chain: anfConvert_step_star → normalizeExpr_labeled_step_sim → normalizeExpr_labeled_branch_step (and normalizeExpr_if_branch_step). The `body` from the hypothesis must be EXACTLY the same in the conclusion. Changing to existential body' would require refactoring ANF_SimRel.
+
+**Affected sorries: ~39 of 55 ANF sorries** (7 labeled_branch second-position + 5 list + 14 if_branch second-position + 10 if_branch list + 3 compound inner)
+
+**Root cause**: When flat stepping `.var x → .lit v`, `trivialOfFlat(.var x) = .var x ≠ trivialOfFlatValue v`. The ANF body has `.var x` baked in, but re-normalizing produces `trivialOfFlatValue v`.
+
+**Resolution**: Requires weakening `ANF_SimRel` to allow bodies that differ only in trivials that agree under the current env. This is an ARCHITECTURAL change — directed wasmspec to analyze feasibility.
+
+### Agent Status & Redirections
+1. **proof** (NOT RUNNING): REDIRECTED to compound cases (L11638-12191, 11 sorries) + while/tryCatch/callframe/break (9 sorries). These are NOT K-mismatch blocked. Total: 20 actionable sorries.
+2. **jsspec** (RUNNING since 02:00): REDIRECTED to ClosureConvertCorrect.lean (12 sorries). ANF list cases confirmed blocked.
+3. **wasmspec** (NOT RUNNING): REDIRECTED to (a) K-mismatch architecture analysis, (b) if_branch list cases.
+
+### Memory Status
+- **793MB available** — TIGHT. jsspec lean worker using ~4GB.
+- DO NOT launch additional agents until jsspec finishes or memory frees up.
+
+### Sorry Classification (67 effective)
+**K-MISMATCH BLOCKED (39):**
+- 7 labeled_branch second-position (L10128-10272)
+- 5 labeled_branch list "no labeled" sub-cases (L10248-10391)
+- 14 if_branch second-position (7 per theorem, L13901-14077, L14996-15172)
+- 10 if_branch list (5 per theorem)
+- 3 compound inner_val/inner_arg (L11789, 11966, 12124) — may also have K-mismatch
+
+**ACTIONABLE (16):**
+- 8 compound Has*InHead cases (L11638, 11795, 11972, 12130, 12186, 12190, 12191) — proof P0
+- 2 while (L12281, 12293) — proof
+- 3 tryCatch (L16013, 16031, 16034) — proof
+- 2 callframe (L17117, 17128) — proof
+- 2 break/continue (L17348, 17401) — proof
+- MINUS: L12191 catch-all may overlap with blocked
+
+**CC (12):** architecturally blocked — jsspec investigating
+
+### Expected next run: 60-65
+- Compound cases are HARD (eval context stepping through nested expressions)
+- Realistic: proof closes 2-3 compound cases → ANF -2 to -3
+- jsspec may unblock 1-2 CC cases → CC -1 to -2
+- wasmspec provides K-mismatch analysis (no sorry reduction, but unblocking info)
+
+2026-04-06T02:13:01+00:00 DONE
+2026-04-06T02:13:08+00:00 DONE
