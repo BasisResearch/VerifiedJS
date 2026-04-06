@@ -9197,6 +9197,236 @@ theorem ANF.normalizeExpr_tryCatch_implies_hasTryCatchInHead
 
 end TryCatchInHead
 
+/-- If normalizeExpr e k produces .labeled and e has no HasLabeledInHead, then e is a trivial chain. -/
+private theorem no_labeled_head_implies_trivial_chain :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    ∀ (k : ANF.Trivial → ANF.ConvM ANF.Expr) (label : String) (body : ANF.Expr) (n m : Nat),
+    (ANF.normalizeExpr e k).run n = .ok (.labeled label body, m) →
+    ¬ HasLabeledInHead e label →
+    isTrivialChain e = true := by
+  intro d; induction d with
+  | zero =>
+    intro e hd k label body n m h hno
+    cases e with
+    | lit _ => rfl
+    | var _ => rfl
+    | «this» => rfl
+    | «break» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | «continue» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | «return» arg_r =>
+      cases arg_r with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some _ => exfalso; simp [Flat.Expr.depth] at hd
+    | yield arg_y _ =>
+      cases arg_y with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some _ => exfalso; simp [Flat.Expr.depth] at hd
+    | tryCatch _ _ _ fin => exfalso; cases fin <;> (simp [Flat.Expr.depth] at hd; try omega)
+    | _ => exfalso; simp [Flat.Expr.depth] at hd; try omega
+  | succ d ih =>
+    intro e hd k label body n m h hno
+    cases e with
+    | lit _ => rfl
+    | var _ => rfl
+    | «this» => rfl
+    | «break» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | «continue» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | labeled l body_lab => exfalso; exact hno HasLabeledInHead.labeled_direct
+    | «throw» arg_t =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_labeled_or_k arg_t _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.throw_arg hleft)
+      · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
+    | «return» arg_r =>
+      cases arg_r with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some v =>
+        exfalso; simp only [ANF.normalizeExpr] at h
+        rcases ANF.normalizeExpr_labeled_or_k v _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+        · exact hno (HasLabeledInHead.return_some_arg hleft)
+        · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
+    | yield arg_y dlg =>
+      cases arg_y with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some v =>
+        exfalso; simp only [ANF.normalizeExpr] at h
+        rcases ANF.normalizeExpr_labeled_or_k v _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+        · exact hno (HasLabeledInHead.yield_some_arg hleft)
+        · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
+    | await v =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_labeled_or_k v _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.await_arg hleft)
+      · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
+    | «if» c t e =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_labeled_or_k c _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.if_cond hleft)
+      · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure,
+          Except.pure, Except.bind] at hkt
+        split at hkt <;> (try simp_all)
+        split at hkt <;> simp_all
+    | while_ c b =>
+      exfalso; exact absurd h (ANF.normalizeExpr_while_not_labeled_any_k c b k n m label body)
+    | tryCatch body_tc cp cb fin =>
+      cases fin with
+      | none => exfalso; exact absurd h (ANF.normalizeExpr_tryCatch_none_not_labeled_any_k body_tc cp cb k n m label body)
+      | some fin => exfalso; exact absurd h (ANF.normalizeExpr_tryCatch_some_not_labeled_any_k body_tc cp cb fin k n m label body)
+    | seq a b =>
+      simp only [ANF.normalizeExpr] at h
+      have hda : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have hdb : b.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have hno_a : ¬HasLabeledInHead a label := fun ha => hno (HasLabeledInHead.seq_left ha)
+      have hno_b : ¬HasLabeledInHead b label := fun hb => hno (HasLabeledInHead.seq_right hb)
+      have htc_a := ih a hda (fun _ => ANF.normalizeExpr b k) label body n m h hno_a
+      have hpass := normalizeExpr_trivialChain_passthrough a.depth a (Nat.le_refl _) htc_a
+        (ANF.normalizeExpr b k) n
+      have h_b : (ANF.normalizeExpr b k).run n = .ok (.labeled label body, m) := by rw [← hpass]; exact h
+      have htc_b := ih b hdb k label body n m h_b hno_b
+      simp [isTrivialChain, htc_a, htc_b]
+    | «let» name init body_let =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_labeled_or_k init _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.let_init hleft)
+      · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure,
+          Except.pure, Except.bind] at hkt
+        split at hkt <;> simp_all
+    | assign name val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_labeled_or_k val _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.assign_val hleft)
+      · exact absurd hkt (ANF.bindComplex_not_labeled _ _ _ _ _ _)
+    | getProp obj _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_labeled_or_k obj _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.getProp_obj hleft)
+      · exact absurd hkt (ANF.bindComplex_not_labeled _ _ _ _ _ _)
+    | deleteProp obj _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_labeled_or_k obj _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.deleteProp_obj hleft)
+      · exact absurd hkt (ANF.bindComplex_not_labeled _ _ _ _ _ _)
+    | typeof val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_labeled_or_k val _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.typeof_arg hleft)
+      · exact absurd hkt (ANF.bindComplex_not_labeled _ _ _ _ _ _)
+    | unary _ val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_labeled_or_k val _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.unary_arg hleft)
+      · exact absurd hkt (ANF.bindComplex_not_labeled _ _ _ _ _ _)
+    | getEnv envPtr _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_labeled_or_k envPtr _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.getEnv_env hleft)
+      · exact absurd hkt (ANF.bindComplex_not_labeled _ _ _ _ _ _)
+    | makeClosure _ env =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_labeled_or_k env _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.makeClosure_env hleft)
+      · exact absurd hkt (ANF.bindComplex_not_labeled _ _ _ _ _ _)
+    | setProp obj _ val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_labeled_or_k obj _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.setProp_obj hleft)
+      · rcases ANF.normalizeExpr_labeled_or_k val _ label body _ _ hkt with hleft | ⟨_, _, _, _, hkt₂⟩
+        · exact hno (HasLabeledInHead.setProp_val hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_not_labeled _ _ _ _ _ _)
+    | binary _ lhs rhs =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_labeled_or_k lhs _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.binary_lhs hleft)
+      · rcases ANF.normalizeExpr_labeled_or_k rhs _ label body _ _ hkt with hleft | ⟨_, _, _, _, hkt₂⟩
+        · exact hno (HasLabeledInHead.binary_rhs hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_not_labeled _ _ _ _ _ _)
+    | getIndex obj idx =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_labeled_or_k obj _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.getIndex_obj hleft)
+      · rcases ANF.normalizeExpr_labeled_or_k idx _ label body _ _ hkt with hleft | ⟨_, _, _, _, hkt₂⟩
+        · exact hno (HasLabeledInHead.getIndex_idx hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_not_labeled _ _ _ _ _ _)
+    | setIndex obj idx val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_labeled_or_k obj _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.setIndex_obj hleft)
+      · rcases ANF.normalizeExpr_labeled_or_k idx _ label body _ _ hkt with hleft | ⟨_, _, _, _, hkt₂⟩
+        · exact hno (HasLabeledInHead.setIndex_idx hleft)
+        · rcases ANF.normalizeExpr_labeled_or_k val _ label body _ _ hkt₂ with hleft | ⟨_, _, _, _, hkt₃⟩
+          · exact hno (HasLabeledInHead.setIndex_val hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_not_labeled _ _ _ _ _ _)
+    | call f env args =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_labeled_or_k f _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.call_func hleft)
+      · rcases ANF.normalizeExpr_labeled_or_k env _ label body _ _ hkt with hleft | ⟨_, _, _, _, hkt₂⟩
+        · exact hno (HasLabeledInHead.call_env hleft)
+        · have args_ih : ∀ e, e ∈ args → ∀ k' (label' : String) (body' : ANF.Expr) n m,
+              (ANF.normalizeExpr e k').run n = .ok (.labeled label' body', m) →
+              HasLabeledInHead e label' ∨ ∃ (t : ANF.Trivial) (n' m' : Nat) (body'' : ANF.Expr), (k' t).run n' = .ok (.labeled label' body'', m') :=
+            fun e he => ANF.normalizeExpr_labeled_or_k e
+          rcases normalizeExprList_labeled_or_k args args_ih _ _ _ _ _ hkt₂ with hleft | ⟨_, _, _, _, hkt₃⟩
+          · exact hno (HasLabeledInHead.call_args hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_not_labeled _ _ _ _ _ _)
+    | newObj f env args =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_labeled_or_k f _ label body _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.newObj_func hleft)
+      · rcases ANF.normalizeExpr_labeled_or_k env _ label body _ _ hkt with hleft | ⟨_, _, _, _, hkt₂⟩
+        · exact hno (HasLabeledInHead.newObj_env hleft)
+        · have args_ih : ∀ e, e ∈ args → ∀ k' (label' : String) (body' : ANF.Expr) n m,
+              (ANF.normalizeExpr e k').run n = .ok (.labeled label' body', m) →
+              HasLabeledInHead e label' ∨ ∃ (t : ANF.Trivial) (n' m' : Nat) (body'' : ANF.Expr), (k' t).run n' = .ok (.labeled label' body'', m') :=
+            fun e he => ANF.normalizeExpr_labeled_or_k e
+          rcases normalizeExprList_labeled_or_k args args_ih _ _ _ _ _ hkt₂ with hleft | ⟨_, _, _, _, hkt₃⟩
+          · exact hno (HasLabeledInHead.newObj_args hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_not_labeled _ _ _ _ _ _)
+    | makeEnv values =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have vals_ih : ∀ e, e ∈ values → ∀ k' (label' : String) (body' : ANF.Expr) n m,
+          (ANF.normalizeExpr e k').run n = .ok (.labeled label' body', m) →
+          HasLabeledInHead e label' ∨ ∃ (t : ANF.Trivial) (n' m' : Nat) (body'' : ANF.Expr), (k' t).run n' = .ok (.labeled label' body'', m') :=
+        fun e he => ANF.normalizeExpr_labeled_or_k e
+      rcases normalizeExprList_labeled_or_k values vals_ih _ _ _ _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.makeEnv_values hleft)
+      · exact absurd hkt (ANF.bindComplex_not_labeled _ _ _ _ _ _)
+    | objectLit props =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have props_ih : ∀ (name : Flat.PropName) (e : Flat.Expr), (name, e) ∈ props →
+          ∀ k' (label' : String) (body' : ANF.Expr) n m,
+          (ANF.normalizeExpr e k').run n = .ok (.labeled label' body', m) →
+          HasLabeledInHead e label' ∨ ∃ (t : ANF.Trivial) (n' m' : Nat) (body'' : ANF.Expr), (k' t).run n' = .ok (.labeled label' body'', m') :=
+        fun name e he => ANF.normalizeExpr_labeled_or_k e
+      rcases normalizeProps_labeled_or_k props props_ih _ _ _ _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.objectLit_props hleft)
+      · exact absurd hkt (ANF.bindComplex_not_labeled _ _ _ _ _ _)
+    | arrayLit elems =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have elems_ih : ∀ e, e ∈ elems → ∀ k' (label' : String) (body' : ANF.Expr) n m,
+          (ANF.normalizeExpr e k').run n = .ok (.labeled label' body', m) →
+          HasLabeledInHead e label' ∨ ∃ (t : ANF.Trivial) (n' m' : Nat) (body'' : ANF.Expr), (k' t).run n' = .ok (.labeled label' body'', m') :=
+        fun e he => ANF.normalizeExpr_labeled_or_k e
+      rcases normalizeExprList_labeled_or_k elems elems_ih _ _ _ _ _ h with hleft | ⟨_, _, _, _, hkt⟩
+      · exact hno (HasLabeledInHead.arrayLit_elems hleft)
+      · exact absurd hkt (ANF.bindComplex_not_labeled _ _ _ _ _ _)
+
 /-- Stepping infrastructure for labeled-in-head: if e has HasLabeledInHead and normalizeExpr e K
     produces .labeled label body, then there exist silent Flat steps through the eval context to
     a state where normalizeExpr produces just body (without the .labeled wrapper).
