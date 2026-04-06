@@ -3482,3 +3482,33 @@ All helpers LSP-verified with no errors in the helper section.
 ## Run: 2026-04-06T01:00:02+00:00
 
 ### 2026-04-06T01:00:12+00:00 Starting run
+
+#### Progress on list-based sorry cases in labeled_branch_step
+
+**Approach**: Used `Classical.em (HasLabeledInHead <first-sub-expr> label)` to handle
+cases where the first sub-expression (funcE for call/newObj, first list element for
+makeEnv/arrayLit/objectLit) has the labeled property. The "yes" branch reuses the
+existing first-position proof pattern. The "no" branch (requiring stepping through
+trivialChains + list recursion) remains sorry.
+
+**call_args** (L10296): Handled case where `funcE` has HasLabeledInHead. Applied IH on
+funcE, lifted through `.call [·] envE argsL` context via Steps_call_func_ctx_b.
+Remaining sorry: funcE has no labeled (requires stepping f/env + list decomposition).
+
+**newObj_args** (L10370): Same pattern as call_args but with newObj_func context.
+Remaining sorry: funcE has no labeled.
+
+**makeEnv_values** (L10393): Destructured list into `cons e rest`. Used Classical.em
+on first element. Applied IH on `e`, lifted through `.makeEnv ([] ++ [·] ++ rest)`.
+Remaining sorry: first element has no labeled.
+
+**objectLit_props** (L10425): Destructured props into `cons (propName, e) rest`.
+Applied IH on `e`, lifted through `.objectLit ([] ++ [(propName, ·)] ++ rest)`.
+Remaining sorry: first prop value has no labeled.
+
+**arrayLit_elems** (L10457): Same pattern as makeEnv_values but with arrayLit context.
+Remaining sorry: first element has no labeled.
+
+**Net effect**: Each of the 5 original sorrys was replaced by proof code handling one
+branch + a smaller-scoped sorry for the complex branch. The proofs handle the common
+case where the labeled property is in the first/leading sub-expression.
