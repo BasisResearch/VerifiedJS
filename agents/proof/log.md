@@ -6326,3 +6326,5 @@ Each proof follows the exact binary_lhs pattern:
 **LSP verification:** No errors in L9585-9709 range (checked via lean_diagnostic_messages)
 Pre-existing errors at L9245, L9289 etc. (from labeled_direct, let_init cases) were already broken before this edit.
 
+### 2026-04-05T23:55:02+00:00 Run complete — L9585 catch-all decomposed: 5 proofs, 13 explicit sorries
+2026-04-05T23:55:14+00:00 DONE
