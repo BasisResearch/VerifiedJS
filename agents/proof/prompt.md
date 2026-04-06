@@ -1,4 +1,4 @@
-# proof — Compound cases + K-mismatch redesign investigation
+# proof — Refactor throw/return/await/yield to depth induction
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY (and Flat/Semantics.lean for infrastructure)
@@ -8,64 +8,97 @@
 ## !! CRITICAL: DO NOT USE WHILE/UNTIL LOOPS !!
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 
-## MEMORY: 7.7GB total, NO swap. ~800MB free. USE LSP ONLY — no `lake build`.
+## MEMORY: 7.7GB total, NO swap. ~1.5GB free. USE LSP ONLY — no `lake build`.
 
 ## CONCURRENCY: wasmspec also edits ANFConvertCorrect.lean
 - wasmspec works on L13901+ and L14996+ zones (if_branch individual cases)
-- jsspec may work on list cases (L10248, L10297, L10328, L10360, L10391)
-- **YOU** own compound zones (L11638+) AND while/tryCatch/callframe/break zones
+- jsspec may work on ClosureConvertCorrect.lean
+- **YOU** own throw/return/await/yield step_sim AND compound zones AND while/tryCatch/callframe/break
 - DO NOT touch wasmspec or jsspec zones
 
-## ===== K-MISMATCH STATUS: CONFIRMED UNFIXABLE WITHOUT THEOREM REDESIGN =====
+## ===== THE KEY INSIGHT: COMPOUND CASES NEED DEPTH INDUCTION =====
 
-**All 7 second-position cases (binary_rhs, setProp_val, etc.) in labeled_branch_step are PROVABLY UNSATISFIABLE as stated.** The `body` parameter is load-bearing through anfConvert_step_star → normalizeExpr_labeled_step_sim → normalizeExpr_labeled_branch_step. Changing the conclusion to existentially quantify body' would require refactoring the ENTIRE chain including ANF_SimRel.
+**Root cause of all 11 compound sorries**: `normalizeExpr_throw_step_sim` (L11568), `normalizeExpr_return_step_sim` (L11700), `normalizeExpr_await_step_sim` (L11884), and `normalizeExpr_yield_step_sim` (L12034) are **standalone theorems without induction**. Their compound cases (HasThrowInHead seq_left, let_init, etc.) need recursive calls on sub-expressions, but there's no IH available.
 
-**DO NOT spend time on second-position sorry cases.** They cannot be proved without theorem redesign.
+**The fix**: Refactor these 4 theorems to use **depth induction**, exactly like `normalizeExpr_if_branch_step` (L13034) and `normalizeExpr_labeled_step_sim` (L10455) already do.
 
-## ===== YOUR PRIORITY: COMPOUND CASES (11 sorries) =====
-
-These are NOT blocked by K-mismatch. They are in normalizeExpr_throw_step_sim and similar:
-
-```
-L11638: sorry -- compound HasThrowInHead cases
-L11789: | _ => sorry -- compound inner_val
-L11795: sorry -- compound HasReturnInHead cases
-L11966: | _ => sorry -- compound inner_arg
-L11972: sorry -- compound HasAwaitInHead cases
-L12124: | _ => sorry -- compound inner_val
-L12130: sorry -- compound HasYieldInHead cases
-L12186: | some val => sorry -- return (some val): compound
-L12190: | some val => sorry -- yield (some val): compound
-L12191: | _ => sorry -- compound expressions catch-all
+### Template from if_branch_step (L13034):
+```lean
+private theorem normalizeExpr_if_branch_step :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    HasIfInHead e →
+    ∀ (env : Flat.Env) ... :=  by
+  intro d; induction d with
+  | zero => ... -- impossible: depth 0 can't have HasIfInHead
+  | succ d ih => ...
+    -- For compound cases like seq_left:
+    -- have h_sub_depth : sub.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+    -- obtain ⟨...⟩ := ih sub h_sub_depth h_sub_if env ...
+    -- lift steps through eval context
 ```
 
-### Approach for compound cases:
-The compound cases handle expressions like `.seq a b`, `.let n i b`, `.assign n v`, `.if c t e`, `.call f e args` where `HasThrowInHead`/`HasReturnInHead` etc. is nested deeper inside.
+## ===== P0: REFACTOR normalizeExpr_throw_step_sim (1 sorry → depth induction) =====
 
-For each compound case:
-1. Use `lean_goal` to see the exact proof state
-2. The expression e has HasThrowInHead (or similar) deep inside
-3. Flat stepping evaluates left-to-right, entering the sub-expression that has the throw/return/etc.
-4. Use IH on the sub-expression, then lift through the eval context
-
-**Key pattern**: `Has*InHead` for compound expressions uses constructors like `seq_left`, `let_init`, `if_cond`, `assign_val`, etc. Case-split on the constructor, apply IH + eval context lifting.
-
-## ALSO YOURS: While + tryCatch + callframe + break/continue (9 sorries)
-
-```
-L12281: sorry -- While condition value case
-L12293: sorry -- Condition-steps case
-L16013: sorry -- tryCatch body-error
-L16031: sorry -- tryCatch body-step
-L16034: | _ => sorry -- compound cases: deferred
-L17117: sorry -- noCallFrameReturn
-L17128: sorry -- body_sim IH
-L17348: sorry -- break
-L17401: sorry -- continue
+Current signature (L11568):
+```lean
+private theorem normalizeExpr_throw_step_sim
+    (sf : Flat.State) (k : ...) (arg : ANF.Trivial) (n m : Nat)
+    (hnorm : ...) (hk : ...) (hewf : ...) (hna : ...) :
 ```
 
-## P2 (LOW PRIORITY): Investigate K-mismatch resolution
-If you finish compound cases, investigate whether `ANF_SimRel` (L114-121) can be weakened to relate flat and ANF states modulo trivial substitution. The issue: when flat steps `.var x → .lit v`, the ANF body has `.var x` baked in, but the new normalizeExpr produces `trivialOfFlatValue v`. A SimRel that allows `.var x` ↔ `trivialOfFlatValue (env[x])` would unblock ~39 sorries.
+Refactor to:
+```lean
+private theorem normalizeExpr_throw_step_sim :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    HasThrowInHead e →
+    ∀ (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+      (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+      (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat),
+    (∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m')) →
+    (ANF.normalizeExpr e k).run n = .ok (.throw arg, m) →
+    ExprWellFormed e env →
+    NoNestedAbrupt e →
+    -- ok case + error case conclusions
+```
+
+### Steps:
+1. Change the signature to take `(d : Nat) (e : Flat.Expr), e.depth ≤ d → HasThrowInHead e →`
+2. Move `intro d; induction d` at the top
+3. `zero` case: impossible (no HasThrowInHead at depth 0) — prove by cases on e
+4. `succ d ih` case: keep ALL existing base case proofs (lit, var, this, break, continue)
+5. For the catch-all compound case at L11694-11696, case-split on HasThrowInHead:
+   - For each compound constructor (e.g., `seq_left`): extract sub_depth, apply `ih`, lift through context using existing `Steps_*_ctx_b` lemmas
+6. Update ALL call sites of normalizeExpr_throw_step_sim to pass `e.depth` and `Nat.le_refl _`
+
+### The compound case template:
+```lean
+| HasThrowInHead.seq_left a b h_a =>
+  simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
+  have ha_depth : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+  -- normalizeExpr (.seq a b) k = normalizeExpr a (fun _ => normalizeExpr b k)
+  -- So hnorm says normalizeExpr a (...) = .ok (.throw arg, m)
+  -- The throw propagates from a's normalization
+  obtain ⟨ok_case, err_case⟩ := ih a ha_depth h_a env heap trace funcs cs _ arg _ m _ hnorm' hewf_a hna_a
+  -- Lift through seq context
+  ...
+```
+
+**Do the throw case FIRST. If it works, apply the same pattern to return/await/yield.**
+
+## P1: While + tryCatch + callframe + break/continue (9 sorries)
+After completing P0, these may become tractable.
+
+```
+L12339: sorry -- While condition value case
+L12351: sorry -- Condition-steps case
+L16349: sorry -- tryCatch body-error
+L16367: sorry -- tryCatch body-step
+L16370: | _ => sorry -- compound cases: deferred
+L17453: sorry -- noCallFrameReturn
+L17464: sorry -- body_sim IH
+L17684: sorry -- break
+L17737: sorry -- continue
+```
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`
