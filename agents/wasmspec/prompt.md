@@ -7,13 +7,11 @@
 - **DO NOT** use while/until/for loops, pgrep, sleep loops
 - You CAN edit ANFConvertCorrect.lean ONLY
 
-## MEMORY: ~3GB free. USE LSP ONLY — no builds.
+## MEMORY: ~6GB free. USE LSP ONLY — no builds.
 
 ## CONCURRENCY: proof agent also edits ANFConvertCorrect.lean
 - proof agent works on L9584-9709 zone + L10956-11611 zone
 - **YOU** own L13355-13367 and L14263-14275 ONLY
-
-## !! LINE NUMBERS SHIFTED !! Old L13231→L13355, Old L14139→L14263 (+124 lines from proof agent decomposition)
 
 ## YOUR 26 SORRIES (13 per theorem):
 
@@ -36,7 +34,7 @@
 
 ### normalizeExpr_if_branch_step_false — L14263-14275 (mirror of above)
 
-## HELPERS AVAILABLE (ALL EXIST):
+## HELPERS AVAILABLE (ALL EXIST — including NEW list helpers):
 | Helper | For case |
 |--------|----------|
 | Steps_binary_rhs_ctx_b op lv | binary_rhs |
@@ -50,13 +48,15 @@
 | Steps_setIndex_idx_ctx_b ov val | setIndex_idx |
 | Steps_setIndex_val_ctx_b ov iv | setIndex_val |
 | Steps_makeEnv_values_ctx_b done remaining | makeEnv_values |
+| **Steps_objectLit_val_ctx_b** (NEW!) | objectLit_props |
+| **Steps_arrayLit_elem_ctx_b** (NEW!) | arrayLit_elems |
 
 ## APPROACH
 
 ### First use `lean_goal` at L13355 to see the exact proof state. Line numbers may have shifted slightly — verify with `lean_diagnostic_messages` first.
 
 ### First-position cases (newObj_func at L13358):
-Follow the setProp_obj pattern. Template:
+Follow the setProp_obj pattern (proved at ~L13060). Template:
 ```lean
     | newObj_func h_f =>
       rename_i f envExpr args
@@ -84,16 +84,19 @@ Follow the setProp_obj pattern. Template:
 ```
 
 ### Second-position cases (binary_rhs, call_env, newObj_env, setProp_val, getIndex_idx, setIndex_idx, setIndex_val):
-Use `lean_goal` at each sorry. The HasIfInHead means the INNER expression has the if. Check with LSP what values are available.
+These are HARDER. The first sub-expression must step to a value first. Use the pattern from L12940-12988 (seq_right in the if_branch proof). Key steps:
+1. Show first sub-expr is trivialChain via `no_if_head_implies_trivial_chain`
+2. `trivialChain_eval_value` to step to value
+3. Lift with context helper, add discard step, IH
 
 ### List-based cases (call_args, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems):
-Leave as sorry if too complex — jsspec is building list helpers.
+These now have helpers! Try `objectLit_props` and `arrayLit_elems` with the new `Steps_objectLit_val_ctx_b` and `Steps_arrayLit_elem_ctx_b`.
 
 ### PRIORITY ORDER:
-1. newObj_func (first-position, straightforward)
+1. newObj_func (first-position, straightforward) — copy template above
 2. binary_rhs, call_env, newObj_env (second-position with single value)
 3. setProp_val, getIndex_idx, setIndex_idx, setIndex_val (second/third-position)
-4. List cases — attempt if time permits
+4. List cases — attempt with new helpers
 
 ### DO BOTH THEOREMS: Each case solved in if_branch_step (L13355-13367) should be mirrored in if_branch_step_false (L14263-14275).
 

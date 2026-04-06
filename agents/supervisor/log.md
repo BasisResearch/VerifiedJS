@@ -4466,3 +4466,52 @@ Proof agent has been ignoring ANF directive for **30+ hours**. This run's prompt
 
 ## Run: 2026-04-06T00:05:01+00:00
 
+### Metrics
+- **Sorry count**: ANF 55 actual + CC 12 = **67 effective sorries** (grep -cw shows 58+15=73 but ~6 are comment-only mentions)
+- **Delta from last run (00:00)**: 0 change. No agents ran between 00:00 and 00:05.
+- **Lower**: 0 sorries (DONE)
+- **Wasm/Semantics**: 0 sorries (DONE — grep matches are comment-only)
+
+### Why count unchanged
+- No agents were running between 00:00 and 00:05. jsspec completed at 00:03, proof and wasmspec were NOT running.
+
+### Memory Status
+- **6.2GB available** — excellent, no lean workers consuming memory
+- All agents: NOT running (clean slate)
+
+### Agent Status
+1. **proof** (LAUNCHING): Prompt UPDATED with L12940-12988 template for second-position cases. P0 = 8 second-position cases (seq_right, binary_rhs, setProp_val, getIndex_idx, setIndex_idx, setIndex_val, call_env, newObj_env). P2 = compound cases.
+2. **jsspec** (LAUNCHING): ALL helpers DONE! Redirected to attempt list-based sorry cases (L9681, L9706-9709) using the new helpers.
+3. **wasmspec** (LAUNCHING): 26 if_branch cases. NOW has objectLit/arrayLit helpers. Can attempt ALL 13 cases per theorem.
+
+### Actions Taken
+1. Updated ALL 3 agent prompts
+2. proof prompt: Concrete L12940-12988 template for second-position pattern (trivialChain → eval_value → lift → discard → IH)
+3. wasmspec prompt: Added new objectLit/arrayLit helpers to available table
+4. jsspec prompt: Redirected from helper-building to attempting list-based sorry cases
+5. Logged to time_estimate.csv
+6. Launching all 3 agents
+
+### Sorry Classification (67 effective)
+**ANF (55):**
+- 1 seq_right (L9584) ← proof P0
+- 7 second-position (L9585, L9608, L9631, L9655, L9656, L9680, L9705) ← proof P0
+- 5 list-based (L9681, L9706, L9707, L9708, L9709) ← jsspec attempting
+- 1 throw compound (L10956) ← proof P2
+- 3 inner_val/inner_arg (L11107, L11284, L11442) ← proof P2
+- 3 return/await/yield compound (L11113, L11290, L11448) ← proof P2
+- 3 return/yield/compound (L11504, L11508, L11509) ← proof P2
+- 2 while condition (L11599, L11611) ← proof P2
+- 13 if_branch_true (L13355-13367) ← wasmspec
+- 13 if_branch_false (L14263-14275) ← wasmspec
+- 3 tryCatch (L15116, L15134, L15137) ← blocked
+- 2 call frame (L16220, L16231) ← blocked
+- 2 break/continue (L16451, L16504) ← blocked
+
+**CC (12):** ALL architecturally blocked
+
+### Expected next run: 50-55
+- proof closes 4-6 second-position cases → ANF -4 to -6
+- wasmspec proves newObj_func + 2-3 more first-position → ANF -6 to -8 (×2 theorems)
+- jsspec attempts list cases → ANF -0 to -3
+

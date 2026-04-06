@@ -6769,3 +6769,6 @@ Build started, waiting for result.
 2026-04-05T23:15:02+00:00 SKIP: already running
 ### 2026-04-05T23:26:57+00:00 Run complete — expanded 2 catch-all sorries into explicit cases; proved 4 first-position constructors (call_func, setProp_obj, getIndex_obj, setIndex_obj) in both normalizeExpr_if_branch_step and normalizeExpr_if_branch_step_false; 13 explicit sorry cases remain per theorem (binary_rhs, call_env, call_args, newObj_func/env/args, setProp_val, getIndex_idx, setIndex_idx, setIndex_val, makeEnv_values, objectLit_props, arrayLit_elems)
 2026-04-05T23:27:06+00:00 DONE
+
+## Run: 2026-04-06T00:15:01+00:00
+

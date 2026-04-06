@@ -1,32 +1,36 @@
-# jsspec — Build objectLit + arrayLit helpers, then verify all helpers compile
+# jsspec — ALL HELPERS BUILT! Now: verify compilation + attempt list cases in labeled_branch_step
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
 - **DO NOT** use while/until loops, sleep loops, pgrep.
 
-## MEMORY: ~3GB free. USE LSP ONLY.
+## MEMORY: ~6GB free. USE LSP ONLY.
 
-## STATUS: ALL basic helpers DONE. CC 12 sorries (all architecturally blocked).
+## STATUS: ALL eval context helpers DONE including objectLit/arrayLit. Great work!
 
-## MISSION: Build remaining list-based eval context helpers
+## MISSION: Attempt list-based sorry cases
 
-### EXISTING helpers (ALL BUILT — great work!):
-Steps_if_cond_ctx_b, Steps_seq_ctx_b, Steps_let_init_ctx_b, Steps_throw_ctx_b, Steps_return_some_ctx_b, Steps_await_ctx_b, Steps_yield_some_ctx_b, Steps_unary_ctx_b, Steps_binary_lhs_ctx_b, Steps_getProp_ctx_b, Steps_deleteProp_ctx_b, Steps_typeof_ctx_b, Steps_assign_ctx_b, Steps_getEnv_ctx_b, Steps_makeClosure_env_ctx_b, Steps_binary_rhs_ctx_b, Steps_call_func_ctx_b, Steps_setProp_obj_ctx_b, Steps_getIndex_obj_ctx_b, Steps_setIndex_obj_ctx_b, Steps_setProp_val_ctx_b, Steps_setIndex_val_ctx_b, Steps_call_env_ctx_b, Steps_call_arg_ctx_b, Steps_newObj_func_ctx_b, Steps_newObj_env_ctx_b, Steps_newObj_arg_ctx_b, Steps_getIndex_idx_ctx_b, Steps_setIndex_idx_ctx_b, Steps_makeEnv_values_ctx_b
+### ALL helpers exist. Now use them to close list-based sorry cases.
 
-### STILL MISSING — BUILD THESE:
-1. `step?_objectLit_val_ctx` — single step lifting through objectLit prop value
-2. `step?_arrayLit_elem_ctx` — single step lifting through arrayLit element
-3. `Steps_objectLit_val_ctx_b` — multi-step lifting through objectLit value position
-4. `Steps_arrayLit_elem_ctx_b` — multi-step lifting through arrayLit element position
+The following 5 sorry cases at L9681, L9706-L9709 in `normalizeExpr_labeled_branch_step` need list induction:
+- `call_args` (L9681) — use `Steps_call_arg_ctx_b`
+- `newObj_args` (L9706) — use `Steps_newObj_arg_ctx_b`
+- `makeEnv_values` (L9707) — use `Steps_makeEnv_values_ctx_b`
+- `objectLit_props` (L9708) — use `Steps_objectLit_val_ctx_b`
+- `arrayLit_elems` (L9709) — use `Steps_arrayLit_elem_ctx_b`
 
-These are list-based like Steps_makeEnv_values_ctx_b. Follow the same pattern with `done` and `remaining` parameters.
+### APPROACH:
+1. `lean_goal` at each sorry to see the exact proof state
+2. These involve lists of sub-expressions where one element has HasLabeledInHead
+3. The pattern: elements before the labeled one are trivialChains (eval to values), then IH on the labeled element
+4. You'll need list induction — the `HasLabeledInHead.call_args` constructor likely carries an index or membership proof
 
 ### CONCURRENCY
-- proof agent works on L9584-9709 zone + L10956-11611 zone
+- proof agent works on L9584-9585, L9608, L9631, L9655-9656, L9680, L9705 + L10956-11611 zone
 - wasmspec works on L13355-13367, L14263-14275 zones
-- You: add helpers in the helper section ONLY (around L1500-2850)
+- **YOU** own L9681, L9706-L9709 (list cases) + helper section (~L1500-2850)
 
-### SECONDARY: Use `lean_diagnostic_messages` on the helper section to confirm no errors.
+### SECONDARY: If list cases are too complex, use `lean_diagnostic_messages` on the full file to identify any compilation errors that need fixing.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`
