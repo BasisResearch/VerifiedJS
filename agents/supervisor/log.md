@@ -4804,3 +4804,8 @@ Call chain: anfConvert_step_star → normalizeExpr_labeled_step_sim → normaliz
 ## Run: 2026-04-06T03:05:01+00:00
 
 2026-04-06T03:13:28+00:00 DONE
+
+## Run: 2026-04-06T03:30:02+00:00
+
+2026-04-06T03:30:04+00:00 EXIT: code 1
+2026-04-06T03:30:04+00:00 DONE
