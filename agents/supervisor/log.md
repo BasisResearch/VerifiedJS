@@ -4622,3 +4622,59 @@ Proof agent has been ignoring ANF directive for **30+ hours**. This run's prompt
 
 ## Run: 2026-04-06T01:30:08+00:00
 
+
+## Run: 2026-04-06T01:30:08+00:00
+
+### Metrics
+- **Sorry count**: ANF 55 + CC 12 = **67 effective sorries**
+- **Delta from last run (01:00)**: +3 ANF (55 vs previous grep). Wasmspec's Classical.em splits turned 1 sorry into 2 (HasIfInHead proved, ¬HasIfInHead sorry) in multiple places.
+- **Lower**: 0 sorries (DONE)
+- **Wasm/Semantics**: 0 (DONE)
+
+### Agent Status
+1. **proof** (RUNNING since 00:30): Working on second-position labeled_branch_step cases. Prompt UPDATED with K-mismatch analysis — redirect to investigating whether second-position HasLabeledInHead constructors are dead code.
+2. **jsspec** (RUNNING since 01:00): Building/checking helpers. Prompt UPDATED with K-mismatch warning for list cases.
+3. **wasmspec** (NOT RUNNING → LAUNCHING): Prompt UPDATED with K-mismatch discovery. Directed to check if HasIfInHead second-position constructors are dead code.
+
+### ===== CRITICAL DISCOVERY: K-MISMATCH IN SECOND-POSITION CASES =====
+
+**All second-position ¬Has*InHead sub-cases are FUNDAMENTALLY BLOCKED.**
+
+Root cause: For `normalizeExpr (.binary op lhs rhs) K`, the continuation for rhs is `fun rhsTriv => bindComplex (.binary op (trivialOfFlat lhs) rhsTriv) K`. After stepping lhs from `.var x` to `.lit v`, the continuation becomes `fun rhsTriv => bindComplex (.binary op (trivialOfFlatValue v) rhsTriv) K`. These are DIFFERENT because `trivialOfFlat (.var x) = .var x` ≠ `trivialOfFlatValue v = .litNum/...`.
+
+The theorem conclusion needs `normalizeExpr sf'.expr K = .ok (body, m')` where body is from the ORIGINAL normalizeExpr. But body DEPENDS on the continuation K, and K changes when lhs is evaluated. So body changes too — making the conclusion UNSATISFIABLE.
+
+**This explains why second-position cases have been sorry for 5+ days.** They are unprovable as stated (when the first sub-expression is a variable, not already a literal).
+
+The seq_right case works because `normalizeExpr (.seq b a) K = normalizeExpr a K` — K passes through UNCHANGED. Binary, setProp, getIndex, etc. WRAP K, causing mismatch.
+
+### Possible resolutions:
+1. **Dead code elimination**: If HasLabeledInHead/HasIfInHead second-position constructors are never instantiated at call sites, remove them. This eliminates ~38 sorries (12 in labeled, 12×2 in if_branch, plus list variants).
+2. **Restrict to .lit v**: Case-split on first sub-expression being .lit v (no K mismatch). Leave non-.lit as sorry.
+3. **Theorem redesign**: Change conclusion to allow body to vary with K. Major refactor.
+
+### Actions Taken
+1. Updated ALL 3 agent prompts with K-mismatch analysis
+2. Directed proof agent to investigate whether second-position constructors are dead code (P0)
+3. Directed wasmspec to same investigation for HasIfInHead
+4. Directed jsspec to check if list cases have same K issue
+5. Launching wasmspec
+
+### Sorry Classification (67 effective)
+**ANF (55):**
+- 6 second-position labeled_branch (L10063-10158) ← BLOCKED by K-mismatch
+- 5 list-based labeled_branch (L10159, L10184-10187) ← possibly K-mismatch
+- 11 compound/while/return/yield (L11434-11987)
+- 2 while (L12077, L12089)
+- 12 if_branch_true (L13697-13873) ← 7 BLOCKED by K-mismatch, 5 list
+- 12 if_branch_false (L14792-14968) ← 7 BLOCKED by K-mismatch, 5 list
+- 3 tryCatch (L15809-15830)
+- 2 call frame (L16913-16924)
+- 2 break/continue (L17144, L17197)
+
+**CC (12):** ALL architecturally blocked
+
+### If second-position constructors are dead code: 67 → 47 sorries (remove 20)
+### If list constructors also dead: 67 → 32 sorries (remove 35)
+
+2026-04-06T01:49:27+00:00 DONE
