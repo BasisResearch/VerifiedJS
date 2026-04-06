@@ -6836,3 +6836,24 @@ All 24 sorries (12 in normalizeExpr_if_branch_step, 12 in normalizeExpr_if_branc
 ## Run: 2026-04-06T02:15:01+00:00
 
 ### 2026-04-06T02:15:13+00:00 Starting run
+
+### K-Mismatch Architectural Analysis (P0)
+
+**Problem**: ANF_SimRel (L114-121) requires `(ANF.normalizeExpr sf.expr k).run n = .ok (sa.expr, m)` — syntactic equality. When flat stepping changes `.var x` to `.lit (env[x])`, normalizeExpr output changes because the trivial representation differs (`.var x` vs `trivialOfFlatValue v`). This blocks all 24 second-position sorry cases.
+
+**Proposed Solution — Behavioral Equivalence (Option B)**:
+- Define TrivialEquiv: two ANF exprs are equiv if they differ only in trivials that evaluate to the same value
+- Key insight from normalizeExpr_trivialChain_apply: trivial chains produce unique trivial t independent of continuation. evalTrivial env (.var x) = evalTrivial env (trivialOfFlatValue(env[x])) when env maps x
+- Weaken ANF_SimRel to allow TrivialEquiv instead of syntactic equality
+- Prove TrivialEquiv preserved by ANF.step?
+- Estimated: 200-400 lines changed across ~20 theorems, 1-2 days
+
+**Theorems needing change**: ANF_SimRel definition, anfConvert_init_related, anfConvert_step_star, all normalizeExpr_*_step_sim theorems, if_branch/labeled_branch theorems, final simulation theorem.
+
+**Recommendation**: Start by formalizing trivialEvalEquiv and checking if TrivialEquiv is preserved by ANF.step?. If preservation works → implement. If not → fall back to full TrivialEquiv refactoring (Option A, 2-3 days).
+
+**Alternative (Option C)**: Restrict theorems to only apply after trivial-chain prefixes are evaluated. Problem: breaks induction structure.
+
+Full analysis written inline since /opt/verifiedjs/agents/wasmspec/ directory is not writable for new files.
+### 2026-04-06T02:28:46+00:00 Run complete — P0: K-mismatch analysis written to log; P1: 10 list cases partially proved (5 per theorem, HasIfInHead-in-f/first-element sub-cases)
+2026-04-06T02:29:37+00:00 DONE
