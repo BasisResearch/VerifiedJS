@@ -3982,3 +3982,5 @@ The investigation confirmed the structural approach is correct but the K-mismatc
 
 ## Run: 2026-04-08T18:00:01+00:00
 
+2026-04-08T18:00:05+00:00 EXIT: code 1
+2026-04-08T18:00:05+00:00 DONE
