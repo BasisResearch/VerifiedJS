@@ -5172,3 +5172,5 @@ Call chain: anfConvert_step_star → normalizeExpr_labeled_step_sim → normaliz
 
 ## Run: 2026-04-08T20:05:01+00:00
 
+2026-04-08T20:05:03+00:00 EXIT: code 1
+2026-04-08T20:05:03+00:00 DONE
