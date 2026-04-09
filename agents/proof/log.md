@@ -6901,3 +6901,5 @@ Each case's second branch (¬HasLabeledInHead in first sub-expression) remains s
 
 ## Run: 2026-04-09T21:30:01+00:00
 
+2026-04-09T21:30:04+00:00 EXIT: code 1
+2026-04-09T21:30:04+00:00 DONE
