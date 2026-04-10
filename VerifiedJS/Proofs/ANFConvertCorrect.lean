@@ -10396,7 +10396,7 @@ private theorem normalizeExpr_labeled_branch_step :
       · -- ¬HasLabeledInHead funcE: funcE is trivialChain; blocked by trivial mismatch
         sorry
     | call_args h_args =>
-      rename_i funcE envE argsL
+      rename_i argsL envE funcE
       simp only [ANF.normalizeExpr] at hnorm
       rcases Classical.em (HasLabeledInHead funcE label) with h_f | h_f_no
       · have hf_depth : funcE.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
@@ -10471,7 +10471,7 @@ private theorem normalizeExpr_labeled_branch_step :
       · -- ¬HasLabeledInHead funcE: funcE is trivialChain; blocked by trivial mismatch
         sorry
     | newObj_args h_args =>
-      rename_i funcE envE argsL
+      rename_i argsL envE funcE
       simp only [ANF.normalizeExpr] at hnorm
       rcases Classical.em (HasLabeledInHead funcE label) with h_f | h_f_no
       · have hf_depth : funcE.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
@@ -10508,7 +10508,7 @@ private theorem normalizeExpr_labeled_branch_step :
           obtain ⟨sf_e, evs_e, hsteps_e, hsil_e, henv_e, hheap_e, hfuncs_e, hcs_e,
             htrace_e, hpres_e, ⟨n_e, m_e, hnorm_e⟩, hewf_e⟩ :=
             ih e he_depth label h_e env heap trace funcs cs _ n m body
-              hnorm (fun x hfx => hewf x (VarFreeIn.makeEnv_elem _ _ _ (List.mem_cons_self _ _) hfx))
+              hnorm (fun x hfx => hewf x (VarFreeIn.makeEnv_elem _ _ _ List.mem_cons_self hfx))
           obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
             Steps_makeEnv_values_ctx_b [] rest (by simp) hsteps_e
               (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion)
@@ -10518,7 +10518,7 @@ private theorem normalizeExpr_labeled_branch_step :
           · exact Steps_ctx_lift_pres (fun inner => .makeEnv ([] ++ [inner] ++ rest))
               (fun s inner hv t si hs he => step?_makeEnv_values_ctx s [] rest inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [ANF.normalizeExpr, ANF.normalizeExprList]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExprList]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | makeEnv_elem _ _ v hmem hfv =>
@@ -10540,7 +10540,7 @@ private theorem normalizeExpr_labeled_branch_step :
           obtain ⟨sf_e, evs_e, hsteps_e, hsil_e, henv_e, hheap_e, hfuncs_e, hcs_e,
             htrace_e, hpres_e, ⟨n_e, m_e, hnorm_e⟩, hewf_e⟩ :=
             ih e he_depth label h_e env heap trace funcs cs _ n m body
-              hnorm (fun x hfx => hewf x (VarFreeIn.objectLit_value _ _ (propName, e) (List.mem_cons_self _ _) hfx))
+              hnorm (fun x hfx => hewf x (VarFreeIn.objectLit_value _ _ (propName, e) List.mem_cons_self hfx))
           obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
             Steps_objectLit_val_ctx_b [] rest propName (by simp) hsteps_e
               (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion)
@@ -10550,7 +10550,7 @@ private theorem normalizeExpr_labeled_branch_step :
           · exact Steps_ctx_lift_pres (fun inner => .objectLit ([] ++ [(propName, inner)] ++ rest))
               (fun s inner hv t si hs he => step?_objectLit_val_ctx s [] rest propName inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [ANF.normalizeExpr, ANF.normalizeProps]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeProps]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | objectLit_value _ _ q hmem hfv =>
@@ -10571,7 +10571,7 @@ private theorem normalizeExpr_labeled_branch_step :
           obtain ⟨sf_e, evs_e, hsteps_e, hsil_e, henv_e, hheap_e, hfuncs_e, hcs_e,
             htrace_e, hpres_e, ⟨n_e, m_e, hnorm_e⟩, hewf_e⟩ :=
             ih e he_depth label h_e env heap trace funcs cs _ n m body
-              hnorm (fun x hfx => hewf x (VarFreeIn.arrayLit_elem _ _ _ (List.mem_cons_self _ _) hfx))
+              hnorm (fun x hfx => hewf x (VarFreeIn.arrayLit_elem _ _ _ List.mem_cons_self hfx))
           obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
             Steps_arrayLit_elem_ctx_b [] rest (by simp) hsteps_e
               (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion)
@@ -10581,7 +10581,7 @@ private theorem normalizeExpr_labeled_branch_step :
           · exact Steps_ctx_lift_pres (fun inner => .arrayLit ([] ++ [inner] ++ rest))
               (fun s inner hv t si hs he => step?_arrayLit_elem_ctx s [] rest inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [ANF.normalizeExpr, ANF.normalizeExprList]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExprList]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | arrayLit_elem _ _ v hmem hfv =>
@@ -14348,7 +14348,7 @@ private theorem normalizeExpr_if_branch_step :
           obtain ⟨sf_e, evs_e, hsteps_e, hsil_e, henv_e, hheap_e, hfuncs_e, hcs_e,
             htrace_e, hpres_e, ⟨n_e, m_e, hnorm_e⟩, hewf_e⟩ :=
             ih e he_depth h_e env heap trace funcs cs _ n m cond then_ else_ v
-              hnorm (fun x hfx => hewf x (VarFreeIn.makeEnv_elem _ _ _ (List.mem_cons_self _ _) hfx)) heval hbool
+              hnorm (fun x hfx => hewf x (VarFreeIn.makeEnv_elem _ _ _ List.mem_cons_self hfx)) heval hbool
           obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
             Steps_makeEnv_values_ctx_b [] rest (by simp) hsteps_e
               (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion)
@@ -14358,7 +14358,7 @@ private theorem normalizeExpr_if_branch_step :
           · exact Steps_ctx_lift_pres (fun inner => .makeEnv ([] ++ [inner] ++ rest))
               (fun s inner hv t si hs he => step?_makeEnv_values_ctx s [] rest inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [ANF.normalizeExpr, ANF.normalizeExprList]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExprList]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | makeEnv_elem _ _ v hmem hfv =>
@@ -14380,7 +14380,7 @@ private theorem normalizeExpr_if_branch_step :
           obtain ⟨sf_e, evs_e, hsteps_e, hsil_e, henv_e, hheap_e, hfuncs_e, hcs_e,
             htrace_e, hpres_e, ⟨n_e, m_e, hnorm_e⟩, hewf_e⟩ :=
             ih e he_depth h_e env heap trace funcs cs _ n m cond then_ else_ v
-              hnorm (fun x hfx => hewf x (VarFreeIn.objectLit_value _ _ (propName, e) (List.mem_cons_self _ _) hfx)) heval hbool
+              hnorm (fun x hfx => hewf x (VarFreeIn.objectLit_value _ _ (propName, e) List.mem_cons_self hfx)) heval hbool
           obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
             Steps_objectLit_val_ctx_b [] rest propName (by simp) hsteps_e
               (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion)
@@ -14390,7 +14390,7 @@ private theorem normalizeExpr_if_branch_step :
           · exact Steps_ctx_lift_pres (fun inner => .objectLit ([] ++ [(propName, inner)] ++ rest))
               (fun s inner hv t si hs he => step?_objectLit_val_ctx s [] rest propName inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [ANF.normalizeExpr, ANF.normalizeProps]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeProps]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | objectLit_value _ _ q hmem hfv =>
@@ -14411,7 +14411,7 @@ private theorem normalizeExpr_if_branch_step :
           obtain ⟨sf_e, evs_e, hsteps_e, hsil_e, henv_e, hheap_e, hfuncs_e, hcs_e,
             htrace_e, hpres_e, ⟨n_e, m_e, hnorm_e⟩, hewf_e⟩ :=
             ih e he_depth h_e env heap trace funcs cs _ n m cond then_ else_ v
-              hnorm (fun x hfx => hewf x (VarFreeIn.arrayLit_elem _ _ _ (List.mem_cons_self _ _) hfx)) heval hbool
+              hnorm (fun x hfx => hewf x (VarFreeIn.arrayLit_elem _ _ _ List.mem_cons_self hfx)) heval hbool
           obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
             Steps_arrayLit_elem_ctx_b [] rest (by simp) hsteps_e
               (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion)
@@ -14421,7 +14421,7 @@ private theorem normalizeExpr_if_branch_step :
           · exact Steps_ctx_lift_pres (fun inner => .arrayLit ([] ++ [inner] ++ rest))
               (fun s inner hv t si hs he => step?_arrayLit_elem_ctx s [] rest inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [ANF.normalizeExpr, ANF.normalizeExprList]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExprList]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | arrayLit_elem _ _ v hmem hfv =>
@@ -15582,7 +15582,7 @@ private theorem normalizeExpr_if_branch_step_false :
           obtain ⟨sf_e, evs_e, hsteps_e, hsil_e, henv_e, hheap_e, hfuncs_e, hcs_e,
             htrace_e, hpres_e, ⟨n_e, m_e, hnorm_e⟩, hewf_e⟩ :=
             ih e he_depth h_e env heap trace funcs cs _ n m cond then_ else_ v
-              hnorm (fun x hfx => hewf x (VarFreeIn.makeEnv_elem _ _ _ (List.mem_cons_self _ _) hfx)) heval hbool
+              hnorm (fun x hfx => hewf x (VarFreeIn.makeEnv_elem _ _ _ List.mem_cons_self hfx)) heval hbool
           obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
             Steps_makeEnv_values_ctx_b [] rest (by simp) hsteps_e
               (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion)
@@ -15592,7 +15592,7 @@ private theorem normalizeExpr_if_branch_step_false :
           · exact Steps_ctx_lift_pres (fun inner => .makeEnv ([] ++ [inner] ++ rest))
               (fun s inner hv t si hs he => step?_makeEnv_values_ctx s [] rest inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [ANF.normalizeExpr, ANF.normalizeExprList]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExprList]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | makeEnv_elem _ _ v hmem hfv =>
@@ -15614,7 +15614,7 @@ private theorem normalizeExpr_if_branch_step_false :
           obtain ⟨sf_e, evs_e, hsteps_e, hsil_e, henv_e, hheap_e, hfuncs_e, hcs_e,
             htrace_e, hpres_e, ⟨n_e, m_e, hnorm_e⟩, hewf_e⟩ :=
             ih e he_depth h_e env heap trace funcs cs _ n m cond then_ else_ v
-              hnorm (fun x hfx => hewf x (VarFreeIn.objectLit_value _ _ (propName, e) (List.mem_cons_self _ _) hfx)) heval hbool
+              hnorm (fun x hfx => hewf x (VarFreeIn.objectLit_value _ _ (propName, e) List.mem_cons_self hfx)) heval hbool
           obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
             Steps_objectLit_val_ctx_b [] rest propName (by simp) hsteps_e
               (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion)
@@ -15624,7 +15624,7 @@ private theorem normalizeExpr_if_branch_step_false :
           · exact Steps_ctx_lift_pres (fun inner => .objectLit ([] ++ [(propName, inner)] ++ rest))
               (fun s inner hv t si hs he => step?_objectLit_val_ctx s [] rest propName inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [ANF.normalizeExpr, ANF.normalizeProps]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeProps]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | objectLit_value _ _ q hmem hfv =>
@@ -15645,7 +15645,7 @@ private theorem normalizeExpr_if_branch_step_false :
           obtain ⟨sf_e, evs_e, hsteps_e, hsil_e, henv_e, hheap_e, hfuncs_e, hcs_e,
             htrace_e, hpres_e, ⟨n_e, m_e, hnorm_e⟩, hewf_e⟩ :=
             ih e he_depth h_e env heap trace funcs cs _ n m cond then_ else_ v
-              hnorm (fun x hfx => hewf x (VarFreeIn.arrayLit_elem _ _ _ (List.mem_cons_self _ _) hfx)) heval hbool
+              hnorm (fun x hfx => hewf x (VarFreeIn.arrayLit_elem _ _ _ List.mem_cons_self hfx)) heval hbool
           obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
             Steps_arrayLit_elem_ctx_b [] rest (by simp) hsteps_e
               (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion)
@@ -15655,7 +15655,7 @@ private theorem normalizeExpr_if_branch_step_false :
           · exact Steps_ctx_lift_pres (fun inner => .arrayLit ([] ++ [inner] ++ rest))
               (fun s inner hv t si hs he => step?_arrayLit_elem_ctx s [] rest inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [ANF.normalizeExpr, ANF.normalizeExprList]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExprList]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | arrayLit_elem _ _ v hmem hfv =>

@@ -4307,3 +4307,34 @@ Fixing this requires either:
 
 ### 2026-04-10T17:02:32+00:00 Starting run
 2026-04-10T18:00:01+00:00 SKIP: already running
+
+**Changes made:**
+
+1. **P0: Fixed `Flat_step?_assign_step`, `Flat_step?_seq_step`, `Flat_step?_let_step`**
+   - Added `(hne : ∀ msg, t ≠ .error msg)` hypothesis to handle error propagation
+   - Added companion `Flat_step?_seq_error` theorem for the error case
+   - Proofs use `rename_i msg heq; exact absurd rfl (hne msg)` for error branch
+
+2. **P1 infrastructure: Added `CCStateAgreeWeak` definition (L566)**
+   - `st1.nextId ≤ st2.nextId ∧ st1.funcs.size ≤ st2.funcs.size`
+   - Monotonicity lemmas (`convertExpr_state_mono`) already exist
+
+3. **Updated all 6 CCStateAgree sorry sites with FIX instructions:**
+   - L5241 (if-true): use `convertExpr_state_mono else_` after invariant change
+   - L5267 (if-false): use `convertExpr_state_mono then_` after invariant change
+   - L8094 (tryCatch none): use `convertExpr_state_mono catchBody` after invariant change
+   - L8097 (tryCatch some fin): full proof skeleton documented
+   - L8171 (tryCatch error): use `scope_irrelevant` + `convertExpr_state_mono body`
+   - L8287 (while_): deeper issue — expression duplication, not just agreement
+
+**Analysis — why CCStateAgreeWeak invariant change was NOT applied:**
+Changing `CCStateAgree` to `CCStateAgreeWeak` in the invariant (L4874) closes the
+6 sorry sites but breaks ~18 consumer sites that use `hAgreeOut.1`/`hAgreeOut.2`
+as equalities for `convertExpr_state_determined`. The conversion equation
+requires exact state equality (different `nextId` → different fresh names →
+different expressions). A complete fix needs either:
+- A fundamentally different induction structure, OR
+- `convertExpr` redesigned to not depend on absolute `nextId` for expression output
+
+**No sorry count change (12 remain). No build breakage.**
+### 2026-04-10T18:36:34+00:00 Run complete — P0 fixes applied, CCStateAgreeWeak infra added, sorry FIX comments updated
