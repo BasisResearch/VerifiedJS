@@ -4435,3 +4435,4 @@ and all cases that produce/consume CCStateAgree.
 - 6 CCStateAgree: blocked on CCStateAgreeWeak invariant (P1, high-risk refactor)
 - 5 multi-step/FuncsCorr: blocked on other proof infrastructure
 - 1 unprovable (getIndex string)
+2026-04-10T21:25:08+00:00 DONE

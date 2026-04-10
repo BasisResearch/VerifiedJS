@@ -9862,7 +9862,7 @@ private theorem normalizeExpr_labeled_branch_step :
     | labeled_direct =>
       -- e = .labeled label body_flat: one step to unwrap
       rename_i body_flat
-      simp only [ANF.normalizeExpr] at hnorm
+      rw [ANF.normalizeExpr_labeled] at hnorm
       simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
       cases hbody : (ANF.normalizeExpr body_flat K).run n with
       | error msg => simp [hbody] at hnorm
