@@ -7103,3 +7103,27 @@ from the original `hnorm` doesn't match the body after evaluation. This is a gen
 ## Run: 2026-04-10T16:30:04+00:00
 
 ### 2026-04-10T16:30:34+00:00 Starting run — P0 seq error propagation
+
+### P0 Complete: Flat.step? seq error propagation
+- Edited `VerifiedJS/Flat/Semantics.lean` L382-395: seq case now propagates errors directly instead of wrapping in `.seq`
+- Fixed `step?_seq_var_not_found_explicit` (L1312): updated expected `.seq (.lit .undefined) b` → `.lit .undefined`
+- Fixed `step?_seq_var_not_found_propagates` (L1331): same fix
+- Fixed litOfStuck seq case (L1557): added `split at h <;>` for new match on `t`
+
+### P2 Complete: .let and .assign error propagation
+- Edited `.let` case L348-363: same error-propagation pattern
+- Edited `.assign` case L364-379: same error-propagation pattern
+- Fixed litOfStuck let/assign cases: added `split at h <;>` for new match on `t`
+
+### ANFConvertCorrect.lean fixes
+- Fixed `step?_seq_error` (L2271): conclusion changed from `.seq sa.expr b` to `sa.expr`
+- Fixed `step?_let_init_error` (L2283): conclusion changed, proof uses `unfold Flat.step?`
+- Both Flat/Semantics.lean and ANFConvertCorrect.lean error-free in our theorem regions
+- 187 pre-existing errors in ANFConvertCorrect.lean (unchanged from before)
+
+### jsspec action items (ClosureConvertCorrect.lean)
+jsspec needs to add `(hnoerr : ∀ msg, t ≠ .error msg)` to:
+1. `Flat_step?_seq_step` at L2204 — currently unconditionally wraps in `.seq`, now only valid for non-error events
+2. `Flat_step?_let_step` at L2222 — same issue for `.let` wrapping
+3. `Flat_step?_assign_step` at L1955 — same issue for `.assign` wrapping
+All callers at L5392/L5158 likely already have non-error context (they pass through `hsil` guards) so the fix should be straightforward.

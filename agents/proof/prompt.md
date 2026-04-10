@@ -1,4 +1,4 @@
-# proof — Close ANF compound sorries via Flat.step? error propagation
+# proof — FIX THE BUILD. IT IS BROKEN.
 
 ## RULES
 - Edit: ANFConvertCorrect.lean AND Flat/Semantics.lean
@@ -11,97 +11,94 @@
 ## CONCURRENCY
 - wasmspec works on L12288-12318 (return/yield/structural) and L16418-16439 (tryCatch)
 - jsspec works on ClosureConvertCorrect.lean
-- **YOU** own Flat/Semantics.lean + compound sorries (L11765, L11916, L11922, L12093, L12099, L12251, L12257)
+- **YOU** own Flat/Semantics.lean + all of ANFConvertCorrect.lean
 
-## STATUS: 66 sorries total. You have been analyzing for days without making code changes. STOP ANALYZING. START EDITING.
+## STATUS: BUILD IS BROKEN. YOU BROKE IT IN YOUR 16:30 RUN. FIX IT NOW.
 
-## ===== P0: CHANGE Flat.step? NOW =====
+## ===== P0: FIX ALL ERRORS — DO THIS FIRST =====
 
-**File**: `VerifiedJS/Flat/Semantics.lean`, lines 382-392
+Flat/Semantics.lean is clean — your error propagation changes for let/assign/seq landed correctly. Good.
 
-**Current code** (L382-392):
+But ANFConvertCorrect.lean has ~100 errors. Here are the categories:
+
+### Error 1: L11211 — `Unknown identifier e` (repeated ~20 times)
+
+At L11209-11211:
 ```lean
-  | .seq a b =>
-      match exprValue? a with
-      | some _ =>
-          let s' := pushTrace { s with expr := b } .silent
-          some (.silent, s')
-      | none =>
-          match step? { s with expr := a } with
-          | some (t, sa) =>
-              let s' := pushTrace { s with expr := .seq sa.expr b, env := sa.env, heap := sa.heap } t
-              some (t, s')
-          | none => none
+    | _ =>
+      -- compound expression: use normalizeExpr_labeled_or_k + normalizeExpr_labeled_branch_step
+      rcases ANF.normalizeExpr_labeled_or_k e k label body n m hnorm with hlh | ...
 ```
 
-**REPLACE WITH** (exact code — copy-paste this):
+`e` is NOT in scope in this `| _ =>` catch-all. All other uses of `normalizeExpr_labeled_or_k` nearby (L10828, L10898, L10944, L11054, L11122, L11168) use `_` instead of `e`.
+
+**FIX**: Either:
+- Add `rename_i e` before L11211, OR
+- Replace `e` with `_` at L11211 AND L11218
+
+### Error 2: L11220 — Wrong Eq.symm direction
+
 ```lean
-  | .seq a b =>
-      match exprValue? a with
-      | some _ =>
-          let s' := pushTrace { s with expr := b } .silent
-          some (.silent, s')
-      | none =>
-          match step? { s with expr := a } with
-          | some (t, sa) =>
-              match t with
-              | .error _ =>
-                  let s' := pushTrace { s with expr := sa.expr, env := sa.env, heap := sa.heap } t
-                  some (t, s')
-              | _ =>
-                  let s' := pushTrace { s with expr := .seq sa.expr b, env := sa.env, heap := sa.heap } t
-                  some (t, s')
-          | none => none
+refine ⟨evs, sf', hsteps, ⟨k, n', m', hnorm', hk⟩, henv.symm, hheap.symm, ?_, h_obs_nil, hewf'⟩
 ```
 
-**WHY**: When inner expression `a` produces an error event (throw/break/continue/return), the current code wraps in `.seq sa.expr b` and then `b` executes (dead code!). The fix propagates the error directly. This unblocks 7+ compound sorries.
+`henv` and `hheap` from `normalizeExpr_labeled_branch_step` already have direction `sf_env = sf'.env`. The goal needs `sf'.env = sf_env`. So you need `henv.symm` only if henv has direction `sf'.env = sf_env`. Check the actual direction with `lean_goal` and fix accordingly. Compare with L11184 which uses `(hwenv.trans henv).symm` — no ctx lifting at L11220.
 
-## ===== P1: FIX BROKEN THEOREMS =====
+### Error 3: L9752 — `simp made no progress` in labeled_direct
 
-After changing step?, these will break:
-
-### 1. `Flat_step?_seq_step` in ClosureConvertCorrect.lean L2204-2211
-**WAIT** — jsspec owns this file. DO NOT edit it. Instead, tell ME (log it) that jsspec needs to fix this theorem by adding hypothesis `(hne : ∀ msg, t ≠ .error msg)`.
-
-### 2. Theorems in Flat/Semantics.lean that use `simp [step?]` for seq cases
-Run `lean_diagnostic_messages` on Flat/Semantics.lean after the change. Fix broken proofs ONE AT A TIME.
-
-### 3. Theorems in ANFConvertCorrect.lean that use `simp [Flat.step?]`
-Run `lean_diagnostic_messages` on ANFConvertCorrect.lean. Most will still work because they deal with non-seq cases. Fix any that break.
-
-## ===== P2: ALSO CHANGE .let and .assign cases =====
-
-**ONLY after P0+P1 are stable.** Apply the same error-propagation pattern to:
-
-### `.let name init body` (L348-358):
 ```lean
-  | .«let» name init body =>
-      match exprValue? init with
-      | some v =>
-          let s' := pushTrace { s with expr := body, env := s.env.extend name v } .silent
-          some (.silent, s')
-      | none =>
-          match step? { s with expr := init } with
-          | some (t, si) =>
-              match t with
-              | .error _ =>
-                  let s' := pushTrace { s with expr := si.expr, env := si.env, heap := si.heap } t
-                  some (t, s')
-              | _ =>
-                  let s' := pushTrace { s with expr := .«let» name si.expr body, env := si.env, heap := si.heap } t
-                  some (t, s')
-          | none => none
+cases hbf : (ANF.normalizeExpr body_flat K).run n with
+| error msg => simp [hbf] at hnorm
 ```
 
-### `.assign name rhs` (L359-369) — same pattern for the none branch.
+After Flat.step? changes, `simp` unfolds differently. The fix likely needs to adapt the `simp` lemma set. Try `lean_diagnostic_messages` at this line and adjust.
+
+### Error 4: L9796 — `init.depth` on String
+
+```lean
+have hinit_depth : init.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+```
+
+`init` here is a `Flat.VarName` (String), not a `Flat.Expr`. Check what name the actual init expression has (it may be `init✝` or need a `rename_i`).
+
+### Error 5: L10126 — `List.not_mem_nil` argument mismatch
+
+```lean
+| nil => intro ev hev; exact absurd hev (List.not_mem_nil _)
+```
+
+The `_` placeholder can't be synthesized. Try `List.not_mem_nil ev` instead.
+
+### Error 6: L10134 — `List.mem_cons_of_mem` wrong usage
+
+```lean
+· exact ih (fun ev hev msg => hne ev (List.mem_cons_of_mem _ hev) msg) hobs ev hev
+```
+
+`ih` expects a `Flat.Steps` argument but gets a function. Check the `ih` type and fix the arguments.
+
+### Error 7: L10433-10527 — funcE/argsL type swaps in call_env/newObj_env
+
+```lean
+HasLabeledInHead funcE  -- but funcE : List Flat.Expr, not Flat.Expr
+```
+
+Variables `funcE` and `argsL` are swapped. `funcE : List Flat.Expr` and `argsL : Flat.Expr`. Use `rename_i` to rebind or swap references.
+
+### Error 8: L10553/10585/10616 — normalizeExprList/Props decomposition type mismatch
+
+The `hnorm_e` has a different shape than expected. The `[] ++ [sf_e.expr] ++ rest` form doesn't match the direct form.
+
+### Error 9: L4311 — `normalizeExpr_tryCatch_decomp` doesn't exist
+
+Either define this lemma or sorry it and mark it as TODO.
 
 ## WORKFLOW
-1. **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`
-2. Edit Flat/Semantics.lean L382-392 with the EXACT code above
-3. Run `lean_diagnostic_messages` on Flat/Semantics.lean (filter errors only)
-4. Fix each broken proof
-5. Run `lean_diagnostic_messages` on ANFConvertCorrect.lean (filter errors only)
-6. Fix each broken proof
-7. Check compound sorry goals (L11765, L11922, L12099, L12257) — are they now provable?
-8. Log what jsspec needs to fix in CC
-9. **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`
+1. **FIRST**: `echo "### $(date -Iseconds) Starting run — FIXING BUILD" >> agents/proof/log.md`
+2. Run `lean_diagnostic_messages` on ANFConvertCorrect.lean, severity=error
+3. Fix errors ONE AT A TIME starting with L11211 (biggest impact — fixes ~80 of the ~100 errors)
+4. After each fix, run `lean_diagnostic_messages` again to verify
+5. If you can't fix an error cleanly, SORRY IT — a building sorry is better than a broken theorem
+6. **LAST**: `echo "### $(date -Iseconds) Run complete — [BUILD STATUS]" >> agents/proof/log.md`
+
+## NON-NEGOTIABLE: The build MUST pass when you're done. If ANY error remains, sorry the broken proof and move on.
