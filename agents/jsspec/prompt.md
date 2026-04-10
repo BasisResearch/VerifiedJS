@@ -1,64 +1,73 @@
-# jsspec — ClosureConvertCorrect.lean (12 sorries)
+# jsspec — CC architectural fixes + ANF second-position cases
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
 - **DO NOT** use while/until loops, sleep loops, pgrep.
 - **YOU OWN** ClosureConvertCorrect.lean exclusively.
+- You MAY also work on ANF second-position cases (see below).
 
 ## MEMORY: ~3.5GB free. USE LSP ONLY.
 
-## STATUS: Rate limits blocked all agents for 18 hours. Fresh start.
+## STATUS: CC has 12 sorry tactics, ALL classified as architecturally blocked.
 
-## ===== YOUR 12 SORRIES =====
+## ===== CC SORRY CLASSIFICATION (from your last run) =====
+
+ALL 12 CC sorries are blocked. You classified them as:
+- Multi-step simulation gap: L4905, L6040, L6049
+- CCStateAgree: L5237, L5262, L8089, L8092, L8165, L8275
+- Missing FuncsCorr: L5829, L7930
+- Unprovable: L6688
+
+### P0: CCStateAgree — The Most Common Blocker (6 sorries)
+
+The CCStateAgree problem: when converting `if cond then_ else_`, the discarded branch's conversion changes `nextId`/`funcs.size` in CCState. The proof can't show `CCStateAgree` between the state used and the state produced.
+
+**Possible fix**: Change the simulation relation to allow CCState to diverge on `nextId`/`funcs.size` as long as the important invariants hold. Specifically:
+
+1. `lean_goal` at L5237 to see exactly what CCStateAgree needs
+2. `lean_local_search "CCStateAgree"` to find the definition
+3. Check if CCStateAgree can be weakened to only require agreement on functionally-relevant fields
+4. If so, edit the definition in the appropriate file and fix downstream
+
+**This is high-leverage**: fixing CCStateAgree could unblock 6 of 12 CC sorries.
+
+### P1: FuncsCorr invariant (2 sorries: L5829, L7930)
+
+These need a `sf.funcs[idx] ↔ sc.funcs[idx]` correspondence.
+1. `lean_local_search "FuncsCorr"` — does this invariant exist?
+2. If not, define it and thread it through the simulation relation
+3. L5829 (function call) is the simpler case — start there
+
+### SKIP: Multi-step (L4905, L6040, L6049), Unprovable (L6688)
+
+## ===== SECONDARY: ANF SECOND-POSITION CASES =====
+
+If CC progress is fully blocked, switch to ANF second-position cases.
+These are in `normalizeExpr_labeled_step_sim` (L10203-10466):
 
 ```
-L4905:  sorry                    -- HeapInj refactor staging (RESTORABLE from git)
-L5234:  sorry⟩                   -- CCStateAgree st' (if-then branch)
-L5257:  sorry,                   -- CCStateAgree threading (if-else branch)
-L5821:  sorry                    -- non-consoleLog function call: funcs[idx] correspondence
-L6029:  sorry                    -- f not a value: Core allocates, Flat steps f
-L6037:  sorry                    -- non-value arg: Core allocates, Flat steps arg
-L6675:  sorry                    -- getIndex string both-values: UNPROVABLE
-L7917:  sorry                    -- functionDef: entire case
-L8074:  sorry⟩                   -- tryCatch body-value
-L8075:  sorry                    -- tryCatch body-value with finally
-L8147:  sorry                    -- tryCatch sub-case
-L8255:  sorry                    -- while_ lowering: CCState threading
+L10203: sorry -- trivialChain passthrough
+L10226: setProp_val sorry -- second-position trivial mismatch
+L10249: getIndex_idx sorry -- second-position trivial mismatch
+L10273: setIndex_idx sorry -- second-position trivial mismatch
+L10274: setIndex_val sorry -- second-position trivial mismatch
+L10298: call_env sorry -- second-position trivial mismatch
+L10347: newObj_env sorry -- second-position trivial mismatch
 ```
 
-## ===== PRIORITY ORDER =====
+These 7 cases all have the same "trivial mismatch" issue. Use `lean_goal` at L10226 to understand:
+- The continuation `k` produces `.trivial t` for trivials, but the expr has the label in a second-position sub-expression
+- The trivialChain mechanism handles the first sub-expression but not the second
 
-### P0: L4905 — HeapInj refactor staging (HIGHEST PRIORITY)
-This was explicitly marked as restorable from git history. Steps:
-1. `lean_goal` at L4905 to see the exact proof state
-2. `git log --oneline -20 -- VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find the commit with the previous proof
-3. Restore the proof from history if possible
-4. If the types have changed, adapt the old proof to the new types
-
-### P1: L5821 — non-consoleLog function call
-Needs `sf.funcs[idx] ↔ sc.funcs[idx]` correspondence. Steps:
-1. `lean_goal` at L5821
-2. `lean_local_search "funcs"` or `lean_local_search "convertFuncs"` to find helper lemmas
-3. Build the proof from the correspondence
-
-### P2: L8147 — tryCatch sub-case
-1. `lean_goal` at L8147
-2. May be closeable with existing infrastructure
-
-### SKIP THESE (architecturally blocked):
-- L5234, L5257 — CCStateAgree blocked by discarded branch's nextId/funcs.size change
-- L6029, L6037 — Multi-step simulation gap (stuttering)
-- L6675 — Explicitly marked UNPROVABLE
-- L7917 — Large case needing significant infrastructure
-- L8074, L8075 — CCStateAgree blocked
-- L8255 — CCState threading blocked
+**Check if you can:**
+1. Add a `trivialChain_second_position` helper that handles the second sub-expression
+2. Or show the second-position case reduces to something provable
 
 ## WORKFLOW
-1. `lean_goal` at the sorry
-2. `lean_multi_attempt` to test tactics
-3. Edit to replace sorry
-4. `lean_diagnostic_messages` to verify
-5. Move to next sorry
+1. Start with CCStateAgree (P0): `lean_goal` at L5237, then `lean_local_search "CCStateAgree"`
+2. If CCStateAgree fix is too invasive, try FuncsCorr (P1)
+3. If all CC blocked, switch to ANF second-position (L10226)
+4. For each sorry: `lean_goal` → `lean_multi_attempt` → edit → `lean_diagnostic_messages`
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

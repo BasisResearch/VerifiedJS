@@ -1,3 +1,58 @@
+## Run: 2026-04-10T14:30:11+00:00
+
+### Metrics
+- **Sorry count**: ANF 55 + CC 12 + Lower 0 = **67 total**
+- **Delta from last run (14:05)**: +2 (65→67). **UP — previous run undercounted ANF (53 vs 55). No actual regression.**
+- Corrected count: ANF has always been 55 since Apr 6. Previous script miscounted.
+
+### Why count went UP (+2)
+**Not a regression.** The Apr 10 14:05 run reported ANF 53 but precise line-by-line counting with comment filtering confirms 55 sorry tactics. The file hasn't changed (git status clean). The count has been stable at 67 since Apr 6.
+
+### Agent Status
+1. **proof** (RUNNING since 14:30): Prompt REWRITTEN — added explicit depth induction strategy for L11713, concrete list of HasThrowInHead constructors to case-split, infrastructure pointers (Steps_seq_ctx L2446, etc.)
+2. **wasmspec** (IDLE — crashed at 14:30 after 15min): Prompt REWRITTEN — focused on 10 list cases with concrete strategy (trivialChain for f/env + list induction for args)
+3. **jsspec** (COMPLETED 14:14): Classified ALL 12 CC sorries as BLOCKED. Prompt REWRITTEN — redirected to:
+   - P0: CCStateAgree definition weakening (could unblock 6 CC sorries)
+   - P1: FuncsCorr invariant (could unblock 2 CC sorries)
+   - Secondary: ANF second-position cases (7 sorries) if CC fully blocked
+
+### Actions Taken
+1. Recounted all sorries with precise comment-aware script — confirmed 67 total
+2. REWROTE ALL 3 agent prompts:
+   - **proof**: Added concrete depth induction refactoring plan for normalizeExpr_throw_step_sim. Key insight: theorem has no depth/size parameter so can't recurse. Step 1: case-split L11713 into ~26 individual cases. Step 2: add depth param.
+   - **wasmspec**: Added concrete strategy for list cases — f/env are trivial chains, list element has HasIfInHead, need list induction + depth IH
+   - **jsspec**: Major redirect — since all CC sorries are architecturally blocked, focus on CCStateAgree definition fix (highest leverage, could unblock 6 sorries) or switch to ANF second-position
+3. Logged to time_estimate.csv
+
+### Sorry Classification (67 total)
+
+**ANF (55):**
+- 1 trivialChain passthrough (L10203) — BLOCKED
+- 6 second-position K-mismatch (L10226-10347) — jsspec secondary
+- 5 list/func cases (L10323-10466) — jsspec/wasmspec overlap
+- 7 compound throw (L11713 + L11864) — proof: DEPTH INDUCTION NEEDED
+- 4 compound return/await/yield (L11870, L12041, L12047, L12199, L12205) — proof
+- 3 structural (L12261, L12265, L12266) — proof
+- 2 while (L12356, L12368) — proof
+- 24 if_branch (L13976-L15525) — wasmspec (14 blocked + 10 list)
+- 3 tryCatch (L16366, L16384, L16387) — proof
+- 2 call frame (L17470, L17481) — blocked
+- 2 break/continue (L17701, L17754) — proof
+
+**CC (12):** ALL architecturally blocked per jsspec analysis
+- 6 CCStateAgree — fixable via definition weakening
+- 2 FuncsCorr — fixable via new invariant
+- 3 multi-step simulation gap — need stuttering bisimulation
+- 1 unprovable (Float.toString opacity)
+
+### Strategic Assessment
+- **Zero progress since Apr 6.** 18-hour rate limit outage + jsspec confirming all CC blocked means no sorry closures.
+- **Depth induction refactor is THE critical path.** Without it, 11+ compound sorries in ANF are stuck.
+- **CCStateAgree weakening is the CC critical path.** If jsspec can weaken the definition, 6 CC sorries may unblock.
+- **Expected next run**: 67 (no change likely — structural refactoring takes multiple runs)
+
+---
+
 ## Run: 2026-04-10T14:05:01+00:00
 
 ### Metrics
@@ -5446,3 +5501,4 @@ Call chain: anfConvert_step_star → normalizeExpr_labeled_step_sim → normaliz
 
 ## Run: 2026-04-10T14:30:11+00:00
 
+2026-04-10T14:36:34+00:00 DONE
