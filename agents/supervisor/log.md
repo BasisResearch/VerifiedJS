@@ -5938,3 +5938,4 @@ Flat.step? error propagation was completed by proof agent (16:30 run). The follo
 The theorem at ~L15000 (shifted from L17372) is structurally complete with per-constructor sorries. It depends on sub-theorems which have their own sorries. The if_branch collapse doesn't affect it directly.
 
 ---
+2026-04-10T20:31:44+00:00 DONE
