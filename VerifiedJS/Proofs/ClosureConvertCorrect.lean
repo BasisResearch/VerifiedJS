@@ -4918,10 +4918,16 @@ private theorem closureConvert_step_simulation
     | some idx =>
       -- Captured variable: convertExpr gives .getEnv (.var envVar) idx
       simp [hlookupEnv] at hconv
-      sorry -- BLOCKED: multi-step simulation gap. Flat .getEnv (.var envVar) idx takes 2 steps
-            -- (step envVar lookup → .getEnv (.lit envObj) idx, then heap access → .lit val)
-            -- but Core .var name takes 1 step. The intermediate Flat state .getEnv (.lit envObj) idx
-            -- is not a convertExpr output for any Core expression, breaking the invariant.
+      sorry -- BLOCKED: multi-step simulation gap (architectural).
+            -- Flat .getEnv (.var envVar) idx takes 2 steps:
+            --   step 1: envVar lookup → .getEnv (.lit envObj) idx
+            --   step 2: heap access → .lit val
+            -- Core .var name takes 1 step: env lookup → .lit value.
+            -- The theorem requires 1-to-1 step correspondence (Flat.Step → Core.Step), but the
+            -- intermediate Flat state .getEnv (.lit envObj) idx is not convertExpr of any Core expr.
+            -- FIX: change simulation to many-to-one (Flat.Steps → Core.Step), or use stuttering
+            -- simulation with a well-founded measure, or change convertExpr to avoid sub-expressions
+            -- in .getEnv (requires envObj at compile time — not currently available).
     | none =>
       -- Non-captured variable: convertExpr gives .var name (same as Core)
       simp [hlookupEnv] at hconv
@@ -6059,8 +6065,10 @@ private theorem closureConvert_step_simulation
     -- The simulation only works when all Flat sub-expressions are values (Flat also allocates).
     cases hfev : Core.exprValue? f with
     | none =>
-      sorry -- BLOCKED: multi-step simulation gap. Core newObj allocates immediately regardless
-            -- of sub-expression evaluation, but Flat steps f first. Same class as L4905.
+      sorry -- BLOCKED: multi-step simulation gap (architectural). Same class as L4921.
+            -- Core newObj allocates immediately regardless of sub-expression evaluation,
+            -- but Flat steps f first. Intermediate Flat state (f partially evaluated) is not
+            -- convertExpr of any Core expr. Needs many-to-one or stuttering simulation.
     | some fv =>
       have hflit : f = .lit fv := by
         cases f <;> simp [Core.exprValue?] at hfev; subst hfev; rfl
@@ -6068,8 +6076,9 @@ private theorem closureConvert_step_simulation
       simp [Flat.convertExpr] at hfexpr hst
       cases hcfnv : Core.firstNonValueExpr args with
       | some val =>
-        sorry -- BLOCKED: multi-step simulation gap. Core newObj allocates immediately regardless
-              -- of arg evaluation, but Flat steps the non-value arg first. Same class as L4905.
+        sorry -- BLOCKED: multi-step simulation gap (architectural). Same class as L4921.
+              -- Core newObj allocates immediately regardless of arg evaluation,
+              -- but Flat steps the first non-value arg. Needs many-to-one or stuttering simulation.
       | none =>
         -- All elements are values: both Core and Flat allocate empty objects on heap.
         have hffnv := convertExprList_firstNonValueExpr_none args scope envVar envMap st hcfnv
@@ -6707,12 +6716,17 @@ private theorem closureConvert_step_simulation
                 congr 1; congr 1
                 simp only [hfind]; exact (coreToFlatValue_eq_convertValue kv.2).symm
         · -- String case: string indexing
-          sorry /- getIndex string both-values: UNPROVABLE.
-            In .number n case with invalid index, Flat checks `valueToString (.number n) == "length"`
-            (always false) before returning .undefined, but Core returns .undefined directly.
-            Semantically equivalent, but proving `Float.toString n ≠ "length"` is blocked by
-            Float.toString being an opaque native function. Fix: align Flat/Core string-getIndex
-            semantics so .number else branch matches, or add an axiom for Float.toString output. -/
+          sorry /- getIndex string both-values: UNPROVABLE (semantic mismatch).
+            For .number n with invalid index:
+              Core:  returns .undefined unconditionally
+              Flat:  if valueToString (.number n) == "length" then .number (length) else .undefined
+            The extra "length" check in Flat's .number branch has no Core counterpart.
+            Proving equivalence requires: ∀ n : Float, valueToString (.number n) ≠ "length".
+            This is TRUE (no float-to-string conversion produces "length") but UNPROVABLE
+            because the fallback case uses Float.toString which is @[extern] opaque.
+            FIX (preferred): remove the extra `if propName == "length"` from Flat.step?'s
+            .string/.number branch (Flat/Semantics.lean L739), aligning with Core.
+            FIX (alternative): add `axiom float_toString_ne_length`. -/
         · -- Non-object, non-string: both return .undefined
           have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr := convertValue_not_object cv hno
           have hns_flat : ∀ str, Flat.convertValue cv ≠ .string str := by
