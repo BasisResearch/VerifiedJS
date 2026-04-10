@@ -1,4 +1,4 @@
-# proof — Close compound + while + tryCatch sorries in ANFConvertCorrect.lean
+# proof — Close compound sorries in ANFConvertCorrect.lean via depth induction
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY (and Flat/Semantics.lean for infrastructure)
@@ -16,56 +16,70 @@
 - **YOU** own everything else in ANFConvertCorrect.lean
 - DO NOT touch wasmspec or jsspec zones
 
-## STATUS: Rate limits blocked all agents for 18 hours. Fresh start.
+## STATUS: ANF has 55 sorry tactics. You own ~21 of them.
 
-## Current ANF sorry count: 53 (down from 55 on Apr 6)
+## ===== P0: THE COMPOUND SORRY AT L11713 (ROOT CAUSE) =====
 
-## ===== P0: THE COMPOUND SORRY AT L11713 =====
+Line 11713: `sorry -- compound HasThrowInHead cases`
 
-Line 11713: `sorry -- compound HasThrowInHead cases: need eval context stepping through seq/let/call/etc.`
+This is the `| _ =>` catch-all in `normalizeExpr_throw_step_sim` (L11585). It catches ~26 HasThrowInHead constructors (seq_left, seq_right, let_init, getProp_obj, setProp_obj, setProp_val, binary_lhs, binary_rhs, unary_arg, typeof_arg, deleteProp_obj, assign_val, call_func, call_env, call_args, newObj_func, newObj_env, newObj_args, if_cond, getIndex_obj, getIndex_idx, setIndex_obj, setIndex_idx, setIndex_val, getEnv_env, makeClosure_env, makeEnv_values, objectLit_props, arrayLit_elems).
 
-This is the REMAINING compound case after `normalizeExpr_throw_compound_case` handles the direct constructor cases (L11707). The `| _` catch-all at L11711 catches cases where `HasThrowInHead` is in a deeper eval context position (e.g., `seq_left`, `let_init`, etc.).
+### THE PROBLEM
+`normalizeExpr_throw_step_sim` has NO depth/size parameter, so it can't recurse. For compound cases like `seq_left (h : HasThrowInHead a)` with expr `.seq a b`, you need to:
+1. Show that normalizeExpr (.seq a b) k produces .throw arg
+2. Decompose: normalizeExpr first normalizes a with a continuation that wraps b
+3. The throw must come from normalizing a (since b's continuation can't produce throw)
+4. Apply the IH on a (smaller expression)
+5. Lift the flat steps through the seq eval context using `Steps_seq_ctx` (L2446)
 
-**Approach**: Use `lean_goal` at L11713 to see the exact proof state. Then:
-1. Case-split on the remaining HasThrowInHead constructors
-2. For each case (seq_left, let_init, assign_val, etc.): the throw is in a sub-expression. The sub-expression steps first in the eval context, producing the throw, which then propagates.
-3. Use `normalizeExpr_throw_compound_case` recursively via depth induction if needed, OR use `lean_multi_attempt` to try `simp`/`omega`/`exact`/`apply` on each sub-case.
+### THE FIX: ADD DEPTH INDUCTION
+Refactor `normalizeExpr_throw_step_sim` to take a depth parameter `d : Nat` with `hd : sf.expr.depth ≤ d`:
 
-## ===== P1: REMAINING COMPOUND SORRIES (L11864, L11870, L12041, L12047, L12199, L12205) =====
+```lean
+private theorem normalizeExpr_throw_step_sim
+    (d : Nat)
+    (sf : Flat.State)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat)
+    (hnorm : (ANF.normalizeExpr sf.expr k).run n = .ok (.throw arg, m))
+    (hk : ∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m'))
+    (hewf : ExprWellFormed sf.expr sf.env)
+    (hna : NoNestedAbrupt sf.expr)
+    (hd : sf.expr.depth ≤ d) :
+    ...
+```
 
-These follow the same pattern for return/await/yield:
-- L11864: `| _ => sorry -- compound inner_val: seq, let, assign, if, call, throw, etc.`
-- L11870: `sorry -- compound HasReturnInHead cases`
-- L12041: `| _ => sorry -- compound inner_arg`
-- L12047: `sorry -- compound HasAwaitInHead cases`
-- L12199: `| _ => sorry -- compound inner_val`
-- L12205: `sorry -- compound HasYieldInHead cases`
+Then in the compound cases, use `ih` on sub-expressions with `d' < d` via `Nat.lt_of_lt_of_le`.
 
-Once you solve L11713, apply the same pattern to these.
+**Infrastructure that already exists (USE THESE):**
+- `Steps_seq_ctx` (L2446): lift steps through `.seq · b` context
+- `Steps_let_ctx` (search for it): lift through `.let name · body`
+- `step?_seq_ctx` (L1546): single step in seq context
+- Similar `Steps_*_ctx` for getProp, setProp, binary, unary, call, newObj, etc.
+
+### CONCRETE STEPS:
+1. Use `lean_goal` at L11713 to see exact proof state
+2. Replace the `| _ =>` with explicit cases for each HasThrowInHead constructor
+3. For each case (e.g., `| seq_left h_a =>`):
+   a. Unfold normalizeExpr for .seq
+   b. Show the throw comes from normalizing the sub-expression a
+   c. YOU CANNOT RECURSE (no depth param yet) — so first just enumerate the cases with individual sorries
+   d. Then add the depth parameter to the theorem signature
+4. Once you have depth param, prove each case by: IH on sub-expr + Steps_*_ctx to lift
+
+**START BY**: Just case-splitting L11713 into individual cases, each with its own sorry. Going from 1 sorry to ~26 sorries is PROGRESS because each is independently attackable.
+
+## ===== P1: REMAINING COMPOUND SORRIES (same pattern) =====
+
+L11864, L11870, L12041, L12047, L12199, L12205 — return/await/yield variants.
+Once you add depth to throw, do the same for return/await/yield.
 
 ## ===== P2: STRUCTURAL SORRIES (L12261, L12265, L12266) =====
 
-```
-L12261: | some val => sorry -- return (some val): compound, can produce .let
-L12265: | some val => sorry -- yield (some val): compound, can produce .let
-L12266: | _ => sorry -- compound expressions: needs structural induction
-```
-
-These are in `anfConvert_step_star`. Use `lean_goal` to understand the exact state.
+These are in `anfConvert_step_star`. Use `lean_goal` to understand.
 
 ## ===== P3: WHILE + TRYCATCH + CALLFRAME + BREAK (8 sorries) =====
 
-```
-L12356: sorry -- While condition value case
-L12368: sorry -- Condition-steps case
-L16366: sorry -- tryCatch body-error
-L16384: sorry -- tryCatch body-step
-L16387: | _ => sorry -- compound cases
-L17470: sorry -- noCallFrameReturn
-L17481: sorry -- body_sim IH
-L17701: sorry -- break
-L17754: sorry -- continue
-```
+L12356, L12368, L16366, L16384, L16387, L17470, L17481, L17701, L17754
 
 ## WORKFLOW
 1. Start with `lean_goal` at L11713 to see the exact proof state
