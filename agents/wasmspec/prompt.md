@@ -1,4 +1,4 @@
-# wasmspec — CLOSE L17760 + L17813 (break/continue compound)
+# wasmspec — CLOSE L17760 + L17813, then tryCatch
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -6,53 +6,35 @@
 - **DO NOT** use while/until loops, pgrep, sleep loops
 - You CAN edit ANFConvertCorrect.lean ONLY at L17740-17830
 
-## MEMORY: ~3.5GB free. USE LSP ONLY — no builds.
+## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## CONCURRENCY
-- proof agent works on L11772, L11923, L11929, L12106, L12264
-- jsspec fixes CC callers
-- **YOU** work on L17760 and L17813 ONLY
+## CRITICAL: BUILD IS OOM — proof agent fixing it
 
-## STATUS: Flat.step? NOW PROPAGATES ERRORS — THESE ARE UNBLOCKED
+ANFConvertCorrect.lean build is OOM-killed. Proof agent is collapsing the if_branch section. **Wait for proof agent to fix the build before running LSP checks.** You can still analyze and prepare proofs.
 
-The proof agent changed Flat.step? so that compound expressions (seq/let/assign) propagate errors directly instead of wrapping. The key change:
-- OLD: `.seq (.break label) b` → Flat.step? returns `(.error msg, {expr := .seq (.lit .undefined) b})`
-- NEW: `.seq (.break label) b` → Flat.step? returns `(.error msg, {expr := .lit .undefined})` (no dead code)
+## P0: Close L17760 — break compound
 
-**This means L17760 (break compound) and L17813 (continue compound) are NOW CLOSABLE.**
+1. Read the goal context around L17760 (don't rely on LSP until build is fixed)
+2. With Flat.step? error propagation, compound break should propagate error directly
+3. Key lemmas: `step?_seq_error` (~L2271), `step?_let_init_error` (~L2283)
+4. Pattern: match on HasBreakInHead constructor, use error propagation lemma, derive env/heap preservation
 
-## ===== P0: Close L17760 — break compound =====
+## P1: Close L17813 — continue compound
 
-1. Run `lean_goal` at L17760 to see the current proof state
-2. The goal should ask for `∃ sf' evs, Flat.Steps sf evs sf' ∧ ...` where the break fires inside a compound expr
-3. With error propagation, the compound expr now propagates the error directly
-4. Key lemmas (already in the file):
-   - `step?_seq_error` (~L2271): seq with error event propagates directly
-   - `step?_let_init_error` (~L2283): let with error event propagates directly
-5. Pattern match on which `HasBreakInHead` constructor gives the compound case
-6. Use the appropriate error propagation lemma
-7. Show env/heap preservation (trivial since error propagation skips dead code)
+Same pattern as L17760 but for continue.
 
-### Proof sketch for seq_left case:
-```lean
--- sf.expr = .seq break_expr b, break_expr has break
--- step? fires break_expr → (.error msg, sa)
--- step?_seq_error: .seq break_expr b → (.error msg, {expr := sa.expr, ...})
--- env/heap preserved since no dead code executes
-```
+## P2: tryCatch sorries (L16418, L16436, L16439)
 
-## ===== P1: Close L17813 — continue compound =====
+If L17760/L17813 are closed, move to tryCatch compound sorries. These may also benefit from error propagation.
 
-Same pattern as L17760 but for continue. The proof structure should be nearly identical.
+## P3: noCallFrameReturn (L17522, L17533)
 
-## ===== P2: If time permits, check L12415, L12427 (while) =====
-
-These while condition sorries may also be affected by the error propagation change.
+These callframe sorries need `NoCallFrameParam` predicate in anfConvert_step_star preconditions.
 
 ## WORKFLOW
-1. **FIRST**: `echo "### $(date -Iseconds) Starting run — L17760+L17813 unblocked by error propagation" >> agents/wasmspec/log.md`
-2. `lean_goal` at L17760
-3. Attempt proof using error propagation lemmas
-4. If closable, close it. If not, document EXACTLY what's blocking.
-5. Do same for L17813
-6. **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`
+1. `echo "### $(date -Iseconds) Starting run — L17760+L17813 prep" >> agents/wasmspec/log.md`
+2. Read L17750-17820 to understand current proof state
+3. Write proof for L17760 using error propagation
+4. Test via LSP (only if build is working)
+5. Same for L17813
+6. `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

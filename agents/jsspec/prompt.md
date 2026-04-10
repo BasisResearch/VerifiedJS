@@ -1,4 +1,4 @@
-# jsspec — Fix CC callers + CCStateAgree
+# jsspec — Fix 3 hne callers + CCStateAgree
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -6,67 +6,52 @@
 - **YOU OWN** ClosureConvertCorrect.lean exclusively.
 - **DO NOT** edit ANFConvertCorrect.lean or Flat/Semantics.lean
 
-## MEMORY: ~3.5GB free. USE LSP ONLY.
+## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS: Flat_step? theorems FIXED but callers NOT updated
+## STATUS: 15 sorries in CC. 3 are NEW error-propagation sorries.
 
-You already added `(hne : ∀ msg, t ≠ .error msg)` to:
-- `Flat_step?_assign_step` (L1963)
-- `Flat_step?_seq_step` (L2215)
-- `Flat_step?_let_step` (L2245)
+## P0: FIX 3 ERROR-PROPAGATION SORRIES (BLOCKING)
 
-And added `Flat_step?_seq_error` companion (L2223).
+These 3 sorries at L5090, L5182, L5420 were added for the `hne` argument to `Flat_step?_let_step`, `Flat_step?_assign_step`, `Flat_step?_seq_step`:
 
-**BUT the callers are NOT updated.** They still call without the `hne` argument.
-
-## ===== P0: FIX ALL 3 CALLERS — BLOCKING EVERYTHING =====
-
-### Caller 1: L5087-5089 — Flat_step?_let_step in let case
+### L5090 — Flat_step?_let_step hne
 ```lean
-have heq := Flat_step?_let_step sf name
-    (Flat.convertExpr body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd).fst
-    _ hfnv t sa hm
+(by intro msg hmsg; sorry) -- need: t ≠ .error msg
 ```
-**Missing**: `hne` argument after `hm`. The `t` comes from `| some (t, sa) =>` match on `Flat.step?`. In this context, you need to prove `t` is not an error. Look at the surrounding hypothesis — there should be `hsil` or similar proving all events are silent.
+Context: `t` comes from `Flat.step?` matching `some (t, sa)`. Look at surrounding hypotheses — there should be `hsil` proving all events are `.silent`, or the match gives `t = .silent`.
 
-**FIX**: Add proof after `hm`:
+**FIX**: Try each:
 ```lean
-    _ hfnv t sa hm (fun msg hmsg => by ...)
-```
-Use `lean_goal` at this position to see what's available. Likely `hsil` or the match guard gives `t = .silent`.
-
-### Caller 2: L5180 — Flat_step?_assign_step
-```lean
-have heq := Flat_step?_assign_step sf name _ hfnv t sa hm
-```
-**FIX**: Add `(fun msg hmsg => by ...)` after `hm`.
-
-### Caller 3: L5415 — Flat_step?_seq_step
-```lean
-have heq := Flat_step?_seq_step sf ... _ hfnv t sa hm
-```
-**FIX**: Add `(fun msg hmsg => by ...)` after `hm`.
-
-### How to prove hne at each call site
-At each call site, `t` comes from matching `Flat.step?` result. The surrounding proof context should have one of:
-- `hsil : ∀ ev ∈ evs, ev = .silent` — then `t` is forced silent
-- Direct match showing `t` is `.silent`
-- Non-error guard on the flat step
-
-Use `lean_goal` at each call site to find the right hypothesis. Then:
-```lean
-(fun msg hmsg => by subst hmsg; simp_all)
+(by intro msg hmsg; subst hmsg; simp_all)
 ```
 or:
 ```lean
-(fun msg hmsg => by exact Core.TraceEvent.noConfusion (hsil t ▸ hmsg))
+(fun msg hmsg => by have := hsil t (List.mem_cons_self _ _); rw [this] at hmsg; exact Core.TraceEvent.noConfusion hmsg)
 ```
+Use `lean_goal` at L5090 to see what hypotheses are available.
 
-## ===== P1: CCStateAgree (only after P0 is clean) =====
+### L5182 — Flat_step?_assign_step hne
+Same pattern. Fix with same approach.
 
-Target sorries: L8189, L8305
-These need CCStateAgreeWeak — a weakened version of CCStateAgree that allows nextId/funcs.size to differ between branches. See previous analysis.
+### L5420 — Flat_step?_seq_step hne
+Same pattern. Fix with same approach.
+
+## P1: CCStateAgree (only after P0 is done)
+
+Target sorries: L5261, L5287, L8115, L8192, L8308
+These are all blocked by CCStateAgree (Blocker P). The viable fix is Path A: make `convertExpr` state-independent via position-based naming. This requires editing `ClosureConvert.lean` definitions — check with supervisor before attempting.
+
+## Remaining CC sorries (12 total after P0):
+- L4927: multi-step gap (Blocker T) — BLOCKED
+- L5261, L5287: CCStateAgree if-branch — BLOCKED (Blocker P)
+- L5855: FuncsCorr invariant — BLOCKED (Blocker Q)
+- L6066, L6075: multi-step newObj gap — BLOCKED
+- L6714: getIndex string — UNPROVABLE
+- L7956: functionDef — BLOCKED (Blocker S)
+- L8115, L8118: tryCatch — BLOCKED (Blocker P)
+- L8192: CCStateAgree — BLOCKED (Blocker P)
+- L8308: while_ CCState — BLOCKED (Blocker P)
 
 ## LOG YOUR WORK
-**FIRST**: `echo "### $(date -Iseconds) Starting run — fixing CC callers" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — fixing 3 hne callers" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`

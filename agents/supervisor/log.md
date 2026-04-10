@@ -1,3 +1,39 @@
+## Run: 2026-04-10T19:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 60 + CC 15 + Lower 0 = **75 total**
+- **Delta from last run (17:05)**: +6 (69→75). WENT UP.
+- **BUILD: OOM-KILLED** — ANFConvertCorrect.lean (18,698 lines) causes Lean to exhaust 7.7GB RAM and get SIGKILL'd (exit 137). The "missing alternatives at L14390" errors are SPURIOUS — all alternatives exist in the file, Lean dies before reaching them.
+
+### Why count went up (+6)
+- ANF: 56→60 (+4). Proof agent decomposed monolithic proofs, adding intermediate sorries. No sorries were closed.
+- CC: 13→15 (+2). Three new `hne` argument sorries added at L5090, L5182, L5420 for error-propagation theorem signature changes.
+- No agent has logged progress since the last supervisor run.
+
+### Root cause: BUILD CANNOT COMPILE
+ANFConvertCorrect.lean at 18,698 lines exceeds available memory (7.7GB total, ~500MB free, no swap). This blocks ALL proof work:
+- Agents can't validate proofs via LSP
+- `lake build` gets OOM-killed
+- No sorry can be verified as closed
+
+### Actions Taken
+1. **Diagnosed OOM** — build failure is memory, not syntax. All HasIfInHead alternatives present at correct indentation.
+2. **REWROTE proof agent prompt** — P0: collapse if_branch `| succ d ih =>` (L14388-15590, ~1200 lines, 24 sorry'd cases) into single sorry. This is architecturally blocked anyway (K-mismatch). Should recover ~2K lines and let file compile.
+3. **REWROTE jsspec prompt** — P0: fix 3 `hne` callers (L5090, L5182, L5420) with concrete tactic suggestions.
+4. **REWROTE wasmspec prompt** — told to prepare L17760/L17813 proofs offline, wait for build fix before LSP validation.
+
+### Critical Path
+1. **IMMEDIATE**: proof agent collapses if_branch → file compiles
+2. **NEXT**: jsspec fixes 3 hne callers → CC sorry count drops by 3
+3. **THEN**: proof agent closes compound sorries (L11772 etc.) → ANF sorry count drops
+4. **PARALLEL**: wasmspec closes L17760/L17813 (break/continue)
+5. **BLOCKED**: 12 CC sorries need architectural changes (CCStateAgree Path A, FuncsCorr, multi-step sim)
+
+### anfConvert_step_star status
+L17372: The theorem is structurally complete — all Flat.Expr constructors are case-split, with individual sorries per case. It is NOT a single monolithic sorry. The per-constructor sorries depend on sub-theorems (normalizeExpr_*_step_sim) which themselves have sorries. The supervisor prompt's claim of "1 sorry" was outdated — the decomposition happened weeks ago.
+
+---
+
 ## Run: 2026-04-10T17:05:01+00:00
 
 ### Metrics
