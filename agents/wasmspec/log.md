@@ -7889,3 +7889,6 @@ No sorry count change (still 2 sorries, same as before). No build risk.
 
 **Sorry count:** 26 total (unchanged — Cat A cases were part of combined sorry blocks, now separated out as proved + reduced Cat B sorry)
 2026-04-10T20:58:31+00:00 DONE
+
+## Run: 2026-04-10T21:15:01+00:00
+

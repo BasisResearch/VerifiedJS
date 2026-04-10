@@ -5942,3 +5942,45 @@ The theorem at ~L15000 (shifted from L17372) is structurally complete with per-c
 
 ## Run: 2026-04-10T21:05:02+00:00
 
+
+### Metrics
+- **Sorry count**: ANF 43 + CC 15 + Lower 0 = **58 total**
+- **Delta from last run (19:05)**: **-17** (75→58). WENT DOWN.
+- **BUILD: PASSES** (warnings only, no errors). This is the first clean build in 3+ runs.
+
+### Why count went down (-17)
+- ANF: 60→43 (-17). Proof agent fixed ~100 build errors across 3 runs (17:30, 18:30, 21:00). Supervisor collapsed if_branch (-2 sorry blocks consolidated). Wasmspec closed Cat A break/continue contradiction cases.
+- CC: 15→15 (0). jsspec restructured hne callers (3→3, replaced with error-case sorries).
+- Lower: 0→0.
+
+### Agent Status
+1. **proof**: Fixed build across 3 runs. Has NOT yet started P0 (extending error propagation to 28 remaining compound cases in Flat.step?). Only 3 cases have error propagation (let/assign/seq at L357/L373/L401). **PROMPT REWRITTEN** — P0 is now mandatory for next run. Build works, no blockers.
+
+2. **jsspec**: Completed hne restructuring (P0). 3 error-case sorries replace 3 hne sorries — net 0 change but error-case sorries will be closable after error propagation. **PROMPT REWRITTEN** — redirected to P1 CCStateAgreeWeak (4 potential sorry closures at L5358/L5384/L8327/L8443).
+
+3. **wasmspec**: Closed Cat A contradiction cases for break+continue. Added HasBreakInHead_hasAbruptCompletion and HasContinueInHead_hasAbruptCompletion mutual defs. **PROMPT REWRITTEN** — redirected to labeled_branch sorry cluster (L9865-L11000, 18 sorries) and tryCatch (L13950-L13971, 3 sorries).
+
+### Actions Taken
+1. **Verified build passes** — `lake build` succeeds with only warnings
+2. **Counted sorries precisely** — 43 ANF + 15 CC = 58 total
+3. **REWROTE ALL 3 agent prompts**:
+   - proof: MUST extend error propagation this run (28 locations, exact pattern provided)
+   - jsspec: CCStateAgreeWeak assessment + refactor (4 sorry targets)
+   - wasmspec: labeled_branch cluster analysis + tryCatch assessment
+
+### Critical Path
+1. **NOW**: proof agent extends error propagation in Flat/Semantics.lean (28 cases)
+2. **PARALLEL**: wasmspec analyzes/closes labeled_branch sorries + tryCatch
+3. **PARALLEL**: jsspec assesses/implements CCStateAgreeWeak
+4. **AFTER ERROR PROP**: jsspec closes 3 error-case sorries (-3), wasmspec closes 28 Cat B cases
+5. **BLOCKED**: if_branch K-mismatch (2), FuncsCorr (1), getIndex unprovable (1), functionDef (1)
+
+### Sorry Categorization (58 total)
+- **Closable after error propagation** (~14): ANF compound throw/return/await/yield (9), CC error-case (3), ANF break/continue Cat B (2)
+- **Potentially closable now** (~8): labeled_branch simple cases (4-5), tryCatch (1-2), CCStateAgreeWeak (4 if refactor works)
+- **Architecturally blocked** (~36): if_branch K-mismatch (2), FuncsCorr (1), multi-step gaps (4), functionDef (1), getIndex unprovable (1), while (2), depth/omega (misc), remaining labeled_branch complex cases
+
+### anfConvert_step_star status
+Same as last run. Per-constructor sorries depend on sub-theorems. Not a single monolithic sorry.
+2026-04-10T21:05:02+00:00 DONE
+2026-04-10T21:10:26+00:00 DONE
