@@ -9864,11 +9864,12 @@ private theorem normalizeExpr_labeled_branch_step :
       rename_i body_flat
       rw [ANF.normalizeExpr_labeled] at hnorm
       simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
-      cases hbody : (ANF.normalizeExpr body_flat K).run n with
-      | error msg => simp [hbody] at hnorm
+      generalize hbody : ANF.normalizeExpr body_flat K n = res at hnorm
+      cases res with
+      | error msg => simp at hnorm
       | ok val =>
         obtain ⟨body_anf, m'⟩ := val
-        simp [hbody, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
+        simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm
         obtain ⟨rfl, rfl⟩ := hnorm
         refine ⟨⟨body_flat, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent], ?_, ?_, rfl, rfl, rfl, rfl, ?_, ?_, ?_, ?_⟩
         · exact .tail ⟨by simp [Flat.step?, Flat.pushTrace]⟩ (.refl _)
@@ -9877,15 +9878,16 @@ private theorem normalizeExpr_labeled_branch_step :
         · intro smid evs1 hsteps hlen
           cases hsteps with
           | refl => simp
-          | tail hsingle hrest =>
+          | @tail _ s2 _ t ts hsingle hrest =>
             obtain ⟨hstep⟩ := hsingle
             simp [Flat.step?, Flat.pushTrace] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
+            have hts_nil : ts = [] := by
+              have : ts.length = 0 := by simp at hlen; omega
+              exact List.length_eq_zero.mp this
+            subst hts_nil
             cases hrest with
             | refl => simp [List.append_assoc]
-            | tail hsingle2 _ =>
-              obtain ⟨hstep2⟩ := hsingle2
-              simp [Flat.step?] at hstep2
         · exact ⟨n, m', hbody⟩
         · intro x hfx; exact hewf x (VarFreeIn.labeled_body _ _ _ hfx)
     | seq_left h_a =>
