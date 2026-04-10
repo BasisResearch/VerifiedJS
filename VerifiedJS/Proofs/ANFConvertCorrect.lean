@@ -10400,7 +10400,7 @@ private theorem normalizeExpr_labeled_branch_step :
           | call_env _ _ _ _ h => exact hewf x (VarFreeIn.call_env _ _ _ _ h)
           | call_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.call_arg _ _ _ _ _ hmem h)
     | call_env h_env =>
-      rename_i envE funcE argsL
+      rename_i envE argsL funcE
       simp only [ANF.normalizeExpr] at hnorm
       rcases Classical.em (HasLabeledInHead funcE label) with h_f_lab | h_f_nolab
       · -- HasLabeledInHead funcE: recurse on funcE (same structure as call_func)
@@ -10475,7 +10475,7 @@ private theorem normalizeExpr_labeled_branch_step :
           | newObj_env _ _ _ _ h => exact hewf x (VarFreeIn.newObj_env _ _ _ _ h)
           | newObj_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.newObj_arg _ _ _ _ _ hmem h)
     | newObj_env h_env =>
-      rename_i envE funcE argsL
+      rename_i envE argsL funcE
       simp only [ANF.normalizeExpr] at hnorm
       rcases Classical.em (HasLabeledInHead funcE label) with h_f_lab | h_f_nolab
       · -- HasLabeledInHead funcE: recurse on funcE (same structure as newObj_func)
