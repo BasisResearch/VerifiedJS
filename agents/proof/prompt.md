@@ -1,4 +1,4 @@
-# proof — EXTEND ERROR PROPAGATION TO ALL COMPOUND CASES
+# proof — EXTEND ERROR PROPAGATION NOW (BUILD PASSES)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -8,111 +8,99 @@
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
 ## STATUS
-- Supervisor collapsed if_branch (L13114, L13154 → single sorry each), saving ~2400 lines
-- File is now 16,269 lines (was 18,694). Should fit in memory.
-- ANF: 39 sorries. CC: 15 sorries. Lower: 0. Total: 54.
+- **BUILD PASSES** — all your build fixes landed. Good work.
+- ANF: 43 sorries. CC: 15. Lower: 0. **Total: 58** (down from 75).
+- File is 16,240 lines. Fits in memory.
 
-## P0: EXTEND ERROR PROPAGATION IN Flat/Semantics.lean
+## P0: EXTEND ERROR PROPAGATION IN Flat/Semantics.lean — DO THIS NOW
 
-This is the #1 blocker for the ENTIRE project. Currently only `.let`, `.assign`, `.seq` have error propagation in `Flat.step?`. ALL other compound cases need it.
+This has been the #1 blocker for 3 runs. Build is fixed. No more excuses. DO IT.
 
-### WHY
-When a sub-expression fires an error (break/continue/throw/return), compound wrappers (.unary, .binary, .if, .call, .getProp, etc.) currently keep the wrapper around the result. This means:
-- `.unary op (.break l)` → error fires → becomes `.unary op (.lit .undefined)` — WRONG
-- Should become just the sub-result with no wrapper — CORRECT
+Error propagation currently exists ONLY at L357 (.let), L373 (.assign), L401 (.seq). You need to add it to ALL 28 remaining compound stepping cases.
 
-Without this, 28+ break/continue sorries, 5+ compound throw/return/await/yield sorries, AND 3 CC hne sorries are ALL unprovable.
-
-### THE PATTERN (already used at L354-362, L370-378, L398-406)
-For each compound case that calls `step?` on a sub-expression, change:
+### THE EXACT PATTERN
+Currently `.unary` at L414-417 reads:
 ```lean
-match step? { s with expr := subExpr } with
+match step? { s with expr := arg } with
 | some (t, sa) =>
-    let s' := pushTrace { s with expr := .compound sa.expr ..., env := sa.env, heap := sa.heap } t
+    let s' := pushTrace { s with expr := .unary op sa.expr, env := sa.env, heap := sa.heap } t
     some (t, s')
 | none => none
 ```
-To:
+Change to:
 ```lean
-match step? { s with expr := subExpr } with
+match step? { s with expr := arg } with
 | some (t, sa) =>
     match t with
     | .error _ =>
         let s' := pushTrace { s with expr := sa.expr, env := sa.env, heap := sa.heap } t
         some (t, s')
     | _ =>
-        let s' := pushTrace { s with expr := .compound sa.expr ..., env := sa.env, heap := sa.heap } t
+        let s' := pushTrace { s with expr := .unary op sa.expr, env := sa.env, heap := sa.heap } t
         some (t, s')
 | none => none
 ```
 
-### CASES TO CHANGE (line numbers in CURRENT file, approximately)
-These are the compound stepping cases WITHOUT error propagation:
+### ALL 28 LOCATIONS TO CHANGE (exact current line numbers):
+1. **L389** — `.if` cond stepping (pushTrace has `.«if» sc.expr then_ else_`)
+2. **L415** — `.unary` arg stepping
+3. **L423** — `.binary` lhs stepping
+4. **L431** — `.binary` rhs stepping
+5. **L447** — `.call` funcExpr stepping
+6. **L456** — `.call` envExpr stepping
+7. Find `.call` args stepping (firstNonValueExpr pattern)
+8. Find `.newObj` funcExpr stepping
+9. Find `.newObj` envExpr stepping
+10. Find `.newObj` args stepping
+11. Find `.getProp` obj stepping
+12. Find `.setProp` obj stepping
+13. Find `.setProp` value stepping
+14. Find `.setProp` value (non-obj) stepping
+15. Find `.getIndex` obj stepping
+16. Find `.getIndex` idx stepping
+17. Find `.getIndex` idx (string) stepping
+18. Find `.getIndex` idx (other) stepping
+19. Find `.setIndex` obj stepping
+20. Find `.setIndex` idx stepping
+21. Find `.setIndex` value stepping
+22. Find `.setIndex` idx (non-obj) stepping
+23. Find `.setIndex` value (non-obj) stepping
+24. Find `.deleteProp` obj stepping
+25. Find `.typeof` arg stepping
+26. Find `.throw` arg stepping
+27. Find `.makeClosure` envExpr stepping
+28. Find `.getEnv` envExpr stepping
+(Plus `.makeEnv`, `.objectLit`, `.arrayLit` firstNonValue stepping if they exist)
 
-1. **L388** `.if` cond stepping
-2. **L415** `.unary` arg stepping
-3. **L423** `.binary` lhs stepping
-4. **L431** `.binary` rhs stepping
-5. **L447** `.call` funcExpr stepping
-6. **L456** `.call` envExpr stepping
-7. **L508** `.call` args stepping (firstNonValueExpr)
-8. **L518** `.newObj` funcExpr stepping
-9. **L527** `.newObj` envExpr stepping
-10. **L544** `.newObj` args stepping (firstNonValueExpr)
-11. **L575** `.getProp` obj stepping
-12. **L583** `.setProp` obj stepping
-13. **L603** `.setProp` value stepping
-14. **L616** `.setProp` value (non-obj) stepping
-15. **L625** `.getIndex` obj stepping
-16. **L646** `.getIndex` idx stepping
-17. **L668** `.getIndex` idx (string) stepping
-18. **L679** `.getIndex` idx (other) stepping
-19. **L687** `.setIndex` obj stepping
-20. **L695** `.setIndex` idx stepping
-21. **L717** `.setIndex` value stepping
-22. **L727** `.setIndex` idx (non-obj) stepping
-23. **L739** `.setIndex` value (non-obj) stepping
-24. **L760** `.deleteProp` obj stepping
-25. **L771** `.typeof` arg stepping
-26. **L786** `.throw` arg stepping
-27. **L808** `.makeClosure` envExpr stepping
-28. **L835** `.getEnv` envExpr stepping
-29. **L851** `.makeEnv` values stepping (firstNonValueExpr)
-30. **L871** `.objectLit` props stepping (firstNonValueProp)
-31. **L890** `.arrayLit` elems stepping (firstNonValueExpr)
+### APPROACH — DO ALL EDITS FIRST, THEN VERIFY
+1. Search for all `pushTrace.*env :=.*heap :=` in Flat/Semantics.lean to find every compound stepping site
+2. For each that doesn't already have `match t with | .error _ =>`, add it
+3. After ALL edits, check Flat/Semantics.lean with LSP
+4. Then fix cascading errors in ANFConvertCorrect.lean (sorry anything you can't fix in this run)
 
-### EXPECTED IMPACT ON PROOFS
-Adding `match t with | .error _ => ...` will break existing proofs in ANFConvertCorrect.lean that `unfold Flat.step?` and match on the result. These will need updating. BUT:
-- The error propagation proofs (`step?_*_error`) already exist for let/assign/seq and can be templated
-- New `step?_*_error` theorems are needed for each compound case
-- Existing `step?_*_step` theorems need `hne : ∀ msg, t ≠ .error msg` hypothesis added (like let/assign/seq already have)
+### IMPACT
+This unblocks:
+- ~9 compound throw/return/await/yield sorries in ANF
+- ~3 error-case sorries in CC (jsspec's restructured hne callers)
+- ~28 break/continue Cat B cases (wasmspec's territory)
+- That's potentially -12 to -20 sorries in the NEXT round
 
-### APPROACH
-1. Make ALL 31 changes to Flat/Semantics.lean
-2. Add new `step?_*_error` theorems for each compound case (template from `step?_seq_error`)
-3. Update existing `step?_*_step` theorems with `hne` hypothesis
-4. Fix cascading errors in ANFConvertCorrect.lean (sorry anything you can't fix cleanly)
+## P1: FIX CASCADING ERRORS (after P0)
 
-## P1: CLOSE COMPOUND SORRIES (after P0)
-
-Once error propagation is universal, these ANF sorries should be closable:
-- L11772 — throw compound (now ~L10570 after collapse)
-- L11923 — return compound inner_val
-- L11929 — compound HasReturnInHead
-- L12106 — compound HasAwaitInHead
-- L12264 — compound HasYieldInHead
+Adding error propagation will break proofs in ANFConvertCorrect.lean that unfold `Flat.step?`. For each broken proof:
+1. If it's a `sorry` already → leave it
+2. If it was working → add `hne` hypothesis or `match t with` split, or sorry it
 
 ## CONCURRENCY
-- wasmspec works on break/continue sorries (L15333, L15387 after line shift)
-- jsspec works on ClosureConvertCorrect.lean
-- **YOU** own ALL of Flat/Semantics.lean AND ANFConvertCorrect.lean (except break/continue at ~L15333-15387)
+- wasmspec works on break/continue at ~L15284, L15355 only
+- jsspec works on ClosureConvertCorrect.lean only
+- YOU own ALL of Flat/Semantics.lean and the rest of ANFConvertCorrect.lean
 
 ## WORKFLOW
-1. `echo "### $(date -Iseconds) Starting run — extending error propagation" >> agents/proof/log.md`
-2. Edit Flat/Semantics.lean with ALL 31 error propagation cases
-3. Verify with LSP (at least check that Flat/Semantics.lean has no errors)
-4. Add `step?_*_error` theorems (or sorry them for now)
-5. Fix cascading errors in ANFConvertCorrect.lean
-6. `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`
+1. `echo "### $(date -Iseconds) Starting run — EXTENDING ERROR PROPAGATION" >> agents/proof/log.md`
+2. Edit ALL 28+ locations in Flat/Semantics.lean
+3. Verify Flat/Semantics.lean compiles with LSP
+4. Fix cascading ANF errors (sorry what you can't fix)
+5. `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`
 
-## NON-NEGOTIABLE: Do NOT break the build. Sorry anything you can't prove. The error propagation MUST go in this run.
+## NON-NEGOTIABLE: This MUST happen this run. Every run without it is wasted.

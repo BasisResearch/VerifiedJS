@@ -1,67 +1,50 @@
-# wasmspec — CLOSE 4 NoNestedAbrupt CONTRADICTION CASES
+# wasmspec — CLOSE TRYCATCH + LABELED BRANCH SORRIES
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
 - **DO NOT** run `lake build` — USE LSP ONLY.
 - **DO NOT** use while/until loops, pgrep, sleep loops
-- You CAN edit ANFConvertCorrect.lean ONLY at break/continue sorries (~L15333-15400)
+- You CAN edit ANFConvertCorrect.lean
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
 ## STATUS
-- Supervisor collapsed if_branch, file now 16,269 lines (was 18,694)
-- Proof agent is extending error propagation to ALL compound cases in Flat.step?
-- ANF sorries: 39. CC: 15. Total: 54.
+- BUILD PASSES. LSP available.
+- Cat A break/continue closed (good work).
+- Cat B (28 cases) blocked on error propagation (proof agent is adding it).
+- ANF: 43 sorries. CC: 15. Total: 58.
 
-## P0: CLOSE 4 CONTRADICTION CASES IN BREAK/CONTINUE
+## P0: ANALYZE AND CLOSE LABELED_BRANCH SORRIES (L9865-L11000)
 
-Your earlier analysis found 4 of 32 cases are closable via NoNestedAbrupt contradiction:
-- throw_arg, return_some_arg, yield_some_arg, await_arg
+There are ~18 sorries in the `normalizeExpr_labeled_branch_step` area (L9865-L11000). These are the LARGEST cluster. Analyze them:
 
-For these: `HasBreakInHead` (or `HasContinueInHead`) implies `hasAbruptCompletion arg = true`, but `NoNestedAbrupt` requires `hasAbruptCompletion arg = false`. This is a direct contradiction.
+1. Read L9865-L11000 to understand the proof structure
+2. Categorize which sorries are:
+   - (a) Simple tactic failures (wrong simp lemmas, missing unfold) — FIX THESE
+   - (b) Blocked by error propagation — LEAVE
+   - (c) Blocked by other architectural issues — DOCUMENT
 
-### Approach:
-1. Find the break compound sorry (was L17758, now shifted ~-2400 lines → around L15360)
-2. Find the continue compound sorry (was L17812, now shifted → around L15414)
-3. For each, find the 4 contradiction cases (throw_arg, return_some_arg, yield_some_arg, await_arg)
-4. Close them with:
+Focus on (a). Even closing 3-4 simple ones is valuable. The comments suggest:
+- L10288: "trivialChain passthrough doesn't apply" — read context, may need different approach
+- L10515: "call_args: labeled in args list" — may need list induction lemma
+- L10517/L10519: "funcE/envE anonymous variable order mismatch" — this is a rename_i issue, potentially fixable
 
-```lean
-| .throw_arg _ hb =>
-  -- HasBreakInHead implies hasAbruptCompletion = true
-  -- But NoNestedAbrupt requires hasAbruptCompletion = false
-  -- Contradiction
-  have : hasAbruptCompletion arg = true := HasBreakInHead_hasAbruptCompletion hb
-  simp [this] at hnoabrupt  -- or exact absurd this hnoabrupt
-```
+## P1: TRYCATCH SORRIES (L13950, L13968, L13971)
 
-### Helper lemma needed:
-```lean
-theorem HasBreakInHead_hasAbruptCompletion {e : Flat.Expr} (h : HasBreakInHead e) :
-    hasAbruptCompletion e = true
-```
+3 tryCatch sorries:
+- L13950: tryCatch body-error — "lifting body steps through tryCatch context"
+- L13968: tryCatch body-step — "callStack propagation + counter alignment"
+- L13971: compound cases — deferred
 
-This requires mutual induction on `HasBreakInHead` constructors. Check if it already exists with `lean_local_search` for "HasBreakInHead" and "hasAbruptCompletion".
+Read L13900-L13980 context. Assess if body-error (L13950) is closable — it may just need a step?_tryCatch lemma.
 
-If it doesn't exist, write it in ANFConvertCorrect.lean near the other HasBreakInHead lemmas.
+## P2: WHILE SORRIES (L12336, L12348)
 
-## P1: PREPARE FOR REMAINING 28 CASES (DO NOT EDIT YET)
-
-The other 28 cases need error propagation in Flat.step? (proof agent is adding it). Once done:
-- Error from sub-expression → wrapper is stripped → `sa.expr` is directly the sub-result
-- SimRel holds because no dead code wrapper
-- Proof pattern: `have herr := step?_compound_error ...; rw [herr] at hstep; ...`
-
-Prepare the proof outline for these cases but DO NOT edit until the proof agent confirms error propagation is in.
-
-## P2: tryCatch sorries (L14018, L14036, L14039 after shift)
-
-If P0 is done, analyze tryCatch compound sorries. These have different blockers (callStack + counter alignment).
+2 while sorries. These may be simpler than they look. Read context.
 
 ## WORKFLOW
-1. `echo "### $(date -Iseconds) Starting run — NoNestedAbrupt contradiction cases" >> agents/wasmspec/log.md`
-2. Find break/continue sorry positions in the CURRENT file (use grep for "sorry" near "break compound" or "continue compound")
-3. Search for HasBreakInHead_hasAbruptCompletion helper
-4. If missing, write it
-5. Close the 4 contradiction cases
-6. `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`
+1. `echo "### $(date -Iseconds) Starting run — labeled_branch + tryCatch analysis" >> agents/wasmspec/log.md`
+2. Read L9865-L11000, categorize sorries
+3. Close what you can with LSP verification
+4. Read L13900-L13980, assess tryCatch
+5. `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`
