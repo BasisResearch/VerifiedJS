@@ -12032,13 +12032,13 @@ private theorem normalizeExpr_return_step_sim
     | «continue» _ =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
-    | _ => sorry -- compound inner_val: seq, let, assign, if, call, throw, etc.
+    | _ => sorry -- compound inner_val: blocked by Flat.step? error propagation (see L11763)
   | throw_arg h => exfalso; exact noNestedAbrupt_hasReturnInHead_absurd_throw hna h
   | yield_some_arg h => exfalso; exact noNestedAbrupt_hasReturnInHead_absurd_yield hna h
   | await_arg h => exfalso; exact noNestedAbrupt_hasReturnInHead_absurd_await hna h
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
-    sorry -- compound HasReturnInHead cases: need eval context stepping
+    sorry -- compound HasReturnInHead: blocked by Flat.step? error propagation (see L11763)
 
 /-- step? on .await (.lit v) resolves immediately to .lit v with silent event. -/
 private theorem Flat.step?_await_lit_eq (v : Flat.Value)
@@ -12209,13 +12209,13 @@ private theorem normalizeExpr_await_step_sim
     | «continue» _ =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
-    | _ => sorry -- compound inner_arg: seq, let, assign, if, call, throw, etc.
+    | _ => sorry -- compound inner_arg: blocked by Flat.step? error propagation (see L11763)
   | throw_arg h => exfalso; exact noNestedAbrupt_hasAwaitInHead_absurd_throw hna h
   | return_some_arg h => exfalso; exact noNestedAbrupt_hasAwaitInHead_absurd_return hna h
   | yield_some_arg h => exfalso; exact noNestedAbrupt_hasAwaitInHead_absurd_yield hna h
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
-    sorry -- compound HasAwaitInHead cases: need eval context stepping
+    sorry -- compound HasAwaitInHead: blocked by Flat.step? error propagation (see L11763)
 
 /-- If normalizeExpr sf.expr k produces .yield arg delegate (with trivial-preserving k),
     then there exist Flat steps from sf matching the ANF yield step. -/
@@ -12367,13 +12367,13 @@ private theorem normalizeExpr_yield_step_sim
     | «continue» _ =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
-    | _ => sorry -- compound inner_val: seq, let, assign, if, call, throw, etc.
+    | _ => sorry -- compound inner_val: blocked by Flat.step? error propagation (see L11763)
   | throw_arg h => exfalso; exact noNestedAbrupt_hasYieldInHead_absurd_throw hna h
   | return_some_arg h => exfalso; exact noNestedAbrupt_hasYieldInHead_absurd_return hna h
   | await_arg h => exfalso; exact noNestedAbrupt_hasYieldInHead_absurd_await hna h
   | _ =>
     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
-    sorry -- compound HasYieldInHead cases: need eval context stepping
+    sorry -- compound HasYieldInHead: blocked by Flat.step? error propagation (see L11763)
 
 /-- If normalizeExpr sf.expr k produces .let name rhs body (with trivial-preserving k),
     then one ANF step on the let can be simulated by Flat steps. -/

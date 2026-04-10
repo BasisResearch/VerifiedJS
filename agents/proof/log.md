@@ -7041,3 +7041,59 @@ The compound HasXInHead sorries (L11713, L11864, L11870, L12041, L12047, L12199,
 ## Run: 2026-04-10T15:30:01+00:00
 
 ### 2026-04-10T15:30:12+00:00 Starting run
+
+## Run: 2026-04-10T15:30+00:00
+- **BUILD: PASSES** ✓ (no new errors introduced)
+- **ANF Sorries: unchanged** (sorry comments updated with root cause analysis)
+
+### Deep analysis: P0 compound HasThrowInHead (L11763) — ROOT CAUSE IDENTIFIED
+
+**Finding**: The sorry at L11763 (formerly L11713) covering 29 compound HasThrowInHead
+cases is **fundamentally unprovable** as currently stated. Same root cause applies to:
+- Compound HasReturnInHead (L12035, L12041)
+- Compound HasAwaitInHead (L12212, L12218)
+- Compound HasYieldInHead (L12370, L12376)
+- Compound HasBreakInHead (L17872, already documented at L17701)
+- Compound HasContinueInHead (L17925, already documented at L17780)
+
+**Root cause**: `Flat.step?` does not propagate `.error` events through compound
+evaluation contexts. When e.g. `.throw (.lit v)` fires inside `.seq (.throw (.lit v)) b`,
+`Flat.step?` returns `(.error msg, {expr := .seq (.lit .undefined) b, ...})` — wrapping
+the result in `.seq`. The dead code `b` is NOT skipped. But the theorem goal requires
+`sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap`, which is unsatisfiable
+because the flat semantics continues evaluating `b` after the error.
+
+**Proof**: Concrete counterexample: `a = .throw (.lit 42)`, `b = .lit 0`.
+`normalizeExpr (.seq a b) k = .ok (.throw (trivialOfFlatValue 42), n)` ✓
+But flat steps from `.seq a b` reach `{expr := .lit 0, ...}`, not `{expr := .lit .undefined}`.
+
+**Fix (same as L17710 analysis)**: Change `Flat.step?` to propagate `.error` events
+directly through compound expressions, skipping dead code:
+```
+| some (.error msg, sa) =>
+    some (.error msg, pushTrace {s with expr := sa.expr, env := sa.env, heap := sa.heap} (.error msg))
+```
+This matches ECMA-262 abrupt completion semantics.
+
+**Impact**: Requires coordinating with jsspec to update `ClosureConvertCorrect.lean`
+(`Flat_step?_seq_step` at L2204 and ~518 refs to `Flat.step?`). The change only affects
+error-event behavior; non-error context lifting (`step?_*_ctx` with `hnoerr` guard)
+is unaffected.
+
+### Analysis of second-position labeled sorries (L10253 etc.)
+
+The 6 "second-position: blocked by trivial mismatch" sorries (setProp_val, getIndex_idx,
+setIndex_idx, setIndex_val, call_env, newObj_env) are blocked by a different issue:
+
+When the labeled is in the second sub-expression (e.g., `val` in `.setProp obj prop val`),
+the proof needs to first evaluate `obj` to a value, then handle `val`. After flat evaluation
+of `obj` to `.lit v`, the ANF trivial changes from e.g. `.var name` to `trivialOfFlatValue v`.
+Since the `.labeled` body depends on the continuation (which captures the trivial), the body
+from the original `hnorm` doesn't match the body after evaluation. This is a genuine
+"continuation dependence" issue that requires new infrastructure.
+
+### What was done
+- Updated 6 sorry comments with precise root cause analysis pointing to L11763
+- Identified that ~12 of the 55 sorries share the Flat.step? error propagation blocker
+- Identified that ~6 sorries share the trivial mismatch blocker
+- No sorry count change (analysis only, no proofs closed)
