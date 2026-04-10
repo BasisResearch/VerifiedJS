@@ -7755,3 +7755,64 @@ Option 1 seems most viable: modify Flat.step? for while to match ANF's structure
 ## Run: 2026-04-10T18:15:37+00:00
 
 ### 2026-04-10T18:15:48+00:00 Starting run — L17873+L17926 unblocked
+
+### 2026-04-10T18:15:37+00:00 Analysis of L17841 + L17894 (break/continue compound)
+
+**FINDING: These sorries CANNOT be fully closed with the current Flat.step? changes.**
+
+#### What changed
+Error propagation was added to Flat.step? for 3 constructors only:
+- `.seq` (L392-407): error from `a` → propagates directly (unwraps seq)
+- `.let` (L348-363): error from `init` → propagates directly (unwraps let)
+- `.assign` (L364-379): error from `rhs` → propagates directly (unwraps assign)
+
+#### What's needed
+The `HasBreakInHead` / `HasContinueInHead` inductives have 30+ compound constructors.
+For non-propagating constructors (unary, binary, if, call, throw, return, yield, await,
+getProp, setProp, deleteProp, getIndex, setIndex, getEnv, makeClosure, makeEnv, objectLit,
+arrayLit), Flat.step? still wraps the error result in the compound expression.
+
+#### Why non-propagating constructors block the proof
+After a non-propagating step, e.g. `.unary op (.break l)`:
+1. Error event `.error "break:l"` IS emitted ✓
+2. Result expr = `.unary op (.lit .undefined)` (still wrapped) ✗
+3. Dead code evaluates: `.unary op (.lit .undefined)` → `.lit (evalUnary op .undefined)`
+4. `evalUnary op .undefined` ≠ `.undefined` in general (e.g., `.neg` gives `.number NaN`)
+5. ANF_SimRel requires `normalizeExpr sf'.expr k' = .trivial (.litUndefined)`
+6. But we get `.trivial (.lit (evalUnary op .undefined))` → SimRel FAILS
+
+#### What would fix it
+Extend the error match pattern in Flat.step? to ALL compound sub-expression cases.
+The pattern is already there for seq/let/assign:
+```lean
+match t with
+| .error _ =>
+    let s' := pushTrace { s with expr := si.expr, env := si.env, heap := si.heap } t
+    some (t, s')
+| _ =>
+    let s' := pushTrace { s with expr := .compound_wrapper si.expr, ... } t
+    some (t, s')
+```
+
+This needs to be added to: unary, binary (lhs+rhs), if (cond), throw, return (some),
+yield (some), await, getProp, setProp (obj+val), deleteProp, call (func+env+args),
+newObj (func+env+args), getIndex (obj+idx), setIndex (obj+idx+val), getEnv, makeClosure,
+makeEnv, objectLit, arrayLit.
+
+**Note**: This change affects ClosureConvertCorrect.lean (jsspec's domain).
+Requires jsspec coordination to update Flat_step?_seq_step and related theorems.
+
+#### P1: tryCatch sorries (L16471, L16489)
+These have DIFFERENT blockers unrelated to error propagation:
+1. CallStack propagation through tryCatch context
+2. Counter alignment (different normalizeExpr counters produce different variable names)
+3. Error-is-last requirement for catch handler SimRel
+The error propagation change does NOT help here.
+
+#### Summary
+- L17841 (break compound): NOT CLOSABLE — needs all-constructor error propagation
+- L17894 (continue compound): NOT CLOSABLE — same reason
+- L16471 (tryCatch body-error): NOT CLOSABLE — different blockers (callStack + counter)
+- L16489 (tryCatch body-step): NOT CLOSABLE — different blockers (callStack + counter)
+### 2026-04-10T18:46:30+00:00 Run complete — L17841+L17894 NOT closable (error propagation only in seq/let/assign, need all constructors)
+2026-04-10T18:46:40+00:00 DONE

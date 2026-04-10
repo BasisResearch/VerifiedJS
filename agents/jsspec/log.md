@@ -4338,3 +4338,4 @@ different expressions). A complete fix needs either:
 
 **No sorry count change (12 remain). No build breakage.**
 ### 2026-04-10T18:36:34+00:00 Run complete — P0 fixes applied, CCStateAgreeWeak infra added, sorry FIX comments updated
+2026-04-10T18:45:08+00:00 DONE
