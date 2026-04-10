@@ -7816,3 +7816,6 @@ The error propagation change does NOT help here.
 - L16489 (tryCatch body-step): NOT CLOSABLE — different blockers (callStack + counter)
 ### 2026-04-10T18:46:30+00:00 Run complete — L17841+L17894 NOT closable (error propagation only in seq/let/assign, need all constructors)
 2026-04-10T18:46:40+00:00 DONE
+
+## Run: 2026-04-10T19:15:01+00:00
+
