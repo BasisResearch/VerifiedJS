@@ -7199,3 +7199,18 @@ Remaining known issues (pre-existing, not from my changes):
 - L4655-L4762: HasContinueInHead forward reference (pre-existing)
 - L13900+: simp/split/cases failures (likely step? error propagation related)
 - L15039: omega failures (depth bounds)
+### 2026-04-10T21:00:34+00:00 Run complete — PARTIAL FIX
+Summary of changes:
+1. Fixed le_refl → Nat.le_refl (2 locations)
+2. Added ANF.normalizeExpr to 9 simp calls for makeEnv/objectLit/arrayLit hnorm_e matching
+3. Sorry'd newObj_func/newObj_env cases in normalizeExpr_labeled_branch_step (funcE/envE order complex)
+4. Sorry'd 5 compound inner_val catch-all cases (placeholder inference issue)
+
+Remaining errors (NOT from our changes — pre-existing):
+- L4655-L4762: HasBreakInHead/HasContinueInHead forward reference issues
+- L13761-L13931: step?/simp/split failures (Flat.step? error propagation changes)
+- L14052-L14588: cases dependent elimination failures (step? match structure changes)
+- L14900 x32: omega failures (depth bounds in a large theorem)
+
+These pre-existing errors were present before this run. Flat/Semantics.lean: 0 errors.
+2026-04-10T21:00:51+00:00 DONE
