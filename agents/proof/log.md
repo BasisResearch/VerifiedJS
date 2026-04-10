@@ -7219,3 +7219,5 @@ These pre-existing errors were present before this run. Flat/Semantics.lean: 0 e
 
 ### 2026-04-10T21:30:13+00:00 Starting run — EXTENDING ERROR PROPAGATION
 2026-04-10T22:30:02+00:00 SKIP: already running
+2026-04-10T22:30:17+00:00 EXIT: code 1
+2026-04-10T22:30:17+00:00 DONE

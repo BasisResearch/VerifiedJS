@@ -7923,3 +7923,9 @@ No sorry count change (still 2 sorries, same as before). No build risk.
 ## Run: 2026-04-10T22:15:01+00:00
 
 ### 2026-04-10T22:15:10+00:00 Starting run — Cat B + labeled_branch
+2026-04-10T22:30:06+00:00 EXIT: code 1
+2026-04-10T22:30:06+00:00 DONE
+
+## Run: 2026-04-10T22:30:11+00:00
+
+### 2026-04-10T22:30:22+00:00 Starting run — Cat B + labeled_branch
