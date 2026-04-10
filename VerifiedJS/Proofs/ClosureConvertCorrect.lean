@@ -5087,6 +5087,7 @@ private theorem closureConvert_step_simulation
           have heq := Flat_step?_let_step sf name
             (Flat.convertExpr body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd).fst
             _ hfnv t sa hm
+            (by intro msg hmsg; sorry) -- BLOCKED: Flat error propagation in .let unwraps wrapper; need separate error case
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -5178,6 +5179,7 @@ private theorem closureConvert_step_simulation
         match hm : Flat.step? { sf with expr := (Flat.convertExpr rhs scope envVar envMap st).fst } with
         | some (t, sa) =>
           have heq := Flat_step?_assign_step sf name _ hfnv t sa hm
+            (by intro msg hmsg; sorry) -- BLOCKED: Flat error propagation in .assign unwraps wrapper; need separate error case
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
@@ -5415,6 +5417,7 @@ private theorem closureConvert_step_simulation
           have heq := Flat_step?_seq_step sf
             (Flat.convertExpr b scope envVar envMap (Flat.convertExpr a scope envVar envMap st).snd).fst
             _ hfnv t sa hm
+            (by intro msg hmsg; sorry) -- BLOCKED: Flat error propagation in .seq unwraps wrapper; need separate error case
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
           exact ⟨sa, rfl, hsf'eq.symm⟩
