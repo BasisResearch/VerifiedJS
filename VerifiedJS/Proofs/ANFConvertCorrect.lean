@@ -4320,8 +4320,33 @@ private theorem noCallFrameReturn_tryCatch_direct_bridge
       .ok (.tryCatch body catchParam catchBody finally_, m))
     (hncfr : noCallFrameReturn (.tryCatch body_f cp cb_f fin_f) = true) :
     catchParam ≠ "__call_frame_return__" := by
-  -- TODO: Use normalizeExpr_tryCatch_decomp (defined at L16340) once moved before this theorem
-  sorry
+  -- Extract catchParam = cp from normalizeExpr unfolding
+  have hcp : catchParam = cp := by
+    simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
+    cases hb : (ANF.normalizeExpr body_f k).run n with
+    | error msg => simp [hb] at hnorm
+    | ok vb =>
+      obtain ⟨body', n1⟩ := vb; rw [hb] at hnorm; simp only [] at hnorm
+      cases hc : (ANF.normalizeExpr cb_f k).run n1 with
+      | error msg => rw [hc] at hnorm; simp at hnorm
+      | ok vc =>
+        obtain ⟨catch', n2⟩ := vc; rw [hc] at hnorm; simp only [] at hnorm
+        cases fin_f with
+        | none =>
+          simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
+          exact (ANF.Expr.tryCatch.inj hnorm.1).2.1
+        | some fin_flat =>
+          simp only [Functor.map, StateT.map, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
+          cases hf : (ANF.normalizeExpr fin_flat (fun _ => pure (.trivial .litUndefined))).run n2 with
+          | error msg => simp [hf] at hnorm
+          | ok vf =>
+            obtain ⟨fin', n3⟩ := vf; simp [hf] at hnorm
+            simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
+            exact (ANF.Expr.tryCatch.inj hnorm.1).2.1
+  rw [hcp]
+  unfold noCallFrameReturn at hncfr
+  simp only [Bool.and_eq_true, bne_iff_ne, ne_eq] at hncfr
+  exact hncfr.1.1
 
 private theorem firstNonValueExpr_eq_append {args : List Flat.Expr}
     {done : List Flat.Expr} {target : Flat.Expr} {remaining : List Flat.Expr}
