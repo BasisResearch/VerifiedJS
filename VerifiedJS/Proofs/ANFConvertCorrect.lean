@@ -9925,7 +9925,7 @@ private theorem normalizeExpr_labeled_branch_step :
             cases hrest with
             | refl => simp [List.append_assoc]
             | tail hsingle2 _ =>
-              exfalso; simp at hlen; omega
+              exfalso; simp at hlen
         · exact ⟨n, m', hbody⟩
         · intro x hfx; exact hewf x (VarFreeIn.labeled_body _ _ _ hfx)
     | seq_left h_a =>
@@ -10286,11 +10286,11 @@ private theorem normalizeExpr_labeled_branch_step :
           | silent => rfl
           | log s =>
             exfalso
-            have hmem : Core.TraceEvent.log s ∈ List.filter (· != Core.TraceEvent.silent) evs_b :=
-              List.mem_filter.mpr ⟨hev, by decide⟩
+            have hmem : Core.TraceEvent.log s ∈ observableTrace evs_b := by
+              simp only [observableTrace]; exact List.mem_filter.mpr ⟨hev, by simp [BEq.beq, instBEqTraceEvent]⟩
             rw [hobs_b] at hmem; exact List.not_mem_nil _ hmem
           | error s =>
-            exfalso; exact hnoerr_b ev hev s rfl
+            exfalso; exact hnoerr_b _ hev s rfl
         obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
           Steps_seq_ctx_b a hsteps_b
             (fun ev hev msg => by rw [hsil_b ev hev]; exact Core.TraceEvent.noConfusion)
@@ -12084,7 +12084,7 @@ private theorem normalizeExpr_await_step_sim
           simp [ANF.evalTrivial, hv_anf] at heval
           subst heval
           -- Flat steps: .await (.var name) with lookup failure
-          -- Step 1: .var name produces ReferenceError → .await wraps it
+          -- Error propagation: .await (.var name) → error step, result expr = .lit .undefined
           have hstep_var : Flat.step? ⟨.var name, env, heap, trace, funcs, cs⟩ =
               some (.error ("ReferenceError: " ++ name),
                 ⟨.lit .undefined, env, heap, trace ++ [.error ("ReferenceError: " ++ name)], funcs, cs⟩) := by
@@ -12092,18 +12092,14 @@ private theorem normalizeExpr_await_step_sim
           have hstep1 := step?_await_error ⟨.lit .undefined, env, heap, trace, funcs, cs⟩ (.var name)
             (by simp [Flat.exprValue?]) ("ReferenceError: " ++ name) _ hstep_var
           obtain ⟨s1, hs1_eq, hs1_expr, hs1_env, hs1_heap, _, _, hs1_trace⟩ := hstep1
-          -- Step 2: .await (.lit .undefined) → .lit .undefined with silent
-          have hstep2 : Flat.step? s1 =
-              some (.silent, ⟨.lit .undefined, env, heap,
-                (trace ++ [.error ("ReferenceError: " ++ name)]) ++ [.silent], funcs, cs⟩) := by
-            have : s1 = ⟨.await (.lit .undefined), env, heap,
-                trace ++ [.error ("ReferenceError: " ++ name)], funcs, cs⟩ := by
-              cases s1; simp_all
-            rw [this]; unfold Flat.step?; rfl
-          refine ⟨[.error ("ReferenceError: " ++ name), .silent], _,
-            .tail ⟨hs1_eq⟩ (.tail ⟨hstep2⟩ (.refl _)),
-            rfl, rfl, rfl, ?_, ?_⟩
-          · simp only [List.append_assoc, List.cons_append, List.nil_append]
+          -- After error propagation, s1.expr = .lit .undefined (already terminal)
+          refine ⟨[.error ("ReferenceError: " ++ name)], _,
+            .tail ⟨hs1_eq⟩ (.refl _),
+            ?_, ?_, ?_, ?_, ?_⟩
+          · exact hs1_expr
+          · exact hs1_env
+          · exact hs1_heap
+          · rw [hs1_trace]
           · simp only [observableTrace, List.filter]; rfl
     | this =>
       simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
