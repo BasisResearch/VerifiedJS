@@ -4475,3 +4475,63 @@ Also CCStateAgree-blocked. The sorry needs `(convertExpr catchBody st).snd = st`
 ## Run: 2026-04-10T23:30:03+00:00
 
 ### 2026-04-10T23:30:13+00:00 Starting run — multi-step lemmas + getIndex assessment
+
+### Assessment: P0 Multi-step sorries (L4921, L6062, L6071) — NOT closable
+
+**Analysis:** The prompt categorized these as "self-contained, closable now" with multi-step lemmas.
+After thorough analysis of the proof structure, these are **architecturally blocked**, not closable
+with helper lemmas.
+
+**Root cause:** The theorem `closureConvert_step_simulation` proves a 1-to-1 step simulation:
+```
+Flat.Step sf ev sf' → ∃ sc', Core.Step sc ev sc' ∧ CC_SimRel s t sf' sc'
+```
+The sim rel requires `sf'.expr = (convertExpr sc'.expr ...).fst`.
+
+**L4921 (captured var):** `convertExpr (.var name)` → `.getEnv (.var envVar) idx` (2 Flat steps).
+After 1st Flat step: `sf'.expr = .getEnv (.lit envObj) idx`. No Core expression converts to this.
+After taking Core's only step (`.var name → .lit value`): `convertExpr (.lit value) = .lit (convertValue value) ≠ .getEnv (.lit envObj) idx`. Invariant broken.
+
+**L6062/L6071 (newObj non-values):** Same class. Core allocates immediately; Flat evaluates
+sub-expressions first. Intermediate Flat states don't correspond to any Core state.
+
+**Required fix:** Change from 1-to-1 to many-to-one simulation (Flat.Steps → Core.Step),
+or use stuttering simulation with well-founded measure. This is an architectural change
+affecting the suffices clause and potentially all ~30 cases.
+
+**Action taken:** Updated sorry comments to explain the architectural blocker precisely,
+including three possible fix approaches.
+
+### Assessment: P1 L6710 (getIndex string) — CONFIRMED UNPROVABLE
+
+**Analysis:** For `.getIndex (.lit (.string str)) (.lit (.number n))` with invalid index:
+- Core: returns `.undefined` unconditionally (Semantics.lean L8388-8390)
+- Flat: checks `valueToString (.number n) == "length"` first (Semantics.lean L739)
+  → if true, returns `.number (Float.ofNat str.length)` (DIFFERENT from Core!)
+  → if false, returns `.undefined` (same as Core)
+
+Proving equivalence requires `∀ n : Float, valueToString (.number n) ≠ "length"`.
+This is TRUE in reality but UNPROVABLE because `valueToString`'s fallback case uses
+`Float.toString` which is `@[extern]` opaque.
+
+Five of six `valueToString` branches are provably ≠ "length":
+1. NaN → "NaN" ✓
+2. +∞ → "Infinity" ✓
+3. -∞ → "-Infinity" ✓
+4. Non-negative integer → Nat.repr (digits only) ✓
+5. Negative integer → "-" ++ Nat.repr ✓
+6. Fallback → Float.toString (OPAQUE) ✗
+
+**Preferred fix:** Remove the extra `if propName == "length"` from Flat.step?'s
+.string/.number branch (Flat/Semantics.lean ~L739), aligning with Core's behavior.
+This is a 1-line semantic fix in Flat/Semantics.lean.
+
+**Alternative fix:** Add `axiom float_toString_ne_length : ∀ n : Float, Float.toString n ≠ "length"`.
+
+**Action taken:** Updated sorry comment with precise semantic mismatch details and fix paths.
+
+### P2: FuncsCorr stub — SKIPPED (P0 not completed)
+
+### Summary: 0 sorries closed this run. All 4 assessed sorries require changes outside CC.lean.
+### 2026-04-10T23:47:08+00:00 Run complete — P0 confirmed architecturally blocked, P1 confirmed unprovable, comments improved
+2026-04-10T23:48:34+00:00 DONE

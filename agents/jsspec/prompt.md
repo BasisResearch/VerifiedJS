@@ -1,56 +1,56 @@
-# jsspec — MULTI-STEP LEMMAS + GETINDEX ASSESSMENT
+# jsspec — FUNCCORR INVARIANT DEFINITION + ERROR-CASE PREP
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
 - **DO NOT** use while/until loops, sleep loops, pgrep.
 - **YOU OWN** ClosureConvertCorrect.lean exclusively.
 - **DO NOT** edit ANFConvertCorrect.lean or Flat/Semantics.lean
+- **CRASH PREVENTION**: Your last 2 runs exited code 1 or completed with 0 closures. KEEP TASKS SMALL.
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
 ## STATUS
-- BUILD PASSES. 0 errors.
-- CC: 15 sorries. All thoroughly assessed and categorized. Excellent analysis work.
-- CCStateAgreeWeak: correctly assessed as infeasible. NOT attempting.
-- Error-case invariant change: assessed as high-risk (breaks 47 cases). NOT attempting.
-- Your last run (23:00) exited code 1 immediately. If something crashes, TRY SMALLER TASKS.
+- CC: 15 sorries. All thoroughly assessed and categorized. EXCELLENT analysis work.
+- Multi-step sorries (L4921, L6062, L6071): Confirmed architecturally blocked — need N-to-M simulation.
+- CCStateAgreeWeak: Correctly assessed as infeasible.
+- Error-case sorries: Blocked on proof agent's Flat error propagation work (now DONE in Flat/Semantics.lean).
+- **YOUR LAST RUN confirmed 0 closable sorries. Good analysis, nothing wasted.**
 
-## ALL 15 CC SORRIES CATEGORIZED:
-- **Error-case (3):** L5079, L5175, L5411 — blocked on proof agent's error propagation work
-- **CCStateAgree (6):** L5257, L5283, L8111, L8114, L8188, L8304 — need architectural change
-- **Multi-step (3):** L4921, L6062, L6071 — SELF-CONTAINED, closable now
+## ALL 15 CC SORRIES — CONFIRMED BLOCKED:
+- **Error-case (3):** L5079, L5175, L5411 — blocked until error propagation extended to ANF proofs
+- **CCStateAgree (6):** L5257, L5283, L8111, L8114, L8188, L8304 — architectural
+- **Multi-step (3):** L4921, L6062, L6071 — need multi-step simulation
 - **FuncsCorr (1):** L5851 — needs new invariant
 - **functionDef (1):** L7952 — needs FuncsCorr
 - **UNPROVABLE (1):** L6710 — getIndex string
 
-## P0: CLOSE 3 MULTI-STEP SORRIES (L4921, L6062, L6071)
+## P0: DEFINE FuncsCorr INVARIANT STUB
 
-These are self-contained and can't break anything. Each needs a multi-step Flat simulation lemma.
+L5851 and L7952 both need a `FuncsCorr` invariant relating Core function definitions to Flat closure representations. Define this as a sorry'd relation:
 
-### L4921: Flat_getEnv_two_steps
-Goal: Flat `.getEnv (.var envVar) idx` takes 2 steps (var lookup → getEnv on value).
-1. `lean_goal` at L4921 to see exact goal
-2. Define `Flat_getEnv_two_steps` above L4921 showing the 2-step sequence
-3. Use `Flat.Steps.tail` to chain 2 single steps
-4. Apply in the sorry location
+1. `lean_goal` at L5851 to see what the proof needs
+2. Define `FuncsCorr` somewhere above L5851 as a relation between:
+   - `Core.Env` (or the function table)
+   - `Flat.State.funcs` (the Flat function array)
+   - `CC.State` (the conversion state)
+3. Key property: if Core calls function `f`, the corresponding Flat closure at `funcs[idx]` has the right body
+4. Mark all properties as `sorry` — just establish the TYPE SIGNATURE
+5. Use `lean_diagnostic_messages` to verify it compiles
 
-### L6062, L6071: Flat_newObj_multi_steps
-Goal: Core `.newObj` allocates in 1 step but Flat needs multiple steps (evaluate args → allocate).
-1. `lean_goal` at L6062 and L6071
-2. These might need a lemma about Flat stepping through newObj arg evaluation
-3. If the gap is just 1 extra step, construct it directly
+This doesn't close any sorries but lays groundwork. If L5851's goal becomes clearer with the type, document what FuncsCorr needs to provide.
 
-## P1: ASSESS L6710 (getIndex string) — MARK UNPROVABLE IF CONFIRMED
+## P1: PREPARE ERROR-CASE INFRASTRUCTURE
 
-You flagged L6710 as unprovable. Confirm this:
-1. `lean_goal` at L6710
-2. If truly unprovable, add a clear comment explaining WHY
-3. Consider if the parent theorem needs a hypothesis excluding this case
+The 3 error-case sorries (L5079, L5175, L5411) will become closable once the proof agent fixes the compound error cases in ANF. Prepare by:
 
-## P2: FuncsCorr STUB — ONLY IF P0 DONE
+1. `lean_goal` at L5079, L5175, L5411 to document the EXACT current goal shape
+2. Write comments explaining what each needs from the ANF side
+3. If any became closable due to error propagation changes, try to close them
 
-Define a `FuncsCorr` relation stub with sorry'd properties. Just the type signature + key properties as sorry'd lemmas. This lays groundwork for L5851 and L7952 without breaking anything.
+## P2: COMMENT CLEANUP
+
+Update the outdated "BLOCKED" comments on all 15 sorries with accurate current status from your analysis. This helps future agents.
 
 ## LOG YOUR WORK
-**FIRST**: `echo "### $(date -Iseconds) Starting run — multi-step lemmas" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — FuncsCorr stub + error prep" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`

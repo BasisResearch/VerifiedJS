@@ -7930,3 +7930,34 @@ No sorry count change (still 2 sorries, same as before). No build risk.
 
 ### 2026-04-10T22:30:22+00:00 Starting run — Cat B + labeled_branch
 2026-04-10T23:15:01+00:00 SKIP: already running
+
+#### Changes made:
+1. **Closed sorry: `noCallFrameReturn_tryCatch_direct_bridge` (was L4324)**
+   - Inlined `normalizeExpr_tryCatch_decomp` proof to extract `catchParam = cp`
+   - Combined with `noCallFrameReturn` unfolding to get `cp ≠ "__call_frame_return__"`
+
+2. **Fixed `Flat_step?_if_cond_step` (was L12552)**
+   - Added `hne : ∀ msg, t ≠ .error msg` parameter with default proof
+   - Proved via cases on `t` — error case contradicts `hne`, non-error case is `simp [Flat.pushTrace]`
+   - All callers pass `.silent` events so default proof applies automatically
+
+3. **Fixed pre-existing error: await-var error propagation (was L12100)**
+   - Error propagation means `step?_await_error` gives `s1.expr = .lit .undefined`, NOT `.await (.lit .undefined)`
+   - Removed erroneous Step 2; the single error step reaches terminal state directly
+
+4. **Fixed pre-existing error: exfalso omega redundancy (was L9928)**
+   - `simp at hlen` already closes the goal; removed redundant `omega`
+
+5. **Fixed pre-existing error: observableTrace log membership (was L10290-10293)**
+   - Fixed proof that `Core.TraceEvent.log s ∈ observableTrace evs_b` using `List.mem_filter` + `rfl`
+
+#### Sorry count: ANF 46 (was 47), CC 18. Total: 64.
+
+#### Assessment of remaining sorries:
+- **Cat B break/continue compound (L15574, L15645)**: Needs `normalizeExpr_break_compound_case` and `normalizeExpr_continue_compound_case` — structural induction on `HasBreakInHead`/`HasContinueInHead` with error propagation through compound wrappers. ~200 lines each.
+- **Labeled_branch trivialChain passthrough (L10361-L10638)**: 9 sorries blocked by trivialChain-to-value step lemma mismatch.
+- **Error-propagation-blocked compound (L11812-L12304)**: 7 sorries need compound chain evaluation lemmas for return/await/yield.
+- **callStack_inv (L2983-L3046)**: 4 sorries — theorem statement is incorrect after error propagation (tryCatch handler can produce non-lit/non-throw exprs).
+- **Big theorem rewrites (L14100, L14648)**: `hasAbruptCompletion_step_preserved` and `NoNestedAbrupt_step_preserved` need full rework for error propagation.
+### 2026-04-10T23:46:51+00:00 Run complete — closed 1 sorry, fixed 4 pre-existing errors, 0 new errors
+2026-04-10T23:47:00+00:00 DONE
