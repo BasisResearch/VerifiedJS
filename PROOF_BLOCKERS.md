@@ -4,9 +4,12 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ CC and ANF compile independently. (2026-04-10T16:00)
+## BUILD STATUS: ❌ ANF OOM-KILLED (exit 137). CC build status unknown. (2026-04-10T19:05)
 
-## Sorry Count: 66 (ANF 54 + CC 12 + Lower 0) — as of 2026-04-10T16:00
+ANFConvertCorrect.lean (18,698 lines) exceeds available memory (7.7GB total, ~500MB free, no swap).
+FIX: Collapse if_branch `| succ d ih =>` to single sorry (saves ~1200 lines, all blocked by K-mismatch anyway).
+
+## Sorry Count: 75 (ANF 60 + CC 15 + Lower 0) — as of 2026-04-10T19:05
 
 ### ANF (54 sorries):
 - 1 trivialChain passthrough (L10203) — BLOCKED (K-mismatch)

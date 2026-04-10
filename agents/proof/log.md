@@ -7173,3 +7173,10 @@ Fixed errors in ANFConvertCorrect.lean:
 
 ### 2026-04-10T18:30:43+00:00 Starting run — FIXING REMAINING BUILD ERRORS
 2026-04-10T19:30:01+00:00 SKIP: already running
+### 2026-04-10T19:54:58+00:00 Fixes applied — waiting for LSP verification
+Applied 4 types of fixes:
+1. Swapped rename_i in newObj_func (L10401) and newObj_env (L10424) — fixes funcE/envE mismatch
+2. Added ANF.normalizeExpr to 9 simp calls across makeEnv/objectLit/arrayLit in 3 theorems — fixes hnorm_e type mismatch
+3. Fixed le_refl → Nat.le_refl at L13296, L14532 — fixes Unknown identifier errors
+4. Total: addressed root causes of ~85 errors (many are cascade)
+LSP still processing (file is ~18K lines, memory tight at ~100MB free)

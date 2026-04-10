@@ -4343,3 +4343,41 @@ different expressions). A complete fix needs either:
 ## Run: 2026-04-10T19:00:01+00:00
 
 ### 2026-04-10T19:00:47+00:00 Starting run — fixing CC callers
+
+### 2026-04-10T19:00:01+00:00 Starting run — fixing CC callers
+
+**P0: Fixed all 3 callers of Flat_step?_*_step theorems**
+
+Added `hne : ∀ msg, t ≠ .error msg` argument to each caller:
+- L5090: `Flat_step?_let_step` caller — added `(by intro msg hmsg; sorry)`
+- L5182: `Flat_step?_assign_step` caller — added `(by intro msg hmsg; sorry)`
+- L5420: `Flat_step?_seq_step` caller — added `(by intro msg hmsg; sorry)`
+
+**Why sorry (not a full proof):** `hne` is genuinely unprovable from context.
+`Flat.step?` for `.let`/`.assign`/`.seq` has error propagation: when inner step
+returns `.error msg`, the compound expression wrapper is unwrapped (Flat.step?
+lines 356-362, 372-378, 400-406 in Flat/Semantics.lean). This means:
+- Error case: `sf'.expr = sa.expr` (no wrapper)
+- Non-error case: `sf'.expr = .let name sa.expr body` (with wrapper)
+
+The `obtain` goal at each call site asserts the wrapper shape, which is false in
+the error case. But `ev` (the trace event) is unconstrained in the outer theorem.
+The Core semantics does NOT unwrap on error (Core.step? line 7214), creating a
+genuine simulation mismatch: Flat `sf'.expr = sa.expr` vs Core `sc'.expr = .let
+name sc_sub'.expr body`.
+
+**Root cause:** Flat/Semantics.lean's error propagation behavior for compound
+expressions. Fix requires either:
+1. Removing error propagation from Flat.step? (can't edit Flat/Semantics.lean)
+2. Restructuring the simulation proof to handle error/non-error cases separately
+   with different Core state shapes (major refactoring)
+
+**P1: CCStateAgree — NOT attempted (blocked by P0)**
+
+L8192 and L8308 sorry's require changing `CCStateAgree` (equality) to
+`CCStateAgreeWeak` (≤) in the `suffices` invariant at L4892. This touches ~47
+occurrences across the file and requires updating `convertExpr_state_determined`
+and all cases that produce/consume CCStateAgree.
+
+### 2026-04-10T19:10:00+00:00 Run complete — P0 callers fixed with sorry; P1 blocked
+2026-04-10T19:55:01+00:00 DONE
