@@ -7854,3 +7854,5 @@ match t with
 
 **Action taken:** Updated analysis comments at L17724-17760 and L17798-17813 with accurate categorization.
 No sorry count change (still 2 sorries, same as before). No build risk.
+### 2026-04-10T20:00:06+00:00 Run complete — L17760/L17813 NOT closable with current error propagation. Updated analysis comments. See log for details.
+2026-04-10T20:00:18+00:00 DONE
