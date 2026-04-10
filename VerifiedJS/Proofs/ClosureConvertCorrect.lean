@@ -8090,8 +8090,46 @@ private theorem closureConvert_step_simulation
         · exact ⟨st, st, by simp [sc', Flat.convertExpr], ⟨le_refl _, le_refl _⟩, by
             rw [hst'_eq]
             exact convertExpr_state_mono catchBody (catchParam :: scope) envVar envMap st⟩
-      | some fin => sorry -- BLOCKED: CCStateAgree + tryCatch body-value with finally.
-            -- Same CCStateAgree issue as the none case, compounded by finally_ conversion.
+      | some fin =>
+        simp [Flat.convertOptExpr] at hconv
+        obtain ⟨hsf_expr, hst'_eq⟩ := hconv
+        have hfin_flat := (Flat.convertExpr fin scope envVar envMap st2).fst
+        have hsf_eta : sf = { sf with expr := (.tryCatch (.lit (Flat.convertValue v)) catchParam
+            (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst
+            (some (Flat.convertExpr fin scope envVar envMap
+              (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).snd).fst)) } := by
+          cases sf; simp_all [st2]
+        rw [hsf_eta] at hstep
+        have hstep_rw := Flat_step?_tryCatch_body_value_finally sf (Flat.convertValue v) catchParam
+            (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst
+            (Flat.convertExpr fin scope envVar envMap
+              (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).snd).fst hncf
+        rw [hstep_rw] at hstep; clear hstep_rw
+        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨hev, hsf'⟩ := hstep; subst hev; subst hsf'
+        let sc' : Core.State :=
+          ⟨.seq fin (.lit v), sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        · show Core.step? sc = some (.silent, sc')
+          have hsc' : sc = { sc with expr := .tryCatch (.lit v) catchParam catchBody (some fin) } := by
+            obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+          rw [hsc']
+          exact Core.step_tryCatch_normal_withFinally _ _ _ _ _ _ _ _ _ hncf
+        · simp [sc', htrace]
+        · exact hinj
+        · exact henvCorr
+        · exact henvwf
+        · exact hheapvwf
+        · simp [sc', hheapna]
+        · simp [sc', noCallFrameReturn]
+          simp [noCallFrameReturn] at hncfr; exact ⟨hncfr.2, trivial⟩
+        · simp [sc', ExprAddrWF, ValueAddrWF]
+          simp [ExprAddrWF] at hexprwf; exact ⟨hexprwf.2.2, trivial⟩
+        · -- CCState: choose st2 (post-catchBody-conversion) as witness
+          exact ⟨st2, (Flat.convertExpr fin scope envVar envMap st2).snd, by
+            simp [sc', Flat.convertExpr, st2], by
+            exact convertExpr_state_mono catchBody (catchParam :: scope) envVar envMap st, by
+            rw [hst'_eq]; exact ⟨le_refl _, le_refl _⟩⟩
     | none =>
       -- Body is not a value; step the body via IH
       have hfnv : Flat.exprValue? fbody = none :=
@@ -8161,11 +8199,22 @@ private theorem closureConvert_step_simulation
                   (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.1) hmono,
                 ExprAddrWF_mono fin
                   (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.2) hmono⟩
-          · -- CCStateAgree: convertExpr_scope_irrelevant solves scope mismatch
-            -- but CCStateAgree st st1 remains (body conversion may change nextId/funcs.size)
-            sorry -- BLOCKED: CCStateAgree. Need CCStateAgree st st_a where st_a accounts for
-            -- body conversion state st1 = (convertExpr body ... st).snd, but body may contain
-            -- functionDef nodes that change nextId/funcs.size.
+          · -- CCState: choose st1 (post-body-conversion state) as witness
+            have hscope := convertExpr_scope_irrelevant catchBody scope (catchParam :: scope) envVar envMap st1
+            cases hfin : finally_ with
+            | none =>
+              refine ⟨st1, (Flat.convertExpr catchBody scope envVar envMap st1).snd, ?_,
+                convertExpr_state_mono body scope envVar envMap st, ?_⟩
+              · simp only [sc', handler, hfin, Flat.convertExpr]; rw [hscope]
+              · rw [hconv.2]; simp only [hfin, Flat.convertOptExpr]
+                rw [← hscope]; exact ⟨le_refl _, le_refl _⟩
+            | some fin =>
+              refine ⟨st1, (Flat.convertExpr fin scope envVar envMap
+                (Flat.convertExpr catchBody scope envVar envMap st1).snd).snd, ?_,
+                convertExpr_state_mono body scope envVar envMap st, ?_⟩
+              · simp only [sc', handler, hfin, Flat.convertExpr]; rw [hscope]
+              · rw [hconv.2]; simp only [hfin, Flat.convertOptExpr]
+                rw [← hscope]; exact ⟨le_refl _, le_refl _⟩
         · -- Non-error: body step preserves tryCatch wrapper
           simp only [not_exists] at herr
           have heq := Flat_step?_tryCatch_body_step sf fbody catchParam fcatch ffin sb t hncf hfnv hm herr
