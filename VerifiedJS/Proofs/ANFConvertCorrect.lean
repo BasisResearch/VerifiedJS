@@ -2268,28 +2268,28 @@ private theorem step?_arrayLit_elem_ctx (s : Flat.State)
   | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
-/-- Error propagation for seq: when inner step errors, seq propagates. -/
+/-- Error propagation for seq: when inner step errors, seq propagates directly (no seq wrap). -/
 private theorem step?_seq_error (s : Flat.State) (a b : Flat.Expr)
     (hnotval : Flat.exprValue? a = none)
     (msg : String) (sa : Flat.State)
     (hstep : Flat.step? { s with expr := a } = some (.error msg, sa)) :
     ∃ s', Flat.step? { s with expr := .seq a b } = some (.error msg, s') ∧
-      s'.expr = .seq sa.expr b ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.expr = sa.expr ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [.error msg] := by
-  simp only [Flat.step?, hnotval, hstep]
+  simp only [Flat.step?, hnotval, hstep, Flat.pushTrace]
   exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
-/-- Error propagation for let: when inner step errors, let propagates. -/
+/-- Error propagation for let: when inner step errors, let propagates directly (no let wrap). -/
 private theorem step?_let_init_error (s : Flat.State) (name : String) (init body : Flat.Expr)
     (hnotval : Flat.exprValue? init = none)
     (msg : String) (si : Flat.State)
     (hstep : Flat.step? { s with expr := init } = some (.error msg, si)) :
     ∃ s', Flat.step? { s with expr := .«let» name init body } = some (.error msg, s') ∧
-      s'.expr = .«let» name si.expr body ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+      s'.expr = si.expr ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [.error msg] := by
-  simp only [Flat.step?, hnotval, hstep]
+  simp only [Flat.step?, hnotval, hstep, Flat.pushTrace]
   exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 /-- Error propagation for unary: when inner step errors, unary propagates. -/
