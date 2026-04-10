@@ -2299,7 +2299,7 @@ private theorem step?_unary_error (s : Flat.State) (op : Core.UnaryOp) (arg : Fl
     (msg : String) (sa : Flat.State)
     (hstep : Flat.step? { s with expr := arg } = some (.error msg, sa)) :
     ∃ s', Flat.step? { s with expr := .unary op arg } = some (.error msg, s') ∧
-      s'.expr = .unary op sa.expr ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.expr = sa.expr ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [.error msg] := by
   simp only [Flat.step?, hnotval, hstep]
@@ -2311,7 +2311,7 @@ private theorem step?_binary_lhs_error (s : Flat.State) (op : Core.BinOp) (lhs r
     (msg : String) (sl : Flat.State)
     (hstep : Flat.step? { s with expr := lhs } = some (.error msg, sl)) :
     ∃ s', Flat.step? { s with expr := .binary op lhs rhs } = some (.error msg, s') ∧
-      s'.expr = .binary op sl.expr rhs ∧ s'.env = sl.env ∧ s'.heap = sl.heap ∧
+      s'.expr = sl.expr ∧ s'.env = sl.env ∧ s'.heap = sl.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [.error msg] := by
   simp only [Flat.step?, hnotval, hstep]
@@ -2323,7 +2323,7 @@ private theorem step?_throw_error (s : Flat.State) (arg : Flat.Expr)
     (msg : String) (sa : Flat.State)
     (hstep : Flat.step? { s with expr := arg } = some (.error msg, sa)) :
     ∃ s', Flat.step? { s with expr := .throw arg } = some (.error msg, s') ∧
-      s'.expr = .throw sa.expr ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.expr = sa.expr ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [.error msg] := by
   simp only [Flat.step?, hnotval, hstep]
@@ -2335,7 +2335,7 @@ private theorem step?_return_some_error (s : Flat.State) (e : Flat.Expr)
     (msg : String) (se : Flat.State)
     (hstep : Flat.step? { s with expr := e } = some (.error msg, se)) :
     ∃ s', Flat.step? { s with expr := .«return» (some e) } = some (.error msg, s') ∧
-      s'.expr = .«return» (some se.expr) ∧ s'.env = se.env ∧ s'.heap = se.heap ∧
+      s'.expr = se.expr ∧ s'.env = se.env ∧ s'.heap = se.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [.error msg] := by
   simp only [Flat.step?, hnotval, hstep]
@@ -2347,7 +2347,7 @@ private theorem step?_yield_some_error (s : Flat.State) (e : Flat.Expr) (delegat
     (msg : String) (se : Flat.State)
     (hstep : Flat.step? { s with expr := e } = some (.error msg, se)) :
     ∃ s', Flat.step? { s with expr := .yield (some e) delegate } = some (.error msg, s') ∧
-      s'.expr = .yield (some se.expr) delegate ∧ s'.env = se.env ∧ s'.heap = se.heap ∧
+      s'.expr = se.expr ∧ s'.env = se.env ∧ s'.heap = se.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [.error msg] := by
   simp only [Flat.step?, hnotval, hstep]
@@ -2359,7 +2359,7 @@ private theorem step?_await_error (s : Flat.State) (e : Flat.Expr)
     (msg : String) (se : Flat.State)
     (hstep : Flat.step? { s with expr := e } = some (.error msg, se)) :
     ∃ s', Flat.step? { s with expr := .await e } = some (.error msg, s') ∧
-      s'.expr = .await se.expr ∧ s'.env = se.env ∧ s'.heap = se.heap ∧
+      s'.expr = se.expr ∧ s'.env = se.env ∧ s'.heap = se.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [.error msg] := by
   simp only [Flat.step?, hnotval, hstep]
@@ -2371,7 +2371,7 @@ private theorem step?_if_cond_error (s : Flat.State) (cond then_ else_ : Flat.Ex
     (msg : String) (sc : Flat.State)
     (hstep : Flat.step? { s with expr := cond } = some (.error msg, sc)) :
     ∃ s', Flat.step? { s with expr := .«if» cond then_ else_ } = some (.error msg, s') ∧
-      s'.expr = .«if» sc.expr then_ else_ ∧ s'.env = sc.env ∧ s'.heap = sc.heap ∧
+      s'.expr = sc.expr ∧ s'.env = sc.env ∧ s'.heap = sc.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [.error msg] := by
   simp only [Flat.step?, hnotval, hstep]
