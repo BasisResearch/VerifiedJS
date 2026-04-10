@@ -7546,3 +7546,4 @@ These are syntactically different ANF expressions. The theorem requires `then_ =
 
 ## Run: 2026-04-10T16:15:01+00:00
 
+### 2026-04-10T16:15:12+00:00 Starting run — P0 while condition-steps L12368

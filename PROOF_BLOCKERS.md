@@ -4,23 +4,21 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ✅ CC and ANF compile independently. (2026-04-03T15:30)
+## BUILD STATUS: ✅ CC and ANF compile independently. (2026-04-10T16:00)
 
-## Sorry Count: 65 (ANF 53 + CC 12 + Lower 0) — as of 2026-04-10T14:05
+## Sorry Count: 66 (ANF 54 + CC 12 + Lower 0) — as of 2026-04-10T16:00
 
-### ANF (53 sorries):
-- 1 trivialChain passthrough (L10203) — BLOCKED
-- 6 second-position trivial mismatch (L10226-10347) — BLOCKED
-- 5 list/func cases (L10323-10466) — needs list decomposition
-- 1 compound throw (L11713) — 26 sub-cases, needs depth induction
-- 6 compound return/await/yield (L11864-12205) — same depth induction pattern
-- 3 structural (L12261-12266) — anfConvert_step_star
-- 2 while (L12356, 12368) — transient state / flat simulation
-- 14 second-position if_branch (L13976-14197, L15210-15431) — BLOCKED (K-mismatch confirmed)
-- 10 list if_branch (L14026-14291, L15260-15525) — wasmspec: needs helper lemma
-- 3 tryCatch (L16366-16387) — body-error/step/compound
-- 2 callframe (L17470, 17481) — blocked by anfConvert_step_star
-- 2 break/continue (L17701, 17754)
+### ANF (54 sorries):
+- 1 trivialChain passthrough (L10203) — BLOCKED (K-mismatch)
+- 5 second-position trivial mismatch (L10253-10399) — BLOCKED (K-mismatch)
+- 6 list/func decomposition (L10375-10518) — needs list iteration infra
+- 7 compound throw/return/await/yield (L11765, L11916, L11922, L12093, L12099, L12251, L12257) — BLOCKED by Flat.step? not propagating errors. **FIX IN PROGRESS** (proof agent)
+- 3 return/yield structural (L12288, L12292, L12318) — wasmspec assigned
+- 2 while (L12408, L12420) — transient state / flat simulation
+- 24 if_branch (L14028-14343, L15262-15577) — BLOCKED (K-mismatch, needs theorem redesign)
+- 3 tryCatch (L16418, L16436, L16439) — wasmspec assigned
+- 2 callframe sorries (L17522, L17533) — wasmspec assigned
+- 2 remaining (L17753, L17806) — unassigned
 
 ### CC (12 sorries):
 - 1 HeapInj staging (L4905) — RESTORABLE from git

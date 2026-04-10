@@ -1,4 +1,4 @@
-# wasmspec — While condition-steps + if_branch investigation
+# wasmspec — Close return/yield/structural + tryCatch sorries in ANFConvertCorrect.lean
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,64 +9,74 @@
 ## MEMORY: ~3.5GB free. USE LSP ONLY — no builds.
 
 ## CONCURRENCY
-- proof agent works on Flat/Semantics.lean + compound sorries (L11550-12210)
+- proof agent works on Flat/Semantics.lean + compound sorries (L11765-12257)
 - jsspec works on ClosureConvertCorrect.lean
-- **YOU** own L12268-12372 (while) AND L13976-15525 (if_branch)
+- **YOU** own L12288-12318 (return/yield/structural), L16418-16439 (tryCatch), and L17522-17806
 
-## STATUS: 67 sorries total. Your previous analysis found all 24 if_branch sorries blocked by K-mismatch. Good work on the analysis. Now try to close while sorries.
+## STATUS: Your previous K-mismatch analysis was excellent. ALL 24 if_branch sorries ARE architecturally blocked. REDIRECTING you to new targets.
 
-## ===== P0: WHILE CONDITION-STEPS (L12368) =====
+## ===== P0: CLOSE L12288 and L12292 (return/yield with some val) =====
 
-Your own analysis identified this as "normalizeExpr-compatible form". This means it might be closable.
+These are in `normalizeExpr_step_sim` around L12261.
 
-The comment says:
-```
--- sa'.expr = .seq (.while_ sc.expr d) b — this IS a normalizeExpr-compatible form
--- Needs: decomposition of hnorm to extract the flat while condition,
--- recursive SimRel for condition stepping, and reconstruction.
-```
-
-### CONCRETE STEPS:
-1. `lean_goal` at L12368 to see the exact proof state
-2. You need to reconstruct a SimRel for the new state where:
-   - ANF: `.seq (.while_ sc.expr d) b`
-   - Flat: the corresponding flat state after stepping the while condition
-3. Key: the `normalizeExpr_while_decomp` theorem (L12270) decomposes normalizeExpr(.while_ cond body) into condition + body + continuation normalizations
-4. After the flat condition steps, the new flat condition expr is `sc.expr`
-5. Need to show normalizeExpr(.while_ sc.expr body, k) produces an expression that matches the ANF `.while_ sc'.expr d'` state
-6. Use `lean_local_search "while"` to find while-related infrastructure
+**L12288**: `| some val => sorry -- return (some val): compound, can produce .let`
+**L12292**: `| some val => sorry -- yield (some val): compound, can produce .let`
 
 ### STRATEGY:
-- The condition stepped from `cond` to `sc.expr` in both ANF and Flat
-- The SimRel should be reconstructable because the normalizeExpr structure is preserved
-- The key is showing that `normalizeExpr(cond, fun t => pure (.trivial t))` and the flat condition stepping are compatible
+For `return (some val)` where val is compound (not a value):
+1. `normalizeExpr (.return (some val)) k` produces something like `.let fresh (normalizeExpr val ...) (.return (some (.trivial fresh)))`
+2. The flat expr `.return (some val)` steps val first (L968-970)
+3. The ANF `.let fresh ... (.return ...)` steps the init first
+4. Show the SimRel is preserved after one step of val
 
-## ===== P1: WHILE CONDITION VALUE (L12356) — harder =====
+Use `lean_goal` at L12288 to see exact proof state. Then try:
+```lean
+sorry -- first try lean_goal to see what we need
+```
 
-The comment says "transient state breaks single-step SimRel". The ANF state after while unrolls is:
-- `.seq (.seq d (.while_ c d)) b` (if condition true) or `.seq (.trivial .litUndefined) b` (if false)
+If the goal is about SimRel reconstruction after stepping val:
+1. Use the normalizeExpr decomposition for return/yield
+2. Apply the IH on the sub-expression val
+3. Reconstruct the SimRel with the new state
 
-These transient forms aren't directly normalizeExpr-compatible. You'd need multi-step simulation.
+### CONCRETE STEPS:
+1. `lean_goal` at L12288 (column at the sorry)
+2. `lean_goal` at L12292
+3. If goals are tractable, attempt closure
+4. If blocked, document WHY in sorry comment
 
-Try L12368 first. If that works, attempt L12356.
+## ===== P1: CLOSE L16418, L16436, L16439 (tryCatch cases) =====
 
-## ===== P2: IF_BRANCH K-MISMATCH INVESTIGATION =====
+**L16418**: `sorry -- tryCatch body-error: remaining gap is lifting body steps through tryCatch context`
+**L16436**: `sorry -- tryCatch body-step: blocked by callStack propagation + counter alignment`
+**L16439**: `| _ => sorry -- compound cases: deferred`
 
-Only if P0/P1 are done or stuck.
+### STRATEGY for L16418:
+In the tryCatch body-error case, the body produced an `.error` event. The flat tryCatch should catch this and step to the catch body. The key is showing that:
+1. Flat tryCatch catches the error (Flat.step? on tryCatch with error event)
+2. The catch body normalization matches
+3. SimRel is preserved
 
-Your K-mismatch analysis was thorough. The question is: can the theorem `normalizeExpr_if_branch_step` be redesigned to avoid requiring exact `then_`/`else_` matching?
+Use `lean_goal` at L16418 to see the exact state.
 
-Investigate: What does the CALLER of `normalizeExpr_if_branch_step` actually need? If the caller only needs the observable trace to match, maybe the theorem can be weakened.
+### STRATEGY for L16436:
+TryCatch body is stepping (not yet a value or error). The flat tryCatch wraps the body step. Need to show callStack is preserved and the counter aligns.
 
-Search: `lean_local_search "if_branch_step"` to find callers.
+### STRATEGY for L16439:
+This is a catch-all for compound tryCatch head cases. Low priority — skip if L16418 and L16436 are hard.
+
+## ===== P2: INVESTIGATE L17522-17533 and L17753-17806 =====
+
+**L17522**: `sorry /- noCallFrameReturn: Need catchParam ≠ "__call_frame_return__". -/`
+**L17533**: `sorry /- body_sim: inner simulation IH, needs anfConvert_step_star to be proved by strong induction -/`
+**L17753**: `sorry`
+**L17806**: `sorry`
+
+Check if L17522 is closable — it needs to show a catch parameter isn't equal to a specific string. This might be derivable from a well-formedness condition.
 
 ## WORKFLOW
-1. Start with `lean_goal` at L12368
-2. Search for while-related infrastructure
-3. Try to close L12368
-4. If stuck, try L12356
-5. Log your work
-
-## LOG YOUR WORK
-**FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
-**LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`
+1. **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
+2. `lean_goal` at L12288, L12292, L16418, L16436, L17522
+3. Attempt to close the easiest goals first
+4. Log what you closed and what's still blocked
+5. **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

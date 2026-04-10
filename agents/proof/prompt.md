@@ -1,4 +1,4 @@
-# proof — Fix Flat.step? abrupt completion propagation
+# proof — Close ANF compound sorries via Flat.step? error propagation
 
 ## RULES
 - Edit: ANFConvertCorrect.lean AND Flat/Semantics.lean
@@ -9,118 +9,99 @@
 ## MEMORY: 7.7GB total, NO swap. ~3.5GB free. USE LSP ONLY — no `lake build`.
 
 ## CONCURRENCY
-- wasmspec works on L12268-12372 (while cases) and L13976-15525 (if_branch)
+- wasmspec works on L12288-12318 (return/yield/structural) and L16418-16439 (tryCatch)
 - jsspec works on ClosureConvertCorrect.lean
-- **YOU** own everything else in ANFConvertCorrect.lean + Flat/Semantics.lean
+- **YOU** own Flat/Semantics.lean + compound sorries (L11765, L11916, L11922, L12093, L12099, L12251, L12257)
 
-## STATUS: 67 sorries total. ZERO progress in 4 days.
+## STATUS: 66 sorries total. You have been analyzing for days without making code changes. STOP ANALYZING. START EDITING.
 
-## ===== ROOT CAUSE ANALYSIS (from supervisor) =====
+## ===== P0: CHANGE Flat.step? NOW =====
 
-The compound sorries (L11713, L11870, L12047, L12205, L17701, L17754) are **unprovable as stated** because:
+**File**: `VerifiedJS/Flat/Semantics.lean`, lines 382-392
 
-1. `normalizeExpr_throw_step_sim` requires `sf'.env = sf.env ∧ sf'.heap = sf.heap`
-2. For compound cases like `seq_left` (expr = `.seq a b` with throw in `a`):
-   - Flat.step? steps `a` through the seq context
-   - `a` eventually throws → error event, `a` becomes `.lit .undefined`
-   - Then `.seq (.lit .undefined) b` steps to `b`
-   - `b` EXECUTES (dead code!) and can modify env/heap
-3. So `sf'.env = sf.env` is FALSE for compound cases
-
-**The fix**: Modify `Flat.step?` in Flat/Semantics.lean to propagate abrupt completions.
-
-## ===== P0: FIX Flat.step? (Flat/Semantics.lean) =====
-
-Current behavior at L382 in Flat/Semantics.lean:
+**Current code** (L382-392):
 ```lean
-| .seq a b =>
-    match exprValue? a with
-    | some _ => -- a is value → step to b
-    | none => match step? { s with expr := a } with
-              | some (t, sa) => -- step a, stay in .seq sa.expr b
+  | .seq a b =>
+      match exprValue? a with
+      | some _ =>
+          let s' := pushTrace { s with expr := b } .silent
+          some (.silent, s')
+      | none =>
+          match step? { s with expr := a } with
+          | some (t, sa) =>
+              let s' := pushTrace { s with expr := .seq sa.expr b, env := sa.env, heap := sa.heap } t
+              some (t, s')
+          | none => none
 ```
 
-**What needs to change**: When `a` is an abrupt completion literal (the result of throw/return/break/continue having already executed), propagate it instead of continuing to `b`.
-
-Specifically, add a check: if `a` is `.lit .undefined` AND the last trace event was an error/abrupt event, then the seq should propagate the terminal state rather than stepping to `b`.
-
-BUT WAIT — this approach is fragile. A better approach:
-
-**Add explicit abrupt value forms to Flat.Expr** or **check if `a` stepped to an error event and stop**.
-
-Actually, the SIMPLEST fix that doesn't change the Expr type:
-
-In the `.seq a b` case of step?, after stepping `a`:
+**REPLACE WITH** (exact code — copy-paste this):
 ```lean
-| some (t, sa) =>
-    -- If the step produced an error event AND sa.expr is terminal (.lit .undefined),
-    -- then propagate the terminal state instead of wrapping in .seq
-    if sa.expr matches .lit .undefined then
-      -- Abrupt completion: don't execute b
-      some (t, sa)  -- propagate directly
-    else
-      some (t, { s with expr := .seq sa.expr b, ... })
+  | .seq a b =>
+      match exprValue? a with
+      | some _ =>
+          let s' := pushTrace { s with expr := b } .silent
+          some (.silent, s')
+      | none =>
+          match step? { s with expr := a } with
+          | some (t, sa) =>
+              match t with
+              | .error _ =>
+                  let s' := pushTrace { s with expr := sa.expr, env := sa.env, heap := sa.heap } t
+                  some (t, s')
+              | _ =>
+                  let s' := pushTrace { s with expr := .seq sa.expr b, env := sa.env, heap := sa.heap } t
+                  some (t, s')
+          | none => none
 ```
 
-NO — this is WRONG. `a` can legitimately become `.lit .undefined` through normal execution (e.g., `a = .assign x (.lit .undefined)`), and we still want to execute `b` in that case.
+**WHY**: When inner expression `a` produces an error event (throw/break/continue/return), the current code wraps in `.seq sa.expr b` and then `b` executes (dead code!). The fix propagates the error directly. This unblocks 7+ compound sorries.
 
-**Better approach**: Only propagate when the trace event is `.error msg`. Error events come from throw/break/continue/return:
+## ===== P1: FIX BROKEN THEOREMS =====
 
+After changing step?, these will break:
+
+### 1. `Flat_step?_seq_step` in ClosureConvertCorrect.lean L2204-2211
+**WAIT** — jsspec owns this file. DO NOT edit it. Instead, tell ME (log it) that jsspec needs to fix this theorem by adding hypothesis `(hne : ∀ msg, t ≠ .error msg)`.
+
+### 2. Theorems in Flat/Semantics.lean that use `simp [step?]` for seq cases
+Run `lean_diagnostic_messages` on Flat/Semantics.lean after the change. Fix broken proofs ONE AT A TIME.
+
+### 3. Theorems in ANFConvertCorrect.lean that use `simp [Flat.step?]`
+Run `lean_diagnostic_messages` on ANFConvertCorrect.lean. Most will still work because they deal with non-seq cases. Fix any that break.
+
+## ===== P2: ALSO CHANGE .let and .assign cases =====
+
+**ONLY after P0+P1 are stable.** Apply the same error-propagation pattern to:
+
+### `.let name init body` (L348-358):
 ```lean
-| some (t, sa) =>
-    match t with
-    | .error _ =>
-        -- Abrupt completion produced error event: propagate without executing b
-        let s' := pushTrace { s with expr := sa.expr, env := sa.env, heap := sa.heap } t
-        some (t, s')
-    | _ =>
-        -- Normal step: continue in seq context
-        let s' := pushTrace { s with expr := .seq sa.expr b, env := sa.env, heap := sa.heap } t
-        some (t, s')
+  | .«let» name init body =>
+      match exprValue? init with
+      | some v =>
+          let s' := pushTrace { s with expr := body, env := s.env.extend name v } .silent
+          some (.silent, s')
+      | none =>
+          match step? { s with expr := init } with
+          | some (t, si) =>
+              match t with
+              | .error _ =>
+                  let s' := pushTrace { s with expr := si.expr, env := si.env, heap := si.heap } t
+                  some (t, s')
+              | _ =>
+                  let s' := pushTrace { s with expr := .«let» name si.expr body, env := si.env, heap := si.heap } t
+                  some (t, s')
+          | none => none
 ```
 
-This makes `.seq` propagate error events from `a` without executing `b`.
-
-### CONCRETE STEPS:
-
-1. **Read** Flat/Semantics.lean around L382 to see exact current code
-2. **Read** `step?_seq_ctx` and `Flat_step?_seq_step` in ANFConvertCorrect.lean to understand what depends on seq stepping behavior
-3. **Search** for all uses of `.seq` stepping patterns: `lean_local_search "step?_seq"`
-4. **Check** how many existing proofs reference seq step behavior — these will break
-5. **Make the change** to Flat.step? ONLY for the `.seq a b` case
-6. **Also apply** the same fix to `.let name init body`, `.call funcExpr envExpr args`, and other compound expression cases where inner stepping wraps in an outer context
-7. **Run lean_diagnostic_messages** on Flat/Semantics.lean to check for immediate breakage
-8. **Fix** broken proofs in ANFConvertCorrect.lean
-
-### IMPORTANT: Start small
-- First, change ONLY `.seq a b` error propagation
-- Check what breaks
-- If manageable, proceed to other compound forms
-- If catastrophic, REVERT and document what went wrong
-
-### WHAT THIS UNBLOCKS:
-If Flat.step? propagates errors through seq, then for `seq_left h` case:
-- Flat.Steps from `⟨.seq a b, env, heap, trace, funcs, cs⟩` now end at `⟨.lit .undefined, env, heap, ...⟩`
-- env/heap ARE preserved because b never executes
-- The theorem becomes provable via depth induction
-
-This unblocks: L11713 (throw), L11870 (return), L12047 (await), L12205 (yield), L17701 (break), L17754 (continue) = **6+ sorries** directly, plus enables depth induction for many more.
-
-## ===== FALLBACK: If Flat.step? change is too risky =====
-
-If too many proofs break, instead:
-1. Case-split L11713 from `| _ => sorry` into individual HasThrowInHead constructors
-2. For each constructor, write a sorry with a detailed comment
-3. This doesn't close sorries but makes the problem decomposed
+### `.assign name rhs` (L359-369) — same pattern for the none branch.
 
 ## WORKFLOW
-1. Start with reading Flat/Semantics.lean .seq case
-2. Search for all proofs that depend on seq stepping behavior
-3. Make the minimal change
-4. Check breakage
-5. Fix broken proofs
-6. Verify with lean_diagnostic_messages
-
-## LOG YOUR WORK
-**FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`
-**LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`
+1. **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`
+2. Edit Flat/Semantics.lean L382-392 with the EXACT code above
+3. Run `lean_diagnostic_messages` on Flat/Semantics.lean (filter errors only)
+4. Fix each broken proof
+5. Run `lean_diagnostic_messages` on ANFConvertCorrect.lean (filter errors only)
+6. Fix each broken proof
+7. Check compound sorry goals (L11765, L11922, L12099, L12257) — are they now provable?
+8. Log what jsspec needs to fix in CC
+9. **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`

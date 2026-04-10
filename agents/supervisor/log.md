@@ -5617,3 +5617,45 @@ Call chain: anfConvert_step_star → normalizeExpr_labeled_step_sim → normaliz
 ## Run: 2026-04-10T16:00:02+00:00
 
 2026-04-10T16:05:07+00:00 SKIP: already running
+
+### 2026-04-10T16:00:02+00:00 Supervisor analysis + prompt rewrite
+
+**Sorry counts**: ANF=54, CC=12, Lower=0. Total=66.
+Previous prompt said 25 — count was stale. Decomposition of monolithic anfConvert_step_star increased count but improved tractability.
+
+**Agent status (all 3 have been crashing repeatedly — EXIT: code 1 for days)**:
+- proof: Did analysis at 14:30. Found 10 compound sorries UNPROVABLE without Flat.step? change. Has NOT made the change. Stuck on analysis-only mode.
+- jsspec: Did analysis at 14:00. All 12 CC sorries classified as BLOCKED. Has NOT started CCStateAgree weakening.
+- wasmspec: Did analysis at 15:00. ALL 24 if_branch sorries blocked by K-mismatch. Excellent analysis but 0 sorries closed.
+
+**Root causes identified**:
+1. **Flat.step? seq case** (Flat/Semantics.lean L382-392): Does not propagate .error events. Dead code executes after throw/break/continue/return. Blocks 7+ compound sorries.
+2. **CCStateAgree too strict** (CC L562-563): Exact equality of nextId/funcs.size. After branching (if/tryCatch/while), skipped branch conversion advances state. Blocks 6 CC sorries.
+3. **K-mismatch in normalizeExpr_if_branch_step**: Stepping trivialChain elements changes ANF normalization output (different trivials → different then_/else_). Blocks 30+ sorries. NEEDS THEOREM REDESIGN.
+
+**Actions taken**:
+- Rewrote proof agent prompt: EXACT code for Flat.step? error propagation change. Told it to STOP ANALYZING and START EDITING.
+- Rewrote jsspec prompt: EXACT code for Flat_step?_seq_step fix (if proof agent changes step?) + CCStateAgreeWeak approach.
+- Rewrote wasmspec prompt: REDIRECTED from blocked K-mismatch sorries to return/yield (L12288-12292), tryCatch (L16418-16439), and call infrastructure (L17522-17806).
+
+**Sorry trajectory**: 25 (original) → 66 (decomposed). Decomposition was correct move. Now need actual proof closure.
+
+**Blast radius of Flat.step? change**: 252 uses of `simp [Flat.step?]` across proof files. Most will be unaffected (non-seq cases). The key theorem `Flat_step?_seq_step` (CC L2204) needs hypothesis addition. Its 1 caller at L5392 handles non-error stepping. Coordinated fix between proof+jsspec agents.
+
+**Checklist**:
+- [x] Sorry count: 66 (ANF 54 + CC 12 + Lower 0)
+- [x] Sorry count direction: UP by 1 from last recorded (65). Reason: additional decomposition between L10253 and L10399 added one sorry. NOT a regression — decomposition aids tractability.
+- [x] Expr.supported: EXISTS (149 refs in Core/Syntax.lean + CC)
+- [x] WasmCert citations: EXISTS (37 refs across 7 files)
+- [x] Wrote to proof agent prompt: YES — exact Flat.step? change code
+- [x] Wrote to jsspec agent prompt: YES — Flat_step?_seq_step fix + CCStateAgreeWeak
+- [x] Wrote to wasmspec prompt: YES — redirected to return/yield/tryCatch sorries
+- [x] Updated PROOF_BLOCKERS.md with current state
+- [x] Logged to time_estimate.csv
+
+**Next run priorities**:
+1. Check if proof agent actually made the Flat.step? change
+2. Check if jsspec started CCStateAgreeWeak
+3. Check if wasmspec closed any return/yield/tryCatch sorries
+4. If proof agent crashed again: MAKE THE FLAT.STEP? CHANGE MYSELF
+2026-04-10T16:17:37+00:00 DONE
