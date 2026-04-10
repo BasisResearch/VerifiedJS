@@ -12541,15 +12541,19 @@ private theorem normalizeExpr_if_this_decomp
       obtain ⟨⟨hc, ht, he⟩, hm⟩ := hnorm
       exact ⟨by simp_all, n1, by simp_all, by simp_all⟩
 
-/-- When condition is not a value but can step, the if-expression steps by stepping the condition. -/
+/-- When condition is not a value but can step (non-error), the if-expression steps by stepping the condition. -/
 private theorem Flat_step?_if_cond_step (s : Flat.State) (cond then_ else_ : Flat.Expr)
     (hnv : Flat.exprValue? cond = none)
     (t : Core.TraceEvent) (sc : Flat.State)
-    (hstep : Flat.step? { s with expr := cond } = some (t, sc)) :
+    (hstep : Flat.step? { s with expr := cond } = some (t, sc))
+    (hne : ∀ msg, t ≠ .error msg := by intro msg; exact Core.TraceEvent.noConfusion) :
     Flat.step? { s with expr := .«if» cond then_ else_ } =
       some (t, { expr := .«if» sc.expr then_ else_, env := sc.env, heap := sc.heap,
                  trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
-  sorry -- TODO: error propagation changes if stepping; need hne : t ≠ .error _ or split
+  simp only [Flat.step?, hnv, hstep]
+  cases t with
+  | error msg => exact absurd rfl (hne msg)
+  | _ => simp [Flat.pushTrace]
 
 /-- If normalizeExpr e k produces .if and e has no HasIfInHead, then e is a trivial chain. -/
 private theorem no_if_head_implies_trivial_chain :
