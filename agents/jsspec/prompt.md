@@ -1,4 +1,4 @@
-# jsspec — Fix 3 hne callers + CCStateAgree
+# jsspec — RESTRUCTURE hne CALLERS + CCStateAgreeWeak
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -8,61 +8,64 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS: 15 sorries in CC. 3 are NEW error-propagation sorries.
+## STATUS: 15 sorries in CC. proof agent is extending error propagation in Flat.step?
 
-## P0: FIX 3 ERROR-PROPAGATION SORRIES (BLOCKING)
+## CONTEXT: ERROR PROPAGATION IS BEING EXTENDED
 
-These 3 sorries at L5090, L5182, L5420 were added for the `hne` argument to `Flat_step?_let_step`, `Flat_step?_assign_step`, `Flat_step?_seq_step`:
+The proof agent is adding error propagation to ALL compound cases in Flat.step? (not just seq/let/assign). Once done, the `hne` approach becomes viable because:
+- Error case: `t = .error msg` → use `Flat_step?_*_error` (unwraps compound wrapper)
+- Non-error case: `t ≠ .error msg` → use existing `Flat_step?_*_step` with `hne`
 
-### L5090, L5182, L5420 — hne for let/assign/seq
+## P0: RESTRUCTURE 3 CALLERS (BLOCKING)
 
-These need `t ≠ .error msg` where `t` is the event from `Flat.step? { sf with expr := convertExpr e ... }`.
+The 3 sorry'd hne callers at L5146, L5277, L5517 need restructuring. Instead of trying to prove `hne` from context (which is impossible), split on the event type:
 
-**Approach A (restructure — RECOMMENDED)**: Instead of using `Flat_step?_let_step` which requires `hne`, branch on whether `t` is an error:
+### Pattern for L5146 (let), L5277 (assign), L5517 (seq):
+
 ```lean
-match hm : Flat.step? { sf with expr := ... } with
-| some (t, sa) =>
-  match ht : t with
-  | .error msg =>
-    -- Error case: use Flat_step?_let_error / seq_error / assign_error
-    -- This propagates the error through the compound expression
-    have heq := Flat_step?_let_error sf name body _ hfnv msg sa (by rw [← ht]; exact hm)
-    rw [heq] at hstep; simp at hstep
-    obtain ⟨rfl, hsf'eq⟩ := hstep
-    -- Now ev = .error msg, need to show simulation still holds
-    sorry -- may need error-event simulation lemma
-  | _ =>
-    -- Non-error case: use existing Flat_step?_let_step
-    have hne : ∀ msg, t ≠ .error msg := by cases t <;> simp_all [ht]
-    have heq := Flat_step?_let_step sf name body _ hfnv t sa hm hne
-    -- rest as before
+-- After getting: hm : Flat.step? { sf with expr := convertExpr sub_e ... } = some (t, sa)
+match ht : t with
+| .error msg =>
+  -- Error case: Flat strips the compound wrapper
+  -- Use Flat_step?_let_error (or assign_error / seq_error)
+  -- The Flat state sa.expr is unwrapped, matching the simulation relation
+  -- Need to show Core also produces an error-matching step
+  sorry -- error event simulation (unblocked once proof agent extends error propagation)
+| .silent =>
+  -- Non-error case: use existing Flat_step?_let_step with hne
+  have hne : ∀ msg, Core.TraceEvent.silent ≠ .error msg := by intro msg; exact Core.TraceEvent.noConfusion
+  -- Continue with existing proof...
+  <existing proof>
+| .log msg =>
+  have hne : ∀ msg', Core.TraceEvent.log msg ≠ .error msg' := by intro msg'; exact Core.TraceEvent.noConfusion
+  <existing proof>
 ```
 
-**Approach B (quick sorry)**: If the error case can't arise for well-formed converted expressions (because `convertExpr` of a supported expression shouldn't produce error events on sub-stepping), prove a helper:
-```lean
-private theorem convertExpr_step_no_error (e : Core.Expr) (hsupp : e.supported = true) ...
-    (hstep : Flat.step? { sf with expr := (Flat.convertExpr e ...).fst } = some (t, sa)) :
-    ∀ msg, t ≠ .error msg
-```
+**Key insight**: You don't need to prove `t ≠ .error` from context. Just `match` on `t` and handle each constructor. The `.error` case is new (needs separate simulation proof), but `.silent` and `.log` cases can reuse the existing proof with `hne` trivially satisfied.
 
-Use `lean_goal` at L5090 to check available hypotheses. Check if `Flat_step?_let_error` / `Flat_step?_seq_error` / `Flat_step?_assign_error` exist (they should, after the error propagation changes).
+### Steps:
+1. Read the proof at L5146 (let case) to understand the full context
+2. Restructure by matching on `t` first
+3. For `.silent`/`.log`: prove `hne` trivially, use existing Flat_step?_let_step
+4. For `.error`: sorry for now (will be closable after error propagation extension)
+5. Repeat for L5277 (assign) and L5517 (seq)
 
-## P1: CCStateAgree (only after P0 is done)
+This changes 3 sorry'd `hne` proofs into 3 sorry'd error-case proofs — but the error-case sorries are CLOSABLE once the proof agent finishes.
 
-Target sorries: L5261, L5287, L8115, L8192, L8308
-These are all blocked by CCStateAgree (Blocker P). The viable fix is Path A: make `convertExpr` state-independent via position-based naming. This requires editing `ClosureConvert.lean` definitions — check with supervisor before attempting.
+## P1: CCStateAgreeWeak (only after P0)
 
-## Remaining CC sorries (12 total after P0):
-- L4927: multi-step gap (Blocker T) — BLOCKED
-- L5261, L5287: CCStateAgree if-branch — BLOCKED (Blocker P)
-- L5855: FuncsCorr invariant — BLOCKED (Blocker Q)
-- L6066, L6075: multi-step newObj gap — BLOCKED
-- L6714: getIndex string — UNPROVABLE
-- L7956: functionDef — BLOCKED (Blocker S)
-- L8115, L8118: tryCatch — BLOCKED (Blocker P)
-- L8192: CCStateAgree — BLOCKED (Blocker P)
-- L8308: while_ CCState — BLOCKED (Blocker P)
+Targets: L5358, L5384, L8212, L8289, L8405 (5 sorries)
+
+These need changing `CCStateAgree` to `CCStateAgreeWeak` in the `suffices` invariant at ~L4892. This is a large refactor (~47 occurrences). Assess feasibility before starting.
+
+## P2: Other CC sorries (DO NOT ATTEMPT YET)
+- L4945: multi-step gap (Blocker T)
+- L5952: FuncsCorr (Blocker Q)
+- L6163, L6172: multi-step newObj gap
+- L6811: getIndex string (UNPROVABLE — may need theorem restriction)
+- L8053: functionDef (Blocker S)
+- L8215: tryCatch finally (Blocker P)
 
 ## LOG YOUR WORK
-**FIRST**: `echo "### $(date -Iseconds) Starting run — fixing 3 hne callers" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`

@@ -1,40 +1,67 @@
-# wasmspec — CLOSE L17760 + L17813, then tryCatch
+# wasmspec — CLOSE 4 NoNestedAbrupt CONTRADICTION CASES
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
 - **DO NOT** run `lake build` — USE LSP ONLY.
 - **DO NOT** use while/until loops, pgrep, sleep loops
-- You CAN edit ANFConvertCorrect.lean ONLY at L17740-17830
+- You CAN edit ANFConvertCorrect.lean ONLY at break/continue sorries (~L15333-15400)
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## CRITICAL: BUILD IS OOM — proof agent fixing it
+## STATUS
+- Supervisor collapsed if_branch, file now 16,269 lines (was 18,694)
+- Proof agent is extending error propagation to ALL compound cases in Flat.step?
+- ANF sorries: 39. CC: 15. Total: 54.
 
-ANFConvertCorrect.lean build is OOM-killed. Proof agent is collapsing the if_branch section. **Wait for proof agent to fix the build before running LSP checks.** You can still analyze and prepare proofs.
+## P0: CLOSE 4 CONTRADICTION CASES IN BREAK/CONTINUE
 
-## P0: Close L17760 — break compound
+Your earlier analysis found 4 of 32 cases are closable via NoNestedAbrupt contradiction:
+- throw_arg, return_some_arg, yield_some_arg, await_arg
 
-1. Read the goal context around L17760 (don't rely on LSP until build is fixed)
-2. With Flat.step? error propagation, compound break should propagate error directly
-3. Key lemmas: `step?_seq_error` (~L2271), `step?_let_init_error` (~L2283)
-4. Pattern: match on HasBreakInHead constructor, use error propagation lemma, derive env/heap preservation
+For these: `HasBreakInHead` (or `HasContinueInHead`) implies `hasAbruptCompletion arg = true`, but `NoNestedAbrupt` requires `hasAbruptCompletion arg = false`. This is a direct contradiction.
 
-## P1: Close L17813 — continue compound
+### Approach:
+1. Find the break compound sorry (was L17758, now shifted ~-2400 lines → around L15360)
+2. Find the continue compound sorry (was L17812, now shifted → around L15414)
+3. For each, find the 4 contradiction cases (throw_arg, return_some_arg, yield_some_arg, await_arg)
+4. Close them with:
 
-Same pattern as L17760 but for continue.
+```lean
+| .throw_arg _ hb =>
+  -- HasBreakInHead implies hasAbruptCompletion = true
+  -- But NoNestedAbrupt requires hasAbruptCompletion = false
+  -- Contradiction
+  have : hasAbruptCompletion arg = true := HasBreakInHead_hasAbruptCompletion hb
+  simp [this] at hnoabrupt  -- or exact absurd this hnoabrupt
+```
 
-## P2: tryCatch sorries (L16418, L16436, L16439)
+### Helper lemma needed:
+```lean
+theorem HasBreakInHead_hasAbruptCompletion {e : Flat.Expr} (h : HasBreakInHead e) :
+    hasAbruptCompletion e = true
+```
 
-If L17760/L17813 are closed, move to tryCatch compound sorries. These may also benefit from error propagation.
+This requires mutual induction on `HasBreakInHead` constructors. Check if it already exists with `lean_local_search` for "HasBreakInHead" and "hasAbruptCompletion".
 
-## P3: noCallFrameReturn (L17522, L17533)
+If it doesn't exist, write it in ANFConvertCorrect.lean near the other HasBreakInHead lemmas.
 
-These callframe sorries need `NoCallFrameParam` predicate in anfConvert_step_star preconditions.
+## P1: PREPARE FOR REMAINING 28 CASES (DO NOT EDIT YET)
+
+The other 28 cases need error propagation in Flat.step? (proof agent is adding it). Once done:
+- Error from sub-expression → wrapper is stripped → `sa.expr` is directly the sub-result
+- SimRel holds because no dead code wrapper
+- Proof pattern: `have herr := step?_compound_error ...; rw [herr] at hstep; ...`
+
+Prepare the proof outline for these cases but DO NOT edit until the proof agent confirms error propagation is in.
+
+## P2: tryCatch sorries (L14018, L14036, L14039 after shift)
+
+If P0 is done, analyze tryCatch compound sorries. These have different blockers (callStack + counter alignment).
 
 ## WORKFLOW
-1. `echo "### $(date -Iseconds) Starting run — L17760+L17813 prep" >> agents/wasmspec/log.md`
-2. Read L17750-17820 to understand current proof state
-3. Write proof for L17760 using error propagation
-4. Test via LSP (only if build is working)
-5. Same for L17813
+1. `echo "### $(date -Iseconds) Starting run — NoNestedAbrupt contradiction cases" >> agents/wasmspec/log.md`
+2. Find break/continue sorry positions in the CURRENT file (use grep for "sorry" near "break compound" or "continue compound")
+3. Search for HasBreakInHead_hasAbruptCompletion helper
+4. If missing, write it
+5. Close the 4 contradiction cases
 6. `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

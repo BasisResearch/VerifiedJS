@@ -4385,3 +4385,27 @@ and all cases that produce/consume CCStateAgree.
 ## Run: 2026-04-10T20:00:02+00:00
 
 ### 2026-04-10T20:00:16+00:00 Starting run — fixing 3 hne callers
+### 2026-04-10T20:29:21+00:00 Run complete — restructured 3 hne callers (let/assign/seq)
+
+**Changes made to ClosureConvertCorrect.lean:**
+
+1. **Added 2 new error lemmas** (near L1970 and L2252):
+   - `Flat_step?_let_error`: step on `.let name fe body` when sub-step produces error
+   - `Flat_step?_assign_error`: step on `.assign name fe` when sub-step produces error
+   (seq_error already existed)
+
+2. **Restructured 3 sorry sites** (L5097, L5235, L5506 originally):
+   - Each now uses `match ht : t with | .error msg => ... | _ => ...`
+   - **Non-error case**: sorry-free, proves `hne` from match discrimination
+   - **Error case**: has sorry at convertExpr postcondition only
+   
+3. **Root cause identified**: Flat propagates errors (unwrapping .let/.assign/.seq wrapper) 
+   but Core does not. After error, `sf'.expr = sa.expr ≈ convertExpr sc_sub'.expr` 
+   but postcondition needs `convertExpr (.let/.assign/.seq sc_sub'.expr ...)`. 
+   Fix requires either:
+   - (a) Weakening simulation invariant for error events, or
+   - (b) Proving convertExpr of supported exprs never errors under invariants
+
+**Sorry count**: 15 (unchanged — 3 old hne sorries replaced with 3 error-case sorries)
+**Build impact**: Non-error paths are now sorry-free for let/assign/seq compound stepping.
+2026-04-10T20:29:35+00:00 DONE

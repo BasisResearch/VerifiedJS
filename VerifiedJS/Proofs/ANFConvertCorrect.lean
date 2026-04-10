@@ -4649,6 +4649,88 @@ private theorem HasBreakInHead_not_value (e : Flat.Expr) (label : Option Flat.La
     (h : HasBreakInHead e label) : Flat.exprValue? e = none := by
   cases h <;> simp [Flat.exprValue?]
 
+/-- HasBreakInHead implies hasAbruptCompletion is true. -/
+private theorem HasBreakInHead_hasAbruptCompletion :
+    ∀ (e : Flat.Expr) (label : Option Flat.LabelName),
+    HasBreakInHead e label → hasAbruptCompletion e = true := by
+  intro e label h
+  induction h with
+  | break_direct => simp [hasAbruptCompletion]
+  | seq_left _ ih => simp [hasAbruptCompletion, ih]
+  | seq_right _ ih => simp [hasAbruptCompletion, ih]
+  | let_init _ ih => simp [hasAbruptCompletion, ih]
+  | getProp_obj _ ih => simp [hasAbruptCompletion, ih]
+  | setProp_obj _ ih => simp [hasAbruptCompletion, ih]
+  | setProp_val _ ih => simp [hasAbruptCompletion, ih]
+  | binary_lhs _ ih => simp [hasAbruptCompletion, ih]
+  | binary_rhs _ ih => simp [hasAbruptCompletion, ih]
+  | unary_arg _ ih => simp [hasAbruptCompletion, ih]
+  | typeof_arg _ ih => simp [hasAbruptCompletion, ih]
+  | deleteProp_obj _ ih => simp [hasAbruptCompletion, ih]
+  | assign_val _ ih => simp [hasAbruptCompletion, ih]
+  | call_func _ ih => simp [hasAbruptCompletion, ih]
+  | call_env _ ih => simp [hasAbruptCompletion, ih]
+  | call_args hargs ih => simp [hasAbruptCompletion]; left; left; exact ih
+  | newObj_func _ ih => simp [hasAbruptCompletion, ih]
+  | newObj_env _ ih => simp [hasAbruptCompletion, ih]
+  | newObj_args hargs ih => simp [hasAbruptCompletion]; left; left; exact ih
+  | if_cond _ ih => simp [hasAbruptCompletion, ih]
+  | throw_arg _ => simp [hasAbruptCompletion]
+  | return_some_arg _ => simp [hasAbruptCompletion]
+  | yield_some_arg _ => simp [hasAbruptCompletion]
+  | await_arg _ => simp [hasAbruptCompletion]
+  | getIndex_obj _ ih => simp [hasAbruptCompletion, ih]
+  | getIndex_idx _ ih => simp [hasAbruptCompletion, ih]
+  | setIndex_obj _ ih => simp [hasAbruptCompletion, ih]
+  | setIndex_idx _ ih => simp [hasAbruptCompletion, ih]
+  | setIndex_val _ ih => simp [hasAbruptCompletion, ih]
+  | getEnv_env _ ih => simp [hasAbruptCompletion, ih]
+  | makeClosure_env _ ih => simp [hasAbruptCompletion, ih]
+  | makeEnv_values hvals ih => simp [hasAbruptCompletion]; exact ih
+  | objectLit_props hprops ih => simp [hasAbruptCompletion]; exact ih
+  | arrayLit_elems helems ih => simp [hasAbruptCompletion]; exact ih
+
+/-- HasContinueInHead implies hasAbruptCompletion is true. -/
+private theorem HasContinueInHead_hasAbruptCompletion :
+    ∀ (e : Flat.Expr) (label : Option Flat.LabelName),
+    HasContinueInHead e label → hasAbruptCompletion e = true := by
+  intro e label h
+  induction h with
+  | continue_direct => simp [hasAbruptCompletion]
+  | seq_left _ ih => simp [hasAbruptCompletion, ih]
+  | seq_right _ ih => simp [hasAbruptCompletion, ih]
+  | let_init _ ih => simp [hasAbruptCompletion, ih]
+  | getProp_obj _ ih => simp [hasAbruptCompletion, ih]
+  | setProp_obj _ ih => simp [hasAbruptCompletion, ih]
+  | setProp_val _ ih => simp [hasAbruptCompletion, ih]
+  | binary_lhs _ ih => simp [hasAbruptCompletion, ih]
+  | binary_rhs _ ih => simp [hasAbruptCompletion, ih]
+  | unary_arg _ ih => simp [hasAbruptCompletion, ih]
+  | typeof_arg _ ih => simp [hasAbruptCompletion, ih]
+  | deleteProp_obj _ ih => simp [hasAbruptCompletion, ih]
+  | assign_val _ ih => simp [hasAbruptCompletion, ih]
+  | call_func _ ih => simp [hasAbruptCompletion, ih]
+  | call_env _ ih => simp [hasAbruptCompletion, ih]
+  | call_args hargs ih => simp [hasAbruptCompletion]; left; left; exact ih
+  | newObj_func _ ih => simp [hasAbruptCompletion, ih]
+  | newObj_env _ ih => simp [hasAbruptCompletion, ih]
+  | newObj_args hargs ih => simp [hasAbruptCompletion]; left; left; exact ih
+  | if_cond _ ih => simp [hasAbruptCompletion, ih]
+  | throw_arg _ => simp [hasAbruptCompletion]
+  | return_some_arg _ => simp [hasAbruptCompletion]
+  | yield_some_arg _ => simp [hasAbruptCompletion]
+  | await_arg _ => simp [hasAbruptCompletion]
+  | getIndex_obj _ ih => simp [hasAbruptCompletion, ih]
+  | getIndex_idx _ ih => simp [hasAbruptCompletion, ih]
+  | setIndex_obj _ ih => simp [hasAbruptCompletion, ih]
+  | setIndex_idx _ ih => simp [hasAbruptCompletion, ih]
+  | setIndex_val _ ih => simp [hasAbruptCompletion, ih]
+  | getEnv_env _ ih => simp [hasAbruptCompletion, ih]
+  | makeClosure_env _ ih => simp [hasAbruptCompletion, ih]
+  | makeEnv_values hvals ih => simp [hasAbruptCompletion]; exact ih
+  | objectLit_props hprops ih => simp [hasAbruptCompletion]; exact ih
+  | arrayLit_elems helems ih => simp [hasAbruptCompletion]; exact ih
+
 /-- Membership in prop list implies depth bound -/
 theorem Flat.Expr.mem_propListDepth_lt {e : Flat.Expr} {name : Flat.PropName}
     {props : List (Flat.PropName × Flat.Expr)} (h : (name, e) ∈ props) :

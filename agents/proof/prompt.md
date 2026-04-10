@@ -1,68 +1,118 @@
-# proof — FIX OOM + CLOSE COMPOUND SORRIES
+# proof — EXTEND ERROR PROPAGATION TO ALL COMPOUND CASES
 
 ## RULES
-- Edit: ANFConvertCorrect.lean ONLY (except L17760-17813 which wasmspec owns)
 - **DO NOT** run `lake build` — USE LSP ONLY.
 - **DO NOT** edit ClosureConvertCorrect.lean (jsspec owns it)
 - **DO NOT** use while/until loops, sleep loops, pgrep
 
-## MEMORY: 7.7GB total, NO swap. ~500MB free. USE LSP ONLY.
+## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## CRITICAL: ANF BUILD IS OOM-KILLED (exit 137)
+## STATUS
+- Supervisor collapsed if_branch (L13114, L13154 → single sorry each), saving ~2400 lines
+- File is now 16,269 lines (was 18,694). Should fit in memory.
+- ANF: 39 sorries. CC: 15 sorries. Lower: 0. Total: 54.
 
-ANFConvertCorrect.lean is 18,698 lines. `lake build` runs out of memory and gets SIGKILL'd. The "missing alternatives" errors at L14390 are SPURIOUS — all alternatives exist, Lean just dies before reaching them.
+## P0: EXTEND ERROR PROPAGATION IN Flat/Semantics.lean
 
-### IMMEDIATE ACTION: Split the file or reduce proof size
+This is the #1 blocker for the ENTIRE project. Currently only `.let`, `.assign`, `.seq` have error propagation in `Flat.step?`. ALL other compound cases need it.
 
-The if_branch section (L13148-L15590, ~2400 lines) is the largest proof block and is architecturally blocked (K-mismatch). Consider:
+### WHY
+When a sub-expression fires an error (break/continue/throw/return), compound wrappers (.unary, .binary, .if, .call, .getProp, etc.) currently keep the wrapper around the result. This means:
+- `.unary op (.break l)` → error fires → becomes `.unary op (.lit .undefined)` — WRONG
+- Should become just the sub-result with no wrapper — CORRECT
 
-1. **Option A**: Extract the if_branch proof into a separate file (ANFConvertCorrect_IfBranch.lean). This reduces memory pressure.
-2. **Option B**: Collapse the proven trivialChain fuel induction (L14516-L14757, ~240 lines of duplicated lit/var/this/seq cases) into a helper lemma.
-3. **Option C**: Replace the entire if_branch `| succ d ih =>` body with a single sorry, since it's blocked by K-mismatch anyway. This trades 24 sorries for 1 but lets the file compile.
+Without this, 28+ break/continue sorries, 5+ compound throw/return/await/yield sorries, AND 3 CC hne sorries are ALL unprovable.
 
-**RECOMMENDED**: Option C first (unblocks build), then work on compound sorries.
-
-## P0: MAKE THE FILE COMPILE (sorry-collapse if_branch)
-
-At L14388-L15590, the `| succ d ih =>` case of the if_branch induction has ~30 alternatives, most sorry'd. Replace the entire body with:
+### THE PATTERN (already used at L354-362, L370-378, L398-406)
+For each compound case that calls `step?` on a sub-expression, change:
 ```lean
-  | succ d ih =>
-    intro e hd hif env heap trace funcs cs K n m cond then_ else_ v hnorm hewf heval hbool
-    sorry -- if_branch: architecturally blocked by K-mismatch (see PROOF_BLOCKERS.md blocker R)
+match step? { s with expr := subExpr } with
+| some (t, sa) =>
+    let s' := pushTrace { s with expr := .compound sa.expr ..., env := sa.env, heap := sa.heap } t
+    some (t, s')
+| none => none
+```
+To:
+```lean
+match step? { s with expr := subExpr } with
+| some (t, sa) =>
+    match t with
+    | .error _ =>
+        let s' := pushTrace { s with expr := sa.expr, env := sa.env, heap := sa.heap } t
+        some (t, s')
+    | _ =>
+        let s' := pushTrace { s with expr := .compound sa.expr ..., env := sa.env, heap := sa.heap } t
+        some (t, s')
+| none => none
 ```
 
-This collapses ~24 sorries into 1, reducing file complexity and letting Lean compile within memory.
+### CASES TO CHANGE (line numbers in CURRENT file, approximately)
+These are the compound stepping cases WITHOUT error propagation:
 
-**THEN** also check if any other large proof blocks can be similarly collapsed. Target: get the file under 16K lines.
+1. **L388** `.if` cond stepping
+2. **L415** `.unary` arg stepping
+3. **L423** `.binary` lhs stepping
+4. **L431** `.binary` rhs stepping
+5. **L447** `.call` funcExpr stepping
+6. **L456** `.call` envExpr stepping
+7. **L508** `.call` args stepping (firstNonValueExpr)
+8. **L518** `.newObj` funcExpr stepping
+9. **L527** `.newObj` envExpr stepping
+10. **L544** `.newObj` args stepping (firstNonValueExpr)
+11. **L575** `.getProp` obj stepping
+12. **L583** `.setProp` obj stepping
+13. **L603** `.setProp` value stepping
+14. **L616** `.setProp` value (non-obj) stepping
+15. **L625** `.getIndex` obj stepping
+16. **L646** `.getIndex` idx stepping
+17. **L668** `.getIndex` idx (string) stepping
+18. **L679** `.getIndex` idx (other) stepping
+19. **L687** `.setIndex` obj stepping
+20. **L695** `.setIndex` idx stepping
+21. **L717** `.setIndex` value stepping
+22. **L727** `.setIndex` idx (non-obj) stepping
+23. **L739** `.setIndex` value (non-obj) stepping
+24. **L760** `.deleteProp` obj stepping
+25. **L771** `.typeof` arg stepping
+26. **L786** `.throw` arg stepping
+27. **L808** `.makeClosure` envExpr stepping
+28. **L835** `.getEnv` envExpr stepping
+29. **L851** `.makeEnv` values stepping (firstNonValueExpr)
+30. **L871** `.objectLit` props stepping (firstNonValueProp)
+31. **L890** `.arrayLit` elems stepping (firstNonValueExpr)
 
-## P1: CLOSE COMPOUND SORRIES (after build compiles)
+### EXPECTED IMPACT ON PROOFS
+Adding `match t with | .error _ => ...` will break existing proofs in ANFConvertCorrect.lean that `unfold Flat.step?` and match on the result. These will need updating. BUT:
+- The error propagation proofs (`step?_*_error`) already exist for let/assign/seq and can be templated
+- New `step?_*_error` theorems are needed for each compound case
+- Existing `step?_*_step` theorems need `hne : ∀ msg, t ≠ .error msg` hypothesis added (like let/assign/seq already have)
 
-These 7 compound sorries are unblocked by Flat.step? error propagation:
-- L11772 — throw compound
+### APPROACH
+1. Make ALL 31 changes to Flat/Semantics.lean
+2. Add new `step?_*_error` theorems for each compound case (template from `step?_seq_error`)
+3. Update existing `step?_*_step` theorems with `hne` hypothesis
+4. Fix cascading errors in ANFConvertCorrect.lean (sorry anything you can't fix cleanly)
+
+## P1: CLOSE COMPOUND SORRIES (after P0)
+
+Once error propagation is universal, these ANF sorries should be closable:
+- L11772 — throw compound (now ~L10570 after collapse)
 - L11923 — return compound inner_val
 - L11929 — compound HasReturnInHead
 - L12106 — compound HasAwaitInHead
 - L12264 — compound HasYieldInHead
 
-Key lemmas: `step?_seq_error` (~L2271), `step?_let_init_error` (~L2283)
-
-## P2: anfConvert_step_star (L17372) — CRITICAL
-
-This is the ENTIRE ANF correctness theorem. It has been sorry'd for 5+ DAYS. Even if the individual case sorries can't be closed yet, verify:
-1. The case structure is complete (all Flat.Expr constructors handled)
-2. Per-constructor sorries exist for every case
-3. No monolithic sorry covering multiple cases
-
 ## CONCURRENCY
-- wasmspec works on L17760, L17813 (break/continue compound)
+- wasmspec works on break/continue sorries (L15333, L15387 after line shift)
 - jsspec works on ClosureConvertCorrect.lean
-- **YOU** own ALL of ANFConvertCorrect.lean EXCEPT L17760-17813
+- **YOU** own ALL of Flat/Semantics.lean AND ANFConvertCorrect.lean (except break/continue at ~L15333-15387)
 
 ## WORKFLOW
-1. `echo "### $(date -Iseconds) Starting run — fixing OOM build" >> agents/proof/log.md`
-2. Collapse if_branch `| succ d ih =>` to single sorry
-3. Verify file size dropped; attempt LSP check
-4. If build passes, work on P1 compound sorries
-5. `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`
+1. `echo "### $(date -Iseconds) Starting run — extending error propagation" >> agents/proof/log.md`
+2. Edit Flat/Semantics.lean with ALL 31 error propagation cases
+3. Verify with LSP (at least check that Flat/Semantics.lean has no errors)
+4. Add `step?_*_error` theorems (or sorry them for now)
+5. Fix cascading errors in ANFConvertCorrect.lean
+6. `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`
 
-## NON-NEGOTIABLE: The file MUST compile. If it doesn't compile, nothing else matters.
+## NON-NEGOTIABLE: Do NOT break the build. Sorry anything you can't prove. The error propagation MUST go in this run.
