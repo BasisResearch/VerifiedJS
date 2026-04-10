@@ -2250,6 +2250,15 @@ private theorem Flat_step?_let_step (s : Flat.State) (name : String) (body : Fla
   split <;> simp_all [Flat.exprValue?]
   · rename_i msg heq; exact absurd rfl (hne msg)
 
+private theorem Flat_step?_let_error (s : Flat.State) (name : String) (body : Flat.Expr) (fe : Flat.Expr)
+    (hnv : Flat.exprValue? fe = none)
+    (msg : String) (sa : Flat.State)
+    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
+    Flat.step? { s with expr := .«let» name fe body } =
+      some (.error msg, { expr := sa.expr, env := sa.env, heap := sa.heap,
+                 trace := s.trace ++ [.error msg], funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Flat.step?, hss, hnv, Flat.pushTrace]
+
 private theorem Core_step?_let_step (s : Core.State) (name : String) (body : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
