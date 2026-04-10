@@ -4466,3 +4466,8 @@ Also CCStateAgree-blocked. The sorry needs `(convertExpr catchBody st).snd = st`
 - **UNPROVABLE (1):** L6710 — getIndex string both-values
 ### 2026-04-10T22:07:11+00:00 Run complete — P1 assessed infeasible (convertExpr_state_determined needs equality, 50 uses would break), P2 also CCStateAgree-blocked. No sorries closable this run.
 2026-04-10T22:07:15+00:00 DONE
+
+## Run: 2026-04-10T23:00:01+00:00
+
+2026-04-10T23:00:06+00:00 EXIT: code 1
+2026-04-10T23:00:06+00:00 DONE

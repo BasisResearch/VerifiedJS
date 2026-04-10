@@ -1,4 +1,4 @@
-# proof — WEAKEN CALLSTACK INVARIANT + CLOSE IF-COND-STEP + COMPOUND THROW
+# proof — RESTORE hasAbruptCompletion/NoNestedAbrupt + COMPOUND ERROR CASES
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -11,59 +11,50 @@
 - BUILD PASSES. 0 errors.
 - ANF: 48 sorries. CC: 15. Lower: 0.
 - Error propagation DONE in Flat/Semantics.lean.
-- Your last run (21:30) exited with code 1 before doing work.
+- Your last 2 runs exited code 1 before doing work. If something crashes you, TRY SMALLER EDITS.
 
-## P0: WEAKEN 4 CALLSTACK INVARIANT SORRIES (L2983, L3004, L3025, L3046)
+## IMPORTANT: SKIP CALLSTACK WEAKENING
+The 4 sorries at L2983, L3004, L3025, L3046 are in theorems (`Steps_throw_pres`, `Steps_return_some_pres`, `Steps_await_pres`, `Steps_yield_some_pres`) that have **ZERO callers**. They are dead code. Do NOT spend time on them.
 
-These 4 sorries are UNPROVABLE as stated. The invariant says:
-```
-s'.callStack = cs ∧ ((∃ e', s'.expr = .throw e') ∨ (∃ v, s'.expr = .lit v))
-```
+## P0: RESTORE hasAbruptCompletion_step_preserved (L14072) — 1 SORRY
 
-But after error propagation, when `t = .error msg`, `s'.expr = si.expr` (the inner stepped expression), which could be ANYTHING — not necessarily `.throw` or `.lit`.
+This theorem at L14065-14072 has a commented-out proof (L14073-L14610) that worked before error propagation changes. The proof needs updating because Flat.step? now has an extra `match` arm for error events.
 
-**FIX**: Weaken the invariant to:
-```lean
-s'.callStack = cs ∧ ((∃ e', s'.expr = .throw e') ∨ (∃ v, s'.expr = .lit v) ∨ (∃ msg, t = .error msg))
-```
+Fix approach:
+1. Uncomment the old proof (L14073-L14610)
+2. For each `unfold Flat.step? at hstep` that now fails, add after it:
+   ```lean
+   split at hstep  -- splits on error vs non-error event
+   · -- error case: s'.expr is inner expression result
+     -- hasAbruptCompletion sf'.expr: need to show inner result has no abrupt
+     sorry  -- we'll fix these individually
+   · -- non-error case: original proof continues
+     <original tactics>
+   ```
+3. Use `lean_multi_attempt` on the error case — often `simp [hasAbruptCompletion] at *` or the IH applies.
 
-Steps:
-1. Change the conclusion of `step?_throw_callStack_inv` (L2960) to add `∨ (∃ msg, t = .error msg)`
-2. The sorry at L2983 becomes: `exact ⟨rfl, .inr (.inr ⟨s✝, rfl⟩)⟩`
-3. Do the same for `step?_return_some_callStack_inv` (L2988), `step?_await_callStack_inv` (L3009), `step?_yield_some_callStack_inv` (L3030)
-4. **UPDATE ALL CALLERS** — search for uses of these 4 theorems. Each caller currently pattern-matches on `.inl ⟨e', he⟩ | .inr ⟨v, hv⟩`. Add a third branch `| .inr (.inr ⟨msg, hmsg⟩)` handling the error case.
+Even if you end up with 5-10 sorry'd error sub-cases, that's better than 1 monolithic sorry blocking everything.
 
-Use `lean_local_search` to find callers. The error case in callers likely needs: the step produced `.error msg`, so the trace already has the error — match the ANF trace.
+## P1: RESTORE NoNestedAbrupt_step_preserved (L14620) — 1 SORRY
 
-## P1: CLOSE Flat_step?_if_cond_step (L12524)
+Same pattern as P0. Commented-out proof at L14621+. Same fix: uncomment, add error-case splits.
 
-Goal at L12524:
-```
-⊢ Flat.step? { s with expr := .if cond then_ else_ } =
-  some (t, { expr := .if sc.expr then_ else_, env := sc.env, ... })
-```
+## P2: COMPOUND ERROR CASES (L11935, L11941, L12112, L12118, L12270, L12276) — 6 SORRIES
 
-With error propagation, Flat.step? on `.if cond then_ else_` where cond is not a value now has a match on the step result's event. Need to:
-1. `unfold Flat.step? ; simp [hnv]`
-2. Split on whether `t` is `.error _` or not
-3. Non-error: the if wraps the result → matches conclusion
-4. Error: Flat.step? propagates error, unwrapping .if → conclusion says `.if sc.expr then_ else_` but actual result is `sc.expr` without the wrapper. **IF this case is unprovable**, add `(hne : ∀ msg, t ≠ .error msg)` hypothesis to the theorem statement, and update callers to provide it.
-
-Check the actual Flat.step? definition for `.if` with `lean_hover_info` first.
-
-## P2: COMPOUND THROW CASES (L11784) — IF P0+P1 DONE
-
-L11784 has ~25 HasThrowInHead constructor cases. Each needs multi-step Flat simulation showing the throw sub-expression evaluates and produces the error trace. With error propagation done, compound cases (seq, let, assign) should propagate errors. Needs IH on the sub-expression.
-
-Lower priority — focus on P0 and P1 first.
+These say "blocked by Flat.step? error propagation" but error propagation IS DONE in Flat/Semantics.lean now. Check if they're now closable:
+1. `lean_goal` at each location
+2. The error propagation means compound expressions (seq, let, assign) now have defined step behavior when inner expr produces error
+3. Try `lean_multi_attempt` with `["unfold Flat.step?; simp_all", "simp [Flat.step?]; split <;> simp_all"]`
+4. If still blocked, document the EXACT missing piece
 
 ## CONCURRENCY
-- wasmspec works on labeled_branch (L10333-L10706) and Cat B break/continue
+- wasmspec works on labeled_branch (L10333-L10706)
 - jsspec works on ClosureConvertCorrect.lean only
-- YOU own Flat/Semantics.lean and ANFConvertCorrect.lean (except wasmspec's labeled_branch area)
+- YOU own everything else in ANFConvertCorrect.lean
 
 ## WORKFLOW
-1. `echo "### $(date -Iseconds) Starting run — CALLSTACK WEAKENING + IF-COND-STEP" >> agents/proof/log.md`
-2. P0: Weaken 4 callStack invariant theorems, fix callers
-3. P1: Fix or guard Flat_step?_if_cond_step
-4. `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`
+1. `echo "### $(date -Iseconds) Starting run — hasAbruptCompletion + NoNestedAbrupt restore" >> agents/proof/log.md`
+2. P0: Uncomment and fix hasAbruptCompletion_step_preserved
+3. P1: Uncomment and fix NoNestedAbrupt_step_preserved
+4. P2: Check compound error cases
+5. `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`
