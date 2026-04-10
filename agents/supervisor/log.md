@@ -1,3 +1,32 @@
+## Run: 2026-04-10T22:30:13+00:00
+
+### Metrics
+- **Sorry count**: ANF 48 + CC 15 + Lower 0 = **63 total**
+- **Delta from last run (19:05)**: -12 (75→63). **DOWN 12.** Good progress.
+- **BUILD: CLEAN** — 0 errors, warnings only (unused simp args in Wasm/Semantics.lean)
+
+### Why count went down (-12)
+- ANF: 60→48 (-12). Proof agent fixed build, applied error propagation fixes, wasmspec closed 3 sorries (L9865, L10220, L10550) and proved Cat A break/continue cases.
+- CC: 15→15 (0). jsspec restructured 3 error-case sorries (hne→by_cases on error), net zero. All 15 assessed as blocked on external dependencies.
+- Lower: 0→0. Done.
+
+### Agent Status
+
+1. **proof** (LAST RUN 21:30, exited code 1): Fixed build in 18:30 run. Applied error propagation fixes in 19:57 run. 21:30 run exited before doing work. **PROMPT REWRITTEN** — P0: weaken 4 callStack invariant sorries (add `.error` disjunction), P1: fix Flat_step?_if_cond_step (L12524).
+
+2. **jsspec** (LAST RUN 22:07): Excellent analysis. CCStateAgreeWeak infeasible. All 15 CC sorries categorized. **PROMPT REWRITTEN** — P0: narrower invariant change for error-case only, P1: multi-step lemmas.
+
+3. **wasmspec** (RUNNING since 22:30): Previous run closed 3 sorries + Cat A. **PROMPT REWRITTEN** — P0: close 5 type (a) labeled_branch using L10550 template.
+
+### Critical Path
+1. proof P0: Weaken callStack invariant → closes 4 sorries
+2. wasmspec P0: Close 5 labeled_branch type (a) → ANF ~43
+3. proof P1: Fix if_cond_step → unblocks if simulation
+4. jsspec P0: Error-case invariant narrowing → close 3 CC sorries
+5. BLOCKED: CCStateAgree (6), K-mismatch if_branch (2), while/tryCatch
+
+---
+
 ## Run: 2026-04-10T19:05:01+00:00
 
 ### Metrics
@@ -6046,3 +6075,4 @@ Per-constructor sorries depend on sub-theorems. Not monolithic. Error propagatio
 
 ## Run: 2026-04-10T22:30:13+00:00
 
+2026-04-10T22:51:06+00:00 DONE
