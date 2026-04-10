@@ -10224,7 +10224,7 @@ private theorem normalizeExpr_labeled_branch_step :
           | setProp_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
           | setProp_value _ _ _ _ h => exact hewf x (VarFreeIn.setProp_value _ _ _ _ h)
     | setProp_val h_val =>
-      rename_i obj prop val
+      rename_i val obj prop
       simp only [ANF.normalizeExpr] at hnorm
       rcases Classical.em (HasLabeledInHead obj label) with h_obj_lab | h_obj_nolab
       · -- HasLabeledInHead obj: recurse on obj (same structure as setProp_obj)
