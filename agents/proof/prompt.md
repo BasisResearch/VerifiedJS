@@ -1,4 +1,4 @@
-# proof — Refactor throw/return/await/yield to depth induction
+# proof — Close compound + while + tryCatch sorries in ANFConvertCorrect.lean
 
 ## RULES
 - Edit: ANFConvertCorrect.lean ONLY (and Flat/Semantics.lean for infrastructure)
@@ -8,97 +8,71 @@
 ## !! CRITICAL: DO NOT USE WHILE/UNTIL LOOPS !!
 **NEVER use `while`, `until`, `sleep` in a loop, `pgrep`, or `do...done`.**
 
-## MEMORY: 7.7GB total, NO swap. ~1.5GB free. USE LSP ONLY — no `lake build`.
+## MEMORY: 7.7GB total, NO swap. ~3.5GB free. USE LSP ONLY — no `lake build`.
 
 ## CONCURRENCY: wasmspec also edits ANFConvertCorrect.lean
-- wasmspec works on L13901+ and L14996+ zones (if_branch individual cases)
-- jsspec may work on ClosureConvertCorrect.lean
-- **YOU** own throw/return/await/yield step_sim AND compound zones AND while/tryCatch/callframe/break
+- wasmspec works on L13976+ and L15210+ zones (if_branch individual cases)
+- jsspec works on ClosureConvertCorrect.lean
+- **YOU** own everything else in ANFConvertCorrect.lean
 - DO NOT touch wasmspec or jsspec zones
 
-## ===== THE KEY INSIGHT: COMPOUND CASES NEED DEPTH INDUCTION =====
+## STATUS: Rate limits blocked all agents for 18 hours. Fresh start.
 
-**Root cause of all 11 compound sorries**: `normalizeExpr_throw_step_sim` (L11568), `normalizeExpr_return_step_sim` (L11700), `normalizeExpr_await_step_sim` (L11884), and `normalizeExpr_yield_step_sim` (L12034) are **standalone theorems without induction**. Their compound cases (HasThrowInHead seq_left, let_init, etc.) need recursive calls on sub-expressions, but there's no IH available.
+## Current ANF sorry count: 53 (down from 55 on Apr 6)
 
-**The fix**: Refactor these 4 theorems to use **depth induction**, exactly like `normalizeExpr_if_branch_step` (L13034) and `normalizeExpr_labeled_step_sim` (L10455) already do.
+## ===== P0: THE COMPOUND SORRY AT L11713 =====
 
-### Template from if_branch_step (L13034):
-```lean
-private theorem normalizeExpr_if_branch_step :
-    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
-    HasIfInHead e →
-    ∀ (env : Flat.Env) ... :=  by
-  intro d; induction d with
-  | zero => ... -- impossible: depth 0 can't have HasIfInHead
-  | succ d ih => ...
-    -- For compound cases like seq_left:
-    -- have h_sub_depth : sub.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
-    -- obtain ⟨...⟩ := ih sub h_sub_depth h_sub_if env ...
-    -- lift steps through eval context
-```
+Line 11713: `sorry -- compound HasThrowInHead cases: need eval context stepping through seq/let/call/etc.`
 
-## ===== P0: REFACTOR normalizeExpr_throw_step_sim (1 sorry → depth induction) =====
+This is the REMAINING compound case after `normalizeExpr_throw_compound_case` handles the direct constructor cases (L11707). The `| _` catch-all at L11711 catches cases where `HasThrowInHead` is in a deeper eval context position (e.g., `seq_left`, `let_init`, etc.).
 
-Current signature (L11568):
-```lean
-private theorem normalizeExpr_throw_step_sim
-    (sf : Flat.State) (k : ...) (arg : ANF.Trivial) (n m : Nat)
-    (hnorm : ...) (hk : ...) (hewf : ...) (hna : ...) :
-```
+**Approach**: Use `lean_goal` at L11713 to see the exact proof state. Then:
+1. Case-split on the remaining HasThrowInHead constructors
+2. For each case (seq_left, let_init, assign_val, etc.): the throw is in a sub-expression. The sub-expression steps first in the eval context, producing the throw, which then propagates.
+3. Use `normalizeExpr_throw_compound_case` recursively via depth induction if needed, OR use `lean_multi_attempt` to try `simp`/`omega`/`exact`/`apply` on each sub-case.
 
-Refactor to:
-```lean
-private theorem normalizeExpr_throw_step_sim :
-    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
-    HasThrowInHead e →
-    ∀ (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
-      (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
-      (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat),
-    (∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m')) →
-    (ANF.normalizeExpr e k).run n = .ok (.throw arg, m) →
-    ExprWellFormed e env →
-    NoNestedAbrupt e →
-    -- ok case + error case conclusions
-```
+## ===== P1: REMAINING COMPOUND SORRIES (L11864, L11870, L12041, L12047, L12199, L12205) =====
 
-### Steps:
-1. Change the signature to take `(d : Nat) (e : Flat.Expr), e.depth ≤ d → HasThrowInHead e →`
-2. Move `intro d; induction d` at the top
-3. `zero` case: impossible (no HasThrowInHead at depth 0) — prove by cases on e
-4. `succ d ih` case: keep ALL existing base case proofs (lit, var, this, break, continue)
-5. For the catch-all compound case at L11694-11696, case-split on HasThrowInHead:
-   - For each compound constructor (e.g., `seq_left`): extract sub_depth, apply `ih`, lift through context using existing `Steps_*_ctx_b` lemmas
-6. Update ALL call sites of normalizeExpr_throw_step_sim to pass `e.depth` and `Nat.le_refl _`
+These follow the same pattern for return/await/yield:
+- L11864: `| _ => sorry -- compound inner_val: seq, let, assign, if, call, throw, etc.`
+- L11870: `sorry -- compound HasReturnInHead cases`
+- L12041: `| _ => sorry -- compound inner_arg`
+- L12047: `sorry -- compound HasAwaitInHead cases`
+- L12199: `| _ => sorry -- compound inner_val`
+- L12205: `sorry -- compound HasYieldInHead cases`
 
-### The compound case template:
-```lean
-| HasThrowInHead.seq_left a b h_a =>
-  simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
-  have ha_depth : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
-  -- normalizeExpr (.seq a b) k = normalizeExpr a (fun _ => normalizeExpr b k)
-  -- So hnorm says normalizeExpr a (...) = .ok (.throw arg, m)
-  -- The throw propagates from a's normalization
-  obtain ⟨ok_case, err_case⟩ := ih a ha_depth h_a env heap trace funcs cs _ arg _ m _ hnorm' hewf_a hna_a
-  -- Lift through seq context
-  ...
-```
+Once you solve L11713, apply the same pattern to these.
 
-**Do the throw case FIRST. If it works, apply the same pattern to return/await/yield.**
-
-## P1: While + tryCatch + callframe + break/continue (9 sorries)
-After completing P0, these may become tractable.
+## ===== P2: STRUCTURAL SORRIES (L12261, L12265, L12266) =====
 
 ```
-L12339: sorry -- While condition value case
-L12351: sorry -- Condition-steps case
-L16349: sorry -- tryCatch body-error
-L16367: sorry -- tryCatch body-step
-L16370: | _ => sorry -- compound cases: deferred
-L17453: sorry -- noCallFrameReturn
-L17464: sorry -- body_sim IH
-L17684: sorry -- break
-L17737: sorry -- continue
+L12261: | some val => sorry -- return (some val): compound, can produce .let
+L12265: | some val => sorry -- yield (some val): compound, can produce .let
+L12266: | _ => sorry -- compound expressions: needs structural induction
 ```
+
+These are in `anfConvert_step_star`. Use `lean_goal` to understand the exact state.
+
+## ===== P3: WHILE + TRYCATCH + CALLFRAME + BREAK (8 sorries) =====
+
+```
+L12356: sorry -- While condition value case
+L12368: sorry -- Condition-steps case
+L16366: sorry -- tryCatch body-error
+L16384: sorry -- tryCatch body-step
+L16387: | _ => sorry -- compound cases
+L17470: sorry -- noCallFrameReturn
+L17481: sorry -- body_sim IH
+L17701: sorry -- break
+L17754: sorry -- continue
+```
+
+## WORKFLOW
+1. Start with `lean_goal` at L11713 to see the exact proof state
+2. Try `lean_multi_attempt` with candidate tactics
+3. If a tactic works, edit the file to replace the sorry
+4. Verify with `lean_diagnostic_messages` after editing
+5. Move to next sorry
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/proof/log.md`

@@ -4902,7 +4902,10 @@ private theorem closureConvert_step_simulation
     | some idx =>
       -- Captured variable: convertExpr gives .getEnv (.var envVar) idx
       simp [hlookupEnv] at hconv
-      sorry
+      sorry -- BLOCKED: multi-step simulation gap. Flat .getEnv (.var envVar) idx takes 2 steps
+            -- (step envVar lookup → .getEnv (.lit envObj) idx, then heap access → .lit val)
+            -- but Core .var name takes 1 step. The intermediate Flat state .getEnv (.lit envObj) idx
+            -- is not a convertExpr output for any Core expression, breaking the invariant.
     | none =>
       -- Non-captured variable: convertExpr gives .var name (same as Core)
       simp [hlookupEnv] at hconv
