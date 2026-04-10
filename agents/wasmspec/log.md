@@ -7860,3 +7860,32 @@ No sorry count change (still 2 sorries, same as before). No build risk.
 ## Run: 2026-04-10T20:15:07+00:00
 
 ### 2026-04-10T20:16:55+00:00 Starting run — L17760+L17813 prep
+
+### 2026-04-10T20:15:08+00:00 Starting run — L17760+L17813 prep
+### 2026-04-10T20:45:00+00:00 Run complete — Cat A closed for break+continue
+
+**Changes made to ANFConvertCorrect.lean:**
+
+1. **Added `HasBreakInHead_hasAbruptCompletion` mutual def** (L4652-4708):
+   - Proves `HasBreakInHead e label → hasAbruptCompletion e = true`
+   - With mutual helpers for `HasBreakInHeadList` and `HasBreakInHeadProps`
+   - Uses term-mode `match` for structural recursion across mutual inductives
+
+2. **Added `HasContinueInHead_hasAbruptCompletion` mutual def** (after L5665):
+   - Same pattern for `HasContinueInHead`
+   - Placed after `HasContinueInHead` definition (was incorrectly placed before it initially)
+
+3. **Closed Cat A cases for break compound** (L15300-15322):
+   - `throw_arg`, `return_some_arg`, `yield_some_arg`, `await_arg` → `exfalso` via
+     NoNestedAbrupt requires `hasAbruptCompletion arg = false` but
+     HasBreakInHead gives `hasAbruptCompletion arg = true`
+
+4. **Closed Cat A cases for continue compound** (L15373-15395):
+   - Same pattern using `HasContinueInHead_hasAbruptCompletion`
+
+**Cat B cases remain sorry** — blocked on Flat.step? error propagation changes in Flat/Semantics.lean.
+
+**LSP verification:** All new code compiles with zero errors. Only pre-existing error at L10874.
+
+**Sorry count:** 26 total (unchanged — Cat A cases were part of combined sorry blocks, now separated out as proved + reduced Cat B sorry)
+2026-04-10T20:58:31+00:00 DONE

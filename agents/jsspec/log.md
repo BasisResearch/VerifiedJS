@@ -4409,3 +4409,6 @@ and all cases that produce/consume CCStateAgree.
 **Sorry count**: 15 (unchanged — 3 old hne sorries replaced with 3 error-case sorries)
 **Build impact**: Non-error paths are now sorry-free for let/assign/seq compound stepping.
 2026-04-10T20:29:35+00:00 DONE
+
+## Run: 2026-04-10T21:00:01+00:00
+
