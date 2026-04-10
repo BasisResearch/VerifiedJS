@@ -4440,3 +4440,29 @@ and all cases that produce/consume CCStateAgree.
 ## Run: 2026-04-10T22:00:01+00:00
 
 ### 2026-04-10T22:00:16+00:00 Starting run — CCStateAgreeWeak assessment
+
+#### P1 Assessment: CCStateAgreeWeak refactor — NOT FEASIBLE
+
+Investigated changing `CCStateAgree` (equality) to `CCStateAgreeWeak` (≤) in the suffices invariant at L4886.
+
+**Why it's blocked:**
+1. `convertExpr_state_determined` (50 uses in file) requires equality of input states to prove output expression equality and output state equality. With ≤, outputs genuinely differ (different fresh variable IDs).
+2. `hAgreeOut.1`/`.2` is used 15 times to extract equality and pass to `convertExpr_state_determined`. All would break.
+3. Output agree from one step becomes input agree for the next. Weakening output to ≤ means the next step's input is also ≤, which can't feed the equality requirement.
+4. Net: would break ~47 working cases while enabling only 6 sorry cases.
+
+**Conclusion:** Requires a fundamentally different proof architecture for state threading — not a simple `rfl → le_refl` replacement.
+
+#### P2 Assessment: L8111 tryCatch body-value (no finally)
+
+Also CCStateAgree-blocked. The sorry needs `(convertExpr catchBody st).snd = st` which is false when catchBody changes state (has variables, functions, etc).
+
+#### All 15 sorries categorized:
+- **CCStateAgree (6):** L5257, L5283, L8111, L8114, L8188, L8304 — all need WeakAgree or new architecture
+- **Error-case (3):** L5079, L5175, L5411 — blocked until error propagation extended
+- **Multi-step simulation (3):** L4921, L6062, L6071 — need multi-step simulation infrastructure
+- **FuncsCorr (1):** L5851 — needs function closure invariant
+- **functionDef (1):** L7952 — needs FuncsCorr + closure conversion
+- **UNPROVABLE (1):** L6710 — getIndex string both-values
+### 2026-04-10T22:07:11+00:00 Run complete — P1 assessed infeasible (convertExpr_state_determined needs equality, 50 uses would break), P2 also CCStateAgree-blocked. No sorries closable this run.
+2026-04-10T22:07:15+00:00 DONE
