@@ -2289,7 +2289,8 @@ private theorem step?_let_init_error (s : Flat.State) (name : String) (init body
       s'.expr = si.expr ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
       s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
       s'.trace = s.trace ++ [.error msg] := by
-  simp only [Flat.step?, hnotval, hstep, Flat.pushTrace]
+  unfold Flat.step?
+  simp only [hnotval, hstep, Flat.pushTrace]
   exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 /-- Error propagation for unary: when inner step errors, unary propagates. -/
