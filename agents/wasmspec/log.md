@@ -7469,3 +7469,48 @@ Full analysis written inline since /opt/verifiedjs/agents/wasmspec/ directory is
 
 ### 2026-04-10T15:00:14+00:00 Starting run
 2026-04-10T15:15:02+00:00 SKIP: already running
+
+### Analysis: List-case sorries (L14026, L14099, L14228, L14260, L14291 + false mirrors)
+
+**Finding: ALL 10 list-case sorries are blocked by the same K-mismatch issue as the 14 second-position sorries.**
+
+#### Root cause
+
+The theorem `normalizeExpr_if_branch_step` (L13051) requires:
+```
+(∃ n' m', (ANF.normalizeExpr sf'.expr K).run n' = .ok (then_, m'))
+```
+where `then_` is the SAME as in the hypothesis `hnorm`. However, for list cases (arrayLit_elems, call_args, newObj_args, objectLit_props, makeEnv_values), the proof must step through preceding trivialChain elements to reach the element with HasIfInHead.
+
+Stepping a trivialChain (e.g., `.var x → .lit v`) changes the ANF trivial representation:
+- Before: `normalizeExpr_trivialChain_apply` gives trivial `.var x`
+- After: `normalizeExpr (.lit v)` gives trivial `trivialOfFlatValue v`
+
+These are different. The trivial feeds into the continuation K_j for the element with HasIfInHead, which means `then_` (= normalizeExpr then_inner K_j) changes. The theorem requires the SAME `then_`, so the proof cannot work.
+
+This is the SAME blocker as the second-position cases (L13976, L14001, L14074, L14123, L14147, L14172, L14197 + mirrors), which are explicitly labeled "blocked by trivial mismatch" in the analog theorem at L10226.
+
+#### Evidence
+
+1. L10202: `-- ¬HasLabeledInHead lhs: lhs is trivialChain but stepping changes trivial`
+   L10203: `sorry -- blocked: trivialChain passthrough doesn't apply (continuation uses lhsTriv)`
+
+2. The `normalizeExpr_trivialChain_apply` theorem (L1466) shows that a trivialChain e produces a unique trivial t, but this t depends on the expression structure, NOT the evaluated value. So `.var x` → trivial `.var x`, while `.lit (env[x])` → trivial `trivialOfFlatValue (env[x])`.
+
+3. The `normalizeExprList_if_or_k` theorem (L8530) shows that `.if` in a list normalization comes from either an element or the continuation, but doesn't provide stability across trivial changes.
+
+#### What's needed to unblock
+
+Option A: **Trivial-equivalence lemma** — prove that changing a trivial in a list continuation produces the SAME `.if cond then_ else_` (false in general — `then_/else_` contain the continuation).
+
+Option B: **Theorem redesign** — modify `normalizeExpr_if_branch_step` to allow `then_'` to differ from `then_` by a well-defined substitution (replacing trivials of stepped elements). This would require modifying ALL callers.
+
+Option C: **Strengthen normalizeExpr** — add a property that `.if cond then_ else_` from normalizeExpr doesn't depend on the trivials of non-HasIfInHead sibling elements (only true if the `.if` is emitted before the continuation runs, which is true for the condition but NOT for then_/else_ which contain K).
+
+Option D: **Alternative proof strategy** — use well-founded induction on total flat steps rather than expression depth. Step one element at a time, getting new `.if cond' then_' else_'` at each step, and show the theorem holds for the final `.if`.
+
+#### Recommendation
+
+All 24 sorries I own (12 true + 12 false) are blocked by K-mismatch. They cannot be resolved independently — they require architectural changes (Option B or D). This should be escalated to the proof architect.
+
+The 10 "list" cases and 14 "second-position" cases have the identical blocker. The prompt's classification was incorrect in calling them "YOUR PRIORITY" — they need the same K-mismatch resolution.
