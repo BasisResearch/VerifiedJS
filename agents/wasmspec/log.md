@@ -7678,3 +7678,76 @@ Option 1 seems most viable: modify Flat.step? for while to match ANF's structure
 ## Run: 2026-04-10T17:15:48+00:00
 
 ### 2026-04-10T17:16:25+00:00 Starting run
+
+**TASK:** Close return/yield/structural + tryCatch sorries in ANFConvertCorrect.lean
+
+**Line number mapping** (prompt → actual):
+- L12288 → L12433 (`return (some val)` compound)
+- L12292 → L12437 (`yield (some val)` compound)
+- L16418 → L16538 (tryCatch body-error)
+- L16436 → L16556 (tryCatch body-step)
+- L16439 → L16559 (compound cases)
+- L17522 → L17642 (noCallFrameReturn)
+- L17533 → L17653 (body_sim IH)
+- L17753 → L17873 (break compound error propagation)
+- L17806 → L17926 (continue compound error propagation)
+
+### LSP Results
+- lean_goal at L12433: Got goal. Case `mk.return.some`. Need `∃ sf' evs, Flat.Steps (.return (some val)...) evs sf' ∧ ...`
+- lean_goal at L12437: Got goal. Case `mk.yield.some`. Same structure with `.yield`.
+- lean_goal at L16538, L16556, L17642: Timed out (file too large for LSP at these positions)
+
+### Analysis: ALL targets architecturally blocked
+
+**P0: L12433, L12437 (return/yield compound → .let)**
+- Located in `normalizeExpr_let_step_sim` (L12381)
+- `normalizeExpr (.return (some val)) k` = `normalizeExpr val (fun t => pure (.return (some t)))` (ignores outer k)
+- Since this produced `.let name rhs body`, val is compound
+- Flat.step? on `.return (some val)` steps val within return context
+- One ANF let-step (evalComplex rhs) ↔ multiple flat steps stepping val
+- **BLOCKER:** Needs inner simulation IH / structural induction on val
+- Same root cause as L12438 wildcard case
+- **FIX:** Pass IH parameter into `normalizeExpr_let_step_sim` from `anfConvert_step_star`, or restructure as mutual/well-founded recursion
+
+**P1: L16538 (tryCatch body-error)**
+- Body produced `.error msg`. Need to lift body flat steps through tryCatch context + catch the error
+- **BLOCKER 1:** CallStack propagation — body steps may change callStack but tryCatch uses fixed outer callStack
+- **BLOCKER 2:** Error-is-last — need error as final event in body_sim's flat steps
+- **BLOCKER 3:** Finally case — CPS transformation mismatch for `.seq catchBody finally_`
+
+**P1: L16556 (tryCatch body-step)**
+- Body took a normal step. Need SimRel reconstruction for `.tryCatch sb.expr cp catchBody finally_`
+- **BLOCKER 1:** CallStack propagation (same as body-error)
+- **BLOCKER 2:** Counter alignment — normalizeExpr cb_f/fin_f with different counter produces different variable names → different ANF expressions. SimRel reconstruction fails.
+- **FIX:** Prove normalizeExpr is counter-independent up to alpha-equiv, or restructure SimRel to track counter offsets
+
+**P2: L17642 (noCallFrameReturn)**
+- `normalizeExpr_tryCatch_step_sim` needs `catchParam ≠ "__call_frame_return__"`
+- `catchParam` = flat source catch param (from `normalizeExpr_tryCatch_decomp`)
+- `NoNestedAbrupt` does NOT constrain catch params
+- **Cannot add to NoNestedAbrupt:** function call stepping creates `__call_frame_return__` wrappers (L17328: `.tryCatch_none (hfuncs_na _ _ hfunc) .var`)
+- Flat.step? uses `isCallFrame := catchParam == "__call_frame_return__"` (L896) with fundamentally different behavior: restores env from callStack, pops callStack
+- **FIX:** Add separate `noCallFrameReturn sf.expr = true` invariant to `anfConvert_step_star`. Bridge lemma exists (L4303 `noCallFrameReturn_tryCatch_direct_bridge`). But preservation through flat steps is impossible (call steps introduce `__call_frame_return__`). Need preservation through SimRel reconstruction (which is mostly sorry'd).
+
+**P2: L17653 (body_sim IH)**
+- Needs `anfConvert_step_star` as inner simulation IH for tryCatch body
+- **BLOCKER:** `anfConvert_step_star` is non-recursive; can't self-reference
+- **FIX:** Prove by strong induction on flat expression depth
+
+**P2: L17873, L17926 (break/continue compound error propagation)**
+- Same root cause as 9+ other sorries in the file
+- **BLOCKER:** Flat.step? wraps results in compound contexts instead of propagating errors directly
+- E.g., `.seq (.break label) b` → error wraps as `.seq (.lit .undefined) b`, leaving dead code `b`
+- Goal needs `sf'.expr = .lit .undefined` but actual result is `.seq (.lit .undefined) b`
+- **FIX:** Change Flat.step? to propagate errors directly. Requires coordination with jsspec agent.
+
+### Summary
+- **Closed:** 0 sorries
+- **Blocked:** 9 sorries (all architecturally blocked)
+- **Root causes:** 4 distinct issues
+  1. Missing inner simulation IH (L12433, L12437, L12438, L17653) — needs structural/well-founded recursion
+  2. CallStack propagation + counter alignment (L16538, L16556, L16559) — SimRel design issue
+  3. Missing noCallFrameReturn invariant (L17642) — needs new invariant threading
+  4. Flat.step? error propagation (L17873, L17926) — semantic mismatch, needs Flat.step? redesign
+### 2026-04-10T17:37:22+00:00 Run complete — 0 closed, 9 blocked (all architecturally blocked by 4 root causes)
+2026-04-10T17:37:43+00:00 DONE

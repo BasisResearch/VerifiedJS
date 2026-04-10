@@ -562,6 +562,10 @@ end
 private abbrev CCStateAgree (st1 st2 : Flat.CCState) : Prop :=
   st1.nextId = st2.nextId ∧ st1.funcs.size = st2.funcs.size
 
+/-- Weak version of CCStateAgree: first state's counters are ≤ second's. -/
+private abbrev CCStateAgreeWeak (st1 st2 : Flat.CCState) : Prop :=
+  st1.nextId ≤ st2.nextId ∧ st1.funcs.size ≤ st2.funcs.size
+
 mutual
 private theorem convertExpr_state_determined (e : Core.Expr)
     (scope : List String) (envVar : String) (envMap : Flat.EnvMapping)
@@ -4867,7 +4871,7 @@ private theorem closureConvert_step_simulation
         ExprAddrWF sc'.expr sc'.heap.objects.size ∧
         (∃ (st_a st_a' : Flat.CCState),
           (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
-          CCStateAgree st st_a ∧ CCStateAgree st' st_a') by
+          CCStateAgreeWeak st st_a ∧ CCStateAgreeWeak st_a' st') by
     intro sf sc ev sf' hrel hstep
     obtain ⟨htrace, ⟨injMap, hinj, henv⟩, hncfr, hexprwf, henvwf, hheapvwf, hheapna, hsupp, hfuncs_supp, scope, envVar, envMap, st, st', hconv⟩ := hrel
     obtain ⟨injMap', sc', hcstep, htrace', hinj', henv', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', _, _⟩ :=
@@ -5234,9 +5238,10 @@ private theorem closureConvert_step_simulation
         · simp [sc', noCallFrameReturn] at hncfr ⊢; exact hncfr.1
         · simp [sc', ExprAddrWF] at hexprwf ⊢; exact hexprwf.2.1
         · exact ⟨st, (Flat.convertExpr then_ scope envVar envMap st).snd, by
-            simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, sorry⟩ -- BLOCKED: CCStateAgree. st' includes else_ conversion state but
-            -- st_a' = (convertExpr then_ ... st).snd. Would need convertExpr else_ to not change
-            -- nextId/funcs.size, which fails when else_ contains functionDef nodes.
+            simp [sc', Flat.convertExpr], ⟨le_refl _, le_refl _⟩, by
+            rw [hconv.2]
+            exact convertExpr_state_mono else_ scope envVar envMap
+              (Flat.convertExpr then_ scope envVar envMap st).snd⟩
       | false =>
         rw [Flat_step?_if_false _ _ _ _ (by rw [toBoolean_convertValue, htb])] at hstep
         simp at hstep
