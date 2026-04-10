@@ -7102,3 +7102,4 @@ from the original `hnorm` doesn't match the body after evaluation. This is a gen
 
 ## Run: 2026-04-10T16:30:04+00:00
 
+### 2026-04-10T16:30:34+00:00 Starting run — P0 seq error propagation

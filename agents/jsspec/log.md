@@ -4266,3 +4266,39 @@ Category 4 — Unprovable (1 sorry):
 
 ### 2026-04-10T15:30:13+00:00 Starting run
 2026-04-10T16:00:01+00:00 SKIP: already running
+
+### 2026-04-10T15:30:02+00:00 ANF second-position case splits
+
+**Goal**: Reduce 6 second-position sorries in normalizeExpr_labeled_branch_step.
+
+**Analysis**: The 6 sorries (setProp_val, getIndex_idx, setIndex_idx, setIndex_val, call_env, newObj_env) 
+are blocked by "trivial mismatch": when the first sub-expression (e.g., obj in setProp) is a trivialChain 
+but not a value (.var x, .this), normalizeExpr produces ANF trivial `t` (e.g., .var "x"), but flat 
+evaluation produces `.lit v` whose trivialOfFlatValue ≠ t. The theorem requires producing the exact 
+same `body` from normalizeExpr, but `body` contains `t` baked in.
+
+**Approach**: For each sorry, added case split `rcases Classical.em (HasLabeledInHead first_subexpr label)`:
+- If first_subexpr HAS the label: proved using identical structure to the first-position case (e.g., setProp_obj)
+- If first_subexpr does NOT have the label: sorry (genuinely blocked by trivial mismatch)
+
+**Edits** (all in ANFConvertCorrect.lean, normalizeExpr_labeled_branch_step):
+- setProp_val (L10226→10253): case split on obj, proved HasLabeledInHead obj. rename_i: `val obj prop`
+- getIndex_idx (L10276→10301): case split on obj, proved HasLabeledInHead obj. rename_i: `idx obj`
+- setIndex_idx (L10300→10351): case split on obj, proved HasLabeledInHead obj. rename_i: `idx obj val`
+- setIndex_val (L10301→10378): case split on obj, proved HasLabeledInHead obj. rename_i: `val obj idx`
+- call_env (L10325→10428): case split on funcE, proved HasLabeledInHead funcE. rename_i: `envE funcE argsL`
+- newObj_env (L10347→10503): case split on funcE, proved HasLabeledInHead funcE. rename_i: `envE funcE argsL`
+
+**Result**: Sorry count unchanged (7→7 in this region), but each sorry is now narrower — only the 
+¬HasLabeledInHead sub-case remains. The HasLabeledInHead sub-cases (non-trivial: when both sub-expressions 
+have the label) are fully proved. No errors introduced.
+
+**Root cause of remaining sorries**: The theorem `normalizeExpr_labeled_branch_step` requires 
+`normalizeExpr sf'.expr K` to produce the exact same `body` as the original. After evaluating a 
+trivialChain sub-expression (e.g., `.var x` → `.lit v`), the body changes because `t ≠ trivialOfFlatValue v`.
+Fixing this requires either:
+1. Changing the theorem to allow `body` to differ by trivial substitution
+2. Working at the `normalizeExpr_labeled_step_sim` level where k' can change (but body is still fixed)
+3. A fundamentally different proof strategy that avoids evaluating trivialChain sub-expressions
+### 2026-04-10T16:30:17+00:00 Run complete — 6 case splits proved, trivial mismatch blockers documented
+2026-04-10T16:30:25+00:00 DONE

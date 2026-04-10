@@ -7547,3 +7547,130 @@ These are syntactically different ANF expressions. The theorem requires `then_ =
 ## Run: 2026-04-10T16:15:01+00:00
 
 ### 2026-04-10T16:15:12+00:00 Starting run — P0 while condition-steps L12368
+
+### Analysis: While condition-steps (L12539) and while condition-value (L12527) — STRUCTURALLY BLOCKED
+
+#### Goal state at L12539 (verified via lean_goal)
+
+```
+hnorm : (normalizeExpr sf.expr k).run n = .ok (.seq (.while_ c d) b, m)
+hnv_cond : ANF.exprValue? c = none
+hstep_cond : ANF.step? ⟨c, sf.env, sf.heap, sa_trace⟩ = some (ev, ⟨t_cond, sc, heap✝, trace✝⟩)
+⊢ ∃ sf' evs, Flat.Steps sf evs sf' ∧ observableTrace [ev] = observableTrace evs ∧
+    ANF_SimRel s t ⟨.seq (.while_ t_cond d) b, sc, heap✝, sa_trace ++ [ev]⟩ sf' ∧
+    ExprWellFormed sf'.expr sf'.env
+```
+
+#### Root cause: ANF and Flat while semantics are fundamentally different
+
+**Flat.step?** on `.while_ cond body` (Flat/Semantics.lean:424):
+```
+let lowered := .if cond (.seq body (.while_ cond body)) (.lit .undefined)
+some (.silent, pushTrace { s with expr := lowered } .silent)
+```
+→ ALWAYS desugars while to if. One silent step. No condition stepping inside while.
+
+**ANF.step?** on `.while_ cond body` (ANF/Semantics.lean:365):
+```
+match exprValue? cond with
+| some v => branch directly (if toBool(v) then .seq body (.while_) else .trivial .litUndefined)
+| none => step cond inside while: .while_ sc.expr body
+```
+→ Preserves while structure, steps condition IN PLACE.
+
+#### Why SimRel can't hold
+
+The SimRel requires: `∃ k' n' m', normalizeExpr sf'.expr k' = sa'.expr`
+
+After ANF condition step: `sa'.expr = .seq (.while_ t_cond d) b`
+
+**Zero flat steps (sf' = sf):** `normalizeExpr sf.expr k'` always produces `.seq (.while_ c d) (k' .litUndefined)` where `c` is fixed by `normalizeExpr cond (fun t => pure (.trivial t))`. Since `c ≠ t_cond` (c stepped to t_cond), no choice of `k'` or counter can produce the needed expression.
+
+**One+ flat steps:** Flat step 1 desugars while to `.if cond (.seq body (.while_ cond body)) (.lit .undefined)`. But `normalizeExpr (.if ...) k'` ALWAYS produces an `.if` ANF form (or `.let ... (.if ...)`). It NEVER produces `.seq (.while_ ...)`. So no flat state reachable from sf can normalize to the needed ANF form.
+
+#### Proof: normalizeExpr cannot map .if back to .seq (.while_...)
+
+From ANF/Convert.lean:49:
+```
+normalizeExpr (.if cond then_ else_) k =
+  normalizeExpr cond (fun condTriv => do
+    let thenExpr ← normalizeExpr then_ k
+    let elseExpr ← normalizeExpr else_ k
+    pure (.if condTriv thenExpr elseExpr))
+```
+
+With trivial-preserving k, top-level is always `.if` (or `.let` from bindComplex on compound cond). The `.seq` constructor only appears from `.while_` normalization (Convert.lean:109). But after flat desugaring, there's no `.while_` in the flat state.
+
+#### Same analysis applies to L12527 (condition-value case)
+
+When `exprValue? c = some v`, ANF produces:
+- `if toBool(v) then .seq d (.while_ c d) else .trivial .litUndefined`
+
+The `.seq d (.while_ c d)` form is also not producible by normalizeExpr on any flat state reachable from the desugared while (which is an `.if` form).
+
+#### What's needed to fix
+
+**Option A: Align ANF while semantics with Flat** — change ANF.step? to also desugar `.while_` to `.if`. Then the ANF step matches a single flat step. But this changes the ANF operational semantics which may break other proofs.
+
+**Option B: Generalize SimRel** — allow the relation to track "while-equivalent" states where `.seq (.while_ c d) b` is considered equivalent to an `.if c (.seq d (.while_ c d)) (.trivial .litUndefined)` followed by `b`. This is a major SimRel redesign.
+
+**Option C: Don't step condition inside while in ANF** — if normalizeExpr never creates a while with a stepping condition (i.e., the condition is always a trivial value by the time while is reached), this case is vacuous. But this requires the ANF semantics to ensure the condition is always fully evaluated before entering the while, which contradicts the current normalizeExpr which preserves compound conditions as `.let` chains.
+
+**Option D: Change normalizeExpr for while** — instead of producing `.seq (.while_ condExpr bodyExpr) rest`, produce the if-desugared form: normalizeExpr equivalent of `.if cond (.seq body (.while_ cond body)) (.lit .undefined)` with continuation `k`. This would make normalization produce `.if` forms matching the flat desugaring, making the SimRel maintainable. This seems most promising but requires changing the normalizeExpr definition and all dependent theorems.
+
+#### Recommendation
+
+Both while sorries (L12527, L12539) require architectural changes. The most promising fix is **Option D** (change normalizeExpr for while to produce if-form instead of while-form), but this has cascading effects on all while-related theorems in the file (normalizeExpr_while_not_break, normalizeExpr_while_not_continue, etc.). This should be escalated to the proof architect.
+
+### Additional: Why Option D (change normalizeExpr) doesn't directly work
+
+Changing normalizeExpr for `.while_` to inline-desugar to `.if cond (.seq body (.while_ cond body)) (.lit .undefined)` causes infinite structural recursion since `.while_ cond body` appears in the desugared form.
+
+The current normalizeExpr avoids this by normalizing cond and body separately, then wrapping in `.seq (.while_ condExpr bodyExpr) rest`. This is structurally recursive but produces a form that ANF.step? handles differently from how Flat.step? handles while.
+
+### Most promising fix: Option A (align ANF while semantics)
+
+Change ANF.step? for `.while_ cond body` to:
+```
+| .while_ cond body =>
+    let desugared := .if cond (.seq body (.while_ cond body)) (.trivial .litUndefined)
+    some (.silent, pushTrace { s with expr := desugared } .silent)
+```
+
+Then the ANF step on `.seq (.while_ c d) b`:
+- inner step on `.while_ c d` → `.if c (.seq d (.while_ c d)) (.trivial .litUndefined)`, silent
+- outer: `.seq (.if c (.seq d (.while_ c d)) (.trivial .litUndefined)) b`, silent
+
+And the flat step: `.while_ cond body` → `.if cond (.seq body (.while_ cond body)) (.lit .undefined)`, silent
+
+SimRel challenge: need `normalizeExpr (desugared_flat) k'` = `ANF_desugared_expr`. Due to continuation weaving into if branches in normalizeExpr, the shapes STILL differ:
+- ANF: `.seq (.if c (then_anf) (else_anf)) b`
+- normalizeExpr of flat: `.if condTriv (then_with_k) (else_with_k)` where k is woven in
+
+**This means Option A alone doesn't fix the SimRel either.** The fundamental issue is that normalizeExpr `.if` weaves the continuation into both branches, while the ANF `.seq (.if ...) b` keeps the continuation outside.
+
+### True root cause
+
+The `.seq (.while_ c d) b` form from normalizeExpr creates a structural invariant where `b` (the while continuation) lives OUTSIDE the while. But both ANF and Flat semantics, when desugaring while to if, place the continuation at the if-expression level. normalizeExpr then weaves the continuation INTO both if branches.
+
+This means `.seq (.while_ condExpr bodyExpr) rest` is "load-bearing" — it ONLY works if the while condition steps IN PLACE (as ANF currently does), but the flat semantics DOESN'T support in-place condition stepping.
+
+The fix requires either:
+1. **Add in-place condition stepping to Flat.step? for while** — so Flat also steps the while condition without desugaring
+2. **Completely redesign the while simulation** — use a custom invariant that relates the ANF `.seq (.while_ ...)` to the Flat `.if`-desugared form through multiple steps
+
+Option 1 seems most viable: modify Flat.step? for while to match ANF's structure (step condition in place when it's not a value, desugar only when condition IS a value). This aligns the two semantics.
+
+### 2026-04-10T16:15:12+00:00 Run complete — while sorries BLOCKED by ANF/Flat while semantic mismatch
+
+**Summary:**
+- L12527 (condition-value): Blocked. ANF directly branches, Flat desugars to if. SimRel shape mismatch.
+- L12539 (condition-steps): Blocked. ANF steps condition in-place, Flat always desugars. No flat state normalizes to the stepped-condition while form.
+- Root cause: Flat.step? always desugars `.while_` to `.if`, while ANF.step? steps the condition in-place.
+- **Recommended fix:** Change Flat.step? for while to match ANF semantics (step condition in-place, desugar only when condition is a value). This requires coordination with jsspec agent (who owns Flat/Semantics.lean changes and ClosureConvertCorrect.lean).
+- Alternative: Change ANF.step? AND normalizeExpr to not produce `.while_` at all (full desugar in normalizeExpr). But this causes structural recursion issues.
+
+**Total sorries still blocked:** All assigned sorries (while: 2, if_branch: 24) remain blocked by architectural issues:
+- While: ANF/Flat semantic mismatch
+- If_branch: K-mismatch in trivialChain stepping
+2026-04-10T16:33:51+00:00 DONE

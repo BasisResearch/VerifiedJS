@@ -353,8 +353,13 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
       | none =>
           match step? { s with expr := init } with
           | some (t, si) =>
-              let s' := pushTrace { s with expr := .«let» name si.expr body, env := si.env, heap := si.heap } t
-              some (t, s')
+              match t with
+              | .error _ =>
+                  let s' := pushTrace { s with expr := si.expr, env := si.env, heap := si.heap } t
+                  some (t, s')
+              | _ =>
+                  let s' := pushTrace { s with expr := .«let» name si.expr body, env := si.env, heap := si.heap } t
+                  some (t, s')
           | none => none
   | .assign name rhs =>
       match exprValue? rhs with
@@ -364,8 +369,13 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
       | none =>
           match step? { s with expr := rhs } with
           | some (t, sr) =>
-              let s' := pushTrace { s with expr := .assign name sr.expr, env := sr.env, heap := sr.heap } t
-              some (t, s')
+              match t with
+              | .error _ =>
+                  let s' := pushTrace { s with expr := sr.expr, env := sr.env, heap := sr.heap } t
+                  some (t, s')
+              | _ =>
+                  let s' := pushTrace { s with expr := .assign name sr.expr, env := sr.env, heap := sr.heap } t
+                  some (t, s')
           | none => none
   | .«if» cond then_ else_ =>
       match exprValue? cond with
@@ -387,8 +397,13 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
       | none =>
           match step? { s with expr := a } with
           | some (t, sa) =>
-              let s' := pushTrace { s with expr := .seq sa.expr b, env := sa.env, heap := sa.heap } t
-              some (t, s')
+              match t with
+              | .error _ =>
+                  let s' := pushTrace { s with expr := sa.expr, env := sa.env, heap := sa.heap } t
+                  some (t, s')
+              | _ =>
+                  let s' := pushTrace { s with expr := .seq sa.expr b, env := sa.env, heap := sa.heap } t
+                  some (t, s')
           | none => none
   | .unary op arg =>
       match exprValue? arg with
@@ -1303,12 +1318,12 @@ theorem step?_seq_var_found_explicit (s : State) (name : VarName) (v : Value) (b
                        trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
   simp [step?, exprValue?, henv, pushTrace]
 
-/-- `.seq (.var name) b` when var not found: steps with ReferenceError, wraps in seq. -/
+/-- `.seq (.var name) b` when var not found: steps with ReferenceError, error propagates (no seq wrap). -/
 theorem step?_seq_var_not_found_explicit (s : State) (name : VarName) (b : Expr)
     (henv : s.env.lookup name = none) :
     step? { s with expr := .seq (.var name) b } =
       some (.error ("ReferenceError: " ++ name),
-            { expr := .seq (.lit .undefined) b, env := s.env, heap := s.heap,
+            { expr := .lit .undefined, env := s.env, heap := s.heap,
               trace := s.trace ++ [.error ("ReferenceError: " ++ name)],
               funcs := s.funcs, callStack := s.callStack }) := by
   simp [step?, exprValue?, henv, pushTrace]
@@ -1322,12 +1337,12 @@ theorem step?_seq_var_steps_to_lit (s : State) (name : VarName) (v : Value) (b :
           trace := s.trace ++ [.silent], funcs := s.funcs, callStack := s.callStack }) := by
   simp [step?, exprValue?, henv, pushTrace]
 
-/-- `.seq (.var name) b` when var not found: error wraps in seq. -/
+/-- `.seq (.var name) b` when var not found: error propagates (no seq wrap). -/
 theorem step?_seq_var_not_found_propagates (s : State) (name : VarName) (b : Expr)
     (henv : s.env.lookup name = none) :
     step? { s with expr := .seq (.var name) b } =
       some (.error ("ReferenceError: " ++ name),
-        { expr := .seq (.lit .undefined) b, env := s.env, heap := s.heap,
+        { expr := .lit .undefined, env := s.env, heap := s.heap,
           trace := s.trace ++ [.error ("ReferenceError: " ++ name)],
           funcs := s.funcs, callStack := s.callStack }) := by
   simp [step?, exprValue?, henv, pushTrace]
@@ -1517,7 +1532,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
       · split at h
-        · simp at h
+        · split at h <;> simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck init (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
@@ -1525,7 +1540,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
       · split at h
-        · simp at h
+        · split at h <;> simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck rhs (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
@@ -1541,7 +1556,7 @@ theorem step?_none_implies_lit (s : State) (h : step? s = none) :
       unfold step? at h; simp only [-step?] at h
       split at h; · simp at h
       · split at h
-        · simp at h
+        · split at h <;> simp at h
         · next hval hstep =>
           have ⟨v, hv⟩ := litOfStuck a (by simp [Expr.depth] at hd; omega) hstep
           subst hv; simp_all [exprValue?]
