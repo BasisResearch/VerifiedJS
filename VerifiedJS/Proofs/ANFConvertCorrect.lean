@@ -13293,7 +13293,7 @@ private theorem normalizeExpr_if_branch_step :
                   smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace_loc ++ evs1) ∧
                 (∃ n' m', (ANF.normalizeExpr sf'.expr K).run n' = .ok (then_, m')) ∧
                 ExprWellFormed sf'.expr sf'.env from
-            h_tc_if _ _ htc (le_refl _) trace hnorm_if hewf
+            h_tc_if _ _ htc (Nat.le_refl _) trace hnorm_if hewf
           intro fuel; induction fuel with
           | zero =>
             intro tc htc_tc hcost trace_loc hnorm_tc hewf_tc
@@ -14529,7 +14529,7 @@ private theorem normalizeExpr_if_branch_step_false :
                   smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace_loc ++ evs1) ∧
                 (∃ n' m', (ANF.normalizeExpr sf'.expr K).run n' = .ok (else_, m')) ∧
                 ExprWellFormed sf'.expr sf'.env from
-            h_tc_if _ _ htc (le_refl _) trace hnorm_if hewf
+            h_tc_if _ _ htc (Nat.le_refl _) trace hnorm_if hewf
           intro fuel; induction fuel with
           | zero =>
             intro tc htc_tc hcost trace_loc hnorm_tc hewf_tc
