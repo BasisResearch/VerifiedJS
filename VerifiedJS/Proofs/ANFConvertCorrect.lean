@@ -10398,7 +10398,7 @@ private theorem normalizeExpr_labeled_branch_step :
     | call_args h_args =>
       sorry -- call_args: labeled in args list requires stepping f/env to values first + list decomposition
     | newObj_func h_f =>
-      rename_i funcE envE argsL
+      rename_i envE funcE argsL
       simp only [ANF.normalizeExpr] at hnorm
       have hf_depth : funcE.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
       obtain ⟨sf_f, evs_f, hsteps_f, hsil_f, henv_f, hheap_f, hfuncs_f, hcs_f,
@@ -10421,7 +10421,7 @@ private theorem normalizeExpr_labeled_branch_step :
           | newObj_env _ _ _ _ h => exact hewf x (VarFreeIn.newObj_env _ _ _ _ h)
           | newObj_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.newObj_arg _ _ _ _ _ hmem h)
     | newObj_env h_env =>
-      rename_i envE funcE argsL
+      rename_i funcE envE argsL
       simp only [ANF.normalizeExpr] at hnorm
       rcases Classical.em (HasLabeledInHead funcE label) with h_f_lab | h_f_nolab
       · -- HasLabeledInHead funcE: recurse on funcE (same structure as newObj_func)
@@ -10472,7 +10472,7 @@ private theorem normalizeExpr_labeled_branch_step :
           · exact Steps_ctx_lift_pres (fun inner => .makeEnv ([] ++ [inner] ++ rest))
               (fun s inner hv t si hs he => step?_makeEnv_values_ctx s [] rest inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExprList]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExpr, ANF.normalizeExprList]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | makeEnv_elem _ _ v hmem hfv =>
@@ -10504,7 +10504,7 @@ private theorem normalizeExpr_labeled_branch_step :
           · exact Steps_ctx_lift_pres (fun inner => .objectLit ([] ++ [(propName, inner)] ++ rest))
               (fun s inner hv t si hs he => step?_objectLit_val_ctx s [] rest propName inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeProps]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExpr, ANF.normalizeProps]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | objectLit_value _ _ q hmem hfv =>
@@ -10535,7 +10535,7 @@ private theorem normalizeExpr_labeled_branch_step :
           · exact Steps_ctx_lift_pres (fun inner => .arrayLit ([] ++ [inner] ++ rest))
               (fun s inner hv t si hs he => step?_arrayLit_elem_ctx s [] rest inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExprList]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExpr, ANF.normalizeExprList]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | arrayLit_elem _ _ v hmem hfv =>
@@ -14277,7 +14277,7 @@ private theorem normalizeExpr_if_branch_step :
           · exact Steps_ctx_lift_pres (fun inner => .makeEnv ([] ++ [inner] ++ rest))
               (fun s inner hv t si hs he => step?_makeEnv_values_ctx s [] rest inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExprList]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExpr, ANF.normalizeExprList]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | makeEnv_elem _ _ v hmem hfv =>
@@ -14309,7 +14309,7 @@ private theorem normalizeExpr_if_branch_step :
           · exact Steps_ctx_lift_pres (fun inner => .objectLit ([] ++ [(propName, inner)] ++ rest))
               (fun s inner hv t si hs he => step?_objectLit_val_ctx s [] rest propName inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeProps]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExpr, ANF.normalizeProps]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | objectLit_value _ _ q hmem hfv =>
@@ -14340,7 +14340,7 @@ private theorem normalizeExpr_if_branch_step :
           · exact Steps_ctx_lift_pres (fun inner => .arrayLit ([] ++ [inner] ++ rest))
               (fun s inner hv t si hs he => step?_arrayLit_elem_ctx s [] rest inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExprList]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExpr, ANF.normalizeExprList]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | arrayLit_elem _ _ v hmem hfv =>
@@ -15511,7 +15511,7 @@ private theorem normalizeExpr_if_branch_step_false :
           · exact Steps_ctx_lift_pres (fun inner => .makeEnv ([] ++ [inner] ++ rest))
               (fun s inner hv t si hs he => step?_makeEnv_values_ctx s [] rest inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExprList]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExpr, ANF.normalizeExprList]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | makeEnv_elem _ _ v hmem hfv =>
@@ -15543,7 +15543,7 @@ private theorem normalizeExpr_if_branch_step_false :
           · exact Steps_ctx_lift_pres (fun inner => .objectLit ([] ++ [(propName, inner)] ++ rest))
               (fun s inner hv t si hs he => step?_objectLit_val_ctx s [] rest propName inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeProps]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExpr, ANF.normalizeProps]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | objectLit_value _ _ q hmem hfv =>
@@ -15574,7 +15574,7 @@ private theorem normalizeExpr_if_branch_step_false :
           · exact Steps_ctx_lift_pres (fun inner => .arrayLit ([] ++ [inner] ++ rest))
               (fun s inner hv t si hs he => step?_arrayLit_elem_ctx s [] rest inner (by simp) hv t si hs he)
               hsteps_e (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion) hpres_e
-          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExprList]; exact hnorm_e⟩
+          · exact ⟨n_e, m_e, by rw [hwexpr]; simp only [List.nil_append, List.cons_append, List.append_nil, ANF.normalizeExpr, ANF.normalizeExprList]; exact hnorm_e⟩
           · rw [hwexpr, hwenv, henv_e]; exact fun x hfx => by
               cases hfx with
               | arrayLit_elem _ _ v hmem hfv =>

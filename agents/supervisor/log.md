@@ -5766,3 +5766,89 @@ Previous prompt said 25 — count was stale. Decomposition of monolithic anfConv
 
 ## Run: 2026-04-10T18:05:16+00:00
 
+
+## Run: 2026-04-10T18:05:21+00:00
+
+### Metrics
+- **Sorry count**: ANF 23 + CC 7 = **30 total**
+- **Delta from last run (17:05)**: ANF 56→23 (grep -c), CC 13→7 (grep -c). Using standalone sorry lines: ANF 20→23, CC 7→7.
+- **Net change**: +3 ANF sorries (traded 22 build errors for 3 sorries)
+- **BUILD: FIXED** — supervisor fixed all 22 ANF build errors directly
+
+### Why count went up by 3
+Supervisor traded 22 compile errors for 3 new sorries. This is CORRECT — build errors block ALL progress while sorries can be closed later:
+1. **call_args** (L10399): Broken proof code (14 type errors, funcE/argsL field order wrong) → 1 sorry
+2. **newObj_args** (L10451): Same issue → 1 sorry  
+3. **return-some compound** (L10750): Broken placeholder synthesis (inaccessible v✝) → 1 sorry
+
+### Build error fixes applied (22 errors → 0)
+1. **call_args/newObj_args**: The `rename_i funcE envE argsL` was wrong — funcE bound to List, argsL to Expr. The proof COPIED call_func structure but call_args needs completely different approach (step through f/env first, then recurse into args). Replaced both with sorry.
+2. **List.mem_cons_self _ _**: In this Lean version, `List.mem_cons_self` uses implicit args (not explicit). Removed `_ _` from all 9 occurrences.
+3. **normalizeExprList decomposition**: Added `List.nil_append, List.cons_append, List.append_nil` to simp calls to convert `[] ++ [x] ++ rest` → `x :: rest` before normalizeExprList/normalizeProps unfold.
+4. **return-some placeholder**: Broken code with inaccessible `v✝` in catch-all case → replaced with sorry.
+
+### KEY INSIGHT: 7 compound sorries NOW UNBLOCKED
+Flat.step? error propagation was completed by proof agent (16:30 run). The following sorries had comments saying "blocked by Flat.step? error propagation" — **this blocker is now RESOLVED**:
+- L11772 (throw compound) — proof agent
+- L11923 (return compound inner_val) — proof agent
+- L11929 (return compound) — proof agent
+- L12106 (await compound) — proof agent
+- L12264 (yield compound) — proof agent
+- L17760 (break compound) — wasmspec agent
+- L17813 (continue compound) — wasmspec agent
+
+### Agent Status
+1. **proof**: REDIRECTED to close 5 newly-unblocked compound sorries (L11772, L11923, L11929, L12106, L12264). Given specific proof strategy using `step?_seq_error`/`step?_let_init_error` lemmas.
+
+2. **jsspec**: REDIRECTED to fix 3 CC callers of Flat_step?_*_step (missing `hne` argument at L5089, L5180, L5415). The theorem declarations were already updated by jsspec's 17:00 run but callers weren't.
+
+3. **wasmspec**: REDIRECTED to close 2 newly-unblocked sorries (L17760, L17813 break/continue compound). Given same error propagation proof strategy.
+
+### Actions Taken
+1. **Fixed 22 ANF build errors directly** (funcE/argsL swap, List.mem_cons_self, normalizeExprList simp, placeholder sorry)
+2. **REWROTE ALL 3 agent prompts** with specific proof strategies for unblocked sorries
+3. Identified 7 compound sorries as newly closable
+
+### Sorry Classification (30 total)
+
+**UNBLOCKED by Flat.step? error propagation (7):**
+- L11772, L11923, L11929, L12106, L12264, L17760, L17813
+- Assigned: proof (5), wasmspec (2)
+
+**Labeled branch step area (10):**
+- L10104, L10172, L10222, L10270, L10320, L10347, L10397, L10399, L10449, L10451
+- Status: Architecturally blocked (trivial mismatch, list decomposition)
+
+**While (2):**
+- L12415, L12427
+- Status: May be affected by error propagation fix
+
+**TryCatch (2):**
+- L16425, L16443
+- Status: Blocked by callStack propagation + counter alignment
+
+**Other ANF (2):**
+- L4312, L9749
+- Status: Uninvestigated
+
+**CC — caller fix needed (0 direct, but 3 callers broken):**
+- jsspec fixing callers
+
+**CC — architecturally blocked (5):**
+- L4927, L6063, L6072 (multi-step gap)
+- L5852 (FuncsCorr)
+- L6711 (UNPROVABLE)
+
+**CC — CCStateAgree (2):**
+- L8189, L8305
+- Status: jsspec P1 after caller fix
+
+### Critical Path
+1. **NOW**: proof closes 5 compound sorries, wasmspec closes 2, jsspec fixes CC callers
+2. **NEXT**: If compound sorries close → 30-7 = 23 sorries
+3. **THEN**: jsspec CCStateAgree → 23-2 = 21 sorries
+4. **REMAINING**: 10 labeled branch step + 2 while + 2 tryCatch + 2 uninvestigated + 5 CC blocked = 21
+2026-04-10T19:02:07+00:00 DONE
+
+## Run: 2026-04-10T19:05:01+00:00
+
