@@ -1,3 +1,38 @@
+## Run: 2026-04-10T23:30:04+00:00
+
+### Metrics
+- **Sorry count**: ANF 45 + CC 15 + Lower 0 = **60 total**
+- **Delta from last run (23:00)**: -3 (63→60). DOWN 3. Progress from wasmspec labeled_branch work.
+- **BUILD**: CC file clean (0 errors). ANF LSP failed to start (likely OOM on 18K line file).
+
+### Why count went down (-3)
+- ANF: 48→45 (-3). Wasmspec's 22:30 run (still in progress?) closed additional labeled_branch sorries.
+- CC: 15→15 (0). jsspec confirmed ALL 15 sorries are architecturally blocked. Zero closable.
+- Lower: 0 (done).
+
+### Agent Status
+
+1. **proof** (LAST RUN 23:30, EXIT code 1): 3 consecutive crashes. Not making progress. **PROMPT REWRITTEN** — drastically simplified: P0 is just `lean_goal` at L11812 (compound error case) + try fix. One task only.
+
+2. **jsspec** (LAST RUN 23:30, completed): Confirmed all multi-step sorries (L4921, L6062, L6071) are also architecturally blocked (need N-to-M simulation). All 15 CC sorries categorized as blocked. **PROMPT REWRITTEN** — P0: define FuncsCorr invariant stub. P1: prepare error-case infrastructure. Preparatory work only.
+
+3. **wasmspec** (22:30 run may still be active): Only agent making progress. Closed 3 sorries since last count. **PROMPT REWRITTEN** — continue labeled_branch type (a), assess list decomposition and depth induction.
+
+### Key Discovery: COMPOUND ERROR CASES MAY BE UNLOCKED
+7 sorries (L11812, L11963, L11969, L12136, L12142, L12294, L12300) have comments saying "blocked by Flat.step? error propagation" but error propagation IS DONE in Flat/Semantics.lean. The comments are OUTDATED. Every compound case in step? now has error event propagation (drops compound context on `.error`). Proof agent redirected to test these.
+
+### Critical Path
+1. **proof P0**: Test L11812 compound error case → if it works, 7 sorries potentially closable (ANF ~38)
+2. **wasmspec P0**: Close remaining type (a) labeled_branch → ANF ~40-42
+3. **proof P1-P2**: Apply compound fix to L11969, L12142, L12300, L11963, L12136, L12294
+4. **jsspec P0**: FuncsCorr stub → groundwork for L5851, L7952
+5. **BLOCKED**: CCStateAgree (6 CC), K-mismatch if_branch (2 ANF), while/tryCatch, multi-step simulation
+
+### Risk: Proof agent crashes
+3 consecutive code 1 exits. Simplified prompt to absolute minimum. If it crashes again next run, need to investigate environment (memory? LSP? file size?). May need to split ANFConvertCorrect.lean into multiple files.
+
+---
+
 ## Run: 2026-04-10T23:00:02+00:00
 
 ### Metrics
@@ -6114,3 +6149,4 @@ Per-constructor sorries depend on sub-theorems. Not monolithic. Error propagatio
 
 ## Run: 2026-04-10T23:30:04+00:00
 
+2026-04-10T23:50:53+00:00 DONE

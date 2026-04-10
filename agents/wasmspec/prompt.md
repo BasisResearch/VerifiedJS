@@ -1,4 +1,4 @@
-# wasmspec — CLOSE LABELED_BRANCH TYPE (a) + ASSESS CAT B
+# wasmspec — CONTINUE LABELED_BRANCH + CAT B ASSESSMENT
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -11,38 +11,37 @@
 ## STATUS
 - BUILD PASSES. 0 errors.
 - You closed 3 sorries (L9865, L10220, L10550) and Cat A break/continue. GREAT WORK.
-- ANF: 48 sorries. CC: 15. Total: 63.
-- Your last 2 runs (22:15, 22:30) may have exited code 1. If crashing, TRY SMALLER EDITS.
+- ANF: 45 sorries. CC: 15. Total: 60.
+- Your 22:30 run may still be in progress — if so, continue where you left off.
 
-## P0: CLOSE TYPE (a) LABELED_BRANCH CASES (L10383, L10431, L10481, L10508, L10558)
+## P0: CLOSE REMAINING TYPE (a) LABELED_BRANCH CASES
 
-These follow the SAME PATTERN as L10550 (newObj_func) which you already closed. Template:
+Target sorries in labeled_branch area (L10361-L10734):
+- L10411, L10459, L10509, L10536, L10586 — same pattern as L10550 (newObj_func) you already closed
+- L10638 — similar pattern
+
+Template from your L10550 proof:
 1. Get IH from HasLabeledInHead hypothesis
-2. Use `Steps_*_ctx_b` lifting lemma to lift the inner steps through the compound context
+2. Use `Steps_*_ctx_b` lifting lemma to lift inner steps through compound context
 3. Provide normalizeExpr witness
 
 For each:
 1. `lean_goal` to see exact goal
 2. Check which `Steps_*_ctx_b` lemma exists with `lean_local_search "Steps_" "ctx_b"`
-3. Apply the template from L10550
+3. Apply the L10550 template
 
-### Priority order:
-- L10383 (binary_lhs) — most similar to your closed cases
-- L10431 (binary_rhs) — same pattern, different argument
-- L10481 (unary) — single argument variant
-- L10508 (call_func) — compound with env+args context
-- L10558 (call_env) — similar to call_func
+## P1: LIST DECOMPOSITION (L10588, L10640, L10671, L10703, L10734) — IF P0 DONE
 
-## P1: LIST DECOMPOSITION (L10560, L10612, L10643, L10675, L10706) — IF P0 DONE
+These need stepping through list elements (call_args, newObj_args, makeEnv, objectLit, arrayLit).
+- `lean_local_search "Steps_" "list"` or `"ctx"` to check for list lifting lemmas
+- If no list lifting infrastructure exists, document what's needed and skip
 
-Try `lean_local_search "Steps_" "list"` or `"ctx"` to see if list lifting lemmas exist. If not, document what's needed and skip.
+## P2: DEPTH INDUCTION (L10939, L10975, L10988, L11071, L11106, L11119) — ASSESS ONLY
 
-## P2: CAT B BREAK/CONTINUE (L15316, L15327, L15546, L15617) — ASSESS ONLY
-
-`lean_goal` at each. Check if error propagation changes make them closable. If still blocked, document exact blocker.
+These are compound inner expressions inside return/yield wrappers. `lean_goal` at each to understand structure.
 
 ## WORKFLOW
-1. `echo "### $(date -Iseconds) Starting run — labeled_branch type (a)" >> agents/wasmspec/log.md`
-2. Close L10383, L10431, L10481, L10508, L10558 using L10550 template
-3. If P0 done, try P1; else assess P2
+1. `echo "### $(date -Iseconds) Starting run — labeled_branch continuation" >> agents/wasmspec/log.md`
+2. Close as many type (a) cases as possible using L10550 template
+3. If P0 done, assess P1/P2
 4. `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`
