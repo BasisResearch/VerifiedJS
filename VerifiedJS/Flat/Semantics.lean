@@ -1330,8 +1330,8 @@ theorem step?_call_consoleLog (s : State)
       (step? { s with expr := f }).bind fun (t, sf) =>
         match t with
         | .error _ => some (t, pushTrace { s with expr := sf.expr, env := sf.env, heap := sf.heap } t)
-        | _ => some (t, pushTrace { s with expr := some (t, pushTrace { s with expr := .call sf.expr envE args, env := sf.env, heap := sf.heap } t), env := sf.env, heap := sf.heap } t).call sf.expr envE args := by
-
+        | _ => some (t, pushTrace { s with expr := .call sf.expr envE args, env := sf.env, heap := sf.heap } t) := by
+  rw [step?.eq_1]; simp only [hf]; cases step? { s with expr := f } <;> rfl
 
 /-- Stepping a call when funcExpr is a value but envExpr is not: recurse into envExpr. -/
 @[simp] theorem step?_call_step_env (s : State) (f envE : Expr) (args : List Expr)
@@ -1340,8 +1340,8 @@ theorem step?_call_consoleLog (s : State)
       (step? { s with expr := envE }).bind fun (t, se) =>
         match t with
         | .error _ => some (t, pushTrace { s with expr := se.expr, env := se.env, heap := se.heap } t)
-        | _ => some (t, pushTrace { s with expr := some (t, pushTrace { s with expr := .call f se.expr args, env := se.env, heap := se.heap } t), env := se.env, heap := se.heap } t).call f se.expr args := by
-
+        | _ => some (t, pushTrace { s with expr := .call f se.expr args, env := se.env, heap := se.heap } t) := by
+  rw [step?.eq_1]; simp only [hf, he]; cases step? { s with expr := envE } <;> rfl
 
 /-- Stepping a newObj when funcExpr is not a value: recurse into funcExpr. -/
 @[simp] theorem step?_newObj_step_func (s : State) (f envE : Expr) (args : List Expr)
@@ -1350,8 +1350,8 @@ theorem step?_call_consoleLog (s : State)
       (step? { s with expr := f }).bind fun (t, sf) =>
         match t with
         | .error _ => some (t, pushTrace { s with expr := sf.expr, env := sf.env, heap := sf.heap } t)
-        | _ => some (t, pushTrace { s with expr := some (t, pushTrace { s with expr := .newObj sf.expr envE args, env := sf.env, heap := sf.heap } t), env := sf.env, heap := sf.heap } t).newObj sf.expr envE args := by
-
+        | _ => some (t, pushTrace { s with expr := .newObj sf.expr envE args, env := sf.env, heap := sf.heap } t) := by
+  rw [step?.eq_1]; simp only [hf]; cases step? { s with expr := f } <;> rfl
 
 /-- Stepping a newObj when funcExpr is a value but envExpr is not: recurse into envExpr. -/
 theorem step?_newObj_step_env (s : State) (f envE : Expr) (args : List Expr)
@@ -1360,8 +1360,8 @@ theorem step?_newObj_step_env (s : State) (f envE : Expr) (args : List Expr)
       (step? { s with expr := envE }).bind fun (t, se) =>
         match t with
         | .error _ => some (t, pushTrace { s with expr := se.expr, env := se.env, heap := se.heap } t)
-        | _ => some (t, pushTrace { s with expr := some (t, pushTrace { s with expr := .newObj f se.expr args, env := se.env, heap := se.heap } t), env := se.env, heap := se.heap } t).newObj f se.expr args := by
-
+        | _ => some (t, pushTrace { s with expr := .newObj f se.expr args, env := se.env, heap := se.heap } t) := by
+  rw [step?.eq_1]; simp only [hf, he]; cases step? { s with expr := envE } <;> rfl
 
 /-- Stepping a getEnv when envExpr is not a value: recurse into envExpr. -/
 @[simp] theorem step?_getEnv_step_env (s : State) (envE : Expr) (idx : Nat)
@@ -1370,8 +1370,8 @@ theorem step?_newObj_step_env (s : State) (f envE : Expr) (args : List Expr)
       (step? { s with expr := envE }).bind fun (t, se) =>
         match t with
         | .error _ => some (t, pushTrace { s with expr := se.expr, env := se.env, heap := se.heap } t)
-        | _ => some (t, pushTrace { s with expr := some (t, pushTrace { s with expr := .getEnv se.expr idx, env := se.env, heap := se.heap } t), env := se.env, heap := se.heap } t).getEnv se.expr idx := by
-
+        | _ => some (t, pushTrace { s with expr := .getEnv se.expr idx, env := se.env, heap := se.heap } t) := by
+  rw [step?.eq_1]; simp only [he]; cases step? { s with expr := envE } <;> rfl
 
 /-- Stepping getProp when obj is not a value: recurse into obj. -/
 @[simp] theorem step?_getProp_step_obj (s : State) (obj : Expr) (prop : PropName)
@@ -1380,8 +1380,8 @@ theorem step?_newObj_step_env (s : State) (f envE : Expr) (args : List Expr)
       (step? { s with expr := obj }).bind fun (t, so) =>
         match t with
         | .error _ => some (t, pushTrace { s with expr := so.expr, env := so.env, heap := so.heap } t)
-        | _ => some (t, pushTrace { s with expr := some (t, pushTrace { s with expr := .getProp so.expr prop, env := so.env, heap := so.heap } t), env := so.env, heap := so.heap } t).getProp so.expr prop := by
-
+        | _ => some (t, pushTrace { s with expr := .getProp so.expr prop, env := so.env, heap := so.heap } t) := by
+  rw [step?.eq_1]; simp only [ho]; cases step? { s with expr := obj } <;> rfl
 
 /-- Stepping setProp when obj is not a value: recurse into obj. -/
 @[simp] theorem step?_setProp_step_obj (s : State) (obj : Expr) (prop : PropName) (val : Expr)
@@ -1390,8 +1390,8 @@ theorem step?_newObj_step_env (s : State) (f envE : Expr) (args : List Expr)
       (step? { s with expr := obj }).bind fun (t, so) =>
         match t with
         | .error _ => some (t, pushTrace { s with expr := so.expr, env := so.env, heap := so.heap } t)
-        | _ => some (t, pushTrace { s with expr := some (t, pushTrace { s with expr := .setProp so.expr prop val, env := so.env, heap := so.heap } t), env := so.env, heap := so.heap } t).setProp so.expr prop val := by
-
+        | _ => some (t, pushTrace { s with expr := .setProp so.expr prop val, env := so.env, heap := so.heap } t) := by
+  rw [step?.eq_1]; simp only [ho]; cases step? { s with expr := obj } <;> rfl
 
 /-- Stepping getIndex when obj is not a value: recurse into obj. -/
 @[simp] theorem step?_getIndex_step_obj (s : State) (obj idx : Expr)
@@ -1400,8 +1400,8 @@ theorem step?_newObj_step_env (s : State) (f envE : Expr) (args : List Expr)
       (step? { s with expr := obj }).bind fun (t, so) =>
         match t with
         | .error _ => some (t, pushTrace { s with expr := so.expr, env := so.env, heap := so.heap } t)
-        | _ => some (t, pushTrace { s with expr := some (t, pushTrace { s with expr := .getIndex so.expr idx, env := so.env, heap := so.heap } t), env := so.env, heap := so.heap } t).getIndex so.expr idx := by
-
+        | _ => some (t, pushTrace { s with expr := .getIndex so.expr idx, env := so.env, heap := so.heap } t) := by
+  rw [step?.eq_1]; simp only [ho]; cases step? { s with expr := obj } <;> rfl
 
 /-- Stepping setIndex when obj is not a value: recurse into obj. -/
 @[simp] theorem step?_setIndex_step_obj (s : State) (obj idx val : Expr)
@@ -1410,8 +1410,8 @@ theorem step?_newObj_step_env (s : State) (f envE : Expr) (args : List Expr)
       (step? { s with expr := obj }).bind fun (t, so) =>
         match t with
         | .error _ => some (t, pushTrace { s with expr := so.expr, env := so.env, heap := so.heap } t)
-        | _ => some (t, pushTrace { s with expr := some (t, pushTrace { s with expr := .setIndex so.expr idx val, env := so.env, heap := so.heap } t), env := so.env, heap := so.heap } t).setIndex so.expr idx val := by
-
+        | _ => some (t, pushTrace { s with expr := .setIndex so.expr idx val, env := so.env, heap := so.heap } t) := by
+  rw [step?.eq_1]; simp only [ho]; cases step? { s with expr := obj } <;> rfl
 
 /-- Stepping deleteProp when obj is not a value: recurse into obj. -/
 @[simp] theorem step?_deleteProp_step_obj (s : State) (obj : Expr) (prop : PropName)
@@ -1420,7 +1420,8 @@ theorem step?_newObj_step_env (s : State) (f envE : Expr) (args : List Expr)
       (step? { s with expr := obj }).bind fun (t, so) =>
         match t with
         | .error _ => some (t, pushTrace { s with expr := so.expr, env := so.env, heap := so.heap } t)
-        | _ => some (t, pushTrace { s with expr := some (t, pushTrace { s with expr := .deleteProp so.expr prop, env := so.env, heap := so.heap } t), env := so.env, heap := so.heap } t).deleteProp so.expr prop := by
+        | _ => some (t, pushTrace { s with expr := .deleteProp so.expr prop, env := so.env, heap := so.heap } t) := by
+  rw [step?.eq_1]; simp only [ho]; cases step? { s with expr := obj } <;> rfl
 
 
 /-- Step relation is equivalent to step? returning some. -/

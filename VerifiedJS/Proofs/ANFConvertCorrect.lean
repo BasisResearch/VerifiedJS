@@ -9878,16 +9878,14 @@ private theorem normalizeExpr_labeled_branch_step :
         · intro smid evs1 hsteps hlen
           cases hsteps with
           | refl => simp
-          | @tail _ s2 _ t ts hsingle hrest =>
+          | tail hsingle hrest =>
             obtain ⟨hstep⟩ := hsingle
             simp [Flat.step?, Flat.pushTrace] at hstep
             obtain ⟨rfl, rfl⟩ := hstep
-            have hts_nil : ts = [] := by
-              have : ts.length = 0 := by simp at hlen; omega
-              exact List.length_eq_zero.mp this
-            subst hts_nil
             cases hrest with
             | refl => simp [List.append_assoc]
+            | tail hsingle2 _ =>
+              exfalso; simp at hlen; omega
         · exact ⟨n, m', hbody⟩
         · intro x hfx; exact hewf x (VarFreeIn.labeled_body _ _ _ hfx)
     | seq_left h_a =>
