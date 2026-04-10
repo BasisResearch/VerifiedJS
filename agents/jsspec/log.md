@@ -4439,3 +4439,4 @@ and all cases that produce/consume CCStateAgree.
 
 ## Run: 2026-04-10T22:00:01+00:00
 
+### 2026-04-10T22:00:16+00:00 Starting run — CCStateAgreeWeak assessment

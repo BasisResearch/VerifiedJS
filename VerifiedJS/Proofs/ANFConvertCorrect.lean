@@ -14098,9 +14098,10 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
     unfold Flat.step? at hstep; dsimp only [] at hstep; split at hstep
     · obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion]
     · split at hstep
-      · rename_i _ _ heq; obtain ⟨_, rfl⟩ := hstep
-        simp only [Flat.pushTrace, hasAbruptCompletion]
-        exact hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac hfuncs_ac heq
+      · split at hstep <;> {
+          rename_i _ _ heq; obtain ⟨_, rfl⟩ := hstep
+          simp only [Flat.pushTrace, hasAbruptCompletion]
+          exact hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac hfuncs_ac heq }
       · exact absurd hstep (by simp)
   | typeof arg =>
     simp only [hasAbruptCompletion] at hac
