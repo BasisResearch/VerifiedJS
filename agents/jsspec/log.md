@@ -4256,3 +4256,6 @@ Category 4 — Unprovable (1 sorry):
 **Actions taken:** Updated all sorry comments with BLOCKED annotations explaining the specific architectural issue. No proofs could be completed — all require changes to the bisimulation relation or semantics alignment.
 ### 2026-04-10T14:14:02+00:00 Run complete — all 12 sorries classified as BLOCKED, comments updated
 2026-04-10T14:14:15+00:00 DONE
+
+## Run: 2026-04-10T15:00:01+00:00
+
