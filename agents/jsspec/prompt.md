@@ -1,77 +1,75 @@
-# jsspec — ANF second-position cases (CC fully blocked)
+# jsspec — CCStateAgree weakening (unblock 6 CC sorries)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
 - **DO NOT** use while/until loops, sleep loops, pgrep.
-- **YOU OWN** ClosureConvertCorrect.lean exclusively (but CC is blocked — skip it).
-- **PRIMARY**: Fix ANF second-position sorries in ANFConvertCorrect.lean
+- **YOU OWN** ClosureConvertCorrect.lean exclusively.
+- **DO NOT** edit ANFConvertCorrect.lean or Flat/Semantics.lean
 
 ## MEMORY: ~3.5GB free. USE LSP ONLY.
 
-## STATUS: CC has 12 sorry tactics, ALL architecturally blocked. DO NOT WORK ON CC.
+## STATUS: CC has 12 sorry tactics, all architecturally blocked. 6 are blocked by CCStateAgree being too strong.
 
-## ===== P0: ANF SECOND-POSITION CASES (6 sorries) =====
+## ===== P0: WEAKEN CCStateAgree (highest leverage) =====
 
-These are in `normalizeExpr_labeled_step_sim` around L10203-10347:
+Your previous analysis identified that 6 CC sorries are blocked because CCStateAgree is too strong:
+- L5237, L5262 (if true/false branches)
+- L8089, L8092 (tryCatch body-value)
+- L8165 (tryCatch error sub-case)
+- L8275 (while_ lowering)
 
-```
-L10226: setProp_val h_val => sorry
-L10249: getIndex_idx h_idx => sorry
-L10273: setIndex_idx h_idx => sorry
-L10274: setIndex_val h_val => sorry
-L10298: call_env h_env => sorry
-L10347: newObj_env h_env => sorry
-```
+### THE PROBLEM:
+CCStateAgree requires exact state agreement between the source and converted states. But after processing one branch of an if/tryCatch/while, the CCState (nextId, funcs.size) has advanced past the skipped branch. The other branch's conversion used a DIFFERENT starting CCState.
 
-Also L10203 (trivialChain passthrough in binary_rhs) is the same pattern.
-
-### THE PATTERN (understand this):
-
-For `.setProp obj prop val` with `HasLabeledInHead val label` (second position):
-1. `normalizeExpr(.setProp obj prop val, k)` = `normalizeExpr(obj, fun objTriv => normalizeExpr(val, fun valTriv => k(setProp objTriv prop valTriv)))`
-2. The label is in `val`, not `obj`. So obj needs to be handled first.
-3. The first-position case (setProp_obj) works because IH applies directly to obj.
-4. For second-position, you need to deal with obj FIRST, then apply IH on val.
-
-### KEY INFRASTRUCTURE (already exists):
-
-- `normalizeExpr_trivialChain_apply` (L1466): If `isTrivialChain e = true`, then `∃ t, ∀ k n, normalizeExpr e k = k t`. This is CRITICAL for second position.
-- `normalizeExpr_trivialChain_passthrough` (L1438): If `isTrivialChain e`, then `normalizeExpr e (fun _ => K) = K`.
-- `trivialChain_consume_ctx` (L3294): Shows trivialChain expressions produce flat steps that consume to a value.
-
-### THE APPROACH:
-
-For `setProp_val h_val` (L10226), the proof needs:
-1. **Case split on obj**: `rcases Classical.em (HasLabeledInHead obj label)`
-   - If `HasLabeledInHead obj label`: this contradicts being in the `setProp_val` case? OR you need sub-case reasoning. Check with `lean_goal`.
-   - If `¬HasLabeledInHead obj label`:
-     a. You need: `¬HasLabeledInHead obj label → isTrivialChain obj = true` OR handle non-trivialChain obj separately
-     b. If obj IS trivialChain: use `normalizeExpr_trivialChain_apply` to get the trivial `t` for obj
-     c. Then the normalizeExpr simplifies to `(normalizeExpr val (fun valTriv => k(setProp t prop valTriv))).run n_obj`
-     d. Apply IH on val (which has the label)
-     e. Lift through setProp context
-
-2. **Check**: Does the theorem hypotheses include something like `NoNestedLabeled` or `ExprWellFormed` that connects ¬HasLabeledInHead to isTrivialChain? Search with `lean_local_search "NoNested"` and `lean_local_search "isTrivialChain"`.
-
-3. **Check**: Look at how `binary_lhs` handles the sub-case at L10170-10203. The `¬HasLabeledInHead lhs label` branch (L10202-10203) is ALSO sorry. This suggests the same lemma is needed for ALL second-position cases plus the first-position ¬HasLabeled sub-cases.
+### THE FIX:
+Weaken CCStateAgree to allow a "gap" in the state:
+- Instead of `st.nextId = st_a.nextId`, allow `st.nextId ≤ st_a.nextId`
+- Instead of exact funcs matching, allow the converted state to have ADDITIONAL funcs appended
 
 ### CONCRETE STEPS:
-1. `lean_goal` at L10226 to see exact proof state and available hypotheses
-2. `lean_local_search "HasLabeledInHead"` to find all constructors and any negation lemmas
-3. `lean_local_search "isTrivialChain"` to find connection lemmas
-4. Look for a hypothesis that says the expression is "simple" or "well-formed" in ways that connect to trivialChain
-5. If the needed `¬HasLabeledInHead → isTrivialChain` lemma doesn't exist, WRITE IT as a helper theorem
-6. Once you have that lemma, the proof pattern is: trivialChain_apply on first sub-expr → IH on second sub-expr → Steps_*_ctx to lift
 
-### ALSO LOOK AT L10203:
-The `binary_rhs` ¬HasLabeledInHead sub-case (L10202-10203) is the SAME issue. If you solve the general lemma, it fixes 7+ sorries at once.
+1. **Find CCStateAgree**: `lean_local_search "CCStateAgree"` to find definition and all uses
+2. **Read the definition** carefully — understand what fields it constrains
+3. **Check callers**: Where is CCStateAgree used as a hypothesis? What do they actually need from it?
+4. **Prototype the weakening**:
+   - If CCStateAgree is an inductive type, add weaker constructors
+   - If it's a structure, relax the field constraints
+   - If it's a def, change the definition
+5. **Fix broken proofs**: The weakening will break proofs that use CCStateAgree. Fix them by using the weaker properties.
+6. **Check if sorry sites now close**: After weakening, re-check L5237, L5262, L8089, L8092, L8165, L8275
+
+### IMPORTANT: Incremental approach
+- First, just READ and understand CCStateAgree fully
+- Then, identify the MINIMAL weakening that unblocks the 6 sorries
+- Apply the change
+- Fix breakage one proof at a time
+
+### WHAT THIS UNBLOCKS:
+If CCStateAgree is weakened correctly:
+- L5237 (if-true): the else_ conversion state gap becomes acceptable
+- L5262 (if-false): the then_ conversion state gap becomes acceptable
+- L8089, L8092 (tryCatch): body conversion state gap acceptable
+- L8165 (tryCatch error): same
+- L8275 (while): loop duplication state gap acceptable
+- = **6 sorries potentially closable**
+
+## ===== P1: FuncsCorr invariant (if P0 succeeds) =====
+
+2 sorries blocked by missing FuncsCorr (L5829, L7930):
+- Need a correspondence between source funcs and converted funcs
+- After CCStateAgree is weakened, this might become easier
+
+## ===== FALLBACK: If CCStateAgree weakening breaks too much =====
+
+Instead of weakening the definition, add a SEPARATE `CCStateAgreeWeak` that's used only in the sorry sites. This avoids breaking existing proofs but is less clean.
 
 ## WORKFLOW
-1. `lean_goal` at L10226 and L10203 to understand the goals
-2. Search for the connection between HasLabeledInHead and isTrivialChain
-3. Write helper lemma if needed
-4. Apply to each second-position sorry
-5. Verify with `lean_diagnostic_messages`
+1. Find and read CCStateAgree definition
+2. Find all uses (lean_local_search or lean_references)
+3. Understand what callers need
+4. Prototype minimal weakening
+5. Fix breakage
+6. Check if sorries close
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`

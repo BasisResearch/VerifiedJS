@@ -1,3 +1,70 @@
+## Run: 2026-04-10T15:30:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 55 + CC 12 + Lower 0 = **67 total**
+- **Delta from last run (15:00)**: 0 (67→67). **NO CHANGE.**
+
+### Why no change — ROOT CAUSE IDENTIFIED
+**4 days of zero progress explained**: The compound sorries (L11713, L11870, L12047, L12205, L17701, L17754) are **unprovable as the theorem is currently stated**. The proof agent correctly identified this in its 14:30 run.
+
+**Root cause**: `normalizeExpr_throw_step_sim` (and return/await/yield/break/continue variants) require `sf'.env = sf.env ∧ sf'.heap = sf.heap` in the conclusion. For compound cases (seq_left, let_init, etc.), Flat.step? executes dead code after abrupt completion:
+1. `.seq a b` with throw in `a`: `a` throws → `.lit .undefined`, then `b` executes
+2. `b` can modify env/heap, breaking the preservation requirement
+3. Therefore the theorem conclusion is FALSE for compound cases
+
+**This blocks**: 6 compound sorries directly + all depth-induction dependent sorries
+
+### Agent Status
+1. **proof** (RUNNING since 15:30): Previous run was analysis-only. Correctly identified compound sorries as unprovable. **PROMPT REWRITTEN** — redirected to fix root cause: modify Flat.step? to propagate error events through compound expressions (don't execute dead code after throw/return/break/continue).
+
+2. **wasmspec** (RUNNING since 15:30): Previous run found all 24 if_branch sorries blocked by K-mismatch. **PROMPT REWRITTEN** — redirected to while condition-steps (L12368) which was identified as potentially closable (normalizeExpr-compatible form).
+
+3. **jsspec** (RUNNING since 15:30): Previous run classified all 12 CC sorries as blocked. **PROMPT REWRITTEN** — redirected to CCStateAgree weakening (could unblock 6 CC sorries). This is the CC critical path.
+
+### Actions Taken
+1. **Deep analysis** of all 67 sorries with code reading of theorem statements, Flat.step? semantics, and caller usage patterns
+2. **Identified Flat.step? as the root cause** — dead code execution after abrupt completions prevents env/heap preservation in compound cases
+3. **REWROTE ALL 3 agent prompts** with new strategies:
+   - proof: Fix Flat.step? error propagation (unblocks 6+ compound sorries)
+   - wasmspec: While condition-steps L12368 (potentially closable)
+   - jsspec: CCStateAgree weakening (could unblock 6 CC sorries)
+4. Logged to time_estimate.csv
+
+### Sorry Classification (67 total)
+
+**BLOCKED by Flat.step? dead code execution (6 direct):**
+- L11713 (compound throw), L11870 (compound return), L12047 (compound await), L12205 (compound yield), L17701 (break compound), L17754 (continue compound)
+- FIX: Flat.step? error propagation → proof agent
+
+**BLOCKED by K-mismatch (24):**
+- L13976-15525 (if_branch true + false × 12 each)
+- FIX: Theorem redesign needed → deferred
+
+**BLOCKED by CCStateAgree (6):**
+- L5237, L5262, L8089, L8092, L8165, L8275
+- FIX: Weaken CCStateAgree → jsspec agent
+
+**BLOCKED by missing infrastructure (13):**
+- L10203 (trivialChain passthrough), L10226-10347 (second-position × 6), L10323-10466 (list decomposition × 5), L11864 (return inner), L12041 (await inner), L12199 (yield inner)
+
+**Unique blockers (8):**
+- L12261, L12265, L12266 (structural induction)
+- L12356, L12368 (while) → wasmspec
+- L16366, L16384 (tryCatch callStack + counter)
+- L16387 (tryCatch compound)
+
+**Other blocked (10):**
+- L5829, L7930 (FuncsCorr), L4905, L6040, L6049 (multi-step gap), L6688 (unprovable), L17470, L17481 (callframe)
+
+### Strategic Assessment
+- **Zero progress since Apr 6 is NOW EXPLAINED** — fundamental theorem design issue, not agent incompetence
+- **Flat.step? fix is THE critical path** — if proof agent lands it, 6 sorries directly closable + enables depth induction pattern
+- **CCStateAgree weakening is the CC critical path** — 6 sorries potentially closable
+- **While L12368 is the best independent target** — identified as "normalizeExpr-compatible"
+- **Expected next run**: 67 (Flat.step? change is multi-run work, but if ANY sorry closes it breaks the 4-day stall)
+
+---
+
 ## Run: 2026-04-10T15:00:04+00:00
 
 ### Metrics

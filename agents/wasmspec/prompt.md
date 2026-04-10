@@ -1,4 +1,4 @@
-# wasmspec — if_branch list cases in ANFConvertCorrect.lean
+# wasmspec — While condition-steps + if_branch investigation
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -8,80 +8,64 @@
 
 ## MEMORY: ~3.5GB free. USE LSP ONLY — no builds.
 
-## STATUS: ANF has 55 sorry tactics. You own 24 (12 true + 12 false branch).
-
 ## CONCURRENCY
-- proof agent works on L11550-12400 and L16366-17754
-- jsspec works on ClosureConvertCorrect.lean AND may help on ANF second-position cases
-- **YOU** own L13976-15525 ONLY (if_branch_step true and false)
+- proof agent works on Flat/Semantics.lean + compound sorries (L11550-12210)
+- jsspec works on ClosureConvertCorrect.lean
+- **YOU** own L12268-12372 (while) AND L13976-15525 (if_branch)
 
-## ===== YOUR 24 SORRIES (12 true branch + 12 false branch) =====
+## STATUS: 67 sorries total. Your previous analysis found all 24 if_branch sorries blocked by K-mismatch. Good work on the analysis. Now try to close while sorries.
 
-### TRUE branch (L13976-14291):
+## ===== P0: WHILE CONDITION-STEPS (L12368) =====
+
+Your own analysis identified this as "normalizeExpr-compatible form". This means it might be closable.
+
+The comment says:
 ```
-L13976:  · sorry                          -- second-position (setProp_val)
-L14001:  · sorry                          -- second-position (getIndex_idx)
-L14026:  · sorry -- f has no if           -- list (call_args f)
-L14074:  · sorry                          -- second-position (setIndex_idx)
-L14099:  · sorry -- f has no if           -- list (newObj_args f)
-L14123:  · sorry                          -- second-position (setIndex_val)
-L14147:  · sorry                          -- second-position (call_env)
-L14172:  · sorry                          -- second-position (newObj_env)
-L14197:  · sorry                          -- second-position (funcE call)
-L14228:  · sorry -- first element          -- list (arrayLit_elems)
-L14260:  · sorry -- first prop value       -- list (objectLit_props)
-L14291:  · sorry -- first element          -- list (makeEnv_values)
+-- sa'.expr = .seq (.while_ sc.expr d) b — this IS a normalizeExpr-compatible form
+-- Needs: decomposition of hnorm to extract the flat while condition,
+-- recursive SimRel for condition stepping, and reconstruction.
 ```
 
-### FALSE branch (L15210-15525): mirror of true branch
+### CONCRETE STEPS:
+1. `lean_goal` at L12368 to see the exact proof state
+2. You need to reconstruct a SimRel for the new state where:
+   - ANF: `.seq (.while_ sc.expr d) b`
+   - Flat: the corresponding flat state after stepping the while condition
+3. Key: the `normalizeExpr_while_decomp` theorem (L12270) decomposes normalizeExpr(.while_ cond body) into condition + body + continuation normalizations
+4. After the flat condition steps, the new flat condition expr is `sc.expr`
+5. Need to show normalizeExpr(.while_ sc.expr body, k) produces an expression that matches the ANF `.while_ sc'.expr d'` state
+6. Use `lean_local_search "while"` to find while-related infrastructure
 
-### Classification:
-- **7 second-position** per branch (14 total): These need K-mismatch resolution. SKIP for now.
-- **5 list cases** per branch (10 total): YOUR PRIORITY
+### STRATEGY:
+- The condition stepped from `cond` to `sc.expr` in both ANF and Flat
+- The SimRel should be reconstructable because the normalizeExpr structure is preserved
+- The key is showing that `normalizeExpr(cond, fun t => pure (.trivial t))` and the flat condition stepping are compatible
 
-## ===== FOCUS: LIST CASES (10 sorries) =====
+## ===== P1: WHILE CONDITION VALUE (L12356) — harder =====
 
-True branch: L14026, L14099, L14228, L14260, L14291
-False branch: L15260, L15333, L15462, L15494, L15525
+The comment says "transient state breaks single-step SimRel". The ANF state after while unrolls is:
+- `.seq (.seq d (.while_ c d)) b` (if condition true) or `.seq (.trivial .litUndefined) b` (if false)
 
-### Strategy for each list case:
+These transient forms aren't directly normalizeExpr-compatible. You'd need multi-step simulation.
 
-Take L14026 (call_args — f has no if, but some arg does):
+Try L12368 first. If that works, attempt L12356.
 
-1. `lean_goal` at L14026 to see the goal. The situation:
-   - Top expression is `.call f env args` with `HasIfInHead` in args (via `call_args`)
-   - f does NOT have HasIfInHead
-   - You need to show flat stepping reaches the arg with if-in-head
+## ===== P2: IF_BRANCH K-MISMATCH INVESTIGATION =====
 
-2. The proof pattern should be:
-   - f and env evaluate to values (they don't have if in head, so they're trivial chains)
-   - Use `Steps_call_func_ctx` to lift f's steps
-   - Use `Steps_call_env_ctx` to lift env's steps
-   - Then handle the list: one element has HasIfInHead
-   - Use list induction to find that element, step through preceding elements
-   - Apply depth IH on the element with HasIfInHead
+Only if P0/P1 are done or stuck.
 
-3. Key infrastructure to search for:
-   - `lean_local_search "Steps_call_arg"` — does a call_arg context lifter exist?
-   - `lean_local_search "trivialChain"` — for showing f/env evaluate to values
-   - `lean_local_search "HasIfInHeadList"` — list version of HasIfInHead
+Your K-mismatch analysis was thorough. The question is: can the theorem `normalizeExpr_if_branch_step` be redesigned to avoid requiring exact `then_`/`else_` matching?
 
-### If you get stuck on list induction:
-Write a helper lemma first:
-```lean
-private theorem if_branch_step_list_helper
-    (exprs : List Flat.Expr) (h : HasIfInHeadList exprs)
-    ... : ...
-```
+Investigate: What does the CALLER of `normalizeExpr_if_branch_step` actually need? If the caller only needs the observable trace to match, maybe the theorem can be weakened.
 
-### WORKFLOW for each sorry:
-1. `lean_goal` at the sorry line
-2. `lean_local_search` for relevant helpers
-3. `lean_multi_attempt` with candidate tactics
-4. If nothing works, write a helper lemma
-5. Edit to replace sorry
-6. `lean_diagnostic_messages` to verify
-7. Do all 5 true-branch list cases first, then mirror for false branch
+Search: `lean_local_search "if_branch_step"` to find callers.
+
+## WORKFLOW
+1. Start with `lean_goal` at L12368
+2. Search for while-related infrastructure
+3. Try to close L12368
+4. If stuck, try L12356
+5. Log your work
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
