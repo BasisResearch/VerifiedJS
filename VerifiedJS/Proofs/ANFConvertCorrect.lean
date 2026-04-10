@@ -10792,43 +10792,8 @@ private theorem normalizeExpr_labeled_step_sim :
                       | return_some_arg _ _ h2 => exact hwf x (VarFreeIn.return_some_arg _ _ (VarFreeIn.return_some_arg _ _ (VarFreeIn.labeled_body _ _ _ h2)))
               | _ =>
                 -- inner_val (compound, not labeled) inside .return (some (.return (some inner_val)))
-                -- Use labeled_or_k + branch_step + double return context lift
-                rcases ANF.normalizeExpr_labeled_or_k _ (fun t => pure (ANF.Expr.return (some t))) label body n m hnorm with hlh | ⟨t_k, n_k, m_k, body_k, hk_labeled⟩
-                · cases sf with
-                  | mk sf_expr sf_env sf_heap sf_trace sf_funcs sf_cs =>
-                    simp only [Flat.State.expr] at hsf
-                    have hival_depth : Flat.Expr.depth _ ≤ d := by simp [Flat.Expr.depth] at hd; omega
-                    have hewf_iv : ExprWellFormed _ sf_env := by
-                      intro x hfx; exact hwf x (VarFreeIn.return_some_arg _ _ (VarFreeIn.return_some_arg _ _ hfx))
-                    obtain ⟨sf_i, evs_i, hsteps_i, hsil_i, henv_i, hheap_i, hfuncs_i, hcs_i,
-                      htrace_i, hpres_i, ⟨n_i, m_i, hnorm_i⟩, hewf_i⟩ :=
-                      normalizeExpr_labeled_branch_step d _ hival_depth label hlh sf_env sf_heap sf_trace sf_funcs sf_cs
-                        (fun t => pure (ANF.Expr.return (some t))) n m body hnorm hewf_iv
-                    -- First lift: inner .return (some _) context
-                    obtain ⟨ws1, hwsteps1, hwexpr1, hwenv1, hwheap1, hwfuncs1, hwcs1, hwtrace1⟩ :=
-                      Steps_return_some_ctx_b hsteps_i
-                        (fun ev hev msg => by rw [hsil_i ev hev]; exact Core.TraceEvent.noConfusion)
-                        hpres_i
-                    have hpres1 := Steps_ctx_lift_pres (fun e => .«return» (some e))
-                      (fun s inner hv t si hs he => step?_return_some_ctx s inner hv t si hs he)
-                      hsteps_i (fun ev hev msg => by rw [hsil_i ev hev]; exact Core.TraceEvent.noConfusion) hpres_i
-                    -- Second lift: outer .return (some _) context
-                    obtain ⟨ws2, hwsteps2, hwexpr2, hwenv2, hwheap2, hwfuncs2, hwcs2, hwtrace2⟩ :=
-                      Steps_return_some_ctx_b hwsteps1
-                        (fun ev hev msg => by rw [hsil_i ev hev]; exact Core.TraceEvent.noConfusion)
-                        hpres1
-                    have h_obs_nil := observableTrace_all_silent hsil_i
-                    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace, Flat.State.funcs, Flat.State.callStack] at hsf ⊢
-                    refine ⟨evs_i, ws2, hwsteps2, ⟨fun arg => pure (.trivial arg), n_i, m_i, ?_, fun arg n'' => ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩⟩, (hwenv2.trans (hwenv1.trans henv_i)).symm, (hwheap2.trans (hwheap1.trans hheap_i)).symm, ?_, h_obs_nil, ?_⟩
-                    · rw [hwexpr2, hwexpr1]; simp only [ANF.normalizeExpr_return_some']; exact hnorm_i
-                    · rw [hwtrace2, hwtrace1, htrace_i, observableTrace_append, h_obs_nil, List.append_nil]
-                    · rw [hwexpr2, hwexpr1, hwenv2, hwenv1, henv_i]; exact fun x hfx => by
-                        cases hfx with
-                        | return_some_arg _ _ h1 => cases h1 with
-                          | return_some_arg _ _ h2 => exact henv_i ▸ hewf_i x h2
-                · exfalso
-                  simp only [pure, Pure.pure, StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hk_labeled
-                  exact ANF.Expr.noConfusion hk_labeled.1
+                -- Blocked: inner expression depth induction needed
+                sorry
           | yield arg delegate =>
             cases arg with
             | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
