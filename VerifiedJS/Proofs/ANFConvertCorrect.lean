@@ -9770,7 +9770,7 @@ private theorem normalizeExpr_labeled_branch_step :
           | seq_l _ _ _ h => exact henv_a ▸ hewf_a x h
           | seq_r _ _ _ h => exact hewf x (VarFreeIn.seq_r _ _ _ h)
     | let_init h_init =>
-      rename_i name init body_let
+      rename_i init name body_let
       simp only [ANF.normalizeExpr_let'] at hnorm
       have hinit_depth : init.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
       obtain ⟨sf_init, evs_init, hsteps_init, hsil_init, henv_init, hheap_init, hfuncs_init, hcs_init,
