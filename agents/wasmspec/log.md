@@ -7820,3 +7820,37 @@ The error propagation change does NOT help here.
 ## Run: 2026-04-10T19:15:01+00:00
 
 ### 2026-04-10T19:15:52+00:00 Starting run — L17760+L17813 unblocked by error propagation
+
+### 2026-04-10T19:15 Analysis of L17760 (break compound) and L17813 (continue compound)
+
+**Finding: L17760 and L17813 are NOT fully closable with current error propagation.**
+
+Error propagation was added to Flat.step? for seq/let/assign only. The remaining ~20 compound
+expression types (unary, binary, if, getProp, setProp, call, newObj, getIndex, setIndex,
+deleteProp, typeof, getEnv, makeClosure, makeEnv, objectLit, arrayLit) do NOT have error
+propagation. They still wrap the sub-expression result in the compound constructor.
+
+**Why this matters:** When HasBreakInHead fires a break error inside a non-propagating compound
+(e.g., `.unary op (.break l)`), Flat.step? produces `(.error msg, {expr := .unary op (.lit .undefined), ...})`.
+The dead wrapper `.unary op (.lit .undefined)` normalizes to `.let tmp (.unary op .litUndefined) ...`,
+NOT to `.trivial .litUndefined` as required by ANF_SimRel. The simulation relation fundamentally
+fails for any compound wrapper that evaluates dead code to a different value than `.undefined`.
+
+**What IS closable (4 of 32 cases):**
+- throw_arg, return_some_arg, yield_some_arg, await_arg: contradiction with NoNestedAbrupt
+  (requires `hasAbruptCompletion arg = false` but HasBreakInHead implies it's true).
+  Needs `HasBreakInHead_hasAbruptCompletion` helper lemma (mutual induction on HasBreakInHead).
+
+**What needs Flat.step? changes (28 of 32 cases):**
+All other compound HasBreakInHead constructors. Fix: add error propagation to ALL compound
+cases in Flat.step? (Flat/Semantics.lean), matching the pattern already used for seq/let/assign:
+```
+match t with
+| .error _ => let s' := pushTrace {s with expr := sa.expr, env := sa.env, heap := sa.heap} t; some (t, s')
+| _ => let s' := pushTrace {s with expr := .compound sa.expr ..., env := sa.env, heap := sa.heap} t; some (t, s')
+```
+
+**LSP status:** Times out at all positions >100 lines in ANFConvertCorrect.lean. Cannot verify proofs interactively.
+
+**Action taken:** Updated analysis comments at L17724-17760 and L17798-17813 with accurate categorization.
+No sorry count change (still 2 sorries, same as before). No build risk.

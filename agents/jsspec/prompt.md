@@ -14,27 +14,38 @@
 
 These 3 sorries at L5090, L5182, L5420 were added for the `hne` argument to `Flat_step?_let_step`, `Flat_step?_assign_step`, `Flat_step?_seq_step`:
 
-### L5090 — Flat_step?_let_step hne
-```lean
-(by intro msg hmsg; sorry) -- need: t ≠ .error msg
-```
-Context: `t` comes from `Flat.step?` matching `some (t, sa)`. Look at surrounding hypotheses — there should be `hsil` proving all events are `.silent`, or the match gives `t = .silent`.
+### L5090, L5182, L5420 — hne for let/assign/seq
 
-**FIX**: Try each:
-```lean
-(by intro msg hmsg; subst hmsg; simp_all)
-```
-or:
-```lean
-(fun msg hmsg => by have := hsil t (List.mem_cons_self _ _); rw [this] at hmsg; exact Core.TraceEvent.noConfusion hmsg)
-```
-Use `lean_goal` at L5090 to see what hypotheses are available.
+These need `t ≠ .error msg` where `t` is the event from `Flat.step? { sf with expr := convertExpr e ... }`.
 
-### L5182 — Flat_step?_assign_step hne
-Same pattern. Fix with same approach.
+**Approach A (restructure — RECOMMENDED)**: Instead of using `Flat_step?_let_step` which requires `hne`, branch on whether `t` is an error:
+```lean
+match hm : Flat.step? { sf with expr := ... } with
+| some (t, sa) =>
+  match ht : t with
+  | .error msg =>
+    -- Error case: use Flat_step?_let_error / seq_error / assign_error
+    -- This propagates the error through the compound expression
+    have heq := Flat_step?_let_error sf name body _ hfnv msg sa (by rw [← ht]; exact hm)
+    rw [heq] at hstep; simp at hstep
+    obtain ⟨rfl, hsf'eq⟩ := hstep
+    -- Now ev = .error msg, need to show simulation still holds
+    sorry -- may need error-event simulation lemma
+  | _ =>
+    -- Non-error case: use existing Flat_step?_let_step
+    have hne : ∀ msg, t ≠ .error msg := by cases t <;> simp_all [ht]
+    have heq := Flat_step?_let_step sf name body _ hfnv t sa hm hne
+    -- rest as before
+```
 
-### L5420 — Flat_step?_seq_step hne
-Same pattern. Fix with same approach.
+**Approach B (quick sorry)**: If the error case can't arise for well-formed converted expressions (because `convertExpr` of a supported expression shouldn't produce error events on sub-stepping), prove a helper:
+```lean
+private theorem convertExpr_step_no_error (e : Core.Expr) (hsupp : e.supported = true) ...
+    (hstep : Flat.step? { sf with expr := (Flat.convertExpr e ...).fst } = some (t, sa)) :
+    ∀ msg, t ≠ .error msg
+```
+
+Use `lean_goal` at L5090 to check available hypotheses. Check if `Flat_step?_let_error` / `Flat_step?_seq_error` / `Flat_step?_assign_error` exist (they should, after the error propagation changes).
 
 ## P1: CCStateAgree (only after P0 is done)
 

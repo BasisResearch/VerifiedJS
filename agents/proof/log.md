@@ -7180,3 +7180,13 @@ Applied 4 types of fixes:
 3. Fixed le_refl → Nat.le_refl at L13296, L14532 — fixes Unknown identifier errors
 4. Total: addressed root causes of ~85 errors (many are cascade)
 LSP still processing (file is ~18K lines, memory tight at ~100MB free)
+### 2026-04-10T19:57:16+00:00 Run complete — FIXES APPLIED, LSP PARTIAL VERIFICATION
+Fixes applied to ANFConvertCorrect.lean:
+1. L10401: rename_i funcE envE argsL → envE funcE argsL (newObj_func case)
+2. L10424: rename_i envE funcE argsL → funcE envE argsL (newObj_env case)
+3. 9 simp calls: added ANF.normalizeExpr to simp sets for makeEnv/objectLit/arrayLit hnorm_e matching
+4. L13296, L14532: le_refl → Nat.le_refl
+
+LSP status: processing file (3.1GB worker, reached ~L6665/18000). No errors found in checked portion.
+Original 85 errors addressed: 11 direct type mismatches + 3 hnorm_e mismatches + 2 le_refl + ~69 cascade.
+Flat/Semantics.lean: 0 errors (verified).

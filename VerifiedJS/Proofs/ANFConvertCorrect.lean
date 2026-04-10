@@ -17721,30 +17721,26 @@ private theorem anfConvert_step_star
           congr 1
         · exact ANF.normalizeExpr_lit_undefined_trivial n
       · simp; intro x hfx; cases hfx
-    -- Compound HasBreakInHead cases: simulation gap for dead code after break.
+    -- Compound HasBreakInHead cases — ANALYSIS (wasmspec 2026-04-10):
     --
-    -- ROOT CAUSE: Flat.step? does not propagate break/continue errors through
-    -- compound expressions. When normalizeExpr e k (trivial-preserving k) produces
-    -- .break label, the flat expression e can be compound (e.g., .seq (.break l) b).
-    -- ANF short-circuits at .break (continuation bypassed, b never normalized).
-    -- Flat evaluates .break (error event), then continues with dead code b which
-    -- may produce ADDITIONAL observable events — breaking trace correspondence.
+    -- STATUS: Error propagation added to seq/let/assign in Flat.step? but NOT to
+    -- other compounds (unary, binary, if, getProp, setProp, call, newObj, etc.).
     --
-    -- ANALYSIS (wasmspec 2026-04-04):
-    -- • Strategy A (normalizeExpr_break_implies_direct) is FALSE:
-    --   normalizeExpr (.seq (.break l) b) k = .break l, but sf.expr is compound.
-    -- • Strategy B (prove directly) fails because after the break error event,
-    --   Flat.step? wraps result in .seq/.let/etc. with dead code. The dead code
-    --   may produce observable events, and its normalization ≠ .trivial .litUndefined.
-    -- • Changing Flat.step? (option 3) is the correct fix but would break
-    --   ClosureConvertCorrect.lean (363 refs, Flat_step?_seq_step theorem at L2141).
+    -- CATEGORY A — Contradiction with NoNestedAbrupt (4 cases):
+    -- throw_arg, return_some_arg, yield_some_arg, await_arg are IMPOSSIBLE because
+    -- NoNestedAbrupt (.throw arg) requires hasAbruptCompletion arg = false, but
+    -- HasBreakInHead arg label implies arg contains a break (hasAbruptCompletion = true).
+    -- CLOSABLE once HasBreakInHead_hasAbruptCompletion helper lemma is added.
     --
-    -- RECOMMENDED FIX: Change Flat.step? to propagate .error events directly
-    -- through compound expressions (matching ECMA-262 abrupt completion semantics).
-    -- For each compound case, when step? subexpr = (.error msg, sa):
-    --   return (.error msg, {s with expr := sa.expr, env := sa.env, heap := sa.heap})
-    -- instead of wrapping in the compound constructor. This skips dead code.
-    -- Requires coordinating with jsspec agent to update ClosureConvertCorrect.lean.
+    -- CATEGORY B — Need error propagation in ALL compound Flat.step? cases (24 cases):
+    -- After Flat.step? fires the break error through a non-propagating compound
+    -- (e.g., .unary op (.break l) → .unary op (.lit .undefined)), the resulting
+    -- expression normalizes to a .let binding, NOT .trivial .litUndefined.
+    -- The sim relation requires normalizeExpr sf'.expr k = .ok (.trivial .litUndefined, m)
+    -- which fails when dead compound wrappers remain.
+    -- FIX: Add error propagation (match t with .error _ => propagate | _ => wrap)
+    -- to ALL compound cases in Flat.step?, not just seq/let/assign.
+    -- This matches ECMA-262 abrupt completion semantics (§6.2.4.4).
     | seq_left _ | seq_right _ | let_init _
     | getProp_obj _ | setProp_obj _ | setProp_val _
     | binary_lhs _ | binary_rhs _ | unary_arg _ | typeof_arg _
@@ -17756,7 +17752,9 @@ private theorem anfConvert_step_star
     | setIndex_obj _ | setIndex_idx _ | setIndex_val _
     | getEnv_env _ | makeClosure_env _ | makeEnv_values _
     | objectLit_props _ | arrayLit_elems _ =>
-      -- SORRY: Requires Flat.step? error propagation (see analysis above).
+      -- SORRY: Needs error propagation in ALL compound Flat.step? cases.
+      -- Cat A (throw/return/yield/await args) need HasBreakInHead_hasAbruptCompletion lemma.
+      -- Cat B (all others) need Flat.step? changes in Flat/Semantics.lean.
       sorry
   | «continue» label =>
     obtain ⟨sa_expr, sa_env, sa_heap, sa_trace⟩ := sa
@@ -17795,9 +17793,10 @@ private theorem anfConvert_step_star
           congr 1
         · exact ANF.normalizeExpr_lit_undefined_trivial n
       · simp; intro x hfx; cases hfx
-    -- Compound HasContinueInHead cases: same root cause as break compound cases.
-    -- Flat.step? does not propagate continue errors through compound expressions.
-    -- Same fix needed: Flat.step? error propagation (see break analysis above).
+    -- Compound HasContinueInHead cases — same analysis as break (wasmspec 2026-04-10):
+    -- Cat A (throw/return/yield/await args): contradiction with NoNestedAbrupt.
+    -- Cat B (all others): need error propagation in ALL compound Flat.step? cases.
+    -- See break compound analysis above for full details.
     | seq_left _ | seq_right _ | let_init _
     | getProp_obj _ | setProp_obj _ | setProp_val _
     | binary_lhs _ | binary_rhs _ | unary_arg _ | typeof_arg _
@@ -17809,7 +17808,7 @@ private theorem anfConvert_step_star
     | setIndex_obj _ | setIndex_idx _ | setIndex_val _
     | getEnv_env _ | makeClosure_env _ | makeEnv_values _
     | objectLit_props _ | arrayLit_elems _ =>
-      -- SORRY: Requires Flat.step? error propagation (see break analysis above).
+      -- SORRY: Same blocker as break compound cases above.
       sorry
 
 set_option maxHeartbeats 400000 in
