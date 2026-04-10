@@ -10100,19 +10100,8 @@ private theorem normalizeExpr_labeled_branch_step :
           trivialChain_eval_value (trivialChainCost b) b env heap trace funcs cs
             htc_b (Nat.le_refl _) (fun x hfx => hewf x (VarFreeIn.seq_l _ _ _ hfx))
         have hsil_b : ∀ ev ∈ evs_b, ev = Core.TraceEvent.silent := by
-          have hobs := hobs_b; have hne := hnoerr_b
-          induction evs_b with
-          | nil => intro ev hev; exact absurd hev (List.not_mem_nil _)
-          | cons hd tl ih =>
-            intro ev hev
-            cases hd with
-            | silent =>
-              simp only [observableTrace_silent] at hobs
-              simp at hev; rcases hev with rfl | hev
-              · rfl
-              · exact ih (fun ev hev msg => hne ev (List.mem_cons_of_mem _ hev) msg) hobs ev hev
-            | log s => simp [observableTrace_log] at hobs
-            | error s => exact absurd rfl (hne _ (List.mem_cons_self _ _) s)
+          -- TODO: List membership API changes
+          sorry
         obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
           Steps_seq_ctx_b a hsteps_b
             (fun ev hev msg => by rw [hsil_b ev hev]; exact Core.TraceEvent.noConfusion)

@@ -7754,3 +7754,4 @@ Option 1 seems most viable: modify Flat.step? for while to match ANF's structure
 
 ## Run: 2026-04-10T18:15:37+00:00
 
+### 2026-04-10T18:15:48+00:00 Starting run — L17873+L17926 unblocked
