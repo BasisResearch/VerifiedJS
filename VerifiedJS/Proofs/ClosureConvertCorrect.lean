@@ -1967,14 +1967,7 @@ private theorem Flat_step?_assign_step (s : Flat.State) (name : String) (fe : Fl
   simp [Flat.step?, hss, hnv]
   split <;> simp_all [Flat.exprValue?]
 
-private theorem Flat_step?_assign_error (s : Flat.State) (name : String) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .assign name fe } =
-      some (.error msg, { expr := sa.expr, env := sa.env, heap := sa.heap,
-                 trace := s.trace ++ [.error msg], funcs := s.funcs, callStack := s.callStack }) := by
-  simp [Flat.step?, hss, hnv, Flat.pushTrace]
+-- Flat_step?_assign_error: removed (unused after by_cases restructuring; had parse issues)
 
 private theorem Core_step?_assign_step (s : Core.State) (name : String) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -2227,14 +2220,7 @@ private theorem Flat_step?_seq_step (s : Flat.State) (b : Flat.Expr) (fe : Flat.
   simp [Flat.step?, hss, hnv]
   split <;> simp_all [Flat.exprValue?]
 
-private theorem Flat_step?_seq_error (s : Flat.State) (b : Flat.Expr) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .seq fe b } =
-      some (.error msg, { expr := sa.expr, env := sa.env, heap := sa.heap,
-                 trace := s.trace ++ [.error msg], funcs := s.funcs, callStack := s.callStack }) := by
-  simp [Flat.step?, hss, hnv, Flat.pushTrace]
+-- Flat_step?_seq_error: removed (unused after by_cases restructuring; had parse issues)
 
 private theorem Core_step?_seq_step (s : Core.State) (b : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -2256,14 +2242,7 @@ private theorem Flat_step?_let_step (s : Flat.State) (name : String) (body : Fla
   simp [Flat.step?, hss, hnv]
   split <;> simp_all [Flat.exprValue?]
 
-private theorem Flat_step?_let_error (s : Flat.State) (name : String) (body : Flat.Expr) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
-    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
-    Flat.step? { s with expr := .«let» name fe body } =
-      some (.error msg, { expr := sa.expr, env := sa.env, heap := sa.heap,
-                 trace := s.trace ++ [.error msg], funcs := s.funcs, callStack := s.callStack }) := by
-  simp [Flat.step?, hss, hnv, Flat.pushTrace]
+-- Flat_step?_let_error: removed (unused after by_cases restructuring; had parse issues)
 
 private theorem Core_step?_let_step (s : Core.State) (name : String) (body : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)

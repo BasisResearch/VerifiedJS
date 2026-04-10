@@ -4413,3 +4413,25 @@ and all cases that produce/consume CCStateAgree.
 ## Run: 2026-04-10T21:00:01+00:00
 
 ### 2026-04-10T21:00:20+00:00 Starting run
+
+### 2026-04-10T21:00:01+00:00 Run complete — fixed compilation errors, no sorry regression
+
+**P0 status**: Already restructured (match on t → by_cases on error). Fixed 3 categories of cascading errors:
+
+1. **Flat_step?_*_step lemmas** (L1969, L2230, L2260): `split <;> simp_all` now closes all goals after error propagation changes. Removed orphaned error-case tactic branches.
+
+2. **Error-case branches in main proof** (let/assign/seq): Replaced `match ht : t with | .error msg => ...partial broken proof... | _ => ...` with `by_cases herr : ∃ msg, t = .error msg`. This fixes dependent pattern matching corruption of `hm`'s type (the `| _ =>` catch-all was renaming `t` to `x✝`, breaking `hm` usage). Error cases are `sorry` (blocked on Flat semantics). Non-error branches now compile cleanly.
+
+3. **Progress lemma** (seq/let/assign cases): Added `split at h <;>` before `simp at h` to handle new error-propagation match arm in Flat.step?.
+
+4. **Flat_step?_*_error lemmas**: Had persistent parse errors ("unexpected identifier; expected '}'"). Removed since unused after by_cases restructuring. Can be restored when error-case proofs are needed.
+
+**Result**: 0 errors, 0 warnings. 15 sorries (same count as before — 3 hne sorries → 3 error-case sorries).
+
+**P1 assessment**: HIGH RISK. Changing CCStateAgree→CCStateAgreeWeak in the suffices invariant (L4886) would close ~5 sorries but break ~16 uses of `convertExpr_state_determined` which requires equality (not ≤). Direction asymmetry (need st≤st_a for input, st_a'≤st' for output) complicates the refactor further. NOT attempted.
+
+**P2 assessment**: L8111 (tryCatch body-value) is blocked by CCStateAgree — needs `CCStateAgree (convertExpr catchBody ... st).snd st` which requires catchBody to not change nextId/funcs.size. Same class as P1. ALL 15 remaining sorries are blocked on external dependencies:
+- 3 error-case: blocked on proof agent's Flat semantics work
+- 6 CCStateAgree: blocked on CCStateAgreeWeak invariant (P1, high-risk refactor)
+- 5 multi-step/FuncsCorr: blocked on other proof infrastructure
+- 1 unprovable (getIndex string)

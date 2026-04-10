@@ -9861,8 +9861,33 @@ private theorem normalizeExpr_labeled_branch_step :
     cases hlh with
     | labeled_direct =>
       -- e = .labeled label body_flat: one step to unwrap
-      -- TODO: simp/cases tactic failures after Flat.step? changes
-      sorry
+      rename_i body_flat
+      simp only [ANF.normalizeExpr] at hnorm
+      simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at hnorm
+      cases hbody : (ANF.normalizeExpr body_flat K).run n with
+      | error msg => simp [hbody] at hnorm
+      | ok val =>
+        obtain ⟨body_anf, m'⟩ := val
+        simp [hbody, pure, Pure.pure, StateT.pure, Except.pure] at hnorm
+        obtain ⟨rfl, rfl⟩ := hnorm
+        refine ⟨⟨body_flat, env, heap, trace ++ [.silent], funcs, cs⟩, [.silent], ?_, ?_, rfl, rfl, rfl, rfl, ?_, ?_, ?_, ?_⟩
+        · exact .tail ⟨by simp [Flat.step?, Flat.pushTrace]⟩ (.refl _)
+        · intro ev hev; simp at hev; exact hev
+        · simp
+        · intro smid evs1 hsteps hlen
+          cases hsteps with
+          | refl => simp
+          | tail hsingle hrest =>
+            obtain ⟨hstep⟩ := hsingle
+            simp [Flat.step?, Flat.pushTrace] at hstep
+            obtain ⟨rfl, rfl⟩ := hstep
+            cases hrest with
+            | refl => simp [List.append_assoc]
+            | tail hsingle2 _ =>
+              obtain ⟨hstep2⟩ := hsingle2
+              simp [Flat.step?] at hstep2
+        · exact ⟨n, m', hbody⟩
+        · intro x hfx; exact hewf x (VarFreeIn.labeled_body _ _ _ hfx)
     | seq_left h_a =>
       rename_i a b
       simp only [ANF.normalizeExpr_seq'] at hnorm
