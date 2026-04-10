@@ -10223,7 +10223,34 @@ private theorem normalizeExpr_labeled_branch_step :
           cases hfx with
           | setProp_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
           | setProp_value _ _ _ _ h => exact hewf x (VarFreeIn.setProp_value _ _ _ _ h)
-    | setProp_val h_val => sorry -- second-position: blocked by trivial mismatch
+    | setProp_val h_val =>
+      rename_i obj prop val
+      simp only [ANF.normalizeExpr] at hnorm
+      rcases Classical.em (HasLabeledInHead obj label) with h_obj_lab | h_obj_nolab
+      · -- HasLabeledInHead obj: recurse on obj (same structure as setProp_obj)
+        have hobj_depth : obj.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+        obtain ⟨sf_obj, evs_obj, hsteps_obj, hsil_obj, henv_obj, hheap_obj, hfuncs_obj, hcs_obj,
+          htrace_obj, hpres_obj, ⟨n_obj, m_obj, hnorm_obj⟩, hewf_obj⟩ :=
+          ih obj hobj_depth label h_obj_lab env heap trace funcs cs _ n m body
+            hnorm (fun x hfx => hewf x (VarFreeIn.setProp_obj _ _ _ _ hfx))
+        obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+          Steps_setProp_obj_ctx_b prop val hsteps_obj
+            (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion)
+            hpres_obj
+        refine ⟨ws, evs_obj, hwsteps, hsil_obj, hwenv.trans henv_obj, hwheap.trans hheap_obj,
+          hwfuncs, hwcs, by rw [hwtrace, htrace_obj], ?_, ?_, ?_⟩
+        · exact Steps_ctx_lift_pres (.setProp · prop val)
+            (fun s inner hv t si hs he => step?_setProp_obj_ctx s inner prop val hv t si hs he)
+            hsteps_obj (fun ev hev msg => by rw [hsil_obj ev hev]; exact Core.TraceEvent.noConfusion) hpres_obj
+        · exact ⟨n_obj, m_obj, by rw [hwexpr]; simp only [ANF.normalizeExpr]; exact hnorm_obj⟩
+        · rw [hwexpr, hwenv, henv_obj]; exact fun x hfx => by
+            cases hfx with
+            | setProp_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
+            | setProp_value _ _ _ _ h => exact hewf x (VarFreeIn.setProp_value _ _ _ _ h)
+      · -- ¬HasLabeledInHead obj: obj is trivialChain; blocked by trivial mismatch
+        -- (normalizeExpr_trivialChain_apply gives ANF trivial t for obj, but flat eval gives
+        -- value v_obj where trivialOfFlatValue v_obj ≠ t for .var/.this cases)
+        sorry
     | getIndex_obj h_obj =>
       rename_i obj idx
       simp only [ANF.normalizeExpr] at hnorm
