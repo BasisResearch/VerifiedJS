@@ -5264,10 +5264,9 @@ private theorem closureConvert_step_simulation
         · simp [sc', ExprAddrWF] at hexprwf ⊢; exact hexprwf.2.2
         · exact ⟨(Flat.convertExpr then_ scope envVar envMap st).snd,
             (Flat.convertExpr else_ scope envVar envMap (Flat.convertExpr then_ scope envVar envMap st).snd).snd, by
-            simp [sc', Flat.convertExpr], sorry, by rw [hconv.2]; exact ⟨rfl, rfl⟩⟩
-            -- BLOCKED: CCStateAgree. st_a must skip then_ conversion state to reach else_,
-            -- but CCStateAgree st st_a requires st_a = (convertExpr then_ ... st).snd which
-            -- differs from st when then_ contains functionDef nodes.
+            simp [sc', Flat.convertExpr],
+            convertExpr_state_mono then_ scope envVar envMap st,
+            by rw [hconv.2]; exact ⟨le_refl _, le_refl _⟩⟩
     | none =>
       have hsupp_cond : cond.supported = true := by
         have h := hsupp; unfold Core.Expr.supported at h; simp [Bool.and_eq_true] at h; exact h.1.1
@@ -8088,12 +8087,9 @@ private theorem closureConvert_step_simulation
         · simp [sc', noCallFrameReturn]
         · simp [sc', ExprAddrWF, ValueAddrWF]
           simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-        · -- CCStateAgree: st' = (convertExpr catchBody ... st).snd, st_a' = st
-          -- Output agreement CCStateAgree st' st requires catchBody to not change CCState.
-          -- Same class as if-else/while_ CCStateAgree architectural issue.
-          exact ⟨st, st, by simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, by rw [hst'_eq]; sorry⟩
-          -- BLOCKED: CCStateAgree. st' = (convertExpr catchBody ... st).snd but st_a' = st.
-          -- Requires catchBody conversion to not change nextId/funcs.size.
+        · exact ⟨st, st, by simp [sc', Flat.convertExpr], ⟨le_refl _, le_refl _⟩, by
+            rw [hst'_eq]
+            exact convertExpr_state_mono catchBody (catchParam :: scope) envVar envMap st⟩
       | some fin => sorry -- BLOCKED: CCStateAgree + tryCatch body-value with finally.
             -- Same CCStateAgree issue as the none case, compounded by finally_ conversion.
     | none =>
