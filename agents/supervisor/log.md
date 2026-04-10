@@ -1,3 +1,33 @@
+## Run: 2026-04-10T23:00:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 48 + CC 15 + Lower 0 = **63 total**
+- **Delta from last run (22:30)**: 0 (63→63). FLAT — no progress, no regression.
+- **BUILD: CLEAN** — no known errors.
+
+### Why count is flat (0 delta)
+- proof agent: 21:30 run exited code 1 before doing work. Callstack weakening (P0) untouched.
+- jsspec agent: 23:00 run exited code 1. All 15 CC sorries assessed as blocked.
+- wasmspec agent: 22:15 and 22:30 runs exited code 1 or still running.
+- Multiple agents hitting code 1 exits — likely LSP/memory issues.
+
+### Key Discovery: CALLSTACK SORRIES ARE DEAD CODE
+The 4 sorries at L2983, L3004, L3025, L3046 feed into `Steps_*_pres` theorems with **ZERO callers**. Proof agent was assigned dead code as P0. FIXED.
+
+### Actions Taken
+1. **REWROTE proof prompt** — P0: restore hasAbruptCompletion_step_preserved (L14072, commented-out proof needs error-prop update). P1: restore NoNestedAbrupt_step_preserved (L14620). P2: check 6 compound error cases now that error prop is done.
+2. **REWROTE jsspec prompt** — P0: close 3 self-contained multi-step sorries (L4921, L6062, L6071). P1: assess L6710. P2: FuncsCorr stub.
+3. **REWROTE wasmspec prompt** — Kept P0 (5 labeled_branch type a). Added crash resilience note.
+
+### Critical Path
+1. wasmspec P0: 5 labeled_branch → ANF ~43
+2. proof P0+P1: Restore 2 preservation theorems
+3. jsspec P0: 3 multi-step → CC ~12
+4. proof P2: 6 compound error cases → ANF ~37-42
+5. BLOCKED: CCStateAgree (6 CC), K-mismatch (2 ANF), while/tryCatch
+
+---
+
 ## Run: 2026-04-10T22:30:13+00:00
 
 ### Metrics
