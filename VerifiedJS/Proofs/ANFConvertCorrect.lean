@@ -14194,7 +14194,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep
         simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-        exact ⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.1 hfuncs_ac heq, hac.2⟩
+        exact ⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.1 hfuncs_ac (by assumption), hac.2⟩
         }
       · exact absurd hstep (by simp)
   | «let» name init body =>
@@ -14205,7 +14205,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep
         simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-        exact ⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.1 hfuncs_ac heq, hac.2⟩
+        exact ⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.1 hfuncs_ac (by assumption), hac.2⟩
         }
       · exact absurd hstep (by simp)
   | «if» cond then_ else_ =>
@@ -14217,7 +14217,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep
         simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-        exact ⟨⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.1.1 hfuncs_ac heq,
+        exact ⟨⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.1.1 hfuncs_ac (by assumption),
         hac.1.2⟩, hac.2⟩
         }
       · exact absurd hstep (by simp)
@@ -14229,7 +14229,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep
         simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-        exact ⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.1 hfuncs_ac heq, hac.2⟩
+        exact ⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.1 hfuncs_ac (by assumption), hac.2⟩
         }
       · exact absurd hstep (by simp)
     · -- lhs is value
@@ -14254,7 +14254,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep
         simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-        exact ⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.1 hfuncs_ac heq, hac.2⟩
+        exact ⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.1 hfuncs_ac (by assumption), hac.2⟩
         }
       · exact absurd hstep (by simp)
     · -- obj is .object addr
@@ -14266,7 +14266,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         split at hstep <;> {
           obtain ⟨_, rfl⟩ := hstep
           simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          exact ⟨hac.1, hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac heq⟩
+          exact ⟨hac.1, hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac (by assumption)⟩
           }
         · exact absurd hstep (by simp)
     · -- obj is other value (non-object)
@@ -14276,7 +14276,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         split at hstep <;> {
           obtain ⟨_, rfl⟩ := hstep
           simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          exact ⟨hac.1, hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac heq⟩
+          exact ⟨hac.1, hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac (by assumption)⟩
           }
         · exact absurd hstep (by simp)
   | getIndex obj idx =>
@@ -14287,7 +14287,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep
         simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-        exact ⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.1 hfuncs_ac heq, hac.2⟩
+        exact ⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.1 hfuncs_ac (by assumption), hac.2⟩
         }
       · exact absurd hstep (by simp)
     · -- obj is .object addr
@@ -14299,7 +14299,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         split at hstep <;> {
           obtain ⟨_, rfl⟩ := hstep
           simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          exact ⟨hac.1, hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac heq⟩
+          exact ⟨hac.1, hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac (by assumption)⟩
           }
         · exact absurd hstep (by simp)
     · -- obj is .string
@@ -14309,7 +14309,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         split at hstep <;> {
           obtain ⟨_, rfl⟩ := hstep
           simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          exact ⟨hac.1, hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac heq⟩
+          exact ⟨hac.1, hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac (by assumption)⟩
           }
         · exact absurd hstep (by simp)
     · -- obj is other value
@@ -14319,7 +14319,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         split at hstep <;> {
           obtain ⟨_, rfl⟩ := hstep
           simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          exact ⟨hac.1, hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac heq⟩
+          exact ⟨hac.1, hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac (by assumption)⟩
           }
         · exact absurd hstep (by simp)
   | setIndex obj idx val =>
@@ -14331,7 +14331,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep
         simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-        exact ⟨⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_obj hfuncs_ac heq,
+        exact ⟨⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_obj hfuncs_ac (by assumption),
         hac_idx⟩, hac_val⟩
         }
       · exact absurd hstep (by simp)
@@ -14343,7 +14343,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
           obtain ⟨_, rfl⟩ := hstep
           simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
           exact ⟨⟨hac_obj,
-          hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_idx hfuncs_ac heq⟩,
+          hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_idx hfuncs_ac (by assumption)⟩,
           hac_val⟩
           }
         · exact absurd hstep (by simp)
@@ -14357,7 +14357,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
             obtain ⟨_, rfl⟩ := hstep
             simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
             exact ⟨⟨hac_obj, hac_idx⟩,
-            hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_val hfuncs_ac heq⟩
+            hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_val hfuncs_ac (by assumption)⟩
             }
           · exact absurd hstep (by simp)
     · -- obj is other value (non-object)
@@ -14368,7 +14368,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
           obtain ⟨_, rfl⟩ := hstep
           simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
           exact ⟨⟨hac_obj,
-          hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_idx hfuncs_ac heq⟩,
+          hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_idx hfuncs_ac (by assumption)⟩,
           hac_val⟩
           }
         · exact absurd hstep (by simp)
@@ -14382,7 +14382,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
             obtain ⟨_, rfl⟩ := hstep
             simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
             exact ⟨⟨hac_obj, hac_idx⟩,
-            hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_val hfuncs_ac heq⟩
+            hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_val hfuncs_ac (by assumption)⟩
             }
           · exact absurd hstep (by simp)
   -- List cases: call, newObj, makeEnv, objectLit, arrayLit
@@ -14395,7 +14395,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep
         simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-        exact ⟨⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_f hfuncs_ac heq,
+        exact ⟨⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_f hfuncs_ac (by assumption),
         hac_e⟩, hac_args⟩
         }
       · exact absurd hstep (by simp)
@@ -14407,7 +14407,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
           obtain ⟨_, rfl⟩ := hstep
           simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
           exact ⟨⟨hac_f,
-          hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_e hfuncs_ac heq⟩,
+          hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_e hfuncs_ac (by assumption)⟩,
           hac_args⟩
           }
         · exact absurd hstep (by simp)
@@ -14456,7 +14456,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep
         simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-        exact ⟨⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_f hfuncs_ac heq,
+        exact ⟨⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_f hfuncs_ac (by assumption),
         hac_e⟩, hac_args⟩
         }
       · exact absurd hstep (by simp)
@@ -14468,7 +14468,7 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
           obtain ⟨_, rfl⟩ := hstep
           simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
           exact ⟨⟨hac_f,
-          hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_e hfuncs_ac heq⟩,
+          hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_e hfuncs_ac (by assumption)⟩,
           hac_args⟩
           }
         · exact absurd hstep (by simp)
@@ -14645,8 +14645,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .unary (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-        harg hfuncs_na hfuncs_ac (by assumption))
+        first
+        | exact .unary (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ harg hfuncs_na hfuncs_ac (by assumption))
+        | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ harg hfuncs_na hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
   | typeof harg =>
@@ -14655,8 +14656,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .typeof (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-        harg hfuncs_na hfuncs_ac (by assumption))
+        first
+        | exact .typeof (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ harg hfuncs_na hfuncs_ac (by assumption))
+        | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ harg hfuncs_na hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
   | assign hval =>
@@ -14665,8 +14667,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .assign (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-        hval hfuncs_na hfuncs_ac (by assumption))
+        first
+        | exact .assign (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hval hfuncs_na hfuncs_ac (by assumption))
+        | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hval hfuncs_na hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
   | getProp hobj =>
@@ -14677,8 +14680,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .getProp (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-        hobj hfuncs_na hfuncs_ac (by assumption))
+        first
+        | exact .getProp (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hobj hfuncs_na hfuncs_ac (by assumption))
+        | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hobj hfuncs_na hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
   | deleteProp hobj =>
@@ -14688,8 +14692,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .deleteProp (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-        hobj hfuncs_na hfuncs_ac (by assumption))
+        first
+        | exact .deleteProp (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hobj hfuncs_na hfuncs_ac (by assumption))
+        | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hobj hfuncs_na hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
   | getEnv henv =>
@@ -14703,8 +14708,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .getEnv (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-        henv hfuncs_na hfuncs_ac (by assumption))
+        first
+        | exact .getEnv (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ henv hfuncs_na hfuncs_ac (by assumption))
+        | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ henv hfuncs_na hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
   | makeClosure henv =>
@@ -14714,8 +14720,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .makeClosure (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-        henv hfuncs_na hfuncs_ac (by assumption))
+        first
+        | exact .makeClosure (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ henv hfuncs_na hfuncs_ac (by assumption))
+        | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ henv hfuncs_na hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
   -- Two sub-exprs
@@ -14725,8 +14732,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .seq (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-        ha hfuncs_na hfuncs_ac (by assumption)) hb
+        first
+        | exact .seq (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ ha hfuncs_na hfuncs_ac (by assumption)) hb
+        | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ ha hfuncs_na hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
   | «let» hinit hbody =>
@@ -14735,8 +14743,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .let (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-        hinit hfuncs_na hfuncs_ac (by assumption)) hbody
+        first
+        | exact .let (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hinit hfuncs_na hfuncs_ac (by assumption)) hbody
+        | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hinit hfuncs_na hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
   | «if» hc hthen helse =>
@@ -14748,8 +14757,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .if (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-        hc hfuncs_na hfuncs_ac (by assumption)) hthen helse
+        first
+        | exact .if (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hc hfuncs_na hfuncs_ac (by assumption)) hthen helse
+        | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hc hfuncs_na hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
   | binary hlhs hrhs =>
@@ -14757,16 +14767,18 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .binary (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-        hlhs hfuncs_na hfuncs_ac (by assumption)) hrhs
+        first
+        | exact .binary (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hlhs hfuncs_na hfuncs_ac (by assumption)) hrhs
+        | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hlhs hfuncs_na hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
     · split at hstep
       · split at hstep
         split at hstep <;> {
           obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-          exact .binary .lit (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-          hrhs hfuncs_na hfuncs_ac (by assumption))
+          first
+          | exact .binary .lit (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hrhs hfuncs_na hfuncs_ac (by assumption))
+          | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hrhs hfuncs_na hfuncs_ac (by assumption)
           }
         · exact absurd hstep (by simp)
       · obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]; exact .lit
@@ -14775,8 +14787,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .setProp (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-        hobj hfuncs_na hfuncs_ac (by assumption)) hval
+        first
+        | exact .setProp (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hobj hfuncs_na hfuncs_ac (by assumption)) hval
+        | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hobj hfuncs_na hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
     · split at hstep
@@ -14784,8 +14797,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       · split at hstep
         split at hstep <;> {
           obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-          exact .setProp hobj (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-          hval hfuncs_na hfuncs_ac (by assumption))
+          first
+          | exact .setProp hobj (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hval hfuncs_na hfuncs_ac (by assumption))
+          | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hval hfuncs_na hfuncs_ac (by assumption)
           }
         · exact absurd hstep (by simp)
     · split at hstep
@@ -14793,8 +14807,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       · split at hstep
         split at hstep <;> {
           obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-          exact .setProp hobj (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-          hval hfuncs_na hfuncs_ac (by assumption))
+          first
+          | exact .setProp hobj (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hval hfuncs_na hfuncs_ac (by assumption))
+          | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hval hfuncs_na hfuncs_ac (by assumption)
           }
         · exact absurd hstep (by simp)
   | getIndex hobj hidx =>
@@ -14802,8 +14817,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .getIndex (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-        hobj hfuncs_na hfuncs_ac (by assumption)) hidx
+        first
+        | exact .getIndex (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hobj hfuncs_na hfuncs_ac (by assumption)) hidx
+        | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hobj hfuncs_na hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
     · split at hstep
@@ -14811,8 +14827,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       · split at hstep
         split at hstep <;> {
           obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-          exact .getIndex hobj (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-          hidx hfuncs_na hfuncs_ac (by assumption))
+          first
+          | exact .getIndex hobj (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hidx hfuncs_na hfuncs_ac (by assumption))
+          | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hidx hfuncs_na hfuncs_ac (by assumption)
           }
         · exact absurd hstep (by simp)
     · split at hstep
@@ -14820,8 +14837,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       · split at hstep
         split at hstep <;> {
           obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-          exact .getIndex hobj (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-          hidx hfuncs_na hfuncs_ac (by assumption))
+          first
+          | exact .getIndex hobj (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hidx hfuncs_na hfuncs_ac (by assumption))
+          | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hidx hfuncs_na hfuncs_ac (by assumption)
           }
         · exact absurd hstep (by simp)
     · split at hstep
@@ -14829,8 +14847,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       · split at hstep
         split at hstep <;> {
           obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-          exact .getIndex hobj (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-          hidx hfuncs_na hfuncs_ac (by assumption))
+          first
+          | exact .getIndex hobj (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hidx hfuncs_na hfuncs_ac (by assumption))
+          | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hidx hfuncs_na hfuncs_ac (by assumption)
           }
         · exact absurd hstep (by simp)
   | setIndex hobj hidx hval =>
@@ -14838,16 +14857,18 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .setIndex (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-        hobj hfuncs_na hfuncs_ac (by assumption)) hidx hval
+        first
+        | exact .setIndex (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hobj hfuncs_na hfuncs_ac (by assumption)) hidx hval
+        | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hobj hfuncs_na hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
     · split at hstep
       · split at hstep
         split at hstep <;> {
           obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-          exact .setIndex hobj (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-          hidx hfuncs_na hfuncs_ac (by assumption)) hval
+          first
+          | exact .setIndex hobj (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hidx hfuncs_na hfuncs_ac (by assumption)) hval
+          | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hidx hfuncs_na hfuncs_ac (by assumption)
           }
         · exact absurd hstep (by simp)
       · split at hstep
@@ -14855,16 +14876,18 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
         · split at hstep
           split at hstep <;> {
             obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-            exact .setIndex hobj hidx (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-            hval hfuncs_na hfuncs_ac (by assumption))
+            first
+            | exact .setIndex hobj hidx (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hval hfuncs_na hfuncs_ac (by assumption))
+            | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hval hfuncs_na hfuncs_ac (by assumption)
             }
           · exact absurd hstep (by simp)
     · split at hstep
       · split at hstep
         split at hstep <;> {
           obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-          exact .setIndex hobj (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-          hidx hfuncs_na hfuncs_ac (by assumption)) hval
+          first
+          | exact .setIndex hobj (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hidx hfuncs_na hfuncs_ac (by assumption)) hval
+          | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hidx hfuncs_na hfuncs_ac (by assumption)
           }
         · exact absurd hstep (by simp)
       · split at hstep
@@ -14872,8 +14895,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
         · split at hstep
           split at hstep <;> {
             obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-            exact .setIndex hobj hidx (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-            hval hfuncs_na hfuncs_ac (by assumption))
+            first
+            | exact .setIndex hobj hidx (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hval hfuncs_na hfuncs_ac (by assumption))
+            | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hval hfuncs_na hfuncs_ac (by assumption)
             }
           · exact absurd hstep (by simp)
   -- Abrupt completion forms: throw/return/yield/await
@@ -14883,8 +14907,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .throw (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _
-        harg_ac hfuncs_ac (by assumption))
+        first
+        | exact .throw (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ harg_ac hfuncs_ac (by assumption))
+        | exact hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ harg_ac hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
   | return_none =>
@@ -14896,8 +14921,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .return_some (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _
-        harg_ac hfuncs_ac (by assumption))
+        first
+        | exact .return_some (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ harg_ac hfuncs_ac (by assumption))
+        | exact hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ harg_ac hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
   | yield_none =>
@@ -14909,8 +14935,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .yield_some (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _
-        harg_ac hfuncs_ac (by assumption))
+        first
+        | exact .yield_some (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ harg_ac hfuncs_ac (by assumption))
+        | exact hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ harg_ac hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
   | await harg_ac =>
@@ -14919,8 +14946,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .await (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _
-        harg_ac hfuncs_ac (by assumption))
+        first
+        | exact .await (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ harg_ac hfuncs_ac (by assumption))
+        | exact hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ harg_ac hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
   -- List cases
@@ -14929,16 +14957,18 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .call (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-        hf hfuncs_na hfuncs_ac (by assumption)) henv hargs
+        first
+        | exact .call (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hf hfuncs_na hfuncs_ac (by assumption)) henv hargs
+        | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hf hfuncs_na hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
     · split at hstep
       · split at hstep
         split at hstep <;> {
           obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-          exact .call hf (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-          henv hfuncs_na hfuncs_ac (by assumption)) hargs
+          first
+          | exact .call hf (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ henv hfuncs_na hfuncs_ac (by assumption)) hargs
+          | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ henv hfuncs_na hfuncs_ac (by assumption)
           }
         · exact absurd hstep (by simp)
       · split at hstep
@@ -14967,9 +14997,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
               simp only [Flat.pushTrace, List.append_assoc, List.singleton_append]
               have _depth_lt := Flat.firstNonValueExpr_depth hfnv
               have hdecomp := firstNonValueExpr_noNestedAbrupt_preserved hfnv hargs
-              exact .call hf henv (hdecomp.2.2 _
-              (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-              hdecomp.1 hfuncs_na hfuncs_ac (by assumption)))
+              first
+              | exact .call hf henv (hdecomp.2.2 _ (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hdecomp.1 hfuncs_na hfuncs_ac (by assumption)))
+              | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hdecomp.1 hfuncs_na hfuncs_ac (by assumption)
               }
             · exact absurd hstep (by simp)
           · exact absurd hstep (by simp)
@@ -14978,16 +15008,18 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     · split at hstep
       split at hstep <;> {
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .newObj (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-        hf hfuncs_na hfuncs_ac (by assumption)) henv hargs
+        first
+        | exact .newObj (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hf hfuncs_na hfuncs_ac (by assumption)) henv hargs
+        | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hf hfuncs_na hfuncs_ac (by assumption)
         }
       · exact absurd hstep (by simp)
     · split at hstep
       · split at hstep
         split at hstep <;> {
           obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-          exact .newObj hf (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-          henv hfuncs_na hfuncs_ac (by assumption)) hargs
+          first
+          | exact .newObj hf (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ henv hfuncs_na hfuncs_ac (by assumption)) hargs
+          | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ henv hfuncs_na hfuncs_ac (by assumption)
           }
         · exact absurd hstep (by simp)
       · split at hstep
@@ -15000,9 +15032,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
               simp only [Flat.pushTrace, List.append_assoc, List.singleton_append]
               have _depth_lt := Flat.firstNonValueExpr_depth hfnv
               have hdecomp := firstNonValueExpr_noNestedAbrupt_preserved hfnv hargs
-              exact .newObj hf henv (hdecomp.2.2 _
-              (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-              hdecomp.1 hfuncs_na hfuncs_ac (by assumption)))
+              first
+              | exact .newObj hf henv (hdecomp.2.2 _ (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hdecomp.1 hfuncs_na hfuncs_ac (by assumption)))
+              | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hdecomp.1 hfuncs_na hfuncs_ac (by assumption)
               }
             · exact absurd hstep (by simp)
           · exact absurd hstep (by simp)
@@ -15017,9 +15049,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
           simp only [Flat.pushTrace, List.append_assoc, List.singleton_append]
           have _depth_lt := Flat.firstNonValueExpr_depth hfnv
           have hdecomp := firstNonValueExpr_noNestedAbrupt_preserved hfnv hvals
-          exact .makeEnv (hdecomp.2.2 _
-          (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-          hdecomp.1 hfuncs_na hfuncs_ac (by assumption)))
+          first
+          | exact .makeEnv (hdecomp.2.2 _ (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hdecomp.1 hfuncs_na hfuncs_ac (by assumption)))
+          | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hdecomp.1 hfuncs_na hfuncs_ac (by assumption)
           }
         · exact absurd hstep (by simp)
       · exact absurd hstep (by simp)
@@ -15034,9 +15066,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
           simp only [Flat.pushTrace, List.append_assoc, List.singleton_append]
           have _depth_lt := Flat.firstNonValueProp_depth hfnv
           have hdecomp := firstNonValueProp_noNestedAbrupt_preserved hfnv hprops
-          exact .objectLit (hdecomp.2.2 _
-          (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-          hdecomp.1 hfuncs_na hfuncs_ac (by assumption)))
+          first
+          | exact .objectLit (hdecomp.2.2 _ (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hdecomp.1 hfuncs_na hfuncs_ac (by assumption)))
+          | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hdecomp.1 hfuncs_na hfuncs_ac (by assumption)
           }
         · exact absurd hstep (by simp)
       · exact absurd hstep (by simp)
@@ -15051,9 +15083,9 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
           simp only [Flat.pushTrace, List.append_assoc, List.singleton_append]
           have _depth_lt := Flat.firstNonValueExpr_depth hfnv
           have hdecomp := firstNonValueExpr_noNestedAbrupt_preserved hfnv helems
-          exact .arrayLit (hdecomp.2.2 _
-          (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-          hdecomp.1 hfuncs_na hfuncs_ac (by assumption)))
+          first
+          | exact .arrayLit (hdecomp.2.2 _ (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hdecomp.1 hfuncs_na hfuncs_ac (by assumption)))
+          | exact NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _ hdecomp.1 hfuncs_na hfuncs_ac (by assumption)
           }
         · exact absurd hstep (by simp)
       · exact absurd hstep (by simp)
