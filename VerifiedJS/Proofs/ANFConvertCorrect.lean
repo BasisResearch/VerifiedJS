@@ -11205,16 +11205,16 @@ private theorem normalizeExpr_labeled_step_sim :
         | some fin =>
           simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
           repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
-      | e =>
+      | _ =>
         -- compound expression: use normalizeExpr_labeled_or_k + normalizeExpr_labeled_branch_step
-        rcases ANF.normalizeExpr_labeled_or_k e k label body n m hnorm with hlh | ⟨t_k, n_k, m_k, body_k, hk_labeled⟩
-        · -- HasLabeledInHead e label → use branch_step
+        rcases ANF.normalizeExpr_labeled_or_k _ k label body n m hnorm with hlh | ⟨t_k, n_k, m_k, body_k, hk_labeled⟩
+        · -- HasLabeledInHead → use branch_step
           cases sf with
           | mk sf_expr sf_env sf_heap sf_trace sf_funcs sf_cs =>
             simp only [Flat.State.expr] at hsf; subst hsf
             simp only [Flat.State.env, Flat.State.heap, Flat.State.trace, Flat.State.funcs, Flat.State.callStack] at hwf ⊢
             obtain ⟨sf', evs, hsteps, hsil, henv, hheap, hfuncs, hcs, htrace, _, ⟨n', m', hnorm'⟩, hewf'⟩ :=
-              normalizeExpr_labeled_branch_step (d + 1) e hd label hlh sf_env sf_heap sf_trace sf_funcs sf_cs k n m body hnorm hwf
+              normalizeExpr_labeled_branch_step (d + 1) _ hd label hlh sf_env sf_heap sf_trace sf_funcs sf_cs k n m body hnorm hwf
             have h_obs_nil := observableTrace_all_silent hsil
             refine ⟨evs, sf', hsteps, ⟨k, n', m', hnorm', hk⟩, henv, hheap, ?_, h_obs_nil, hewf'⟩
             rw [htrace, observableTrace_append, h_obs_nil, List.append_nil]

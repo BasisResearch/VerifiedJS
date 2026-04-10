@@ -1,4 +1,4 @@
-# jsspec — Fix Flat_step?_seq_step + CCStateAgree weakening
+# jsspec — Fix CC Flat.step? breakage + CCStateAgreeWeak
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -8,69 +8,59 @@
 
 ## MEMORY: ~3.5GB free. USE LSP ONLY.
 
-## STATUS: The proof agent changed Flat.step? to propagate errors through seq/let/assign. CC currently has NO errors but it may break after a rebuild if it depends on seq stepping behavior. Check immediately.
+## STATUS: CC is broken because proof agent changed Flat.step? to propagate errors through seq/let/assign.
 
-## ===== P0: VERIFY CC BUILD STATUS =====
+## ===== P0: FIX CC BUILD — THIS IS BLOCKING EVERYTHING =====
 
-Run `lean_diagnostic_messages` on ClosureConvertCorrect.lean with severity=error. If there are new errors, especially at `Flat_step?_seq_step` (around L2204-2211), fix them FIRST.
+Three theorems need `hnoerr` (non-error) hypothesis added:
 
-The Flat.step? change adds a `match t with | .error _ => ... | _ => ...` branch in seq/let/assign. This means `Flat_step?_seq_step` needs a non-error hypothesis.
+### Fix 1: Flat_step?_assign_step (~L1961)
+The new Flat.step? for `.assign name init` now matches on `t` (the trace event from stepping `init`). If `t = .error msg`, it propagates the error directly. Otherwise it wraps as before.
 
-**If broken, fix with:**
+**Add hypothesis and split**:
 ```lean
-private theorem Flat_step?_seq_step (s : Flat.State) (b : Flat.Expr) (fe : Flat.Expr)
+private theorem Flat_step?_assign_step (s : Flat.State) (name : Flat.VarName) (fe : Flat.Expr)
     (hnv : Flat.exprValue? fe = none)
     (t : Core.TraceEvent) (sa : Flat.State)
     (hss : Flat.step? { s with expr := fe } = some (t, sa))
-    (hne : ∀ msg, t ≠ .error msg) :
-    Flat.step? { s with expr := .seq fe b } =
-      some (t, { expr := .seq sa.expr b, env := sa.env, heap := sa.heap,
-                 trace := s.trace ++ [t], funcs := s.funcs, callStack := s.callStack }) := by
+    (hne : ∀ msg, t ≠ .error msg) :  -- ADD THIS
+    ... := by
   simp [Flat.step?, hss, hnv]
   split <;> simp_all [Flat.exprValue?]
   · rename_i msg heq; exact absurd rfl (hne msg)
 ```
 
-Similarly fix `Flat_step?_let_step` and `Flat_step?_assign_step` if they exist and break.
+### Fix 2: Flat_step?_seq_step (~L2204)
+Same pattern as assign:
+```lean
+    (hne : ∀ msg, t ≠ .error msg) :  -- ADD THIS
+```
+And add the split/absurd proof.
 
-Add companion error-propagation theorems:
+### Fix 3: Flat_step?_let_step (~L2222)
+Same pattern.
+
+### Fix callers
+After adding `hne` to all three, EVERY caller will need to provide the non-error proof. Each caller should be in a context where the trace event is known (e.g., `.silent`). Add `(by intro msg h; simp at h)` or `(by intro msg h; exact Core.TraceEvent.noConfusion h)` depending on the event type.
+
+Use `lean_diagnostic_messages` after each fix to find broken callers.
+
+### Add error-propagation companions
+Also add these companion theorems for use by other proofs:
 ```lean
 private theorem Flat_step?_seq_error (s : Flat.State) (b : Flat.Expr) (fe : Flat.Expr)
-    (hnv : Flat.exprValue? fe = none)
-    (msg : String) (sa : Flat.State)
+    (hnv : Flat.exprValue? fe = none) (msg : String) (sa : Flat.State)
     (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
     Flat.step? { s with expr := .seq fe b } =
       some (.error msg, { expr := sa.expr, env := sa.env, heap := sa.heap,
                  trace := s.trace ++ [.error msg], funcs := s.funcs, callStack := s.callStack }) := by
   simp [Flat.step?, hss, hnv]
 ```
+(And similarly for let_error, assign_error.)
 
-Then fix ALL callers of `Flat_step?_seq_step` to supply the `hne` argument. Each caller is in a branch where the event is known to be non-error (e.g., `.silent` or a specific non-error event). Add `(by intro msg h; simp at h)` or similar.
+## ===== P1: CCStateAgreeWeak (only after P0 is clean) =====
 
-## ===== P1: CCStateAgreeWeak (only after P0 is stable) =====
-
-Add a weak agreement + monotonicity lemma:
-```lean
-private abbrev CCStateAgreeWeak (st1 st2 : Flat.CCState) : Prop :=
-  st1.nextId ≤ st2.nextId ∧ st1.funcs.size ≤ st2.funcs.size
-
-private theorem convertExpr_nextId_le (e : Core.Expr) (env : List Core.VarName)
-    (st : Flat.CCState) : st.nextId ≤ (Flat.convertExpr e env st).snd.nextId := by
-  sorry -- prove by structural induction on e
-
-private theorem convertExpr_funcs_size_le (e : Core.Expr) (env : List Core.VarName)
-    (st : Flat.CCState) : st.funcs.size ≤ (Flat.convertExpr e env st).snd.funcs.size := by
-  sorry -- prove by structural induction on e
-```
-
-Then use `CCStateAgreeWeak` at the 6 blocked sorry sites:
-- L5237 (if-true CCStateAgree)
-- L5262 (if-false CCStateAgree)
-- L8089, L8092 (tryCatch)
-- L8165 (while_ CCStateAgree)
-- L8275 (while_ CCStateAgree)
-
-This requires changing the `suffices` invariant for those cases. Be careful not to break working proofs.
+Same as before — add CCStateAgreeWeak and the monotonicity lemmas. See previous prompt version for details. Target sorries: L5267, L5834, L8094, L8097, L8170, L8280.
 
 ## LOG YOUR WORK
 **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/jsspec/log.md`
