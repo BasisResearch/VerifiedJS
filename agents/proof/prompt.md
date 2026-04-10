@@ -1,78 +1,65 @@
-# proof — FIX REMAINING ~20 BUILD ERRORS
+# proof — CLOSE 7 COMPOUND SORRIES (NOW UNBLOCKED)
 
 ## RULES
-- Edit: ANFConvertCorrect.lean AND Flat/Semantics.lean
-- **DO NOT** run `lake build` — memory is tight. USE LSP ONLY.
+- Edit: ANFConvertCorrect.lean ONLY (except L17760-17813 which wasmspec owns)
+- **DO NOT** run `lake build` — USE LSP ONLY.
 - **DO NOT** edit ClosureConvertCorrect.lean (jsspec owns it)
 - **DO NOT** use while/until loops, sleep loops, pgrep
 
-## MEMORY: 7.7GB total, NO swap. ~3.5GB free. USE LSP ONLY — no `lake build`.
+## MEMORY: 7.7GB total, NO swap. ~3.5GB free. USE LSP ONLY.
 
 ## CONCURRENCY
-- wasmspec works on L17873, L17926 (break/continue compound error propagation)
+- wasmspec works on L17760, L17813 (break/continue compound)
 - jsspec works on ClosureConvertCorrect.lean
-- **YOU** own Flat/Semantics.lean + all of ANFConvertCorrect.lean EXCEPT L17873-17926
+- **YOU** own ALL of ANFConvertCorrect.lean EXCEPT L17760-17813
 
-## STATUS: BUILD PARTIALLY FIXED
+## STATUS: Flat.step? ERROR PROPAGATION IS DONE — COMPOUND SORRIES UNBLOCKED
 
-The supervisor just fixed ~80 of the ~100 errors by changing `| _ =>` to `| e =>` at L11208 and removing `.symm` from `henv`/`hheap` at L11219. **~20 errors remain.** Fix them ALL.
+The supervisor fixed the ANF build errors (22 errors → 0). Flat.step? now propagates errors through seq/let/assign. **The compound sorries that were "blocked by error propagation" are NOW CLOSABLE.**
 
-## ===== REMAINING ERRORS — FIX THESE =====
+## ===== P0: CLOSE THESE 7 SORRIES — ALL UNBLOCKED =====
 
-### Category 1: L9752-9808 — labeled_direct section broken by Flat.step? changes
+The old blocker was: `.seq (.throw (.lit v)) b` → Flat.step? wraps as `.seq (.lit .undefined) b`.
+**NOW**: `.seq (.throw (.lit v)) b` → Flat.step? propagates error directly, `sf'.expr = sa.expr`.
 
-**L9752**: `simp [hbf] at hnorm` — simp made no progress. After Flat.step? error propagation changes, the match structure is different. Try `simp only [StateT.run, Except.bind] at hnorm` or add the new match lemma.
+### Target 1: L11772 — normalizeExpr_throw_step_sim compound
+The compound cases (seq_left, let_init, etc.) where `.throw` is inside a compound expr.
+With error propagation, when throw fires inside `.seq a b`:
+- `step?` returns `(.error msg, {expr = .lit .undefined, ...})` directly (no `.seq` wrap)
+- `sf'.env = sf.env ∧ sf'.heap = sf.heap` holds since no dead code executes
 
-**L9755**: `cases hbf` fails — dependent elimination changed. Try `split at hnorm` instead of `cases hbf`.
+**Key lemma**: `step?_seq_error` at ~L2271 of ANFConvertCorrect.lean.
 
-**L9796-9808**: `init` is a `String` (Flat.VarName), not a `Flat.Expr`. The `cases` destructured differently. Use `rename_i` to get the correct bindings:
-- `init` should be the init expression, `name` should be the variable name
-- Fix: Add `rename_i name init body_let` (or similar) before L9796 to get correct names
-- Then L9796: `init.depth` → correct expr's `.depth`
-- L9799: `ih init` → `ih` on the correct expr
-- L9802: `Steps_let_init_ctx_b name` → swap if needed
-- L9807-9808: similar swaps
+Proof approach:
+1. `lean_goal` at L11772 to see exact goal
+2. Match on which HasThrowInHead constructor gives the compound case
+3. Use `step?_seq_error`/`step?_let_init_error` to show Flat.step? propagates the error
+4. Derive env/heap preservation from the error propagation semantics
 
-**If you can't figure out the correct names**: use `lean_goal` at L9796 to see what's in scope.
+### Target 2: L11923 — return compound inner_val
+Same as Target 1 but for `.return (some inner_val)` where inner_val is compound.
 
-### Category 2: L10126-10136 — List argument mismatches
+### Target 3: L11929 — compound HasReturnInHead
+Cases where return is inside compound expr (seq/let/assign). Now closable.
 
-**L10126**: `absurd hev (List.not_mem_nil _)` — the `_` can't be synthesized because `List.not_mem_nil` returns `False`, not `¬ ev ∈ []`. Fix: `exact absurd hev (List.not_mem_nil ev)` or just `exact (List.not_mem_nil _ hev).elim`.
+### Target 4: L12106 — compound HasAwaitInHead
+Same pattern for await.
 
-**L10134**: `ih` expects `Flat.Steps ...` but gets a function. Wrong argument order. Check `ih` type with `lean_goal` and fix.
+### Target 5: L12264 — compound HasYieldInHead
+Same pattern for yield.
 
-**L10136, L10543, L10575, L10606**: `List.mem_cons_self` is not a function — it's used incorrectly. `List.mem_cons_self a l : a ∈ a :: l`. Don't apply it to arguments.
+### DO NOT touch L17760, L17813 — wasmspec owns those.
 
-### Category 3: L10433-10527 — funcE/argsL swapped
+## ===== P1: If time permits — investigate L4312, L9749 =====
 
-In `call_env` and `newObj_env` cases, `funcE : List Flat.Expr` and `argsL : Flat.Expr` but are used as if swapped. The `rename_i` or `cases` produced them in wrong order.
-
-**FIX**: Add `rename_i envE argsL funcE` (swap funcE and argsL) right after the case pattern, OR swap all uses:
-- `HasLabeledInHead funcE` → `HasLabeledInHead argsL` (since argsL is the single expr)
-- `funcE.depth` → `argsL.depth`
-- `ih funcE` → `ih argsL`
-- etc.
-
-Do this for BOTH call_env (~L10433) AND newObj_env (~L10508).
-
-### Category 4: L10553/10585/10616 — normalizeExprList decomposition mismatch
-
-`hnorm_e` has shape `normalizeExpr sf_e.expr (fun t => normalizeExprList rest ...)` but goal expects `normalizeExprList ([] ++ [sf_e.expr] ++ rest) ...`.
-
-**FIX**: These need a conversion lemma showing the two are equal, OR change the decomposition approach. If you can't fix cleanly, **sorry these 3 cases**.
-
-### Category 5: L10832 — can't synthesize placeholder
-
-A `Flat.Expr` is needed in a `return (some (return (some (lit v))))` context. The `_` placeholder can't be inferred. Use `lean_goal` to see what's expected and provide it explicitly.
+These haven't been analyzed. Run `lean_goal` to check.
 
 ## WORKFLOW
-1. **FIRST**: `echo "### $(date -Iseconds) Starting run — FIXING REMAINING BUILD ERRORS" >> agents/proof/log.md`
-2. Run `lean_diagnostic_messages` on ANFConvertCorrect.lean severity=error to see current errors
-3. Fix errors starting with Category 3 (funcE/argsL swap — biggest impact, ~10 errors)
-4. Then Category 1 (L9752-9808)
-5. Then Category 2 (L10126-10136)
-6. Category 4 and 5: sorry if you can't fix in <5 min each
-7. After each fix, run `lean_diagnostic_messages` again to verify
-8. **LAST**: `echo "### $(date -Iseconds) Run complete — [BUILD STATUS] [error count]" >> agents/proof/log.md`
+1. **FIRST**: `echo "### $(date -Iseconds) Starting run — 7 compound sorries unblocked" >> agents/proof/log.md`
+2. Start with L11772 — the throw compound. Run `lean_goal` first.
+3. Use `lean_multi_attempt` to test tactics before editing
+4. After closing each sorry, run `lean_diagnostic_messages` on the surrounding region
+5. Move to next target
+6. **LAST**: `echo "### $(date -Iseconds) Run complete — [N] sorries closed" >> agents/proof/log.md`
 
-## NON-NEGOTIABLE: The build MUST compile when you're done. If ANY error remains after 20 minutes of trying, sorry the broken proof and move on.
+## NON-NEGOTIABLE: Do NOT introduce new errors. If a sorry can't be closed in 5 min, move to the next one.
