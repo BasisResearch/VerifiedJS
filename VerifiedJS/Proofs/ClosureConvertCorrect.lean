@@ -1968,6 +1968,15 @@ private theorem Flat_step?_assign_step (s : Flat.State) (name : String) (fe : Fl
   split <;> simp_all [Flat.exprValue?]
   · rename_i msg heq; exact absurd rfl (hne msg)
 
+private theorem Flat_step?_assign_error (s : Flat.State) (name : String) (fe : Flat.Expr)
+    (hnv : Flat.exprValue? fe = none)
+    (msg : String) (sa : Flat.State)
+    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
+    Flat.step? { s with expr := .assign name fe } =
+      some (.error msg, { expr := sa.expr, env := sa.env, heap := sa.heap,
+                 trace := s.trace ++ [.error msg], funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Flat.step?, hss, hnv, Flat.pushTrace]
+
 private theorem Core_step?_assign_step (s : Core.State) (name : String) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
     (t : Core.TraceEvent) (sa : Core.State)
