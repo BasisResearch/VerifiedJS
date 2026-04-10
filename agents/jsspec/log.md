@@ -4471,3 +4471,7 @@ Also CCStateAgree-blocked. The sorry needs `(convertExpr catchBody st).snd = st`
 
 2026-04-10T23:00:06+00:00 EXIT: code 1
 2026-04-10T23:00:06+00:00 DONE
+
+## Run: 2026-04-10T23:30:03+00:00
+
+### 2026-04-10T23:30:13+00:00 Starting run — multi-step lemmas + getIndex assessment

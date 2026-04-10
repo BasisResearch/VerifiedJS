@@ -10286,9 +10286,12 @@ private theorem normalizeExpr_labeled_branch_step :
           | silent => rfl
           | log s =>
             exfalso
-            have hmem : Core.TraceEvent.log s ∈ observableTrace evs_b := by
-              simp only [observableTrace]; exact List.mem_filter.mpr ⟨hev, by simp [BEq.beq, instBEqTraceEvent]⟩
-            rw [hobs_b] at hmem; exact List.not_mem_nil _ hmem
+            have : observableTrace evs_b ≠ [] := by
+              intro h; rw [h] at hobs_b
+              have : Core.TraceEvent.log s ∈ observableTrace evs_b := by
+                simp only [observableTrace, List.mem_filter]; exact ⟨hev, by rfl⟩
+              rw [hobs_b] at this; exact List.not_mem_nil _ this
+            exact this hobs_b
           | error s =>
             exfalso; exact hnoerr_b _ hev s rfl
         obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
