@@ -4649,120 +4649,62 @@ private theorem HasBreakInHead_not_value (e : Flat.Expr) (label : Option Flat.La
     (h : HasBreakInHead e label) : Flat.exprValue? e = none := by
   cases h <;> simp [Flat.exprValue?]
 
-set_option autoImplicit true in
 mutual
 /-- HasBreakInHead implies hasAbruptCompletion is true. -/
-private theorem HasBreakInHead_hasAbruptCompletion
-    (h : HasBreakInHead e label) : hasAbruptCompletion e = true := by
-  cases h with
-  | break_direct => rfl
-  | throw_arg _ | return_some_arg _ | yield_some_arg _ | await_arg _ => rfl
-  | seq_left h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | seq_right h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | let_init h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | getProp_obj h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | setProp_obj h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | setProp_val h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | binary_lhs h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | binary_rhs h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | unary_arg h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | typeof_arg h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | deleteProp_obj h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | assign_val h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | call_func h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | call_env h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | call_args h =>
-    simp [hasAbruptCompletion, HasBreakInHeadList_hasAbruptCompletionList h]
-  | newObj_func h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | newObj_env h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | newObj_args h =>
-    simp [hasAbruptCompletion, HasBreakInHeadList_hasAbruptCompletionList h]
-  | if_cond h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | getIndex_obj h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | getIndex_idx h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | setIndex_obj h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | setIndex_idx h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | setIndex_val h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | getEnv_env h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | makeClosure_env h => simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
-  | makeEnv_values h =>
-    simp [hasAbruptCompletion, HasBreakInHeadList_hasAbruptCompletionList h]
-  | objectLit_props h =>
-    simp [hasAbruptCompletion, HasBreakInHeadProps_hasAbruptCompletionProps h]
-  | arrayLit_elems h =>
-    simp [hasAbruptCompletion, HasBreakInHeadList_hasAbruptCompletionList h]
+private def HasBreakInHead_hasAbruptCompletion
+    {e : Flat.Expr} {label : Option Flat.LabelName}
+    (h : HasBreakInHead e label) : hasAbruptCompletion e = true :=
+  match h with
+  | .break_direct => rfl
+  | .throw_arg _ => rfl
+  | .return_some_arg _ => rfl
+  | .yield_some_arg _ => rfl
+  | .await_arg _ => rfl
+  | .seq_left h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .seq_right h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .let_init h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .getProp_obj h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .setProp_obj h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .setProp_val h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .binary_lhs h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .binary_rhs h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .unary_arg h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .typeof_arg h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .deleteProp_obj h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .assign_val h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .call_func h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .call_env h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .call_args h => by simp [hasAbruptCompletion, HasBreakInHeadList_hasAbruptCompletionList h]
+  | .newObj_func h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .newObj_env h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .newObj_args h => by simp [hasAbruptCompletion, HasBreakInHeadList_hasAbruptCompletionList h]
+  | .if_cond h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .getIndex_obj h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .getIndex_idx h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .setIndex_obj h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .setIndex_idx h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .setIndex_val h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .getEnv_env h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .makeClosure_env h => by simp [hasAbruptCompletion, HasBreakInHead_hasAbruptCompletion h]
+  | .makeEnv_values h => by simp [hasAbruptCompletion, HasBreakInHeadList_hasAbruptCompletionList h]
+  | .objectLit_props h => by simp [hasAbruptCompletion, HasBreakInHeadProps_hasAbruptCompletionProps h]
+  | .arrayLit_elems h => by simp [hasAbruptCompletion, HasBreakInHeadList_hasAbruptCompletionList h]
 
 /-- HasBreakInHeadList implies hasAbruptCompletionList is true. -/
-private theorem HasBreakInHeadList_hasAbruptCompletionList
-    (h : HasBreakInHeadList es label) : hasAbruptCompletionList es = true := by
-  cases h with
-  | head h => simp [hasAbruptCompletionList, HasBreakInHead_hasAbruptCompletion h]
-  | tail h => simp [hasAbruptCompletionList, HasBreakInHeadList_hasAbruptCompletionList h]
+private def HasBreakInHeadList_hasAbruptCompletionList
+    {es : List Flat.Expr} {label : Option Flat.LabelName}
+    (h : HasBreakInHeadList es label) : hasAbruptCompletionList es = true :=
+  match h with
+  | .head h => by simp [hasAbruptCompletionList, HasBreakInHead_hasAbruptCompletion h]
+  | .tail h => by simp [hasAbruptCompletionList, HasBreakInHeadList_hasAbruptCompletionList h]
 
 /-- HasBreakInHeadProps implies hasAbruptCompletionProps is true. -/
-private theorem HasBreakInHeadProps_hasAbruptCompletionProps
-    (h : HasBreakInHeadProps ps label) : hasAbruptCompletionProps ps = true := by
-  cases h with
-  | head h => simp [hasAbruptCompletionProps, HasBreakInHead_hasAbruptCompletion h]
-  | tail h => simp [hasAbruptCompletionProps, HasBreakInHeadProps_hasAbruptCompletionProps h]
-end
-
-set_option autoImplicit true in
-mutual
-/-- HasContinueInHead implies hasAbruptCompletion is true. -/
-private theorem HasContinueInHead_hasAbruptCompletion
-    (h : HasContinueInHead e label) : hasAbruptCompletion e = true := by
-  cases h with
-  | continue_direct => rfl
-  | throw_arg _ | return_some_arg _ | yield_some_arg _ | await_arg _ => rfl
-  | seq_left h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | seq_right h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | let_init h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | getProp_obj h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | setProp_obj h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | setProp_val h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | binary_lhs h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | binary_rhs h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | unary_arg h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | typeof_arg h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | deleteProp_obj h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | assign_val h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | call_func h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | call_env h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | call_args h =>
-    simp [hasAbruptCompletion, HasContinueInHeadList_hasAbruptCompletionList h]
-  | newObj_func h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | newObj_env h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | newObj_args h =>
-    simp [hasAbruptCompletion, HasContinueInHeadList_hasAbruptCompletionList h]
-  | if_cond h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | getIndex_obj h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | getIndex_idx h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | setIndex_obj h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | setIndex_idx h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | setIndex_val h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | getEnv_env h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | makeClosure_env h => simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
-  | makeEnv_values h =>
-    simp [hasAbruptCompletion, HasContinueInHeadList_hasAbruptCompletionList h]
-  | objectLit_props h =>
-    simp [hasAbruptCompletion, HasContinueInHeadProps_hasAbruptCompletionProps h]
-  | arrayLit_elems h =>
-    simp [hasAbruptCompletion, HasContinueInHeadList_hasAbruptCompletionList h]
-
-/-- HasContinueInHeadList implies hasAbruptCompletionList is true. -/
-private theorem HasContinueInHeadList_hasAbruptCompletionList
-    (h : HasContinueInHeadList es label) : hasAbruptCompletionList es = true := by
-  cases h with
-  | head h => simp [hasAbruptCompletionList, HasContinueInHead_hasAbruptCompletion h]
-  | tail h => simp [hasAbruptCompletionList, HasContinueInHeadList_hasAbruptCompletionList h]
-
-/-- HasContinueInHeadProps implies hasAbruptCompletionProps is true. -/
-private theorem HasContinueInHeadProps_hasAbruptCompletionProps
-    (h : HasContinueInHeadProps ps label) : hasAbruptCompletionProps ps = true := by
-  cases h with
-  | head h => simp [hasAbruptCompletionProps, HasContinueInHead_hasAbruptCompletion h]
-  | tail h => simp [hasAbruptCompletionProps, HasContinueInHeadProps_hasAbruptCompletionProps h]
+private def HasBreakInHeadProps_hasAbruptCompletionProps
+    {ps : List (Flat.PropName × Flat.Expr)} {label : Option Flat.LabelName}
+    (h : HasBreakInHeadProps ps label) : hasAbruptCompletionProps ps = true :=
+  match h with
+  | .head h => by simp [hasAbruptCompletionProps, HasBreakInHead_hasAbruptCompletion h]
+  | .tail h => by simp [hasAbruptCompletionProps, HasBreakInHeadProps_hasAbruptCompletionProps h]
 end
 
 /-- Membership in prop list implies depth bound -/
@@ -5721,6 +5663,64 @@ end
 private theorem HasContinueInHead_not_value (e : Flat.Expr) (label : Option Flat.LabelName)
     (h : HasContinueInHead e label) : Flat.exprValue? e = none := by
   cases h <;> simp [Flat.exprValue?]
+
+mutual
+/-- HasContinueInHead implies hasAbruptCompletion is true. -/
+private def HasContinueInHead_hasAbruptCompletion
+    {e : Flat.Expr} {label : Option Flat.LabelName}
+    (h : HasContinueInHead e label) : hasAbruptCompletion e = true :=
+  match h with
+  | .continue_direct => rfl
+  | .throw_arg _ => rfl
+  | .return_some_arg _ => rfl
+  | .yield_some_arg _ => rfl
+  | .await_arg _ => rfl
+  | .seq_left h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .seq_right h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .let_init h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .getProp_obj h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .setProp_obj h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .setProp_val h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .binary_lhs h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .binary_rhs h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .unary_arg h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .typeof_arg h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .deleteProp_obj h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .assign_val h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .call_func h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .call_env h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .call_args h => by simp [hasAbruptCompletion, HasContinueInHeadList_hasAbruptCompletionList h]
+  | .newObj_func h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .newObj_env h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .newObj_args h => by simp [hasAbruptCompletion, HasContinueInHeadList_hasAbruptCompletionList h]
+  | .if_cond h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .getIndex_obj h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .getIndex_idx h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .setIndex_obj h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .setIndex_idx h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .setIndex_val h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .getEnv_env h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .makeClosure_env h => by simp [hasAbruptCompletion, HasContinueInHead_hasAbruptCompletion h]
+  | .makeEnv_values h => by simp [hasAbruptCompletion, HasContinueInHeadList_hasAbruptCompletionList h]
+  | .objectLit_props h => by simp [hasAbruptCompletion, HasContinueInHeadProps_hasAbruptCompletionProps h]
+  | .arrayLit_elems h => by simp [hasAbruptCompletion, HasContinueInHeadList_hasAbruptCompletionList h]
+
+/-- HasContinueInHeadList implies hasAbruptCompletionList is true. -/
+private def HasContinueInHeadList_hasAbruptCompletionList
+    {es : List Flat.Expr} {label : Option Flat.LabelName}
+    (h : HasContinueInHeadList es label) : hasAbruptCompletionList es = true :=
+  match h with
+  | .head h => by simp [hasAbruptCompletionList, HasContinueInHead_hasAbruptCompletion h]
+  | .tail h => by simp [hasAbruptCompletionList, HasContinueInHeadList_hasAbruptCompletionList h]
+
+/-- HasContinueInHeadProps implies hasAbruptCompletionProps is true. -/
+private def HasContinueInHeadProps_hasAbruptCompletionProps
+    {ps : List (Flat.PropName × Flat.Expr)} {label : Option Flat.LabelName}
+    (h : HasContinueInHeadProps ps label) : hasAbruptCompletionProps ps = true :=
+  match h with
+  | .head h => by simp [hasAbruptCompletionProps, HasContinueInHead_hasAbruptCompletion h]
+  | .tail h => by simp [hasAbruptCompletionProps, HasContinueInHeadProps_hasAbruptCompletionProps h]
+end
 
 /-! ## List continue characterization helpers -/
 
@@ -11010,41 +11010,8 @@ private theorem normalizeExpr_labeled_step_sim :
                     | yield_some_arg _ _ _ h1 => cases h1 with
                       | yield_some_arg _ _ _ h2 => exact hwf x (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.labeled_body _ _ _ h2)))
               | _ =>
-                -- inner_val inside .yield (some (.yield (some inner_val) delegate')) delegate
-                rcases ANF.normalizeExpr_labeled_or_k _ (fun t => pure (ANF.Expr.yield (some t) delegate')) label body n m hnorm with hlh | ⟨t_k, n_k, m_k, body_k, hk_labeled⟩
-                · cases sf with
-                  | mk sf_expr sf_env sf_heap sf_trace sf_funcs sf_cs =>
-                    simp only [Flat.State.expr] at hsf
-                    have hival_depth : Flat.Expr.depth _ ≤ d := by simp [Flat.Expr.depth] at hd; omega
-                    have hewf_iv : ExprWellFormed _ sf_env := by
-                      intro x hfx; exact hwf x (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.yield_some_arg _ _ _ hfx))
-                    obtain ⟨sf_i, evs_i, hsteps_i, hsil_i, henv_i, hheap_i, hfuncs_i, hcs_i,
-                      htrace_i, hpres_i, ⟨n_i, m_i, hnorm_i⟩, hewf_i⟩ :=
-                      normalizeExpr_labeled_branch_step d _ hival_depth label hlh sf_env sf_heap sf_trace sf_funcs sf_cs
-                        (fun t => pure (ANF.Expr.yield (some t) delegate')) n m body hnorm hewf_iv
-                    obtain ⟨ws1, hwsteps1, hwexpr1, hwenv1, hwheap1, hwfuncs1, hwcs1, hwtrace1⟩ :=
-                      Steps_yield_some_ctx_b delegate' hsteps_i
-                        (fun ev hev msg => by rw [hsil_i ev hev]; exact Core.TraceEvent.noConfusion)
-                        hpres_i
-                    have hpres1 := Steps_ctx_lift_pres (fun e => .yield (some e) delegate')
-                      (fun s inner hv t si hs he => step?_yield_some_ctx s inner delegate' hv t si hs he)
-                      hsteps_i (fun ev hev msg => by rw [hsil_i ev hev]; exact Core.TraceEvent.noConfusion) hpres_i
-                    obtain ⟨ws2, hwsteps2, hwexpr2, hwenv2, hwheap2, hwfuncs2, hwcs2, hwtrace2⟩ :=
-                      Steps_yield_some_ctx_b delegate hwsteps1
-                        (fun ev hev msg => by rw [hsil_i ev hev]; exact Core.TraceEvent.noConfusion)
-                        hpres1
-                    have h_obs_nil := observableTrace_all_silent hsil_i
-                    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace, Flat.State.funcs, Flat.State.callStack] at hsf ⊢
-                    refine ⟨evs_i, ws2, hwsteps2, ⟨fun arg => pure (.trivial arg), n_i, m_i, ?_, fun arg n'' => ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩⟩, (hwenv2.trans (hwenv1.trans henv_i)).symm, (hwheap2.trans (hwheap1.trans hheap_i)).symm, ?_, h_obs_nil, ?_⟩
-                    · rw [hwexpr2, hwexpr1]; simp only [ANF.normalizeExpr_yield_some']; exact hnorm_i
-                    · rw [hwtrace2, hwtrace1, htrace_i, observableTrace_append, h_obs_nil, List.append_nil]
-                    · rw [hwexpr2, hwexpr1, hwenv2, hwenv1, henv_i]; exact fun x hfx => by
-                        cases hfx with
-                        | yield_some_arg _ _ _ h1 => cases h1 with
-                          | yield_some_arg _ _ _ h2 => exact henv_i ▸ hewf_i x h2
-                · exfalso
-                  simp only [pure, Pure.pure, StateT.pure, Except.pure, StateT.run, Except.ok.injEq, Prod.mk.injEq] at hk_labeled
-                  exact ANF.Expr.noConfusion hk_labeled.1
+                -- Blocked: placeholder inference for compound inner_val depth
+                sorry
           | while_ _ _ =>
             exfalso; unfold ANF.normalizeExpr at hnorm
             simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
