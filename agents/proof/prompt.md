@@ -1,4 +1,4 @@
-# proof — CLOSE CALLSTACK INVARIANT + COMPOUND SORRIES (ERROR PROP DONE)
+# proof — WEAKEN CALLSTACK INVARIANT + CLOSE IF-COND-STEP + COMPOUND THROW
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -8,75 +8,62 @@
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
 ## STATUS
-- **ERROR PROPAGATION: DONE** — 48 `.error _` patterns in Flat/Semantics.lean. GREAT WORK.
-- Flat/Semantics.lean: 0 sorries, 0 errors.
-- ANF: ~44 sorries. Build passes.
-- Your job now: CLOSE sorries that error propagation unblocked.
+- BUILD PASSES. 0 errors.
+- ANF: 48 sorries. CC: 15. Lower: 0.
+- Error propagation DONE in Flat/Semantics.lean.
+- Your last run (21:30) exited with code 1 before doing work.
 
-## P0: CLOSE CALLSTACK INVARIANT SORRIES (L2983, L3004, L3025, L3046)
+## P0: WEAKEN 4 CALLSTACK INVARIANT SORRIES (L2983, L3004, L3025, L3046)
 
-These 4 sorries are in `step?_throw_callStack_inv`, `step?_return_some_callStack_inv`, `step?_await_callStack_inv`, `step?_yield_some_callStack_inv`.
-
-Each has the goal pattern:
+These 4 sorries are UNPROVABLE as stated. The invariant says:
 ```
-obtain ⟨-, rfl⟩ := hstep; exact ⟨rfl, sorry⟩  -- error propagation unwraps .throw
+s'.callStack = cs ∧ ((∃ e', s'.expr = .throw e') ∨ (∃ v, s'.expr = .lit v))
 ```
 
-The error branch gives `s'.expr = sa.expr` (the inner sub-expression, unwrapped). The invariant says `s'.expr` is either still a `.throw e'` (or `.return`/`.await`/`.yield`) OR is `.lit v`.
+But after error propagation, when `t = .error msg`, `s'.expr = si.expr` (the inner stepped expression), which could be ANYTHING — not necessarily `.throw` or `.lit`.
 
-After error propagation, in the `.error _` branch:
-- `s'.expr = sa.expr` where `sa` is the result of stepping the inner expression
-- The inner expression was being evaluated (not a value), so `sa.expr` could be anything
-- The disjunction `(∃ e', s'.expr = .throw e') ∨ (∃ v, s'.expr = .lit v)` may NOT hold
-
-**IF the invariant is too strong after error propagation**, weaken it:
+**FIX**: Weaken the invariant to:
 ```lean
 s'.callStack = cs ∧ ((∃ e', s'.expr = .throw e') ∨ (∃ v, s'.expr = .lit v) ∨ (∃ msg, t = .error msg))
 ```
-Then update callers to handle the new `.error` case.
 
-**Check with `lean_goal` first** to see exactly what's needed.
+Steps:
+1. Change the conclusion of `step?_throw_callStack_inv` (L2960) to add `∨ (∃ msg, t = .error msg)`
+2. The sorry at L2983 becomes: `exact ⟨rfl, .inr (.inr ⟨s✝, rfl⟩)⟩`
+3. Do the same for `step?_return_some_callStack_inv` (L2988), `step?_await_callStack_inv` (L3009), `step?_yield_some_callStack_inv` (L3030)
+4. **UPDATE ALL CALLERS** — search for uses of these 4 theorems. Each caller currently pattern-matches on `.inl ⟨e', he⟩ | .inr ⟨v, hv⟩`. Add a third branch `| .inr (.inr ⟨msg, hmsg⟩)` handling the error case.
 
-## P1: CLOSE COMPOUND THROW/RETURN/AWAIT/YIELD SORRIES
+Use `lean_local_search` to find callers. The error case in callers likely needs: the step produced `.error msg`, so the trace already has the error — match the ANF trace.
 
-These are the big wins from error propagation:
-- **L11784**: `normalizeExpr_throw_step_sim` — main sorry
-- **L11935, L11941**: compound inner_val + HasReturnInHead
-- **L12112, L12118**: compound inner_arg + HasAwaitInHead
-- **L12270, L12276**: compound inner_val + HasYieldInHead
+## P1: CLOSE Flat_step?_if_cond_step (L12524)
 
-With error propagation, compound cases now propagate `.error _` directly. The proof should be:
-1. `unfold Flat.step?` in the step hypothesis
-2. Split on the error propagation match
-3. In the `.error _` branch: `sf'.expr = sa.expr` (unwrapped)
-4. Use the IH on `sa` to get the normalizeExpr witness
-
-### For L11784 (normalizeExpr_throw_step_sim):
-Read the goal at L11784. The comment says "blocked by error propagation" — that's NOW DONE. Try:
-```lean
-simp [Flat.step?, Flat.pushTrace] at *
-split at * <;> simp_all
+Goal at L12524:
+```
+⊢ Flat.step? { s with expr := .if cond then_ else_ } =
+  some (t, { expr := .if sc.expr then_ else_, env := sc.env, ... })
 ```
 
-## P2: CLOSE WHILE/TRYCATCH IF POSSIBLE
+With error propagation, Flat.step? on `.if cond then_ else_` where cond is not a value now has a match on the step result's event. Need to:
+1. `unfold Flat.step? ; simp [hnv]`
+2. Split on whether `t` is `.error _` or not
+3. Non-error: the if wraps the result → matches conclusion
+4. Error: Flat.step? propagates error, unwrapping .if → conclusion says `.if sc.expr then_ else_` but actual result is `sc.expr` without the wrapper. **IF this case is unprovable**, add `(hne : ∀ msg, t ≠ .error msg)` hypothesis to the theorem statement, and update callers to provide it.
 
-- **L12427, L12439**: while condition cases
-- **L14041, L14059, L14062**: tryCatch cases
+Check the actual Flat.step? definition for `.if` with `lean_hover_info` first.
 
-These may or may not benefit from error propagation. Check goals with `lean_goal`. Lower priority.
+## P2: COMPOUND THROW CASES (L11784) — IF P0+P1 DONE
 
-## P3: FIX ANY REMAINING CASCADING ERRORS
+L11784 has ~25 HasThrowInHead constructor cases. Each needs multi-step Flat simulation showing the throw sub-expression evaluates and produces the error trace. With error propagation done, compound cases (seq, let, assign) should propagate errors. Needs IH on the sub-expression.
 
-If your current run introduced new errors from the Flat.step? changes, fix them. Sorry anything that can't be fixed quickly — net sorry count going DOWN is what matters.
+Lower priority — focus on P0 and P1 first.
 
 ## CONCURRENCY
-- wasmspec works on labeled_branch (L10333-L10706) and break/continue Cat B (L15376, L15447)
+- wasmspec works on labeled_branch (L10333-L10706) and Cat B break/continue
 - jsspec works on ClosureConvertCorrect.lean only
-- YOU own ALL of Flat/Semantics.lean and the rest of ANFConvertCorrect.lean (except wasmspec's areas)
+- YOU own Flat/Semantics.lean and ANFConvertCorrect.lean (except wasmspec's labeled_branch area)
 
 ## WORKFLOW
-1. `echo "### $(date -Iseconds) Starting run — CLOSING UNBLOCKED SORRIES" >> agents/proof/log.md`
-2. P0: Fix 4 callStack invariant sorries
-3. P1: Close compound throw/return/await/yield sorries
-4. P2: Assess while/tryCatch
-5. `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`
+1. `echo "### $(date -Iseconds) Starting run — CALLSTACK WEAKENING + IF-COND-STEP" >> agents/proof/log.md`
+2. P0: Weaken 4 callStack invariant theorems, fix callers
+3. P1: Fix or guard Flat_step?_if_cond_step
+4. `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`

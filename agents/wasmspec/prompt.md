@@ -1,4 +1,4 @@
-# wasmspec — CLOSE MORE LABELED_BRANCH + CAT B BREAK/CONTINUE
+# wasmspec — CLOSE LABELED_BRANCH SIMPLE CASES + CAT B
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,54 +9,40 @@
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
 ## STATUS
-- BUILD PASSES. LSP available.
-- You closed 3 sorries last run (L9865, L10220, L10550). Good work.
-- Error propagation is now COMPLETE in Flat/Semantics.lean (48 `.error _` patterns). This unblocks Cat B break/continue cases.
-- ANF: 44 sorries. CC: 15. Total: 59.
+- BUILD PASSES. 0 errors.
+- You closed 3 sorries last run (L9865, L10220, L10550). GREAT WORK — keep that momentum.
+- ANF: 48 sorries. CC: 15. Total: 63.
+- Your categorization of labeled_branch sorries was excellent.
 
-## P0: CAT B BREAK/CONTINUE — NOW UNBLOCKED
+## P0: CLOSE TYPE (a) LABELED_BRANCH CASES (L10383, L10431, L10481, L10508, L10558)
 
-Error propagation is done. The Cat B cases (L15376, L15447) that were blocked should now be closable. These are compound HasBreakInHead/HasContinueInHead cases where Flat.step? now propagates errors through compound wrappers.
+These follow the SAME PATTERN as L10550 (newObj_func) which you already closed. Template:
+1. Get IH from HasLabeledInHead hypothesis
+2. Use `Steps_*_ctx_b` lifting lemma to lift the inner steps through the compound context
+3. Provide normalizeExpr witness
 
-### Pattern for Cat B cases:
-With error propagation, when a break/continue fires inside a compound expr:
-1. Flat.step? matches `t` on `.error _` branch
-2. Returns `s'.expr = sa.expr` (unwrapped), not wrapped in the compound
-3. This should match the ANF simulation since normalizeExpr produces the abrupt completion directly
-
-### APPROACH
-1. Read L15370-15460 to see current Cat B sorry state
-2. Use `lean_goal` at L15376 and L15447 to check exact goals
-3. Try `lean_multi_attempt` with: `["unfold Flat.step? at *; simp_all", "simp [Flat.step?, Flat.pushTrace]", "sorry"]`
-4. If the goal needs the error propagation match, use:
-```lean
-match t with
-| .error _ => <use sa.expr = unwrapped>
-| _ => <contradiction with NoNestedAbrupt>
-```
-
-## P1: REMAINING LABELED_BRANCH CLOSABLE CASES (L10333-L10706)
-
-Last run you categorized remaining sorries. Focus on type (a) — simple tactic failures:
-
-### Closable targets:
-1. **L10383, L10431, L10481** (binary_lhs/rhs, unary): These follow the same pattern as the ones you already closed. Use the template from L10550 (newObj_func proof).
-
-2. **L10508, L10558** (call_func, call_env): Should follow same IH + Steps_*_ctx_b lifting pattern.
-
-3. **L10333** (trivialChain passthrough): This is the hardest. Read context — if it needs a value-trivia correspondence lemma, document what's needed and skip.
-
-### For each:
+For each:
 1. `lean_goal` to see exact goal
-2. Check if IH + lifting lemma closes it
-3. If it needs a new lifting lemma (like Steps_*_ctx_b), check if one exists with `lean_local_search`
+2. Check which `Steps_*_ctx_b` lemma exists with `lean_local_search "Steps_" "ctx_b"`
+3. Apply the template from L10550
 
-## P2: DEPTH/RETURN/YIELD COMPOUND (L10911-L11091)
+### Priority order:
+- L10383 (binary_lhs) — most similar to your closed cases
+- L10431 (binary_rhs) — same pattern, different argument
+- L10481 (unary) — single argument variant
+- L10508 (call_func) — compound with env+args context
+- L10558 (call_env) — similar to call_func
 
-6 sorries in normalizeExpr_labeled_branch_step for compound return/yield expressions inside labeled branches. These may need depth induction — assess whether the error propagation changes help here.
+## P1: LIST DECOMPOSITION CASES (L10560, L10612, L10643, L10675, L10706) — IF P0 DONE
+
+These need stepping through list elements. Try `lean_local_search "Steps_" "list"` or `"ctx"` to see if list lifting lemmas exist. If not, document what's needed and skip.
+
+## P2: CAT B BREAK/CONTINUE (L15316, L15327, L15546, L15617) — ASSESS ONLY
+
+Check if error propagation changes make these closable now. Use `lean_goal` at each. If closable, close them. If still blocked, document the exact blocker.
 
 ## WORKFLOW
-1. `echo "### $(date -Iseconds) Starting run — Cat B + labeled_branch" >> agents/wasmspec/log.md`
-2. Try Cat B break/continue first (P0) — highest value if closable
-3. Then labeled_branch simple cases (P1)
+1. `echo "### $(date -Iseconds) Starting run — labeled_branch type (a)" >> agents/wasmspec/log.md`
+2. Close L10383, L10431, L10481, L10508, L10558 using L10550 template
+3. Assess P1 and P2
 4. `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`
