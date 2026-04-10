@@ -5095,65 +5095,107 @@ private theorem closureConvert_step_simulation
           (Flat.convertExpr body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd).fst) } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
-      obtain ⟨sa, hsubstep, hsf'_eq⟩ : ∃ sa, Flat.step? { sf with expr := (Flat.convertExpr init scope envVar envMap st).fst } = some (ev, sa) ∧
-          sf' = { expr := .«let» name sa.expr
-                    (Flat.convertExpr body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd).fst,
-                  env := sa.env, heap := sa.heap,
-                  trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
-        match hm : Flat.step? { sf with expr := (Flat.convertExpr init scope envVar envMap st).fst } with
-        | some (t, sa) =>
-          have heq := Flat_step?_let_step sf name
+      match hm : Flat.step? { sf with expr := (Flat.convertExpr init scope envVar envMap st).fst } with
+      | some (t, sa) =>
+        match ht : t with
+        | .error msg =>
+          -- Error case: Flat propagates error, unwrapping the .let wrapper.
+          -- Core does NOT propagate errors in .let, creating a simulation mismatch:
+          --   Flat result: { expr := sa.expr, ... }  (unwrapped)
+          --   Core result: { expr := .let name sc_sub'.expr body, ... }  (still wrapped)
+          -- The convertExpr postcondition cannot hold. Needs simulation invariant change
+          -- or proof that convertExpr of supported exprs never errors under invariants.
+          have heq := Flat_step?_let_error sf name
             (Flat.convertExpr body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd).fst
-            _ hfnv t sa hm
-            (by intro msg hmsg; sorry) -- BLOCKED: Flat error propagation in .let unwraps wrapper; need separate error case
+            _ hfnv msg sa hm
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
-          exact ⟨sa, rfl, hsf'eq.symm⟩
-        | none =>
-          have heq : Flat.step? { sf with expr := (Flat.Expr.let name (Flat.convertExpr init scope envVar envMap st).fst
-              (Flat.convertExpr body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd).fst) } = none := by
-            simp only [Flat.step?, hfnv, hm]
-          rw [heq] at hstep; exact absurd hstep (by simp)
-      subst hsf'_eq
-      have hdepth : init.depth < n := by simp [Core.Expr.depth] at hd; omega
-      have hncfr_init : noCallFrameReturn init = true := by
-        simp [noCallFrameReturn] at hncfr; exact hncfr.1
-      have hexprwf_init : ExprAddrWF init sc.heap.objects.size := by
-        simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
-        ih_depth init.depth hdepth envVar envMap injMap
-          { sf with expr := (Flat.convertExpr init scope envVar envMap st).fst }
-          { sc with expr := init }
-          ev sa scope st (Flat.convertExpr init scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_init hexprwf_init hsupp_init
-          (by simp)
-          ⟨hsubstep⟩
-      let sc' : Core.State :=
-        ⟨.«let» name sc_sub'.expr body, sc_sub'.env, sc_sub'.heap,
-         sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-      · show Core.step? sc = some (ev, sc')
-        have hsc' : sc = { sc with expr := .«let» name init body } := by
-          obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-        rw [hsc']
-        exact Core_step?_let_step _ name _ _ hcev _ _ hcstep_sub
-      · simp [sc', htrace, htrace_sub]
-      · exact hinj'
-      · exact henvCorr'
-      · exact henvwf'
-      · exact hheapvwf'
-      · exact hheapna'
-      · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
-      · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf',
-            ExprAddrWF_mono body (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2) (Core_step_heap_size_mono hcstep_sub)⟩
-      · refine ⟨st_a, (Flat.convertExpr body (name :: scope) envVar envMap st_a').snd, ?_, hAgreeIn, ?_⟩
-        · simp only [sc', Flat.convertExpr]
-          have hbody := convertExpr_state_determined body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd st_a' hAgreeOut.1 hAgreeOut.2
-          rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from (congrArg Prod.fst hconv').symm]
-          rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
-          rw [hbody.1]
-        · rw [hconv.2]
-          exact (convertExpr_state_determined body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd st_a' hAgreeOut.1 hAgreeOut.2).2
+          have hdepth : init.depth < n := by simp [Core.Expr.depth] at hd; omega
+          have hncfr_init : noCallFrameReturn init = true := by
+            simp [noCallFrameReturn] at hncfr; exact hncfr.1
+          have hexprwf_init : ExprAddrWF init sc.heap.objects.size := by
+            simp [ExprAddrWF] at hexprwf; exact hexprwf.1
+          obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+            ih_depth init.depth hdepth envVar envMap injMap
+              { sf with expr := (Flat.convertExpr init scope envVar envMap st).fst }
+              { sc with expr := init }
+              (.error msg) sa scope st (Flat.convertExpr init scope envVar envMap st).snd
+              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_init hexprwf_init hsupp_init
+              (by simp)
+              ⟨hm⟩
+          let sc' : Core.State :=
+            ⟨.«let» name sc_sub'.expr body, sc_sub'.env, sc_sub'.heap,
+             sc.trace ++ [.error msg], sc_sub'.funcs, sc_sub'.callStack⟩
+          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          · show Core.step? sc = some (.error msg, sc')
+            have hsc' : sc = { sc with expr := .«let» name init body } := by
+              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+            rw [hsc']
+            exact Core_step?_let_step _ name _ _ hcev _ _ hcstep_sub
+          · simp [sc', htrace, htrace_sub]
+          · exact hinj'
+          · exact henvCorr'
+          · exact henvwf'
+          · exact hheapvwf'
+          · exact hheapna'
+          · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
+          · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf',
+                ExprAddrWF_mono body (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2) (Core_step_heap_size_mono hcstep_sub)⟩
+          · -- Mismatch: sf'.expr = sa.expr (from IH ≈ convertExpr sc_sub'.expr)
+            -- but need convertExpr (.let name sc_sub'.expr body) which wraps in .let
+            sorry
+        | _ =>
+          have hne : ∀ msg, t ≠ .error msg := by intro msg hmsg; cases t <;> simp_all
+          have heq := Flat_step?_let_step sf name
+            (Flat.convertExpr body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd).fst
+            _ hfnv t sa hm hne
+          rw [heq] at hstep; simp at hstep
+          obtain ⟨rfl, hsf'eq⟩ := hstep
+          have hsf'_eq := hsf'eq.symm; subst hsf'_eq
+          have hdepth : init.depth < n := by simp [Core.Expr.depth] at hd; omega
+          have hncfr_init : noCallFrameReturn init = true := by
+            simp [noCallFrameReturn] at hncfr; exact hncfr.1
+          have hexprwf_init : ExprAddrWF init sc.heap.objects.size := by
+            simp [ExprAddrWF] at hexprwf; exact hexprwf.1
+          obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+            ih_depth init.depth hdepth envVar envMap injMap
+              { sf with expr := (Flat.convertExpr init scope envVar envMap st).fst }
+              { sc with expr := init }
+              t sa scope st (Flat.convertExpr init scope envVar envMap st).snd
+              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_init hexprwf_init hsupp_init
+              (by simp)
+              ⟨hm⟩
+          let sc' : Core.State :=
+            ⟨.«let» name sc_sub'.expr body, sc_sub'.env, sc_sub'.heap,
+             sc.trace ++ [t], sc_sub'.funcs, sc_sub'.callStack⟩
+          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          · show Core.step? sc = some (t, sc')
+            have hsc' : sc = { sc with expr := .«let» name init body } := by
+              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+            rw [hsc']
+            exact Core_step?_let_step _ name _ _ hcev _ _ hcstep_sub
+          · simp [sc', htrace, htrace_sub]
+          · exact hinj'
+          · exact henvCorr'
+          · exact henvwf'
+          · exact hheapvwf'
+          · exact hheapna'
+          · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
+          · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf',
+                ExprAddrWF_mono body (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2) (Core_step_heap_size_mono hcstep_sub)⟩
+          · refine ⟨st_a, (Flat.convertExpr body (name :: scope) envVar envMap st_a').snd, ?_, hAgreeIn, ?_⟩
+            · simp only [sc', Flat.convertExpr]
+              have hbody := convertExpr_state_determined body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd st_a' hAgreeOut.1 hAgreeOut.2
+              rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from (congrArg Prod.fst hconv').symm]
+              rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
+              rw [hbody.1]
+            · rw [hconv.2]
+              exact (convertExpr_state_determined body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd st_a' hAgreeOut.1 hAgreeOut.2).2
+      | none =>
+        have heq : Flat.step? { sf with expr := (Flat.Expr.let name (Flat.convertExpr init scope envVar envMap st).fst
+            (Flat.convertExpr body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd).fst) } = none := by
+          simp only [Flat.step?, hfnv, hm]
+        rw [heq] at hstep; exact absurd hstep (by simp)
   | assign name rhs =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
@@ -5191,54 +5233,91 @@ private theorem closureConvert_step_simulation
       have hsf_eta : sf = { sf with expr := .assign name (Flat.convertExpr rhs scope envVar envMap st).fst } := by
         cases sf; simp_all
       rw [hsf_eta] at hstep
-      obtain ⟨sa, hsubstep, hsf'_eq⟩ : ∃ sa, Flat.step? { sf with expr := (Flat.convertExpr rhs scope envVar envMap st).fst } = some (ev, sa) ∧
-          sf' = { expr := .assign name sa.expr, env := sa.env, heap := sa.heap,
-                  trace := sf.trace ++ [ev], funcs := sf.funcs, callStack := sf.callStack } := by
-        match hm : Flat.step? { sf with expr := (Flat.convertExpr rhs scope envVar envMap st).fst } with
-        | some (t, sa) =>
-          have heq := Flat_step?_assign_step sf name _ hfnv t sa hm
-            (by intro msg hmsg; sorry) -- BLOCKED: Flat error propagation in .assign unwraps wrapper; need separate error case
+      match hm : Flat.step? { sf with expr := (Flat.convertExpr rhs scope envVar envMap st).fst } with
+      | some (t, sa) =>
+        match ht : t with
+        | .error msg =>
+          -- Error case: Flat propagates error, unwrapping the .assign wrapper.
+          -- Core does NOT propagate errors in .assign, creating a simulation mismatch.
+          have heq := Flat_step?_assign_error sf name _ hfnv msg sa hm
           rw [heq] at hstep; simp at hstep
           obtain ⟨rfl, hsf'eq⟩ := hstep
-          exact ⟨sa, rfl, hsf'eq.symm⟩
-        | none =>
-          have heq : Flat.step? { sf with expr := .assign name (Flat.convertExpr rhs scope envVar envMap st).fst } = none := by
-            simp only [Flat.step?, hfnv, hm]
-          rw [heq] at hstep; exact absurd hstep (by simp)
-      subst hsf'_eq
-      have hdepth : rhs.depth < n := by simp [Core.Expr.depth] at hd; omega
-      have hncfr_rhs : noCallFrameReturn rhs = true := by
-        simp [noCallFrameReturn] at hncfr; exact hncfr
-      have hexprwf_rhs : ExprAddrWF rhs sc.heap.objects.size := by
-        simp [ExprAddrWF] at hexprwf; exact hexprwf
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
-        ih_depth rhs.depth hdepth envVar envMap injMap
-          { sf with expr := (Flat.convertExpr rhs scope envVar envMap st).fst }
-          { sc with expr := rhs }
-          ev sa scope st (Flat.convertExpr rhs scope envVar envMap st).snd
-          (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_rhs hexprwf_rhs (by simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp ⊢; first | exact hsupp | exact hsupp.1 | exact hsupp.2 | exact hsupp.1.1 | exact hsupp.1.2 | (simp only [Bool.and_eq_true] at hsupp; first | exact hsupp.1 | exact hsupp.2 | exact hsupp.2.1 | exact hsupp.2.2))
-          (by simp)
-          ⟨hsubstep⟩
-      let sc' : Core.State :=
-        ⟨.assign name sc_sub'.expr, sc_sub'.env, sc_sub'.heap,
-         sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-      · show Core.step? sc = some (ev, sc')
-        have hsc' : sc = { sc with expr := .assign name rhs } := by
-          obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
-        rw [hsc']
-        exact Core_step?_assign_step _ name _ hcev _ _ hcstep_sub
-      · simp [sc', htrace, htrace_sub]
-      · exact hinj'
-      · exact henvCorr'
-      · exact henvwf'
-      · exact hheapvwf'
-      · exact hheapna'
-      · simp [sc', noCallFrameReturn]; exact hncfr'
-      · simp [sc', ExprAddrWF]; exact hexprwf'
-      · exact ⟨st_a, st_a', by
-          simp [sc', Flat.convertExpr]
-          exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
+          have hdepth : rhs.depth < n := by simp [Core.Expr.depth] at hd; omega
+          have hncfr_rhs : noCallFrameReturn rhs = true := by
+            simp [noCallFrameReturn] at hncfr; exact hncfr
+          have hexprwf_rhs : ExprAddrWF rhs sc.heap.objects.size := by
+            simp [ExprAddrWF] at hexprwf; exact hexprwf
+          obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+            ih_depth rhs.depth hdepth envVar envMap injMap
+              { sf with expr := (Flat.convertExpr rhs scope envVar envMap st).fst }
+              { sc with expr := rhs }
+              (.error msg) sa scope st (Flat.convertExpr rhs scope envVar envMap st).snd
+              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_rhs hexprwf_rhs (by simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp ⊢; first | exact hsupp | exact hsupp.1 | exact hsupp.2 | exact hsupp.1.1 | exact hsupp.1.2 | (simp only [Bool.and_eq_true] at hsupp; first | exact hsupp.1 | exact hsupp.2 | exact hsupp.2.1 | exact hsupp.2.2))
+              (by simp)
+              ⟨hm⟩
+          let sc' : Core.State :=
+            ⟨.assign name sc_sub'.expr, sc_sub'.env, sc_sub'.heap,
+             sc.trace ++ [.error msg], sc_sub'.funcs, sc_sub'.callStack⟩
+          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          · show Core.step? sc = some (.error msg, sc')
+            have hsc' : sc = { sc with expr := .assign name rhs } := by
+              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+            rw [hsc']
+            exact Core_step?_assign_step _ name _ hcev _ _ hcstep_sub
+          · simp [sc', htrace, htrace_sub]
+          · exact hinj'
+          · exact henvCorr'
+          · exact henvwf'
+          · exact hheapvwf'
+          · exact hheapna'
+          · simp [sc', noCallFrameReturn]; exact hncfr'
+          · simp [sc', ExprAddrWF]; exact hexprwf'
+          · -- Mismatch: sf'.expr = sa.expr (from IH ≈ convertExpr sc_sub'.expr)
+            -- but need convertExpr (.assign name sc_sub'.expr) which wraps in .assign
+            sorry
+        | _ =>
+          have hne : ∀ msg, t ≠ .error msg := by intro msg hmsg; cases t <;> simp_all
+          have heq := Flat_step?_assign_step sf name _ hfnv t sa hm hne
+          rw [heq] at hstep; simp at hstep
+          obtain ⟨rfl, hsf'eq⟩ := hstep
+          have hsf'_eq := hsf'eq.symm; subst hsf'_eq
+          have hdepth : rhs.depth < n := by simp [Core.Expr.depth] at hd; omega
+          have hncfr_rhs : noCallFrameReturn rhs = true := by
+            simp [noCallFrameReturn] at hncfr; exact hncfr
+          have hexprwf_rhs : ExprAddrWF rhs sc.heap.objects.size := by
+            simp [ExprAddrWF] at hexprwf; exact hexprwf
+          obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+            ih_depth rhs.depth hdepth envVar envMap injMap
+              { sf with expr := (Flat.convertExpr rhs scope envVar envMap st).fst }
+              { sc with expr := rhs }
+              t sa scope st (Flat.convertExpr rhs scope envVar envMap st).snd
+              (by simp [Core.Expr.depth]) htrace hinj henvCorr henvwf hheapvwf hheapna hncfr_rhs hexprwf_rhs (by simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp ⊢; first | exact hsupp | exact hsupp.1 | exact hsupp.2 | exact hsupp.1.1 | exact hsupp.1.2 | (simp only [Bool.and_eq_true] at hsupp; first | exact hsupp.1 | exact hsupp.2 | exact hsupp.2.1 | exact hsupp.2.2))
+              (by simp)
+              ⟨hm⟩
+          let sc' : Core.State :=
+            ⟨.assign name sc_sub'.expr, sc_sub'.env, sc_sub'.heap,
+             sc.trace ++ [t], sc_sub'.funcs, sc_sub'.callStack⟩
+          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          · show Core.step? sc = some (t, sc')
+            have hsc' : sc = { sc with expr := .assign name rhs } := by
+              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+            rw [hsc']
+            exact Core_step?_assign_step _ name _ hcev _ _ hcstep_sub
+          · simp [sc', htrace, htrace_sub]
+          · exact hinj'
+          · exact henvCorr'
+          · exact henvwf'
+          · exact hheapvwf'
+          · exact hheapna'
+          · simp [sc', noCallFrameReturn]; exact hncfr'
+          · simp [sc', ExprAddrWF]; exact hexprwf'
+          · exact ⟨st_a, st_a', by
+              simp [sc', Flat.convertExpr]
+              exact ⟨congrArg Prod.fst hconv', congrArg Prod.snd hconv'⟩, hAgreeIn, by first | (rw [hst]; exact hAgreeOut) | (rw [hconv.2]; exact hAgreeOut)⟩
+      | none =>
+        have heq : Flat.step? { sf with expr := .assign name (Flat.convertExpr rhs scope envVar envMap st).fst } = none := by
+          simp only [Flat.step?, hfnv, hm]
+        rw [heq] at hstep; exact absurd hstep (by simp)
   | «if» cond then_ else_ =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
