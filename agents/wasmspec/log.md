@@ -7514,3 +7514,32 @@ Option D: **Alternative proof strategy** — use well-founded induction on total
 All 24 sorries I own (12 true + 12 false) are blocked by K-mismatch. They cannot be resolved independently — they require architectural changes (Option B or D). This should be escalated to the proof architect.
 
 The 10 "list" cases and 14 "second-position" cases have the identical blocker. The prompt's classification was incorrect in calling them "YOUR PRIORITY" — they need the same K-mismatch resolution.
+
+#### Detailed K-mismatch mechanism
+
+For `.arrayLit [.var "x", .if (.lit true) (.var "a") (.var "b")]`:
+
+**Before stepping `.var "x"`:**
+- Continuation K_j includes trivial `.var "x"`
+- then_ = `.let fresh (.arrayLit [.var "x", t_a]) (K fresh)` (approx)
+
+**After stepping `.var "x"` → `.lit v`:**
+- Continuation K_j' includes trivial `trivialOfFlatValue v`  
+- then_' = `.let fresh (.arrayLit [trivialOfFlatValue v, t_a]) (K fresh)`
+
+These are syntactically different ANF expressions. The theorem requires `then_ = then_'`, which is false.
+
+**Note:** `cond` IS preserved (it comes from the `.if` condition, independent of the list continuation). Only `then_`/`else_` change.
+
+#### Potential infrastructure (not written — blocked by theorem design)
+
+1. `normalizeExprList_if_cond_indep` — cond is independent of preceding trivials (provable but doesn't close sorries)
+2. `normalizeExpr_trivialChain_step_sim` — after stepping a trivialChain, the new then_' is "equivalent" to then_ (needs definition of equivalence)
+3. Theorem redesign: change `(then_, m')` conclusion to allow trivial substitution
+
+### 2026-04-10T15:00:14+00:00 Run complete — ALL 24 assigned sorries BLOCKED by K-mismatch
+
+**Summary:** All 10 list-case sorries and all 14 second-position sorries share the same fundamental blocker. Stepping trivialChain elements in left-to-right evaluation order changes the ANF normalization output (different trivials produce different then_/else_ expressions). The theorem requires exact syntactic preservation of then_, which is incompatible with the stepping.
+
+**Action needed:** Proof architect should redesign normalizeExpr_if_branch_step to handle trivial substitution (Option B or D from above).
+2026-04-10T15:25:15+00:00 DONE

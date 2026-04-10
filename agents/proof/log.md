@@ -7002,3 +7002,41 @@ Each case's second branch (¬HasLabeledInHead in first sub-expression) remains s
 ## Run: 2026-04-10T14:30:10+00:00
 
 ### 2026-04-10T14:30:22+00:00 Starting run
+
+### 2026-04-10T14:30 Analysis session
+
+**Sorry count**: 53 total (31 mine, 22 wasmspec's in L13976+/L15210+ zones)
+
+**Key finding: 10 compound sorries are UNPROVABLE without Flat.step? changes**
+
+The compound HasXInHead sorries (L11713, L11864, L11870, L12041, L12047, L12199, L12205, L16387, L17701, L17754) cannot be closed because:
+- Flat.step? wraps error events in compound expressions (e.g., `.seq (.lit .undefined) dead_code`)
+- Dead code executes, potentially changing env/heap and producing additional error events
+- Theorem goals require env/heap preservation and specific observable traces
+- Changing Flat.step? would break ClosureConvertCorrect.lean (362 refs, especially Flat_step?_seq_step at L2204)
+
+**Other sorry categories analyzed:**
+- 6 second-position trivial mismatch (L10226 etc.) — blocked by continuation mismatch after stepping
+- 6 list/prop decomposition (L10203 etc.) — needs infrastructure for list iteration
+- 3 structural induction (L12261 etc.) — needs work on normalizeExpr_let_step_sim
+- 6 while/tryCatch/break infrastructure (L12356 etc.) — unique blockers each
+
+**Tactics tested via lean_multi_attempt at L11713:**
+- `exfalso` + absurd lemmas: all 29 remaining HasThrowInHead cases have `⊢ False` goal but none are actually contradictory
+- `constructor`: splits into 58 sub-goals (29 cases × 2 for conjunction)
+- Direct `exact normalizeExpr_throw_compound_case`: type mismatch (expects .throw wrapper)
+
+**Key lemmas discovered:**
+- `ANF.bindComplex_never_throw_general` (L6019): critical for showing throw comes from sub-expr not continuation
+- `normalizeExpr_trivialChain_apply` (L1466): unique trivial for ALL continuations
+- `no_labeled_head_implies_trivial_chain` (L9310), `no_throw_head_implies_trivial_chain` (L11157)
+
+**RECOMMENDED NEXT STEPS:**
+1. **Coordinate Flat.step? change**: Add error propagation to Flat.step? for compound cases. Requires updating ClosureConvertCorrect.lean (jsspec's territory). This would unblock 10 sorries.
+2. **Build trivial chain composition infrastructure**: For second-position sorries, prove that normalizeExpr with different but "equivalent" trivials (`.var x` vs `trivialOfValue v`) produces expressions with the same evaluation behavior.
+3. **Build list iteration infrastructure**: For list/prop sorries, prove stepping through firstNonValueExpr preserves labeled-in-head properties.
+### 2026-04-10T15:26:28+00:00 Run complete — analysis-only, 0 sorries closed, documented blockers
+2026-04-10T15:26:35+00:00 DONE
+
+## Run: 2026-04-10T15:30:01+00:00
+
