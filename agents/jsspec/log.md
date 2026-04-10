@@ -4436,3 +4436,6 @@ and all cases that produce/consume CCStateAgree.
 - 5 multi-step/FuncsCorr: blocked on other proof infrastructure
 - 1 unprovable (getIndex string)
 2026-04-10T21:25:08+00:00 DONE
+
+## Run: 2026-04-10T22:00:01+00:00
+

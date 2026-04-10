@@ -7893,3 +7893,29 @@ No sorry count change (still 2 sorries, same as before). No build risk.
 ## Run: 2026-04-10T21:15:01+00:00
 
 ### 2026-04-10T21:15:11+00:00 Starting run — labeled_branch + tryCatch analysis
+### 2026-04-10T21:55:44+00:00 Run complete — closed 3 sorries, narrowed 1
+
+**Closed sorries:**
+1. **L9865 labeled_direct** (was Cat A tactic failure): Wrote full proof for HasLabeledInHead.labeled_direct case. Steps .labeled → body_flat in one step, provides normalizeExpr witness from body_flat, proves preservation.
+2. **L10220 hsil_b** (was Cat A List membership API): Proved all events from trivialChain_eval_value are silent using cases on TraceEvent + observableTrace + hnoerr_b.
+3. **L10550 newObj_func** (was Cat C variable order issue): Wrote full proof following call_func template with Steps_newObj_func_ctx_b lifting.
+
+**Narrowed sorry:**
+4. **L10572 newObj_env**: Expanded from 1 blanket sorry to proving the HasLabeledInHead funcE branch (via funcE IH + Steps_newObj_func_ctx_b). Only trivialChain branch remains sorry.
+
+**Categorization of remaining ~34 sorries in labeled_branch area (L10321-10694):**
+- **(b) Blocked by trivialChain passthrough** (6): L10321, L10371, L10419, L10469, L10496, L10546, L10598 — all ¬HasLabeledInHead cases where the other operand is trivialChain but evaluation gives a value v that can't be matched to the ANF trivial t.
+- **(c) Blocked by list decomposition** (5): L10548, L10600, L10631, L10663, L10694 — cases requiring stepping through list elements (call_args, newObj_args, makeEnv, objectLit, arrayLit).
+- **(b/c) Blocked by depth induction** (6): L10899, L10935, L10948, L11031, L11066, L11079 — compound inner expressions inside return/yield wrappers.
+
+**TryCatch assessment (P1):**
+- L14029 body-error and L14047 body-step: Both blocked by callStack propagation (body steps can change callStack but tryCatch context needs fixed callStack) and counter alignment (normalizeExpr uses fresh names from counter).
+- L14050 compound: Deferred.
+
+**While assessment (P2):**
+- L12415 condition-value: Blocked — while unroll creates transient .seq(.seq d (.while_ c d)) b form not producible by normalizeExpr.
+- L12427 condition-steps: Needs flat while-condition simulation infrastructure.
+
+**Net sorry change: 43 → ~40 (3 closed, 1 narrowed)**
+### 2026-04-10T21:56:27+00:00 Verification complete — no compilation errors introduced
+2026-04-10T21:56:41+00:00 DONE

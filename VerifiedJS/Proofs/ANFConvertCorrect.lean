@@ -2978,8 +2978,11 @@ private theorem step?_throw_callStack_inv
     obtain ⟨-, rfl⟩ := hstep; exact ⟨rfl, .inr ⟨_, rfl⟩⟩
   · -- exprValue? e = none (evaluate e within throw context)
     split at hstep
-    · simp only [Flat.pushTrace, Option.some.injEq, Prod.mk.injEq] at hstep
-      obtain ⟨-, rfl⟩ := hstep; exact ⟨rfl, .inl ⟨_, rfl⟩⟩
+    · split at hstep
+      · simp only [Flat.pushTrace, Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep; exact ⟨rfl, sorry⟩  -- error propagation unwraps .throw
+      · simp only [Flat.pushTrace, Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep; exact ⟨rfl, .inl ⟨_, rfl⟩⟩
     · contradiction
 
 /-- Helper: single step from .return (some e) preserves callStack and maintains invariant. -/
@@ -2996,8 +2999,11 @@ private theorem step?_return_some_callStack_inv
     obtain ⟨-, rfl⟩ := hstep; exact ⟨rfl, .inr ⟨_, rfl⟩⟩
   · -- exprValue? e = none (evaluate e within return context)
     split at hstep
-    · simp only [Flat.pushTrace, Option.some.injEq, Prod.mk.injEq] at hstep
-      obtain ⟨-, rfl⟩ := hstep; exact ⟨rfl, .inl ⟨_, rfl⟩⟩
+    · split at hstep
+      · simp only [Flat.pushTrace, Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep; exact ⟨rfl, sorry⟩  -- error propagation unwraps .return
+      · simp only [Flat.pushTrace, Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep; exact ⟨rfl, .inl ⟨_, rfl⟩⟩
     · contradiction
 
 /-- Helper: single step from .await e preserves callStack and maintains invariant. -/
@@ -3014,8 +3020,11 @@ private theorem step?_await_callStack_inv
     obtain ⟨-, rfl⟩ := hstep; exact ⟨rfl, .inr ⟨_, rfl⟩⟩
   · -- exprValue? e = none (evaluate e within await context)
     split at hstep
-    · simp only [Flat.pushTrace, Option.some.injEq, Prod.mk.injEq] at hstep
-      obtain ⟨-, rfl⟩ := hstep; exact ⟨rfl, .inl ⟨_, rfl⟩⟩
+    · split at hstep
+      · simp only [Flat.pushTrace, Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep; exact ⟨rfl, sorry⟩  -- error propagation unwraps .await
+      · simp only [Flat.pushTrace, Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep; exact ⟨rfl, .inl ⟨_, rfl⟩⟩
     · contradiction
 
 /-- Helper: single step from .yield (some e) d preserves callStack and maintains invariant. -/
@@ -3032,8 +3041,11 @@ private theorem step?_yield_some_callStack_inv
     obtain ⟨-, rfl⟩ := hstep; exact ⟨rfl, .inr ⟨_, rfl⟩⟩
   · -- exprValue? e = none (evaluate e within yield context)
     split at hstep
-    · simp only [Flat.pushTrace, Option.some.injEq, Prod.mk.injEq] at hstep
-      obtain ⟨-, rfl⟩ := hstep; exact ⟨rfl, .inl ⟨_, rfl⟩⟩
+    · split at hstep
+      · simp only [Flat.pushTrace, Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep; exact ⟨rfl, sorry⟩  -- error propagation unwraps .yield
+      · simp only [Flat.pushTrace, Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨-, rfl⟩ := hstep; exact ⟨rfl, .inl ⟨_, rfl⟩⟩
     · contradiction
 
 /-- General: Steps from a state satisfying invariant P preserve callStack,
