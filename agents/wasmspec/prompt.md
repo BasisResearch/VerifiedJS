@@ -1,4 +1,4 @@
-# wasmspec — Close return/yield/structural + tryCatch sorries in ANFConvertCorrect.lean
+# wasmspec — Close tryCatch + L17522 noCallFrameReturn sorries
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,74 +9,59 @@
 ## MEMORY: ~3.5GB free. USE LSP ONLY — no builds.
 
 ## CONCURRENCY
-- proof agent works on Flat/Semantics.lean + compound sorries (L11765-12257)
+- proof agent is FIXING BUILD ERRORS in ANFConvertCorrect.lean (L9752-11220)
 - jsspec works on ClosureConvertCorrect.lean
-- **YOU** own L12288-12318 (return/yield/structural), L16418-16439 (tryCatch), and L17522-17806
+- **YOU** work on L16366-16439 (tryCatch) and L17522-17806 (callframe + tryCatch)
 
-## STATUS: Your previous K-mismatch analysis was excellent. ALL 24 if_branch sorries ARE architecturally blocked. REDIRECTING you to new targets.
+## CAUTION: BUILD IS CURRENTLY BROKEN
+The proof agent broke ANFConvertCorrect.lean in its last run. There are ~100 errors around L9752-11220. You MUST NOT edit lines in that range. Stay in YOUR zones (L16366+ and L17522+).
 
-## ===== P0: CLOSE L12288 and L12292 (return/yield with some val) =====
+Wait for the proof agent to fix the build before testing your changes with `lean_diagnostic_messages`. If the LSP shows errors in your zones that are CASCADING from earlier errors, wait.
 
-These are in `normalizeExpr_step_sim` around L12261.
+## ===== P0: L17522 — noCallFrameReturn =====
 
-**L12288**: `| some val => sorry -- return (some val): compound, can produce .let`
-**L12292**: `| some val => sorry -- yield (some val): compound, can produce .let`
-
-### STRATEGY:
-For `return (some val)` where val is compound (not a value):
-1. `normalizeExpr (.return (some val)) k` produces something like `.let fresh (normalizeExpr val ...) (.return (some (.trivial fresh)))`
-2. The flat expr `.return (some val)` steps val first (L968-970)
-3. The ANF `.let fresh ... (.return ...)` steps the init first
-4. Show the SimRel is preserved after one step of val
-
-Use `lean_goal` at L12288 to see exact proof state. Then try:
 ```lean
-sorry -- first try lean_goal to see what we need
+sorry /- noCallFrameReturn: Need catchParam ≠ "__call_frame_return__". -/
 ```
 
-If the goal is about SimRel reconstruction after stepping val:
-1. Use the normalizeExpr decomposition for return/yield
-2. Apply the IH on the sub-expression val
-3. Reconstruct the SimRel with the new state
+This should be closable. The proof agent defined `noCallFrameReturn_tryCatch_direct_bridge` at L4303 but it uses `normalizeExpr_tryCatch_decomp` which doesn't exist yet.
 
-### CONCRETE STEPS:
-1. `lean_goal` at L12288 (column at the sorry)
-2. `lean_goal` at L12292
-3. If goals are tractable, attempt closure
-4. If blocked, document WHY in sorry comment
+**Your job**: Define `normalizeExpr_tryCatch_decomp` or find an alternative path.
 
-## ===== P1: CLOSE L16418, L16436, L16439 (tryCatch cases) =====
+The key insight: `normalizeExpr (.tryCatch body cp cb fin) k` normalizes to `.tryCatch body' cp' cb' fin'` where `cp' = cp` (the catch parameter is preserved by normalizeExpr). So if `noCallFrameReturn (.tryCatch body cp cb fin) = true`, then `cp ≠ "__call_frame_return__"`, and since `cp' = cp`, `catchParam ≠ "__call_frame_return__"`.
 
-**L16418**: `sorry -- tryCatch body-error: remaining gap is lifting body steps through tryCatch context`
-**L16436**: `sorry -- tryCatch body-step: blocked by callStack propagation + counter alignment`
-**L16439**: `| _ => sorry -- compound cases: deferred`
+Try:
+1. `lean_goal` at L17522 to see exact proof state
+2. If catchParam comes from normalizeExpr, unfold normalizeExpr for tryCatch to show cp is preserved
+3. Use `noCallFrameReturn` definition directly
 
-### STRATEGY for L16418:
-In the tryCatch body-error case, the body produced an `.error` event. The flat tryCatch should catch this and step to the catch body. The key is showing that:
-1. Flat tryCatch catches the error (Flat.step? on tryCatch with error event)
-2. The catch body normalization matches
-3. SimRel is preserved
+## ===== P1: L16366-16439 (tryCatch step_sim cases) =====
 
-Use `lean_goal` at L16418 to see the exact state.
+These are in `normalizeExpr_tryCatch_step_sim`:
+- **L16366**: tryCatch body-error (body throws, tryCatch catches)
+- **L16384**: tryCatch body-step (body takes a step within tryCatch)
+- **L16387**: compound tryCatch cases
 
-### STRATEGY for L16436:
-TryCatch body is stepping (not yet a value or error). The flat tryCatch wraps the body step. Need to show callStack is preserved and the counter aligns.
+Use `lean_goal` at each to understand what's needed. The body-error case (L16366) is the most promising:
+- Body produced `.error msg` → tryCatch catches → transitions to catch body
+- Need to show flat tryCatch catch matches ANF tryCatch catch after normalizeExpr
 
-### STRATEGY for L16439:
-This is a catch-all for compound tryCatch head cases. Low priority — skip if L16418 and L16436 are hard.
+## ===== P2: L17533 — body_sim IH =====
 
-## ===== P2: INVESTIGATE L17522-17533 and L17753-17806 =====
+```lean
+sorry /- body_sim: inner simulation IH, needs anfConvert_step_star to be proved by strong induction -/
+```
 
-**L17522**: `sorry /- noCallFrameReturn: Need catchParam ≠ "__call_frame_return__". -/`
-**L17533**: `sorry /- body_sim: inner simulation IH, needs anfConvert_step_star to be proved by strong induction -/`
-**L17753**: `sorry`
-**L17806**: `sorry`
+This depends on `anfConvert_step_star` which is the big unsolved theorem. SKIP this — it needs the main induction to be set up first.
 
-Check if L17522 is closable — it needs to show a catch parameter isn't equal to a specific string. This might be derivable from a well-formedness condition.
+## ===== P3: L17753 and L17806 =====
+
+Check what these are with `lean_goal`. If tractable, attempt. If blocked, document why.
 
 ## WORKFLOW
 1. **FIRST**: `echo "### $(date -Iseconds) Starting run" >> agents/wasmspec/log.md`
-2. `lean_goal` at L12288, L12292, L16418, L16436, L17522
-3. Attempt to close the easiest goals first
-4. Log what you closed and what's still blocked
-5. **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`
+2. Check build status — if broken, WAIT for proof agent to fix
+3. `lean_goal` at L17522, L16366, L16384, L17753, L17806
+4. Attempt L17522 first (most likely closable)
+5. Log what you closed and what's blocked
+6. **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

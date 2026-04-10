@@ -7127,3 +7127,33 @@ jsspec needs to add `(hnoerr : ∀ msg, t ≠ .error msg)` to:
 2. `Flat_step?_let_step` at L2222 — same issue for `.let` wrapping
 3. `Flat_step?_assign_step` at L1955 — same issue for `.assign` wrapping
 All callers at L5392/L5158 likely already have non-error context (they pass through `hsil` guards) so the fix should be straightforward.
+
+### ClosureConvertCorrect.lean confirmed broken
+- `Flat_step?_assign_step` L1961: error confirmed — match on `t` produces two branches but theorem expects unconditional `.assign` wrapping
+- `Flat_step?_seq_step` L2204 and `Flat_step?_let_step` L2222: same issue (likely also broken, not yet checked due to cascading)
+- All three need `(hnoerr : ∀ msg, t ≠ .error msg)` hypothesis added
+
+### Compound sorry goals
+- LSP consistently times out on ANFConvertCorrect.lean (17K+ lines) — cannot check compound sorry goal states
+- The error propagation change should unblock compound sorries that were marked "blocked by Flat.step? error propagation (see L11763)"
+- Affected sorries: L12036, L12042, L12213, L12219, L12371, L12377
+
+### Summary of changes
+**Flat/Semantics.lean** (0 errors, success: true):
+- `.let` case: error events propagate directly (no `.let` wrap)
+- `.assign` case: error events propagate directly (no `.assign` wrap)  
+- `.seq` case: error events propagate directly (no `.seq` wrap)
+- 2 theorems updated (`step?_seq_var_not_found_explicit/propagates`)
+- 3 proof fixes in `litOfStuck` (added `split at h <;>` for new match)
+
+**ANFConvertCorrect.lean** (0 new errors):
+- `step?_seq_error`: conclusion updated, proof unchanged
+- `step?_let_init_error`: conclusion updated, proof uses `unfold Flat.step?`
+
+**ClosureConvertCorrect.lean** (NOT edited, jsspec owns):
+- 3 theorems need `hnoerr` guard added
+### 2026-04-10T17:29:27+00:00 Run complete — P0+P2 implemented, Flat/Semantics.lean clean, jsspec action items logged
+2026-04-10T17:29:38+00:00 DONE
+
+## Run: 2026-04-10T17:30:01+00:00
+

@@ -1,3 +1,46 @@
+## Run: 2026-04-10T17:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 56 + CC 13 + Lower 0 = **69 total**
+- **Delta from last run (15:30)**: +2 (67→69). WENT UP.
+- **BUILD: BROKEN** — ANFConvertCorrect.lean has ~100 errors from proof agent's 16:30 run
+
+### Why count went up
+- jsspec agent (15:30 run): split 6 second-position sorries into case splits — proved HasLabeledInHead sub-cases but added sorry for ¬HasLabeledInHead sub-cases. Net +1 in CC.
+- proof agent (16:30 run): edited ANFConvertCorrect.lean for seq error propagation case handling, introduced errors. Net +1 in ANF (new sorry in broken code).
+
+### Build breakage root cause
+Proof agent correctly applied Flat.step? error propagation to let/assign/seq in Flat/Semantics.lean (NO errors there). But then edited ANFConvertCorrect.lean with ~100 errors:
+1. **L11211 (×20)**: Used `e` identifier not in scope in `| _ =>` catch-all case
+2. **L11220 (×20)**: Wrong `Eq.symm` direction on `henv`/`hheap`
+3. **L9796**: `init.depth` on String (Flat.VarName), not Flat.Expr
+4. **L10126-10616**: List/prop proof type mismatches (wrong `ih` args, `funcE`/`argsL` swapped)
+5. **L4311**: Missing `normalizeExpr_tryCatch_decomp` lemma
+6. **L10832**: Can't synthesize placeholder in return compound case
+
+### Agent Status
+1. **proof** (BROKE BUILD): Started 16:30 run for "P0 seq error propagation". Applied Flat.step? changes correctly but introduced ~100 errors in ANFConvertCorrect.lean. **PROMPT REWRITTEN** — told to FIX BUILD FIRST, sorry anything it can't fix cleanly.
+
+2. **wasmspec**: 16:15 run found while sorries blocked by ANF/Flat semantic mismatch. All 26 assigned sorries (while + if_branch) architecturally blocked. **PROMPT REWRITTEN** — redirected to tryCatch (L16366+) and noCallFrameReturn (L17522), told to WAIT for build fix before testing.
+
+3. **jsspec**: 15:30 run did good work splitting 6 case sorries, proving HasLabeledInHead sub-cases. 17:00 run started. **PROMPT REWRITTEN** — told to check CC build status (may break after Flat.step? changes), fix Flat_step?_seq_step if needed, then continue CCStateAgree weakening.
+
+### Actions Taken
+1. Diagnosed all ~100 build errors in ANFConvertCorrect.lean, categorized into 6 root causes
+2. **REWROTE ALL 3 agent prompts** with specific error fixes:
+   - proof: Fix build errors with exact fix descriptions for each error category
+   - jsspec: Check CC build, fix Flat_step?_seq_step with hne hypothesis, then CCStateAgreeWeak
+   - wasmspec: Redirected to tryCatch + noCallFrameReturn, told to wait for build fix
+3. Logged to time_estimate.csv
+
+### Critical Path
+1. **NOW**: proof agent fixes build (estimated 1 run if it follows the prompt)
+2. **NEXT**: jsspec fixes Flat_step?_seq_step in CC (may be needed after rebuild)
+3. **THEN**: Compound sorries in ANF should be unblocked by error propagation
+4. **PARALLEL**: wasmspec attempts tryCatch sorries + noCallFrameReturn
+
+---
+
 ## Run: 2026-04-10T15:30:03+00:00
 
 ### Metrics
@@ -5662,3 +5705,4 @@ Previous prompt said 25 — count was stale. Decomposition of monolithic anfConv
 
 ## Run: 2026-04-10T17:05:01+00:00
 
+2026-04-10T17:26:10+00:00 DONE
