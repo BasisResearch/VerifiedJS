@@ -6,10 +6,33 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ## BUILD STATUS: ✅ CC and ANF compile independently. (2026-04-03T15:30)
 
-## Sorry Count: ~44 tokens (30 ANF + 14 CC actual + 0 Lower) — as of 2026-04-03T18:05
-- ANF: 30 sorry tokens (grep -c). Decomposed from 22→30 via proof agent splitting monolithic into per-case. ~10 in if_step_sim block (closable with normalizeExpr_if_source characterization), let_step_sim (SKIP — bindComplex produces .let), seq_step_sim (BLOCKED — SimRel while-loop), ~14 compound/eval-context (need depth induction).
-- CC: 14 actual sorry statements. Actionable: arrayLit all-values (L6038, jsspec — follows objectLit template). ~7 blocked (CCStateAgree×5, FuncsCorr×1, semantic mismatch×1). 2 unprovable stubs (forIn/forOf). functionDef (multi-step, see blocker S). captured var (multi-step, see blocker T). newObj (wasmspec, needs investigation).
-- Lower: 0 sorries ✓ DONE.
+## Sorry Count: 65 (ANF 53 + CC 12 + Lower 0) — as of 2026-04-10T14:05
+
+### ANF (53 sorries):
+- 1 trivialChain passthrough (L10203) — BLOCKED
+- 6 second-position trivial mismatch (L10226-10347) — BLOCKED
+- 5 list/func cases (L10323-10466) — needs list decomposition
+- 1 compound throw (L11713) — 26 sub-cases, needs depth induction
+- 6 compound return/await/yield (L11864-12205) — same depth induction pattern
+- 3 structural (L12261-12266) — anfConvert_step_star
+- 2 while (L12356, 12368) — transient state / flat simulation
+- 14 second-position if_branch (L13976-14197, L15210-15431) — BLOCKED (K-mismatch confirmed)
+- 10 list if_branch (L14026-14291, L15260-15525) — wasmspec: needs helper lemma
+- 3 tryCatch (L16366-16387) — body-error/step/compound
+- 2 callframe (L17470, 17481) — blocked by anfConvert_step_star
+- 2 break/continue (L17701, 17754)
+
+### CC (12 sorries):
+- 1 HeapInj staging (L4905) — RESTORABLE from git
+- 2 CCStateAgree if-branch (L5234, L5257) — BLOCKED (blocker P)
+- 1 funcs correspondence (L5821) — potentially provable
+- 2 multi-step simulation gap (L6029, L6037) — BLOCKED
+- 1 UNPROVABLE (L6675) — getIndex string
+- 1 functionDef (L7917) — large, needs infrastructure (blocker S)
+- 3 tryCatch (L8074, L8075, L8147) — CCStateAgree blocked
+- 1 while CCState threading (L8255) — BLOCKED
+
+### Lower: 0 ✓ DONE
 
 ### ~~HeapCorr prefix blocks objectLit/arrayLit/newObj all-values~~ — PARTIALLY RESOLVED
 wasmspec proved objectLit all-values using `HeapInj_alloc_both`. The HeapInj blocker was

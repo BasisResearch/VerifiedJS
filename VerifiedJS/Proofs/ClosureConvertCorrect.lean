@@ -5234,7 +5234,9 @@ private theorem closureConvert_step_simulation
         · simp [sc', noCallFrameReturn] at hncfr ⊢; exact hncfr.1
         · simp [sc', ExprAddrWF] at hexprwf ⊢; exact hexprwf.2.1
         · exact ⟨st, (Flat.convertExpr then_ scope envVar envMap st).snd, by
-            simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, sorry⟩ -- CCStateAgree st' vs then_-only state: needs different st_a choice
+            simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, sorry⟩ -- BLOCKED: CCStateAgree. st' includes else_ conversion state but
+            -- st_a' = (convertExpr then_ ... st).snd. Would need convertExpr else_ to not change
+            -- nextId/funcs.size, which fails when else_ contains functionDef nodes.
       | false =>
         rw [Flat_step?_if_false _ _ _ _ (by rw [toBoolean_convertValue, htb])] at hstep
         simp at hstep
@@ -5258,6 +5260,9 @@ private theorem closureConvert_step_simulation
         · exact ⟨(Flat.convertExpr then_ scope envVar envMap st).snd,
             (Flat.convertExpr else_ scope envVar envMap (Flat.convertExpr then_ scope envVar envMap st).snd).snd, by
             simp [sc', Flat.convertExpr], sorry, by rw [hconv.2]; exact ⟨rfl, rfl⟩⟩
+            -- BLOCKED: CCStateAgree. st_a must skip then_ conversion state to reach else_,
+            -- but CCStateAgree st st_a requires st_a = (convertExpr then_ ... st).snd which
+            -- differs from st when then_ contains functionDef nodes.
     | none =>
       have hsupp_cond : cond.supported = true := by
         have h := hsupp; unfold Core.Expr.supported at h; simp [Bool.and_eq_true] at h; exact h.1.1
@@ -5821,7 +5826,10 @@ private theorem closureConvert_step_simulation
             · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩,
                 by rw [hst, hst_eq]; exact ⟨rfl, rfl⟩⟩
           · -- Non-consoleLog function call: needs FuncsCorr invariant
-            sorry -- non-consoleLog function call: needs sf.funcs[idx] ↔ sc.funcs[idx] correspondence
+            sorry -- BLOCKED: Missing FuncsCorr invariant. Non-consoleLog function call requires
+            -- sf.funcs[idx] ↔ sc.funcs[idx] correspondence (params, body, env mapping).
+            -- No such invariant exists in the bisimulation relation. Would need FuncsCorr
+            -- added to the relation and maintained through all cases.
         · -- Non-function callee with all-value args
           have hnc := convertValue_not_closure_of_not_function cv hnotfunc
           have hfvals := allValues_convertExprList_valuesFromExprList args argVals scope envVar envMap st hallv
@@ -6029,7 +6037,8 @@ private theorem closureConvert_step_simulation
     -- The simulation only works when all Flat sub-expressions are values (Flat also allocates).
     cases hfev : Core.exprValue? f with
     | none =>
-      sorry -- f not a value: Core allocates immediately but Flat steps f → semantic mismatch
+      sorry -- BLOCKED: multi-step simulation gap. Core newObj allocates immediately regardless
+            -- of sub-expression evaluation, but Flat steps f first. Same class as L4905.
     | some fv =>
       have hflit : f = .lit fv := by
         cases f <;> simp [Core.exprValue?] at hfev; subst hfev; rfl
@@ -6037,7 +6046,8 @@ private theorem closureConvert_step_simulation
       simp [Flat.convertExpr] at hfexpr hst
       cases hcfnv : Core.firstNonValueExpr args with
       | some val =>
-        sorry -- non-value arg: Core allocates immediately but Flat steps arg → semantic mismatch
+        sorry -- BLOCKED: multi-step simulation gap. Core newObj allocates immediately regardless
+              -- of arg evaluation, but Flat steps the non-value arg first. Same class as L4905.
       | none =>
         -- All elements are values: both Core and Flat allocate empty objects on heap.
         have hffnv := convertExprList_firstNonValueExpr_none args scope envVar envMap st hcfnv
@@ -7917,7 +7927,9 @@ private theorem closureConvert_step_simulation
           have h_rhs2 := convertExprList_append_snd done_c [sc_sub'.expr] scope envVar envMap st
           simp only [h_lhs, h_lhs2, h_rhs, h_rhs2, Flat.convertExprList]
           exact ⟨hrest_det.2.1.symm, hrest_det.2.2.symm⟩
-  | functionDef fname params body isAsync isGen => sorry
+  | functionDef fname params body isAsync isGen => sorry -- BLOCKED: Entire case needs FuncsCorr invariant +
+    -- closure conversion infrastructure. Core adds FuncClosure to funcs array and binds name;
+    -- Flat produces makeClosure/makeEnv sequence. Requires FuncsCorr + multi-step simulation.
   | throw val =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
@@ -8075,7 +8087,10 @@ private theorem closureConvert_step_simulation
           -- Output agreement CCStateAgree st' st requires catchBody to not change CCState.
           -- Same class as if-else/while_ CCStateAgree architectural issue.
           exact ⟨st, st, by simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, by rw [hst'_eq]; sorry⟩
-      | some fin => sorry -- tryCatch body-value with finally: CCStateAgree blocked
+          -- BLOCKED: CCStateAgree. st' = (convertExpr catchBody ... st).snd but st_a' = st.
+          -- Requires catchBody conversion to not change nextId/funcs.size.
+      | some fin => sorry -- BLOCKED: CCStateAgree + tryCatch body-value with finally.
+            -- Same CCStateAgree issue as the none case, compounded by finally_ conversion.
     | none =>
       -- Body is not a value; step the body via IH
       have hfnv : Flat.exprValue? fbody = none :=
@@ -8147,7 +8162,9 @@ private theorem closureConvert_step_simulation
                   (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.2) hmono⟩
           · -- CCStateAgree: convertExpr_scope_irrelevant solves scope mismatch
             -- but CCStateAgree st st1 remains (body conversion may change nextId/funcs.size)
-            sorry
+            sorry -- BLOCKED: CCStateAgree. Need CCStateAgree st st_a where st_a accounts for
+            -- body conversion state st1 = (convertExpr body ... st).snd, but body may contain
+            -- functionDef nodes that change nextId/funcs.size.
         · -- Non-error: body step preserves tryCatch wrapper
           simp only [not_exists] at herr
           have heq := Flat_step?_tryCatch_body_step sf fbody catchParam fcatch ffin sb t hncf hfnv hm herr
@@ -8255,7 +8272,9 @@ private theorem closureConvert_step_simulation
       exact ⟨hexprwf.1, ⟨hexprwf.2, hexprwf.1, hexprwf.2⟩, trivial⟩
     · -- Conversion relation: need convertExpr (.if cond (.seq body (.while_ cond body)) (.lit .undefined))
       -- to match sf'.expr. This requires CCState independence since while_ duplicates cond and body.
-      sorry -- CCState threading: while_ lowering duplicates sub-expressions with different CCState
+      sorry -- BLOCKED: CCStateAgree. while_ lowers to .if cond (.seq body (.while_ cond body)) (.lit .undefined)
+      -- which duplicates cond and body, each needing independent CCState threading. The duplicated
+      -- sub-expressions get different CCState inputs, breaking CCStateAgree.
   | forIn binding obj body =>
     rw [hsc] at hconv
     simp [Flat.convertExpr] at hconv

@@ -4228,3 +4228,31 @@ The investigation confirmed the structural approach is correct but the K-mismatc
 ## Run: 2026-04-10T14:00:01+00:00
 
 ### 2026-04-10T14:00:09+00:00 Starting run
+
+Investigated all 12 sorry locations in ClosureConvertCorrect.lean.
+
+**Classification (all BLOCKED):**
+
+Category 1 — Multi-step simulation gap (3 sorries):
+- L4905: Captured var. Flat `.getEnv (.var envVar) idx` takes 2 steps; Core `.var name` takes 1. Intermediate `.getEnv (.lit envObj) idx` has no Core counterpart.
+- L6029: newObj non-value f. Core allocates immediately; Flat steps f first.
+- L6037: newObj non-value arg. Same as L6029 for args.
+
+Category 2 — CCStateAgree (6 sorries):
+- L5234: if-true branch. Discarded else_ conversion changes nextId/funcs.size.
+- L5257: if-false branch. Skipped then_ conversion state mismatch.
+- L8074: tryCatch body-value (no finally). catchBody conversion changes CCState.
+- L8075: tryCatch body-value (with finally). Same + finally_ compounding.
+- L8147: tryCatch error sub-case. body conversion changes CCState.
+- L8255: while_ lowering. Duplicated cond/body get different CCState inputs.
+
+Category 3 — Missing FuncsCorr invariant (2 sorries):
+- L5821: Non-consoleLog function call. No sf.funcs[idx] ↔ sc.funcs[idx] correspondence.
+- L7917: functionDef entire case. Needs FuncsCorr + closure conversion infrastructure.
+
+Category 4 — Unprovable (1 sorry):
+- L6675: getIndex string. Float.toString is opaque; can't prove `Float.toString n ≠ "length"`.
+
+**Actions taken:** Updated all sorry comments with BLOCKED annotations explaining the specific architectural issue. No proofs could be completed — all require changes to the bisimulation relation or semantics alignment.
+### 2026-04-10T14:14:02+00:00 Run complete — all 12 sorries classified as BLOCKED, comments updated
+2026-04-10T14:14:15+00:00 DONE

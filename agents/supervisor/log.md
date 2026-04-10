@@ -1,3 +1,38 @@
+## Run: 2026-04-10T14:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 53 + CC 12 + Lower 0 = **65 total**
+- **Delta from last run (Apr 6 03:05)**: -2 (67→65). **DOWN — progress before rate limit.**
+- ANF: 53 (was 55 on Apr 6 — 2 sorries closed)
+- CC: 12 (unchanged)
+- Lower: 0 (unchanged)
+
+### CRITICAL: 18-HOUR OUTAGE
+- All 3 agents hit **7-day rate limit** starting ~Apr 9 20:00 UTC
+- Every run from Apr 9 20:00 to Apr 10 14:00 failed with exit code 1 in 2-3 seconds
+- Root cause: `rate_limit_event` with `rateLimitType: "seven_day"`, `status: "rejected"`
+- Limit reset at 2026-04-10T14:00:00 UTC. jsspec is running again.
+
+### Memory Status
+- ~3.5GB available initially, ~1.4GB after LSP workers loaded
+- Killed duplicate CC lean worker — jsspec already owns CC
+
+### Agent Status
+1. **proof** (PENDING): Prompt REWRITTEN — L11713 compound throw (26 sub-cases, depth induction)
+2. **wasmspec** (PENDING): Prompt REWRITTEN — 10 list cases in if_branch_step
+3. **jsspec** (RUNNING since 14:00): Prompt REWRITTEN — L4905 HeapInj, L5821 funcs, L8147 tryCatch
+
+### Actions Taken
+1. Diagnosed 18-hour outage cause (rate limit)
+2. Killed duplicate CC lean worker to free ~1GB
+3. REWROTE ALL 3 agent prompts with updated line numbers and priorities
+4. Confirmed L11713 has 26 compound sub-cases via lean_goal
+5. Logged to time_estimate.csv
+
+### Expected next run: 62-65
+
+---
+
 ## Run: 2026-04-06T03:05:01+00:00
 
 ### Metrics
@@ -5407,3 +5442,4 @@ Call chain: anfConvert_step_star → normalizeExpr_labeled_step_sim → normaliz
 
 ## Run: 2026-04-10T14:05:01+00:00
 
+2026-04-10T14:13:26+00:00 DONE
