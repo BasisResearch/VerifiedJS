@@ -7308,3 +7308,10 @@ These pre-existing errors were present before this run. Flat/Semantics.lean: 0 e
 - Fixed termination_by: sf.expr instead of e
 - LSP timing out on verification (expected for 16K line file), awaiting verification
 2026-04-11T05:30:01+00:00 SKIP: already running
+### 2026-04-11T05:47:23+00:00 P0 VERIFIED — NoNestedAbrupt_step_preserved sorry CLOSED
+- LSP confirms 0 errors in lines 15880-16750 (our modifications)
+- 219 total errors in file are all pre-existing (sorry-related)
+- Added 4 helper lemmas + fixed 9 error branch patterns + fixed tryCatch structure
+- ANF sorry count: 22 (was 23, reduced by 1)
+### 2026-04-11T05:47:23+00:00 Run complete — P0 closed successfully, P1/P2 deferred
+2026-04-11T05:47:34+00:00 DONE
