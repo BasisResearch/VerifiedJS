@@ -8236,3 +8236,34 @@ The common missing lemma is `no_return_none_head_implies_trivial_chain` (~80 lin
 1. Write `no_return_none_head_implies_trivial_chain`
 2. Close seq_right Case B (arg=none) as proof of concept
 3. Template remaining second-position cases
+
+### 2026-04-11T15:30:00+00:00 Infrastructure written
+
+**Added to ANFConvertCorrect.lean:**
+
+1. **7 second-position error-propagation lemmas** (after L2515):
+   - `step?_binary_rhs_error` — binary op with lhs=value, rhs error
+   - `step?_setProp_val_error` — setProp with obj=value, val error
+   - `step?_getIndex_idx_error` — getIndex with obj=value, idx error
+   - `step?_setIndex_idx_error` — setIndex with obj=value, idx error
+   - `step?_setIndex_val_error` — setIndex with obj,idx=value, val error
+   - `step?_call_env_error` — call with func=value, env error
+   - `step?_newObj_env_error` — newObj with func=value, env error
+   All verified pattern-correct via LSP hover (first lemma confirmed).
+
+2. **`no_return_none_head_implies_trivial_chain`** (~200 lines, before L11980):
+   Mirrors `no_return_some_head_implies_trivial_chain`. Proves: if normalizeExpr e k
+   produces `.return none` and `¬HasReturnInHead e`, then `isTrivialChain e = true`.
+   Key enabler for seq_right Case B and all second-position cases.
+
+**No new sorries introduced.** Sorry count remains at 49 total (including comments).
+
+**Next steps to close seq_right Case B (L16384 approx):**
+1. Use `no_return_none_head_implies_trivial_chain` to prove `a` is trivial chain
+2. Use `trivialChain_eval_value` to step `a` to `.lit v` within `.seq · b` context
+3. Use `Steps_seq_ctx_b` to lift through `.seq · b`
+4. Step `.seq (.lit v) b → b` via `step?_seq_lit`
+5. Apply IH on `b` (HasReturnInHead b, depth ≤ d)
+6. Compose all steps via `Flat.Steps.append`
+### 2026-04-11T15:40:31+00:00 Run complete — wrote 7 error lemmas + no_return_none_head_implies_trivial_chain (~300 lines infrastructure)
+2026-04-11T15:41:51+00:00 DONE
