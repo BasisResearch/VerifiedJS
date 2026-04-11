@@ -1512,49 +1512,49 @@ end
 mutual
 private theorem CCExprEquiv_refl (e : Flat.Expr) : CCExprEquiv 0 e e := by
   cases e with
-  | lit _ => exact rfl
-  | var _ => exact rfl
-  | this => trivial
-  | «let» n i b => exact ⟨rfl, CCExprEquiv_refl i, CCExprEquiv_refl b⟩
-  | assign n v => exact ⟨rfl, CCExprEquiv_refl v⟩
-  | «if» c t e => exact ⟨CCExprEquiv_refl c, CCExprEquiv_refl t, CCExprEquiv_refl e⟩
-  | seq a b => exact ⟨CCExprEquiv_refl a, CCExprEquiv_refl b⟩
-  | call f e args => exact ⟨CCExprEquiv_refl f, CCExprEquiv_refl e, CCExprListEquiv_refl args⟩
-  | newObj f e args => exact ⟨CCExprEquiv_refl f, CCExprEquiv_refl e, CCExprListEquiv_refl args⟩
-  | getProp o p => exact ⟨rfl, CCExprEquiv_refl o⟩
-  | setProp o p v => exact ⟨rfl, CCExprEquiv_refl o, CCExprEquiv_refl v⟩
-  | getIndex o i => exact ⟨CCExprEquiv_refl o, CCExprEquiv_refl i⟩
-  | setIndex o i v => exact ⟨CCExprEquiv_refl o, CCExprEquiv_refl i, CCExprEquiv_refl v⟩
-  | deleteProp o p => exact ⟨rfl, CCExprEquiv_refl o⟩
-  | typeof a => exact CCExprEquiv_refl a
-  | getEnv e idx => exact ⟨rfl, CCExprEquiv_refl e⟩
-  | makeEnv vs => exact CCExprListEquiv_refl vs
-  | makeClosure fi e => exact ⟨by omega, CCExprEquiv_refl e⟩
-  | objectLit ps => exact CCPropListEquiv_refl ps
-  | arrayLit es => exact CCExprListEquiv_refl es
-  | throw a => exact CCExprEquiv_refl a
-  | tryCatch b cp cb f => exact ⟨rfl, CCExprEquiv_refl b, CCExprEquiv_refl cb, CCOptExprEquiv_refl f⟩
-  | while_ c b => exact ⟨CCExprEquiv_refl c, CCExprEquiv_refl b⟩
-  | «break» l => exact rfl
-  | «continue» l => exact rfl
-  | labeled l b => exact ⟨rfl, CCExprEquiv_refl b⟩
-  | «return» a => exact CCOptExprEquiv_refl a
-  | yield a d => exact ⟨rfl, CCOptExprEquiv_refl a⟩
-  | await a => exact CCExprEquiv_refl a
-  | unary op a => exact ⟨rfl, CCExprEquiv_refl a⟩
-  | binary op l r => exact ⟨rfl, CCExprEquiv_refl l, CCExprEquiv_refl r⟩
+  | lit _ => unfold CCExprEquiv; rfl
+  | var _ => unfold CCExprEquiv; rfl
+  | this => unfold CCExprEquiv; trivial
+  | «let» n i b => unfold CCExprEquiv; exact ⟨rfl, CCExprEquiv_refl i, CCExprEquiv_refl b⟩
+  | assign n v => unfold CCExprEquiv; exact ⟨rfl, CCExprEquiv_refl v⟩
+  | «if» c t e => unfold CCExprEquiv; exact ⟨CCExprEquiv_refl c, CCExprEquiv_refl t, CCExprEquiv_refl e⟩
+  | seq a b => unfold CCExprEquiv; exact ⟨CCExprEquiv_refl a, CCExprEquiv_refl b⟩
+  | call f e args => unfold CCExprEquiv; exact ⟨CCExprEquiv_refl f, CCExprEquiv_refl e, CCExprListEquiv_refl args⟩
+  | newObj f e args => unfold CCExprEquiv; exact ⟨CCExprEquiv_refl f, CCExprEquiv_refl e, CCExprListEquiv_refl args⟩
+  | getProp o p => unfold CCExprEquiv; exact ⟨rfl, CCExprEquiv_refl o⟩
+  | setProp o p v => unfold CCExprEquiv; exact ⟨rfl, CCExprEquiv_refl o, CCExprEquiv_refl v⟩
+  | getIndex o i => unfold CCExprEquiv; exact ⟨CCExprEquiv_refl o, CCExprEquiv_refl i⟩
+  | setIndex o i v => unfold CCExprEquiv; exact ⟨CCExprEquiv_refl o, CCExprEquiv_refl i, CCExprEquiv_refl v⟩
+  | deleteProp o p => unfold CCExprEquiv; exact ⟨rfl, CCExprEquiv_refl o⟩
+  | typeof a => unfold CCExprEquiv; exact CCExprEquiv_refl a
+  | getEnv e idx => unfold CCExprEquiv; exact ⟨rfl, CCExprEquiv_refl e⟩
+  | makeEnv vs => unfold CCExprEquiv; exact CCExprListEquiv_refl vs
+  | makeClosure fi e => unfold CCExprEquiv; exact ⟨Nat.add_zero fi, CCExprEquiv_refl e⟩
+  | objectLit ps => unfold CCExprEquiv; exact CCPropListEquiv_refl ps
+  | arrayLit es => unfold CCExprEquiv; exact CCExprListEquiv_refl es
+  | throw a => unfold CCExprEquiv; exact CCExprEquiv_refl a
+  | tryCatch b cp cb f => unfold CCExprEquiv; exact ⟨rfl, CCExprEquiv_refl b, CCExprEquiv_refl cb, CCOptExprEquiv_refl f⟩
+  | while_ c b => unfold CCExprEquiv; exact ⟨CCExprEquiv_refl c, CCExprEquiv_refl b⟩
+  | «break» l => unfold CCExprEquiv; rfl
+  | «continue» l => unfold CCExprEquiv; rfl
+  | labeled l b => unfold CCExprEquiv; exact ⟨rfl, CCExprEquiv_refl b⟩
+  | «return» a => unfold CCExprEquiv; exact CCOptExprEquiv_refl a
+  | yield a d => unfold CCExprEquiv; exact ⟨rfl, CCOptExprEquiv_refl a⟩
+  | await a => unfold CCExprEquiv; exact CCExprEquiv_refl a
+  | unary op a => unfold CCExprEquiv; exact ⟨rfl, CCExprEquiv_refl a⟩
+  | binary op l r => unfold CCExprEquiv; exact ⟨rfl, CCExprEquiv_refl l, CCExprEquiv_refl r⟩
 private theorem CCExprListEquiv_refl (es : List Flat.Expr) : CCExprListEquiv 0 es es := by
   cases es with
-  | nil => trivial
-  | cons e rest => exact ⟨CCExprEquiv_refl e, CCExprListEquiv_refl rest⟩
+  | nil => unfold CCExprListEquiv; trivial
+  | cons e rest => unfold CCExprListEquiv; exact ⟨CCExprEquiv_refl e, CCExprListEquiv_refl rest⟩
 private theorem CCPropListEquiv_refl (ps : List (Flat.PropName × Flat.Expr)) : CCPropListEquiv 0 ps ps := by
   cases ps with
-  | nil => trivial
-  | cons p rest => exact ⟨rfl, CCExprEquiv_refl p.2, CCPropListEquiv_refl rest⟩
+  | nil => unfold CCPropListEquiv; trivial
+  | cons p rest => unfold CCPropListEquiv; exact ⟨rfl, CCExprEquiv_refl p.2, CCPropListEquiv_refl rest⟩
 private theorem CCOptExprEquiv_refl (oe : Option Flat.Expr) : CCOptExprEquiv 0 oe oe := by
   cases oe with
-  | none => trivial
-  | some e => exact CCExprEquiv_refl e
+  | none => unfold CCOptExprEquiv; trivial
+  | some e => unfold CCOptExprEquiv; exact CCExprEquiv_refl e
 end
 
 /-! #### Equality implies CCExprEquiv: if two expressions are equal, they are CCExprEquiv for any δ.
