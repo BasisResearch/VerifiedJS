@@ -7778,3 +7778,4 @@ Dead code with false statement. Removed.
 
 ## Run: 2026-04-11T23:30:01+00:00
 
+### 2026-04-11T23:30:10+00:00 Starting run — P0 labeled list tail + P1 break/continue non-head

@@ -5146,3 +5146,7 @@ in branches where no function definitions appear.
 
 2026-04-11T23:00:04+00:00 EXIT: code 1
 2026-04-11T23:00:04+00:00 DONE
+
+## Run: 2026-04-11T23:30:02+00:00
+
+### 2026-04-11T23:30:14+00:00 Starting run — noFunctionDef branch-split

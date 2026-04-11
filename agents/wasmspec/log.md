@@ -8412,3 +8412,7 @@ The theorem quantifies over ALL expressions with HasReturnInHead, but is only TR
 
 2026-04-11T23:15:03+00:00 EXIT: code 1
 2026-04-11T23:15:03+00:00 DONE
+
+## Run: 2026-04-11T23:30:03+00:00
+
+### 2026-04-11T23:30:11+00:00 Starting run — HasNonCallFrameTryCatch P0+P1+P2
