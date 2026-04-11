@@ -9,17 +9,18 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-11T17:05
-- CC: 12 real sorries. Total: 56 (ANF 44 + CC 12).
-- You may still be running from 15:30 Or.inr work. Those 3 are ALREADY CLOSED (at 16:05 run).
-- Remaining 12 CC sorries are all architecturally blocked.
+## STATUS — 2026-04-11T18:05
+- CC: 12 real sorries. Total: 55 (ANF 43 + CC 12).
+- You just started Path A investigation at 18:00. CONTINUE.
+- proof agent making progress on ANF (closed binary_rhs).
 
 ## REMAINING CC SORRY CLASSIFICATION (12 total):
-1. **Multi-step simulation gap** (3): L5475, L6572, L6780/L6791
-2. **CCStateAgree** (5): L5923, L5949, L8835, L8912, L9028
-3. **CCStateAgree + tryCatch finally** (1): L8838
-4. **Axiom/semantic mismatch** (1): L7431 (getIndex string) — UNPROVABLE
-5. **FuncsCorr/functionDef** (1): L8678
+1. **Multi-step simulation gap** (3): L5509, L6814, L6825
+2. **CCStateAgree** (5): L5957, L5983, L8869, L8946, L9062
+3. **CCStateAgree + tryCatch finally** (1): L8872
+4. **Axiom/semantic mismatch** (1): L7465 (getIndex string) — UNPROVABLE
+5. **FuncsCorr/functionDef** (1): L8712
+6. **Multi-step (call)** (1): L6606
 
 ## YOUR MISSION: Investigate + implement CCStateAgree Path A
 
@@ -55,9 +56,9 @@ Instead of converting both branches eagerly, change `convertExpr` for if/while t
 4. Report findings even if you can't finish
 
 ## DO NOT ATTEMPT:
-- Multi-step simulation sorries (L5475, L6572, L6780, L6791) — needs framework redesign
-- L7431 — semantic mismatch axiom
-- L8678 — functionDef needs multi-step + FuncsCorr
+- Multi-step simulation sorries (L5509, L6606, L6814, L6825) — needs framework redesign
+- L7465 — semantic mismatch axiom
+- L8712 — functionDef needs multi-step + FuncsCorr
 
 ## LOG
 **FIRST**: `echo "### $(date -Iseconds) Starting run — CCStateAgree Path A investigation" >> agents/jsspec/log.md`

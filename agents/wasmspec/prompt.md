@@ -1,4 +1,4 @@
-# wasmspec — NEW TARGETS: noTryCatchInHead + compound throw
+# wasmspec — FINISH HasNonCallFrameTryCatchInHead + P0
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,67 +9,45 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-11T17:05
-- Total: 56 real sorries (ANF 44, CC 12). DOWN 2 from last run. YOU closed the Case B sorries!
-- P1 (await/yield) and P2 (break/continue list) are BLOCKED — confirmed this run.
-- proof agent assigned to second-position (L16690-L16694).
-- Need new targets for you.
+## STATUS — 2026-04-11T18:05
+- Total: 55 real sorries (ANF 43, CC 12). DOWN 1 from last run.
+- proof agent closed binary_rhs. Good momentum on second-position cases.
+- YOUR LAST RUN: Refined P0 — split via Classical.em, proved ¬HasTryCatchInHead branch. HasTryCatchInHead branch still sorry at L15296.
+- You proposed HasNonCallFrameTryCatchInHead approach. CONTINUE THIS.
 
-## P0: step_nonError_preserves_noTryCatchInHead (L15166) — 1 sorry
+## P0: HasTryCatchInHead branch at L15296 — 1 sorry
 
-This sorry was created when proof agent moved the tryCatch case from step_error_isLit to the call site.
+### Your plan from last run:
+Define `HasNonCallFrameTryCatchInHead` (same as HasTryCatchInHead but `tryCatch_direct` requires `cp ≠ "__call_frame_return__"`). Key insight:
+1. Non-call-frame tryCatches only come from source try/catch — never introduced by stepping
+2. Call-frame tryCatches only from function calls
+3. normalizeExpr `.return` implies no tryCatch in initial expression head
+4. So intermediate states only have call-frame tryCatches
 
-At L15166:
-```lean
-(sorry /- ¬HasTryCatchInHead s1.expr: needs step_nonError_preserves_noTryCatchInHead -/)
-```
-
-### Strategy:
-This needs a theorem: if `Flat.step? s = some (ev, s')` and `ev ≠ .error _` and `¬HasTryCatchInHead s.expr`, then `¬HasTryCatchInHead s'.expr`.
-
-**BUT**: proof agent noted that function calls introduce call-frame tryCatch during stepping, so `¬HasTryCatchInHead` may NOT be preserved in general. This needs investigation.
-
-### Investigation steps:
-1. Read `HasTryCatchInHead` definition — what constructors does it have?
-2. `lean_local_search "HasTryCatchInHead"` — find existing lemmas
-3. Check if the normalizeExpr context guarantees no tryCatch (i.e., the initial expression from normalizeExpr never has tryCatch in head)
-4. If so, prove `normalizeExpr_no_tryCatchInHead` instead — may be easier
+### Steps:
+1. Define `HasNonCallFrameTryCatchInHead` inductive type
+2. Prove `step_nonError_preserves_noNonCallFrameTryCatchInHead` — non-error steps don't introduce non-call-frame tryCatch
+3. Use this to close the sorry at L15296
 
 ### Fallback:
-If this is too complex, move to P1.
+If this approach is too large (>400 lines), consider:
+- Proving only for the specific constructors needed (return head position)
+- Or deferring and switching to return/yield .let compound (P2)
 
-## P1: Compound throw (L13714) — 1 sorry
+## P1: Compound throw (L13806) — 1 sorry
+BLOCKED by HasThrowInHead_Steps_steppable (same infrastructure as P0). Only attempt after P0.
 
-```lean
-| _ => sorry -- compound cases: need Steps lifting lemma + error propagation
-```
+## P2: Return/yield .let compound (L17729, L17733, L17734) — 3 sorries
+Also needs compound lifting infrastructure. Defer.
 
-This is in `anfConvert_step_sim`. Check what the goal looks like with `lean_goal` at L13714.
-
-## P2: Return/yield .let compound (L17286, L17290, L17291) — 3 sorries
-
-These handle compound expressions in return/yield that produce `.let`:
-```
-L17286: | some val => sorry -- return (some val): compound, can produce .let
-L17290: | some val => sorry -- yield (some val): compound, can produce .let
-L17291: | _ => sorry -- compound expressions (seq, let, assign, if, call, etc.)
-```
-
-Check with `lean_goal` at each line.
-
-## P3: End-of-file sorries (L20577, L20648) — 2 sorries
-
-Both are break/continue compound cases — same blocker as P2 in break/continue list.
-```
-L20577: sorry -- compound break cases
-L20648: sorry -- compound continue cases (same blocker)
-```
+## P3: End-of-file (L21020, L21091) — 2 sorries
+Defer.
 
 ## DO NOT WORK ON:
-- L16690-L16701 (second-position + list — proof agent)
-- L10704-L11075 (trivialChain zone — LSP timeout)
+- L17134-L17144 (second-position + list — proof agent)
+- L10796-L11167 (trivialChain zone — LSP timeout)
 - ClosureConvertCorrect.lean (jsspec)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — noTryCatchInHead + compound throw" >> agents/wasmspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — HasNonCallFrameTryCatchInHead for P0" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

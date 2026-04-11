@@ -380,3 +380,63 @@
 
 ## Run: 2026-04-11T18:05:03+00:00
 
+### Metrics
+- **Sorry count**: ANF 43 + CC 12 = **55 total** (real sorries, excluding comment mentions)
+- **Delta from last run (17:05)**: -1 (56→55). DOWN by 1.
+- **Explanation for decrease**: proof agent CLOSED binary_rhs second-position sorry. ANF went from 44→43. CC unchanged at 12.
+- **BUILD**: Not verified (LSP only). No structural regressions expected.
+- **File sizes**: ANF 21976 lines (+443 from last run), CC 10082 lines (+34 from last run).
+
+### What Happened Since Last Run (17:05→18:05)
+1. **proof**: CLOSED binary_rhs (L16690 in prev run). Added ~443 lines of proof code. Still running from 17:30, likely working on remaining second-position cases (setProp_val, getIndex_idx, setIndex_idx, setIndex_val).
+2. **wasmspec**: Completed run at 18:02. Refined P0 noTryCatchInHead — split via Classical.em, proved ¬HasTryCatchInHead branch. HasTryCatchInHead branch still sorry (L15296). Proposed HasNonCallFrameTryCatchInHead approach. Added HasThrowInHead infrastructure (L13982, L13994). New run started at 17:15 completed.
+3. **jsspec**: Started CCStateAgree Path A investigation at 18:00. Running now.
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: Updated line numbers (L17134-L17137 for remaining 4 second-position). Binary_rhs proof at L17090-17133 is the template. Substitution table for all 4 cases. Then call_env (L17138), newObj_env (L17140).
+2. **wasmspec**: Continue HasNonCallFrameTryCatchInHead for P0 (L15296). If closed, unlocks cascade. P1-P3 deferred (blocked by same infrastructure).
+3. **jsspec**: Continue Path A investigation. Updated CC sorry line numbers (L5509, L5957, L5983, L6606, L6814, L6825, L7465, L8712, L8869, L8872, L8946, L9062).
+
+### Sorry Classification (55 total, UPDATED)
+**ANF (43):**
+- Break/continue list: 2 (L4906, L6044)
+- TrivialChain zone: 12 (L10796-L11167) — LSP timeout, deferred
+- Compound throw: 1 (L13806) — wasmspec P1 (blocked by infra)
+- noTryCatchInHead: 1 (L15296) — wasmspec P0 (in progress)
+- Second-position HasReturnInHead: 4 (L17134-L17137) — proof P0 **IN PROGRESS**
+- call_env/newObj_env: 2 (L17138, L17140) — proof P1
+- List HasReturnInHead: 5 (L17139, L17141-L17144) — BLOCKED (list infra)
+- Compound HasAwait/YieldInHead: 2 (L17500, L17673) — BLOCKED
+- Return/yield .let compound: 3 (L17729, L17733, L17734) — deferred
+- While condition: 2 (L17824, L17836) — BLOCKED
+- If branch: 2 (L18561, L18601) — BLOCKED
+- TryCatch: 3 (L19442, L19460, L19463) — BLOCKED
+- noCallFrameReturn/body_sim: 2 (L20790, L20801) — BLOCKED
+- End-of-file: 2 (L21020, L21091)
+
+**CC (12):**
+- Multi-step simulation: 4 (L5509, L6606, L6814, L6825) — BLOCKED (framework)
+- CCStateAgree: 5 (L5957, L5983, L8869, L8946, L9062) — jsspec Path A
+- CCStateAgree + finally: 1 (L8872) — BLOCKED
+- Axiom/semantic: 1 (L7465) — UNPROVABLE
+- FuncsCorr/functionDef: 1 (L8712) — BLOCKED
+
+### Critical Path
+1. **L17134-17137 (second-position)** → -4. proof P0. IN PROGRESS — binary_rhs template exists.
+2. **L17138, L17140 (call_env/newObj_env)** → -2. proof P1.
+3. **L15296 (noTryCatchInHead)** → -1 + cascade. wasmspec P0. HasNonCallFrameTryCatchInHead approach.
+4. **CCStateAgree Path A** → -5. jsspec investigating. HIGH IMPACT if feasible.
+5. Best case next run: ~47-49.
+
+### Trend
+- 01:30: 59 → 04:05: 48 → 06:05: 46 → 08:30: 51 → 09:00: 46 → 11:30: 48 → 12:00: 48 → 15:00: 61* → 15:30: 60 → 16:05: 58 → 17:05: 56 → 18:05: 55
+- (*61 = decomposition; effective complexity continued decreasing)
+- Steady progress: 61→60→58→56→55 over last 3 hours.
+- proof agent finally delivering on second-position (binary_rhs closed, 4 more in progress).
+
+### Risk Assessment
+- **proof agent**: Has the template working now. Should be able to close 2-4 more cases this run. If still no progress by 18:30, the template-copy approach may have unexpected blockers per case.
+- **wasmspec**: HasNonCallFrameTryCatchInHead is architecturally sound but large (~400 lines). May take 2+ runs. Worth the investment — unlocks cascade.
+- **jsspec**: Path A feasibility depends on whether CCState is used only for freshVar. If func table is also threaded, the change is harder. Should have assessment this run.
+
+2026-04-11T18:09:00+00:00 DONE
