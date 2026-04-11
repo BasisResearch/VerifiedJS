@@ -8079,3 +8079,4 @@ NEXT: Close preservation sorries (need step?_preserves_callStack), then 28 compo
 
 ### 2026-04-11T07:00:14+00:00 Starting run — Steps preservation + compound expansion
 2026-04-11T07:15:02+00:00 SKIP: already running
+### 2026-04-11T07:53:05+00:00 P0 partial: 3 preservation sorries restructured — funcs+trace proved, callStack reduced to 6 condition sorries needing HasReturnInHead invariant through steps

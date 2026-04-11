@@ -13219,6 +13219,37 @@ private theorem observableTrace_return_has_error {evs : List Core.TraceEvent} {m
       simp [List.filter, BEq.beq, Core.TraceEvent.beq] at h
       exact absurd h.1 (by intro h'; exact Core.TraceEvent.noConfusion h')
 
+/-- HasReturnInHeadList implies valuesFromExprList? returns none
+    (at least one element has HasReturnInHead, hence is not a value). -/
+private theorem HasReturnInHeadList_valuesFromExprList_none
+    {args : List Flat.Expr} (h : HasReturnInHeadList args) :
+    Flat.valuesFromExprList? args = none := by
+  induction h with
+  | head h =>
+    simp [Flat.valuesFromExprList?, HasReturnInHead_not_value _ h, Flat.exprValue?]
+    cases args <;> simp [Flat.valuesFromExprList?]
+    rw [HasReturnInHead_not_value _ h]; simp
+  | tail h ih =>
+    simp [Flat.valuesFromExprList?]
+    cases Flat.exprValue? _ <;> simp [ih]
+
+/-- HasReturnInHead e implies callStack safety conditions:
+    (1) e is not a tryCatch call frame
+    (2) if e is a .call, not all sub-expressions are values. -/
+private theorem hasReturnInHead_callStackSafe (e : Flat.Expr) (hret : HasReturnInHead e) :
+    (∀ body catch_ fin, e ≠ .tryCatch body "__call_frame_return__" catch_ fin) ∧
+    (∀ f env args, e = .call f env args →
+      Flat.exprValue? f = none ∨ Flat.exprValue? env = none ∨
+      Flat.valuesFromExprList? args = none) := by
+  constructor
+  · intro body catch_ fin h; cases hret <;> exact Flat.Expr.noConfusion h
+  · intro f env args h
+    cases hret with
+    | call_func h => left; cases h; exact HasReturnInHead_not_value _ h
+    | call_env h => right; left; cases h; exact HasReturnInHead_not_value _ h
+    | call_args h => right; right; cases h; exact HasReturnInHeadList_valuesFromExprList_none h
+    | _ => exact absurd h (by intro h'; exact Flat.Expr.noConfusion h')
+
 /-- Main inductive theorem: if HasReturnInHead e and normalizeExpr e K produces .return arg,
     then Flat.Steps from e match the return behavior. Works with ANY continuation K
     (does not require trivial-preserving). Proved by induction on expression depth. -/
