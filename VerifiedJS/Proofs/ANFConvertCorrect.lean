@@ -4670,6 +4670,28 @@ private def HasBreakInHead_step?_produces_error
   | .getIndex_idx _ | .setIndex_idx _ | .setIndex_val _
   | .makeEnv_values _ | .objectLit_props _ | .arrayLit_elems _ => sorry
 
+/-- For head-position HasBreakInHead cases, stepping produces the break error and
+    reaches a terminal state (.lit .undefined) in one step.
+    This is the Flat.Steps version usable in anfConvert_step_star. -/
+private theorem HasBreakInHead_steps_to_break_error
+    {e : Flat.Expr} {label : Option Flat.LabelName}
+    (h : HasBreakInHead e label)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env) :
+    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+      Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs sf' ∧
+      sf'.expr = .lit .undefined ∧
+      sf'.env = env ∧ sf'.heap = heap ∧
+      sf'.trace = trace ++ evs ∧
+      sf'.funcs = funcs ∧ sf'.callStack = cs ∧
+      observableTrace evs = observableTrace [.error ("break:" ++ (label.getD ""))] := by
+  refine ⟨[.error ("break:" ++ (label.getD ""))],
+          ⟨.lit .undefined, env, heap,
+           trace ++ [.error ("break:" ++ (label.getD ""))], funcs, cs⟩,
+          ?_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  exact Flat.Steps.tail (Flat.Step.mk (HasBreakInHead_step?_produces_error h env heap trace funcs cs))
+    (Flat.Steps.refl _)
+
 /-- Membership in prop list implies depth bound -/
 theorem Flat.Expr.mem_propListDepth_lt {e : Flat.Expr} {name : Flat.PropName}
     {props : List (Flat.PropName × Flat.Expr)} (h : (name, e) ∈ props) :

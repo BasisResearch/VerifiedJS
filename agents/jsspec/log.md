@@ -4858,3 +4858,4 @@ Risk: Changes convertExpr output, breaking ALL existing proofs that reference sp
 - Sorry count: 15 CC / 46 total (unchanged)
 - No sorries closable by tactics (confirmed by manual analysis)
 - Next: implement Path A (two-phase conversion) if approved
+2026-04-11T11:00:04+00:00 SKIP: already running

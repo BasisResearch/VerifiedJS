@@ -953,44 +953,10 @@ theorem convertOptExpr_state_mono (oe : Option Core.Expr)
   decreasing_by all_goals simp_all <;> omega
 end
 
-/-! ### hasFunctionDef: does an expression contain any functionDef sub-nodes? -/
-
-mutual
-/-- Returns true if the expression contains a `functionDef` node (which is the only
-    `convertExpr` case that modifies `CCState.nextId` or `CCState.funcs`). -/
-private def hasFunctionDef : Core.Expr → Bool
-  | .functionDef _ _ _ _ _ => true
-  | .lit _ | .var _ | .this | .«break» _ | .«continue» _ | .forIn _ _ _ | .forOf _ _ _ => false
-  | .«let» _ i b => hasFunctionDef i || hasFunctionDef b
-  | .assign _ v => hasFunctionDef v
-  | .«if» c t e => hasFunctionDef c || hasFunctionDef t || hasFunctionDef e
-  | .seq a b => hasFunctionDef a || hasFunctionDef b
-  | .while_ c b => hasFunctionDef c || hasFunctionDef b
-  | .call c args => hasFunctionDef c || listHasFunctionDef args
-  | .newObj c args => hasFunctionDef c || listHasFunctionDef args
-  | .getProp o _ | .deleteProp o _ | .typeof o | .unary _ o | .await o => hasFunctionDef o
-  | .setProp o _ v | .getIndex o v | .binary _ o v => hasFunctionDef o || hasFunctionDef v
-  | .setIndex o i v => hasFunctionDef o || hasFunctionDef i || hasFunctionDef v
-  | .objectLit ps => propListHasFunctionDef ps
-  | .arrayLit es => listHasFunctionDef es
-  | .throw a => hasFunctionDef a
-  | .tryCatch b _ c none => hasFunctionDef b || hasFunctionDef c
-  | .tryCatch b _ c (some f) => hasFunctionDef b || hasFunctionDef c || hasFunctionDef f
-  | .labeled _ b => hasFunctionDef b
-  | .«return» (some e) => hasFunctionDef e
-  | .«return» none => false
-  | .yield (some e) _ => hasFunctionDef e
-  | .yield none _ => false
-private def listHasFunctionDef : List Core.Expr → Bool
-  | [] => false
-  | e :: rest => hasFunctionDef e || listHasFunctionDef rest
-private def propListHasFunctionDef : List (Core.PropName × Core.Expr) → Bool
-  | [] => false
-  | (_, e) :: rest => hasFunctionDef e || propListHasFunctionDef rest
-end
-
-/-! ### convertExpr_state_id: expressions without functionDef don't change CCState
-    (building block for potential CCStateAgree fix — theorem WIP, needs mutual termination refinement) -/
+/-! ### Key insight: only functionDef cases modify CCState (nextId, funcs).
+    convertExpr for all other expression forms threads state through unchanged.
+    A formal `convertExpr_state_id_no_functionDef` theorem would enable proving
+    CCStateAgree for branches without functionDef nodes. See log 2026-04-11. -/
 
 mutual
 /-- Returns true if the expression never uses "__call_frame_return__" as a tryCatch catchParam.
