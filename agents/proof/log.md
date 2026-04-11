@@ -7428,3 +7428,52 @@ The `hasAbruptCompletion_step_preserved_true` theorem is provable (same structur
 ## Run: 2026-04-11T08:30:01+00:00
 
 ### 2026-04-11T08:30:12+00:00 Starting run — L17283/L17354 + L16999
+
+### 2026-04-11T08:30+00:00 Analysis — L17283/L17354 + L17053 + L17064
+
+#### P0: L17283, L17354 — BLOCKED
+
+Both are **Category B compound HasBreakInHead / HasContinueInHead cases** in `anfConvert_step_star`.
+
+- L17283: break compound cases (seq_left, seq_right, let_init, getProp_obj, ... 30+ constructors)
+- L17354: continue compound cases (identical pattern)
+
+**Blocker**: Same infrastructure gap as L12969 (throw compound cases). The `Steps_compound_error_lift` theorem (L13135) exists and is used at L13356/13378/13400, but the `Flat.Steps_preserves_callStack` subgoals at L13351/13374/13396 have sorries. These need proof that intermediate Flat states during error propagation don't have `__call_frame_return__` tryCatch or fully-evaluated `.call` expressions.
+
+**Dependency chain**: L17283/L17354 → L12969 → L13351/13374/13396 (callStack preservation sorries)
+
+#### P1: L17053 — noCallFrameReturn — BLOCKED (architectural)
+
+Needs `catchParam ≠ "__call_frame_return__"` for the tryCatch case.
+
+- Bridge theorem `noCallFrameReturn_tryCatch_direct_bridge` (L4137) exists
+- BUT requires `noCallFrameReturn sf.expr = true` which is NOT a precondition of `anfConvert_step_star`
+- CANNOT simply add as invariant: `Flat.step?` introduces `__call_frame_return__` tryCatch wrappers for function calls (L12115)
+- The comment at L17060 says the fix requires adding a `NoCallFrameParam` predicate that is maintained by the SimRel reconstruction (call case handles entire function execution internally)
+- This is the same type of invariant as `NoNestedAbrupt` but more delicate because call stepping creates the forbidden pattern
+
+**Status**: Requires architectural redesign of the call simulation case.
+
+#### P2: L17064 — body_sim — BLOCKED (strong induction needed)
+
+`body_sim` requires `anfConvert_step_star` itself as an IH for the tryCatch body. The `normalizeExpr_tryCatch_step_sim` parameter (L15557-15565) has the EXACT same signature as `anfConvert_step_star`.
+
+**Blocker**: `anfConvert_step_star` currently does structural induction on the ANF expression (via `cases hsa : sa.expr`). To provide `body_sim`, it would need strong induction on `sf.expr.depth`, like `anfConvert_halt_star_aux` (L17361) which uses `∀ (N : Nat), ... sf.expr.depth ≤ N → ...`.
+
+**Infrastructure needed**:
+1. Restructure `anfConvert_step_star` to use depth-bounded strong induction (`∀ N, ... expr.depth ≤ N → ...`)
+2. In the tryCatch case, the body's flat expression has strictly smaller depth, enabling the IH
+3. This is a major refactor affecting the entire ~1300-line theorem
+
+**Difficulty**: Very high — essentially rewriting the proof architecture of the main simulation theorem.
+
+#### Summary
+
+All 4 sorries investigated are BLOCKED:
+- L17283, L17354: blocked by compound callStack preservation (L13351 chain)
+- L17053: blocked by noCallFrameReturn invariant architecture
+- L17064: blocked by strong induction restructuring of anfConvert_step_star
+
+No sorries were closable in this run.
+### 2026-04-11T08:40:56+00:00 Run complete — 0 sorries closed, all 4 targets BLOCKED (see analysis above)
+2026-04-11T08:41:03+00:00 DONE

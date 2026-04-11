@@ -1,3 +1,67 @@
+## Run: 2026-04-11T08:30:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 36 + CC 15 + Lower 0 = **51 total**
+- **Delta from last run (08:05)**: +4 (47→51). UP by 4.
+- **Explanation for increase**: wasmspec restructured 3 preservation sorries into 6 condition sorries (ANF 33→36, net +3). CC recount: was 15 not 14 (previous supervisor miscount of 1). jsspec CC_SimRel error disjunct: net 0 (closed 3, added 3 tryCatch-init edge cases). No actual regression — all increases are structural decomposition toward closure.
+- **BUILD**: Not verified (LSP only).
+
+### What Happened Since Last Run (08:05→08:30)
+1. **proof**: Started 08:30 run. Previous run (07:30-08:15) confirmed ALL 33 ANF sorries blocked. L17283/L17354 blocked by error propagation. L16999 blocked by NoCallFrameParam. 0 sorries closed in 3 consecutive runs. REDIRECTED.
+2. **jsspec**: Completed 08:20 run. Added CC_SimRel error disjunct (Or.inr for lit values). Filled 3 error sorries (let/assign/seq). Added 3 tryCatch-init edge sorries. Net 0. REDIRECTED.
+3. **wasmspec**: Started 08:15 run. Working on callStack condition sorries. Previous run (07:00-07:55) proved step?_preserves_callStack in Flat/Semantics.lean, restructured preservation sorries. 6 condition sorries remain.
+
+### Agent Status
+1. **proof**: RUNNING (since 08:30). Redirected to use lean_multi_attempt on trivialChain sorries (L10183-L10554). trivialChain_eval_value exists at L9526 — may be applicable.
+2. **jsspec**: NOT RUNNING. Completed 08:20. Prompt rewritten for CCStateAgree sorries (L5491, L5517).
+3. **wasmspec**: RUNNING (since 08:15). Working on callStack condition sorries (L13351-L13397). Needs HasReturnInHead preservation through steps.
+
+### Prompts Rewritten (all 3)
+
+1. **proof**: PIVOTED from blocked L17283/L17354 to lean_multi_attempt exploration on trivialChain sorries (L10183-L10554). Key: trivialChain_eval_value (L9526) already exists. Agent should test if it applies. If blocked, scan ALL remaining sorries with automated tactics.
+
+2. **jsspec**: PIVOTED from CC_SimRel error disjunct (done) to CCStateAgree sorries (L5491, L5517). Key insight: CCStateAgree is just nextId + funcs.size equality. Core.step? doesn't modify CCState (compile-time artifact). So st_a = st should work. convertExpr_state_determined (L570) proves expression equality given CCStateAgree.
+
+3. **wasmspec**: Same direction (callStack conditions). Added detailed guidance on HasReturnInHead preservation. Simplest path: check if Steps are bounded by error event (HasReturnInHead holds at ALL intermediate steps since value states don't step further). Use hasReturnInHead_callStackSafe (L13239) at each sorry.
+
+### Sorry Classification (51 total)
+- **TrivialChain (proof)**: 12 (L10183-L10554)
+- **CallStack condition (wasmspec)**: 6 (L13351, L13353, L13374, L13375, L13396, L13397)
+- **Compound HasReturnInHead (wasmspec)**: 1 (L13407)
+- **HasAwait/HasYield (wasmspec)**: 2 (L13763, L13936)
+- **Return/yield .let (wasmspec)**: 3 (L13992, L13996, L13997)
+- **Compound catch-all (wasmspec)**: 1 (L12969)
+- **While (BLOCKED)**: 2 (L14087, L14099)
+- **If branch (BLOCKED)**: 2 (L14824, L14864)
+- **TryCatch (BLOCKED)**: 3 (L15705, L15723, L15726)
+- **noCallFrameReturn (BLOCKED)**: 1 (L17053)
+- **body_sim (BLOCKED)**: 1 (L17064)
+- **Compound break/continue (BLOCKED)**: 2 (L17283, L17354)
+- **CCStateAgree (jsspec)**: 5 (L5491, L5517, L8407, L8484, L8600)
+- **TryCatch-init edge (jsspec, blocked by L8484)**: 3 (L5265, L5409, L5696)
+- **Multi-step CC (BLOCKED)**: 3 (L5044, L6347, L6358)
+- **Non-consoleLog call (BLOCKED)**: 1 (L6139)
+- **CC unprovable**: 1 (L6998)
+- **CC functionDef (BLOCKED)**: 1 (L8250)
+- **CC tryCatch finally (BLOCKED)**: 1 (L8410)
+
+### Critical Path
+1. **wasmspec** (running): 6 callStack sorries. If HasReturnInHead preservation works → -6. Then compound (L13407) → -1.
+2. **jsspec** (not running): CCStateAgree L5491+L5517 → -2. If CCStateAgree pattern established, L8407+L8484 → -2 more, which unblocks L5265/L5409/L5696 → -3.
+3. **proof** (running): trivialChain L10183-L10554 → -12 if lean_multi_attempt finds tactic.
+4. **BLOCKED tiers (17 sorries)**: while/if/tryCatch (7), compound break/continue (2), noCallFrameReturn (1), body_sim (1), multi-step CC (3), call (1), functionDef (1), unprovable (1)
+
+### Trend
+- 01:30: 59 sorries
+- 04:05: 48 sorries (-11 in 2.5h)
+- 06:05: 46 sorries (-2 in 2h)
+- 08:05: 47 sorries (supervisor count, actually ~48)
+- 08:30: 51 sorries (accurate recount, +3 from structural decomposition)
+- Rate has slowed dramatically. Easy wins exhausted. Remaining require infrastructure theorems.
+- Best case next run: ~39-43 (if wasmspec closes callStack+compound, jsspec closes CCStateAgree pair, proof closes some trivialChain)
+
+---
+
 ## Run: 2026-04-11T08:05:01+00:00
 
 ### Metrics
@@ -6903,3 +6967,4 @@ echo "2026-04-11T03:00:32+00:00,49,ongoing" >> logs/time_estimate.csv
 
 ## Run: 2026-04-11T08:30:03+00:00
 
+2026-04-11T08:40:51+00:00 DONE
