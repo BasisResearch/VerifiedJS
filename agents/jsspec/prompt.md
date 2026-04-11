@@ -1,4 +1,4 @@
-# jsspec — ARCHITECTURAL FIX: CCStateAgree via Path A
+# jsspec — CCStateAgree Path A: position-based naming
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,30 +9,21 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-11T16:05
-- CC: 12 real sorries. Total: 58 (ANF 46 + CC 12).
-- **YOU CLOSED 3 Or.inr SORRIES!** CC went from 15 → 12. GREAT WORK. File grew by 428 lines.
-- No quick Or.inr wins remain. The remaining 12 CC sorries are all architecturally blocked.
+## STATUS — 2026-04-11T17:05
+- CC: 12 real sorries. Total: 56 (ANF 44 + CC 12).
+- You may still be running from 15:30 Or.inr work. Those 3 are ALREADY CLOSED (at 16:05 run).
+- Remaining 12 CC sorries are all architecturally blocked.
 
 ## REMAINING CC SORRY CLASSIFICATION (12 total):
 1. **Multi-step simulation gap** (3): L5475, L6572, L6780/L6791
-   - L5475: captured var (.getEnv takes 2 Flat steps vs 1 Core step)
-   - L6572: non-consoleLog function call (Flat call is N steps vs Core's 1)
-   - L6780/L6791: same class as L5475
 2. **CCStateAgree** (5): L5923, L5949, L8835, L8912, L9028
-   - L5923: if-true — st' includes else_ conversion state
-   - L5949: if-false — needs CCStateAgree for input
-   - L8835: tryCatch with CCStateAgree gap
-   - L8912: CCStateAgree after inner conversion
-   - L9028: while_ lowers to if/seq/while pattern
 3. **CCStateAgree + tryCatch finally** (1): L8838
-4. **Axiom/semantic mismatch** (1): L7431 (getIndex string)
+4. **Axiom/semantic mismatch** (1): L7431 (getIndex string) — UNPROVABLE
 5. **FuncsCorr/functionDef** (1): L8678
 
-## YOUR MISSION: Fix CCStateAgree (5 sorries → 0)
+## YOUR MISSION: Investigate + implement CCStateAgree Path A
 
 ### WARNING: Monotone approach was REJECTED on 2026-03-31
-"Weakening output to ≤ breaks ~10 sub-stepping chaining cases that feed equality into `convertExpr_state_determined`."
 **DO NOT** try simple monotone weakening.
 
 ### Path A: Position-based naming (HIGHEST IMPACT)
@@ -41,7 +32,7 @@ Make `convertExpr` state-independent for variable naming by using **position-bas
 #### Investigation steps (DO THIS FIRST):
 1. Read `freshVar` in `Flat/ClosureConvert.lean` — current implementation
 2. Read `CCState` definition — what fields?
-3. Read `CCStateAgree` definition — what does it require?
+3. Read `CCStateAgree` definition in ClosureConvertCorrect.lean — what does it require?
 4. Count callers of `freshVar` — scope the change
 5. Check if `convertExpr` threads CCState ONLY for `freshVar`, or also for func table
 
@@ -55,7 +46,7 @@ Make `convertExpr` state-independent for variable naming by using **position-bas
 - `CCStateAgree` only needs to track func table (simpler)
 
 ### Path B (fallback): Lazy conversion
-Instead of converting both branches eagerly, change `convertExpr` for if/while to only convert the taken branch. More invasive but eliminates the root cause.
+Instead of converting both branches eagerly, change `convertExpr` for if/while to only convert the taken branch. More invasive.
 
 ### DO THIS RUN:
 1. Read `Flat/ClosureConvert.lean` — find `freshVar`, `CCState`, `convertExpr`

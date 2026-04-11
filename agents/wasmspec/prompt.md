@@ -1,4 +1,4 @@
-# wasmspec — Case B sorries + compound Await/Yield
+# wasmspec — NEW TARGETS: noTryCatchInHead + compound throw
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,59 +9,67 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-11T16:05
-- Total: 58 real sorries (ANF 46, CC 12). DOWN 2 from last run.
-- jsspec closed 3 Or.inr sorries — great progress on CC side.
-- proof agent targeting second-position (L16494-16505).
-- You own Case B + compound await/yield.
+## STATUS — 2026-04-11T17:05
+- Total: 56 real sorries (ANF 44, CC 12). DOWN 2 from last run. YOU closed the Case B sorries!
+- P1 (await/yield) and P2 (break/continue list) are BLOCKED — confirmed this run.
+- proof agent assigned to second-position (L16690-L16694).
+- Need new targets for you.
 
-## P0: Case B continuation sorries (L16437, L16493) — 2 sorries
+## P0: step_nonError_preserves_noTryCatchInHead (L15166) — 1 sorry
 
-These are in hasReturnInHead_return_steps, in the seq_right case. They handle:
-- **Case B**: return does NOT come from HasReturnInHead on sub-expression `a`, but from continuation `K` applied after `a` evaluates to value.
+This sorry was created when proof agent moved the tryCatch case from step_error_isLit to the call site.
 
-### Updated line numbers (verified 16:05):
-- L16437: Case B for `none` arg case (in seq_right)
-- L16493: Case B for `some arg_t` case (in seq_right)
+At L15166:
+```lean
+(sorry /- ¬HasTryCatchInHead s1.expr: needs step_nonError_preserves_noTryCatchInHead -/)
+```
 
-### The proof strategy for Case B:
-1. Sub-expression `a` has NO HasReturnInHead (otherwise it would be Case A)
-2. `a` is a "trivial chain" — it evaluates to a value in finite steps without errors
-3. After `a` evaluates to value `v`, the seq steps once to produce `K(v)`
-4. `K(v)` is then the normalizeExpr of continuation `b`, which has HasReturnInHead
-5. By IH on `b` (or `K(v)`), this produces the required error trace
+### Strategy:
+This needs a theorem: if `Flat.step? s = some (ev, s')` and `ev ≠ .error _` and `¬HasTryCatchInHead s.expr`, then `¬HasTryCatchInHead s'.expr`.
 
-### What you need:
-- A lemma: if `a` has no HasReturnInHead AND `a` is well-formed, then `a` evaluates to value (trivial chain terminates)
-- Check if `trivialChain_terminates` or similar exists — use `lean_local_search "trivialChain"`
-- The Case A proof (L16440-16493) shows the first-position pattern — Case B extends it
+**BUT**: proof agent noted that function calls introduce call-frame tryCatch during stepping, so `¬HasTryCatchInHead` may NOT be preserved in general. This needs investigation.
 
-### Assessment first
-Before writing code:
-1. `lean_goal` at L16437 to see the exact goal
-2. `lean_local_search "trivialChain"` to find existing infrastructure
-3. `lean_local_search "terminates"` to find termination lemmas
-4. Read 100 lines above L16437 for context
+### Investigation steps:
+1. Read `HasTryCatchInHead` definition — what constructors does it have?
+2. `lean_local_search "HasTryCatchInHead"` — find existing lemmas
+3. Check if the normalizeExpr context guarantees no tryCatch (i.e., the initial expression from normalizeExpr never has tryCatch in head)
+4. If so, prove `normalizeExpr_no_tryCatchInHead` instead — may be easier
 
-If the infrastructure doesn't exist, DOCUMENT what's needed and move to P1.
+### Fallback:
+If this is too complex, move to P1.
 
-## P1: compound HasAwaitInHead (L16863) + HasYieldInHead (L17036) — 2 sorries
+## P1: Compound throw (L13714) — 1 sorry
 
-These are in `hasAwaitInHead_return_steps` and `hasYieldInHead_return_steps`. Check if the same `Steps_compound_error_lift` + ctx/error lemma pattern works.
+```lean
+| _ => sorry -- compound cases: need Steps lifting lemma + error propagation
+```
 
-Use lean_local_search:
-- `lean_local_search "HasAwaitInHead"`
-- `lean_local_search "HasYieldInHead"`
+This is in `anfConvert_step_sim`. Check what the goal looks like with `lean_goal` at L13714.
 
-## P2: Break/continue list cases (L4906, L6044) — 2 sorries
+## P2: Return/yield .let compound (L17286, L17290, L17291) — 3 sorries
 
-These are `makeEnv_values | objectLit_props | arrayLit_elems => sorry` in break/continue head-position theorems.
+These handle compound expressions in return/yield that produce `.let`:
+```
+L17286: | some val => sorry -- return (some val): compound, can produce .let
+L17290: | some val => sorry -- yield (some val): compound, can produce .let
+L17291: | _ => sorry -- compound expressions (seq, let, assign, if, call, etc.)
+```
+
+Check with `lean_goal` at each line.
+
+## P3: End-of-file sorries (L20577, L20648) — 2 sorries
+
+Both are break/continue compound cases — same blocker as P2 in break/continue list.
+```
+L20577: sorry -- compound break cases
+L20648: sorry -- compound continue cases (same blocker)
+```
 
 ## DO NOT WORK ON:
-- L16494-16505 (second-position HasReturnInHead — proof agent is on this)
-- L10690-L11061 (trivialChain zone — LSP timeout)
+- L16690-L16701 (second-position + list — proof agent)
+- L10704-L11075 (trivialChain zone — LSP timeout)
 - ClosureConvertCorrect.lean (jsspec)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — Case B sorries + compound await/yield" >> agents/wasmspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — noTryCatchInHead + compound throw" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

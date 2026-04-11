@@ -1,4 +1,4 @@
-# proof — CLOSE SECOND-POSITION HasReturnInHead CASES
+# proof — CLOSE SECOND-POSITION HasReturnInHead CASES NOW
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -8,77 +8,76 @@
 
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## STATUS — 2026-04-11T16:05
-- ANF: 46 real sorries. CC: 12 (jsspec closed 3 Or.inr!). Total: 58.
-- **step_error_isLit FULLY PROVED** — 0 sorries!
-- **hasReturnInHead_return_steps**: seq_left, seq_right (Case A for both none/some), call_func, newObj_func, and ALL first-position constructors FULLY PROVED.
-- **12 second-position + list constructor sorries remain** — THESE ARE YOUR TARGET
-- **2 Case B sorries** — defer, wasmspec will handle
+## STATUS — 2026-04-11T17:05
+- ANF: 44 real sorries. CC: 12. Total: 56.
+- **wasmspec CLOSED Case B** — those sorries are GONE.
+- **step_error_isLit tryCatch case closed** — sorry migrated to Steps_steppable (L15166).
+- **YOUR LAST RUN (15:00-16:50)**: You spent 110 min on step_error_isLit tryCatch refactor. Net 0 sorry change. That's infrastructure — fine. But NOW YOU MUST CLOSE SECOND-POSITION CASES.
 
-## LINE NUMBERS (verified from file read at 16:05):
-- Case A template (seq_right, some): L16440-16493 — YOUR COPY-PASTE SOURCE
-- Case B sorries: L16437 (none), L16493 (some) — wasmspec owns
-- Second-position block: L16494-16505
-  - L16494: binary_rhs
-  - L16495: setProp_val
-  - L16496: getIndex_idx
-  - L16497: setIndex_idx
-  - L16498: setIndex_val
-  - L16499: call_env
-  - L16500: call_args (list — P2)
-  - L16501: newObj_env
-  - L16502: newObj_args (list — P2)
-  - L16503: makeEnv_values (list — P2)
-  - L16504: objectLit_props (list — P2)
-  - L16505: arrayLit_elems (list — P2)
+## YOUR ONLY TARGET: L16690-L16694 (5 second-position sorries)
 
-## DO NOT WORK ON:
-- L16437, L16493 (Case B continuation — wasmspec owns)
-- L10690-L11061 (trivialChain — LSP timeout zone)
-- L17187-L17199 (while condition — blocked)
-- L17924-L17964 (if_branch — blocked)
-- L18805-L18826 (tryCatch — blocked)
-- L20153-L20164 (noCallFrameReturn/body_sim — blocked)
-- L16863, L17036 (await/yield compound — wasmspec owns)
-- L17092-L17097 (return/yield .let compound — defer)
+These have been assigned to you for 3 RUNS. You have not started. START NOW.
 
-## P0: Second-position cases (L16494-L16498) — 5 sorries → 0
+### LINE NUMBERS (verified from file at 17:05):
+```
+L16690: | binary_rhs h_a => sorry
+L16691: | setProp_val h_a => sorry
+L16692: | getIndex_idx h_a => sorry
+L16693: | setIndex_idx h_a => sorry
+L16694: | setIndex_val h_a => sorry
+```
 
-These follow THE EXACT SAME PATTERN as the Case A proof at L16440-16493.
+### THE TEMPLATE: Look at seq_right Case A (L16425-L16500)
+The pattern for each second-position case with `some arg_t` is:
 
-### THE TEMPLATE (seq_right Case A at L16440-16493):
-The pattern is:
-1. `rcases ANF.normalizeExpr_return_some_or_k a _ arg_t n m hnorm with hret_a | ⟨_, n', m', hcont⟩`
-2. Case A: `ih a ha_depth hret_a env heap trace funcs cs _ n m (some arg_t) hnorm ...`
-3. Get `hsteps_a, herr, hpres` from ih
-4. Use `Steps_compound_error_lift (.seq · b) step?_seq_ctx step?_seq_error hsteps_a herr hpres`
+```lean
+-- For binary_rhs h_a (L16690), the proof is:
+-- 1. The match on `arg` (none/some) is already done above at L16422
+-- 2. For each arg case, rcases normalizeExpr_return_*_or_k gives Case A / Case B
+-- 3. Case A: IH on the sub-expression with HasReturnInHead
+-- 4. Use Steps_compound_error_lift with the appropriate ctx/error lemmas
+```
 
-### For binary_rhs (L16494), substitute:
-- wrapper: `(.binary op (.lit lhs_val) ·)` instead of `(.seq · b)`
-- ctx lemma: `step?_binary_rhs_ctx` instead of `step?_seq_ctx`
-- error lemma: `step?_binary_rhs_error` instead of `step?_seq_error`
-- VarFreeIn: `VarFreeIn.binary_rhs` instead of `VarFreeIn.seq_l`
-- NoNestedAbrupt: `(by cases hna with | binary _ ha => exact ha)` instead of `(by cases hna with | seq ha _ => exact ha)`
-- Depth: `simp [Flat.Expr.depth] at hd; omega`
+### ALL CTX/ERROR LEMMAS EXIST (verified):
+- `step?_binary_rhs_ctx` (L1833) / `step?_binary_rhs_error` (L2518)
+- `step?_setProp_val_ctx` (L1924) / `step?_setProp_val_error` (L2532)
+- `step?_getIndex_idx_ctx` (L2018) / `step?_getIndex_idx_error` (L2546)
+- `step?_setIndex_idx_ctx` (L2037) / `step?_setIndex_idx_error` (L2560)
+- `step?_setIndex_val_ctx` (L1943) / `step?_setIndex_val_error` (L2574)
 
-### CRITICAL: Check the match structure first
-Use `lean_goal` at L16494 to see the EXACT goal and available hypotheses.
-The Case A pattern needs the `rcases normalizeExpr_return_*_or_k` split — check if the surrounding match already provides this or if you need it.
+### CRITICAL: Read surrounding match context first
+1. `lean_goal` at L16690 to see EXACT hypotheses and goal
+2. Read L16412-L16500 (seq_right case) to understand the Case A/B split pattern
+3. Each second-position case follows EXACTLY the same structure as the first-position cases
 
 ### APPROACH: One case at a time
-1. Read L16494 context with lean_goal. Read L16440-16493 as template.
-2. Write binary_rhs (L16494). Verify with lean_diagnostic_messages.
-3. Write setProp_val (L16495). Verify.
-4. Continue: getIndex_idx, setIndex_idx, setIndex_val.
+1. Read L16690 context with lean_goal
+2. Write binary_rhs proof (L16690). Verify with lean_diagnostic_messages
+3. Write setProp_val (L16691). Verify.
+4. Continue through all 5.
 
-## P1: call_env, newObj_env (L16499, L16501) — 2 sorries → 0
-Same pattern but for second-position in call/newObj:
-- `step?_call_env_ctx` / `step?_call_env_error`
-- `step?_newObj_env_ctx` / `step?_newObj_env_error`
+### WHAT YOU SUBSTITUTE per case:
+| Case | Wrapper | ctx lemma | error lemma | VarFreeIn | NoNestedAbrupt |
+|------|---------|-----------|-------------|-----------|----------------|
+| binary_rhs | `(.binary op (.lit lhs_val) ·)` | step?_binary_rhs_ctx | step?_binary_rhs_error | VarFreeIn.binary_rhs | `by cases hna with \| binary _ ha => exact ha` |
+| setProp_val | `(.setProp (.lit ov) prop ·)` | step?_setProp_val_ctx | step?_setProp_val_error | VarFreeIn.setProp_val | `by cases hna with \| setProp _ _ ha => exact ha` |
+| getIndex_idx | `(.getIndex (.lit ov) ·)` | step?_getIndex_idx_ctx | step?_getIndex_idx_error | VarFreeIn.getIndex_idx | `by cases hna with \| getIndex _ ha => exact ha` |
+| setIndex_idx | `(.setIndex (.lit ov) · val)` | step?_setIndex_idx_ctx | step?_setIndex_idx_error | VarFreeIn.setIndex_idx | `by cases hna with \| setIndex _ ha _ => exact ha` |
+| setIndex_val | `(.setIndex (.lit ov) (.lit iv) ·)` | step?_setIndex_val_ctx | step?_setIndex_val_error | VarFreeIn.setIndex_val | `by cases hna with \| setIndex _ _ ha => exact ha` |
 
-## P2: List constructor cases (L16500, L16502-L16505) — 5 sorries
-These need list-stepping infrastructure. Defer — assess after P0/P1.
+## AFTER P0: call_env, newObj_env (L16695, L16697) — same pattern
+- `step?_call_env_ctx` (L1962) / `step?_call_env_error` (L2588)
+- `step?_newObj_env_ctx` (L1999) / `step?_newObj_env_error` (L2602)
+
+## DO NOT WORK ON:
+- L10704-L11075 (trivialChain — LSP timeout zone)
+- L17381-L17393 (while condition — blocked)
+- L18118-L18158 (if_branch — blocked)
+- L18999-L19020 (tryCatch — blocked)
+- L20347-L20358 (noCallFrameReturn/body_sim — blocked)
+- ClosureConvertCorrect.lean
+- step_nonError_preserves_noTryCatchInHead (L15166) — defer
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — second-position HasReturnInHead cases" >> agents/proof/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — second-position cases L16690-L16694" >> agents/proof/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`

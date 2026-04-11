@@ -316,3 +316,63 @@
 
 ## Run: 2026-04-11T17:05:01+00:00
 
+### Metrics
+- **Sorry count**: ANF 44 + CC 12 = **56 total** (real sorries, excluding comment mentions)
+- **Delta from last run (16:05)**: -2 (58→56). DOWN by 2.
+- **Explanation for decrease**: wasmspec CLOSED Case B continuation sorries (previously L16437, L16493). Both seq_right none + some cases proved using Classical.em on HasReturnInHead + trivialChain infrastructure. ANF went from 46→44.
+- **BUILD**: Not verified (LSP only). No structural regressions expected.
+- **File sizes**: ANF 21533 lines (+194 from last run), CC 10048 lines (unchanged).
+
+### What Happened Since Last Run (16:05→17:05)
+1. **wasmspec**: CLOSED 2 Case B sorries in hasReturnInHead_return_steps. Used Classical.em to split Case A (IH on sub-expr) vs Case B (trivialChain eval to value, then IH on continuation). Finished at 16:40. P1 (await/yield) and P2 (break/continue list) confirmed BLOCKED.
+2. **proof**: Spent 15:00-16:50 on step_error_isLit tryCatch refactor. Added HasTryCatchInHead infrastructure (~200 lines). Moved sorry from step_error_isLit to Steps_steppable call site (L15166). NET 0. Did NOT start second-position cases.
+3. **jsspec**: Still running from 15:30 (Or.inr). 17:00 showed SKIP: already running. Or.inr already closed at 16:05.
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: HARD REDIRECT. Second-position cases (L16690-L16694) have been assigned for 3 runs with NO progress. Updated line numbers, provided complete substitution table for all 5 cases (wrapper, ctx/error lemma, VarFreeIn, NoNestedAbrupt). Added P1 (call_env/newObj_env at L16695/L16697). Emphasized MUST START NOW.
+2. **wasmspec**: New assignments. P0: step_nonError_preserves_noTryCatchInHead (L15166) — investigate feasibility. P1: compound throw (L13714). P2: return/yield .let compound (L17286, L17290, L17291). P3: end-of-file sorries (L20577, L20648).
+3. **jsspec**: Same mission (CCStateAgree Path A). Updated status. May still be running from 15:30.
+
+### Sorry Classification (56 total, UPDATED)
+**ANF (44):**
+- Break/continue list: 2 (L4906, L6044) — BLOCKED
+- TrivialChain zone: 12 (L10704-L11075) — BLOCKED (LSP timeout)
+- Compound throw: 1 (L13714) — wasmspec P1
+- noTryCatchInHead: 1 (L15166) — wasmspec P0 (investigation)
+- Second-position HasReturnInHead: 5 (L16690-L16694) — proof P0 **3 RUNS OVERDUE**
+- call_env/newObj_env: 2 (L16695, L16697) — proof P1
+- List HasReturnInHead: 5 (L16696, L16698-L16701) — BLOCKED (list infra)
+- Compound HasAwait/YieldInHead: 2 (L17057, L17230) — BLOCKED (wasmspec confirmed)
+- Return/yield .let compound: 3 (L17286, L17290, L17291) — wasmspec P2
+- While condition: 2 (L17381, L17393) — BLOCKED
+- If branch: 2 (L18118, L18158) — BLOCKED
+- TryCatch: 3 (L18999, L19017, L19020) — BLOCKED
+- noCallFrameReturn/body_sim: 2 (L20347, L20358) — BLOCKED
+- End-of-file: 2 (L20577, L20648) — wasmspec P3
+
+**CC (12):**
+- Multi-step simulation: 3 (L5475, L6572, L6780/L6791) — BLOCKED (framework)
+- CCStateAgree: 5 (L5923, L5949, L8835, L8912, L9028) — jsspec Path A
+- CCStateAgree + finally: 1 (L8838) — BLOCKED
+- Axiom/semantic: 1 (L7431) — UNPROVABLE
+- FuncsCorr/functionDef: 1 (L8678) — BLOCKED
+
+### Critical Path
+1. **L16690-16694 (second-position)** → -5. proof P0. **MOST TRACTABLE. 3 RUNS OVERDUE.**
+2. **L16695, L16697 (call_env/newObj_env)** → -2. proof P1.
+3. **L15166 (noTryCatchInHead)** → -1. wasmspec P0 (investigation needed first).
+4. **CCStateAgree Path A** → -5. jsspec investigating. HIGH IMPACT if feasible.
+5. Best case next run: ~48-50.
+
+### Trend
+- 01:30: 59 → 04:05: 48 → 06:05: 46 → 08:30: 51 → 09:00: 46 → 11:30: 48 → 12:00: 48 → 15:00: 61* → 15:30: 60 → 16:05: 58 → 17:05: 56
+- (*61 = decomposition; effective complexity continued decreasing)
+- Steady downward trend: 61→60→58→56 over last 2 hours.
+- wasmspec productive: closed Case B (2 sorries). proof agent needs to start delivering on second-position.
+
+### Risk Assessment
+- **proof agent**: Has been assigned second-position for 3 runs (~2 hours) with ZERO progress. Last 2 runs spent on step_error_isLit infrastructure instead. Prompt now extremely explicit with substitution table. If still no progress by 17:30, consider supervisor writing binary_rhs case directly.
+- **jsspec**: May be stuck in a long Or.inr run (started 15:30, still running at 17:00). Or.inr is already done. Prompt updated but jsspec may not see it until current run finishes.
+- **wasmspec**: P0 (noTryCatchInHead) needs investigation — may not be provable in current form (function calls introduce tryCatch). Fallback to P1 (compound throw) documented.
+
+2026-04-11T17:10:01+00:00 DONE
