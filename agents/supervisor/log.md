@@ -1,3 +1,62 @@
+## Run: 2026-04-11T06:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 31 + CC 15 + Lower 0 = **46 total**
+- **Delta from last comparable (04:05)**: -2 (48→46). DOWN by 2.
+- **BUILD**: Not verified (LSP only).
+
+### What Happened Since Last Run (04:30)
+1. **proof**: Closed NoNestedAbrupt_step_preserved (ANF -1). Verified via LSP.
+2. **wasmspec**: Decomposed HasReturnInHead (L13285) into 29 explicit constructor calls. Net +3 preservation sorries, -1 original. Architecture done, needs mechanical completion.
+3. **jsspec**: Completed FuncsCorr bulk close (70 sorry⟩ → 2 sorry⟩). CC went from 17→15. Identified L1519 as architecturally blocked (closureConvert doesn't seed logBuiltin at index 0).
+
+### Agent Status
+1. **jsspec**: Just started 06:00 run. Previous run found L1519 BLOCKED architecturally.
+2. **proof**: Completed 05:47. NoNestedAbrupt closed successfully.
+3. **wasmspec**: Completed 05:31. HasReturnInHead architecture done, 3 preservation sorries + 28 compound cases remain.
+
+### Prompts Rewritten (all 3) — CONCRETE ARCHITECTURAL FIX
+
+1. **jsspec**: PIVOTED to P0 = FIX closureConvert to seed logBuiltinFuncDef at index 0. This unblocks L1519. Wrote exact code: add `logBuiltinFuncDef` definition, modify `closureConvert` L326 to start from `{CCState.empty with funcs := #[logBuiltinFuncDef]}`. Then close L1519. P1 = investigate error structural mismatch (L5152, L5251, L5490).
+
+2. **proof**: PIVOTED to P0 = trivialChain batch (L10183-L10554, 12 sorries). These are the highest ROI: all share a common sub-expression-stepping pattern. One at a time, verify each. P1 = L16999 noCallFrameReturn (if batch blocked).
+
+3. **wasmspec**: P0 = close 3 preservation sorries (L13312, L13328, L13344) by inlining step? case analysis. P1 = expand 28 remaining compound cases using the seq_left template. P2 = HasAwaitInHead/HasYieldInHead (same pattern).
+
+### Sorry Classification (46 total)
+- **Trivial-chain closable (proof)**: 12 (L10183-L10554)
+- **HasReturnInHead preservation (wasmspec)**: 3 (L13312, L13328, L13344)
+- **HasReturnInHead compound (wasmspec)**: 1 (L13353 catch-all, expands to ~28)
+- **FuncsCorr init (jsspec)**: 1 (L1519, blocked → fix in progress)
+- **Compound HasAwait/HasYield (wasmspec)**: 2 (L13709, L13882)
+- **Return/yield .let (wasmspec)**: 3 (L13938, L13942, L13943)
+- **Compound catch-all (wasmspec)**: 1 (L12969)
+- **noCallFrameReturn (proof)**: 1 (L16999)
+- **body_sim IH (proof)**: 1 (L17010)
+- **CCStateAgree blocked**: 6 (L5333, L5359, L8201, L8204, L8278, L8394)
+- **Multi-step blocked**: 4 (L4984, L5933, L6141, L6152)
+- **Error structural**: 3 (L5152, L5251, L5490)
+- **if_branch K-mismatch**: 2 (L14770, L14810)
+- **while**: 2 (L14033, L14045)
+- **tryCatch**: 3 (L15651, L15669, L15672)
+- **functionDef**: 1 (L8044)
+- **UNPROVABLE**: 1 (L6792)
+- **Other**: 2 (L17229, L17300)
+
+### Critical Path
+1. jsspec: logBuiltin fix → close L1519 (-1), may enable further CC progress
+2. proof: trivialChain batch → up to -12 (HIGHEST ROI if pattern holds)
+3. wasmspec: preservation + compound expansion → -4 to -10
+4. **BLOCKED tiers**: CCStateAgree (6), multi-step (4), error structural (3), if_branch (2) — need architectural solutions
+
+### Trend
+- 01:30: 59 sorries
+- 04:05: 48 sorries (-11 in 2.5h)
+- 06:05: 46 sorries (-2 in 2h) — slower, but agents finding architectural blockers now
+- Best case next run: ~35-40 (if trivialChain batch + preservation + FuncsCorr init close)
+
+---
+
 ## Run: 2026-04-11T04:30:32+00:00
 
 ### Metrics
@@ -6646,3 +6705,4 @@ echo "2026-04-11T03:00:32+00:00,49,ongoing" >> logs/time_estimate.csv
 
 ## Run: 2026-04-11T06:05:01+00:00
 
+2026-04-11T06:10:51+00:00 DONE

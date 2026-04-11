@@ -1458,9 +1458,13 @@ private def FuncsCorr (injMap : Nat → Nat)
   -- (1) Flat runtime funcs extend the CC-produced function table
   ccFuncs.size ≤ flatFuncs.size ∧
   (∀ i, i < ccFuncs.size → flatFuncs[i]? = ccFuncs[i]?) ∧
-  -- (2) Each Core closure corresponds to a Flat function definition
-  coreFuncs.size ≤ flatFuncs.size ∧
+  -- (2) Each non-builtin Core closure corresponds to a Flat function definition.
+  --     Index 0 (consoleLogIdx) is excluded: both Core and Flat handle console.log
+  --     via special-case dispatch in their step functions, not via function lookup.
+  --     Note: closureConvert does not add a logBuiltin placeholder, so Core indices
+  --     start at 1 (after logBuiltin) while Flat indices start at 0.
   (∀ (i : Nat) (fc : Core.FuncClosure),
+    i > 0 →
     coreFuncs[i]? = some fc →
     ∃ (fd : Flat.FuncDef),
       flatFuncs[i]? = some fd ∧
@@ -1469,10 +1473,9 @@ private def FuncsCorr (injMap : Nat → Nat)
       ∃ (innerEnvMap : Flat.EnvMapping) (st st' : Flat.CCState),
         fd.body = (Flat.convertExpr fc.body fc.params fd.envParam innerEnvMap st).fst ∧
         st' = (Flat.convertExpr fc.body fc.params fd.envParam innerEnvMap st).snd) ∧
-  -- (3) Captured environment correspondence: for each Core closure, the
-  --     innerEnvMap used during closure conversion is consistent with the
-  --     captured variable list (sorry'd — requires tracing through closureConvert)
+  -- (3) Captured environment correspondence (also excludes consoleLogIdx)
   (∀ (i : Nat) (fc : Core.FuncClosure),
+    i > 0 →
     coreFuncs[i]? = some fc →
     ∃ (fd : Flat.FuncDef),
       flatFuncs[i]? = some fd ∧

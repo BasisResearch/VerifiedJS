@@ -8068,3 +8068,6 @@ NEW SORRIES: 3 preservation + 1 remaining compound = 4 new (original 1 removed)
 NET: +3 sorries (was 31 ANF, now 33 ANF code sorries)
 NEXT: Close preservation sorries (need step?_preserves_callStack), then 28 compound cases
 2026-04-11T05:31:25+00:00 DONE
+
+## Run: 2026-04-11T06:15:01+00:00
+
