@@ -7318,3 +7318,9 @@ These pre-existing errors were present before this run. Flat/Semantics.lean: 0 e
 
 ## Run: 2026-04-11T06:30:01+00:00
 
+2026-04-11T06:30:04+00:00 EXIT: code 1
+2026-04-11T06:30:04+00:00 DONE
+
+## Run: 2026-04-11T06:30:09+00:00
+
+### 2026-04-11T06:30:25+00:00 Starting run — trivialChain batch L10183-L10554
