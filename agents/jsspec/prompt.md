@@ -1,4 +1,4 @@
-# jsspec — noFunctionDef BRANCH-SPLIT FOR CCStateAgree
+# jsspec — CCExprEquiv OFFSET THEOREM + INVARIANT REFACTOR
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,36 +9,60 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-11T22:05
-- CC: 12 real sorries. Total: **44** (ANF 32 + CC 12). Down from 50 (-6).
-- `exprFuncCount` + `convertExpr_state_delta` infrastructure done last run.
-- `noFunctionDef` + `convertExpr_state_id_no_functionDef` done.
-- You confirmed: `supported` does NOT imply `noFunctionDef`.
+## STATUS — 2026-04-11T23:30
+- CC: 12 real sorries. Total: **42** (ANF 30 + CC 12). Down from 44 (-2).
+- CCExprEquiv defined with δ parameter. Proved: refl, eq_implies_zero, of_agree.
+- noFunctionDef CANNOT close any sorry (supported allows functionDef). CONFIRMED.
+- Next step: `convertExpr_CCExprEquiv_offset` theorem.
 
-## PRIORITY: Try noFunctionDef branch-split on CCStateAgree sorries
+## P0: PROVE convertExpr_CCExprEquiv_offset (HIGHEST PRIORITY)
 
-### Strategy:
-For each CCStateAgree sorry (L6439, L6465, L9194, L9351, L9428, L9544):
-1. `lean_goal` at the sorry line to see what expression is being converted
-2. Check: does that specific sub-expression contain `functionDef`?
-3. If `noFunctionDef` can be established for that sub-expression → use `convertExpr_state_id_no_functionDef` → CCStateAgree becomes trivial (states are equal)
-4. If it CAN contain `functionDef` → use `convertExpr_state_delta` to show the delta is exactly `exprFuncCount e`, then build CCStateAgree from that
+This is the KEY theorem that enables closing CCStateAgree sorries.
 
-### Specific targets:
-- **L9544 (while)**: `while_ cond body` — check if cond/body in this context must be noFunctionDef
-- **L9428 (generic)**: what expression? Check with lean_goal
-- **L6439, L6465 (if branches)**: then_/else_ — check with lean_goal
+Statement:
+```lean
+theorem convertExpr_CCExprEquiv_offset (e : Core.Expr) (st1 st2 : CCState)
+    (h_agree : st1.nextId = st2.nextId) (h_funcs : st1.funcs.size = st2.funcs.size) :
+    CCExprEquiv (st2.funcs.size - st1.funcs.size)
+      (convertExpr e st1).fst (convertExpr e st2).fst
+```
 
-### FALLBACK: If noFunctionDef doesn't apply, try CCExprEquiv:
-1. Define `CCExprEquiv` mutual inductive on Flat.Expr
-2. Prove `convertExpr_CCExprEquiv` for simple cases
-3. This is multi-run infrastructure — 0 sorries this run is OK
+i.e., converting the SAME expression from two states that agree on nextId and funcs.size produces CCExprEquiv expressions with δ = funcs.size difference.
+
+When `st1 = st2`, this gives CCExprEquiv 0, which you already have.
+When st1 and st2 differ (e.g., st2 has extra funcs from discarded branch), δ accounts for the offset in makeClosure indices.
+
+### Proof strategy:
+1. Mutual structural induction on `e` (like `convertExpr_state_delta`)
+2. Most cases: sub-expression results are CCExprEquiv by IH, constructor preserves it
+3. `functionDef` case: `addFunc` increments funcs.size → δ shifts by 1 → makeClosure index offset
+4. The δ parameter absorbs the state difference
+
+### How it closes sorries:
+For L6576 (if-true CCStateAgree): `st' = (convertExpr else_ (convertExpr then_ st).snd).snd` but we only took the then_ branch. With CCExprEquiv, we show the then_ expression from `st'` is CCExprEquiv δ to the then_ expression from `(convertExpr then_ st).snd`. The simulation invariant accepts CCExprEquiv instead of equality.
+
+## P1: REFACTOR SIMULATION INVARIANT (only after P0 done)
+
+Change the simulation invariant from `CCStateAgree` (equality) to:
+```lean
+structure CCSimRel (sf : Flat.State) (sc : Core.State) : Prop where
+  expr_equiv : CCExprEquiv δ sf.expr sc.expr  -- instead of equality
+  state_agree_weak : sc.nextId ≤ sf.nextId    -- instead of equality
+  -- ... other fields
+```
+
+This is a MAJOR refactor. Only start if P0 is fully proved and verified.
+
+### Priority CCStateAgree sorries (5):
+- L6576, L6602: if-branch (then/else CCStateAgree)
+- L9488, L9565: CCStateAgree after sub-expression
+- L9681: while_ CCStateAgree
 
 ## DO NOT ATTEMPT:
-- Multi-step simulation sorries (L5991, L7088, L7296, L7307)
-- L7947 (getIndex semantic mismatch — unprovable)
-- Editing ClosureConvert.lean (no write permission)
+- Multi-step simulation sorries (L6128, L7433, L7444) — different blocker
+- L8084 (getIndex semantic mismatch — unprovable)
+- L7225, L9331, L9491 — dependent on other infrastructure
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — noFunctionDef branch-split" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — CCExprEquiv offset theorem" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`

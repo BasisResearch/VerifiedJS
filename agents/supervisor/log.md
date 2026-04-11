@@ -1,3 +1,59 @@
+## Run: 2026-04-11T23:30:04+00:00
+
+### Metrics
+- **Sorry count (real)**: ANF 30 + CC 12 = **42 total**
+- **Delta from last run (22:05)**: -2 (44→42). **DOWN.**
+- **BUILD**: Not verified (LSP only).
+
+### What Happened Since Last Run (22:05→23:30)
+1. **proof agent** (run 22:30, completed 23:06): Deleted dead code — `HasBreakInHead_step?_produces_error` and `HasContinueInHead_step?_produces_error` were unprovable for non-head cases and never called. Net: **-2 sorries**. Also analyzed P0 labeled list tail — ALL BLOCKED by trivial mismatch (normalizeExpr body changes when trivial representation changes). This blocker affects 11 sorries total (L10799-L11170).
+2. **wasmspec agent** (run 21:15, completed 22:18): Closed P0 (step_nonError_preserves_noNonCallFrameTryCatch) and P1 (step_error_noNonCallFrameTryCatch_isLit). Net: **-2 sorries** (but these were already counted in last run's 44 → included in proof agent's -2 delta? Need to verify). P2 (L16451 initial condition) remains.
+3. **jsspec agent** (run 22:00, completed 22:28): Added CCExprEquiv infrastructure (mutual inductive with δ offset parameter, refl, eq_implies_zero, of_agree). 0 sorries changed. Confirmed noFunctionDef cannot close any sorry. Next: convertExpr_CCExprEquiv_offset.
+
+### Sorry Classification (42 total)
+**ANF (30):**
+- Trivial mismatch zone (11): L10799, L10847, L10895, L10945, L10972, L11022, L11024, L11074, L11076, L11107, L11139, L11170 — ALL BLOCKED by same root cause
+- Compound throw: 1 (L13809)
+- HasNonCallFrameTryCatch P2: 1 (L16451) — wasmspec
+- Compound HasAwait/Yield: 2 (L21749, L21922)
+- Return/yield compound: 3 (L21978, L21982, L21983)
+- While condition: 2 (L22073, L22085)
+- If branch K-mismatch: 2 (L22810, L22850)
+- TryCatch: 3 (L23691, L23709, L23712)
+- End-of-file (noCallFrame + body_sim): 2 (L25039, L25050)
+- End-of-file (break/continue compound): 2 (L25269, L25340)
+
+**CC (12):**
+- Multi-step simulation: 3 (L6128, L7433, L7444)
+- CCStateAgree: 5 (L6576, L6602, L9488, L9565, L9681)
+- CCStateAgree + tryCatch: 1 (L9491)
+- Axiom/semantic mismatch: 1 (L8084) — UNPROVABLE
+- Other: 2 (L7225, L9331)
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: REDIRECTED from per-sorry work to **trivial mismatch infrastructure**. Investigate Options A (use step_sim pattern), B (change theorem), C (two-phase: step e to value, then recurse on rest). Expected: unblock 3-11 sorries over 1-2 runs.
+2. **wasmspec**: P2 (L16451 initial condition) + P1 (L25039 noCallFrameReturn). Expected: -1 to -2.
+3. **jsspec**: convertExpr_CCExprEquiv_offset theorem → then refactor simulation invariant. Expected: 0 this run, -3 to -5 next run if offset theorem lands.
+
+### Critical Path
+1. **Trivial mismatch fix** → unblocks 11 ANF sorries. proof agent investigating.
+2. **CCExprEquiv offset** → unblocks 5 CC sorries. jsspec building.
+3. **L16451 + L25039** → -1 to -2. wasmspec.
+4. Best case next run: ~39-40. Best case after infrastructure lands: ~30.
+
+### Trend
+- 18:05: 54 → 19:05: 49 → 20:05: 49 → 21:05: 50 → 22:05: 44 → **23:30: 42**
+- Net movement: -12 in 5.5 hours. Rate: -2.2/hour.
+- Rate slowing (was -2.5/hr). Low-hanging fruit exhausted. Now blocked on 2 architectural fixes.
+
+### Concerns
+- **Trivial mismatch is THE bottleneck.** 11 sorries (26% of total) depend on it. If proof agent can't crack it this run, consider alternative: skip the non-head labeled cases and focus on other sorry categories.
+- **CCExprEquiv is multi-run.** jsspec needs: (1) offset theorem, (2) invariant refactor, (3) per-sorry application. Earliest payoff: 2 runs from now.
+- **12 sorries fundamentally blocked:** compound cases (L21749-L23712) need eval-context lifting infrastructure that doesn't exist yet. Not in scope for any agent this cycle.
+- **1 sorry unprovable:** L8084 getIndex semantic mismatch.
+
+---
+
 ## Run: 2026-04-11T22:05:02+00:00
 
 ### Metrics
@@ -657,3 +713,4 @@
 
 ## Run: 2026-04-11T23:30:04+00:00
 
+2026-04-11T23:38:31+00:00 DONE
