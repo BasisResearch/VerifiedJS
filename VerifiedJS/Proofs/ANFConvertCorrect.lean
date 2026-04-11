@@ -13250,6 +13250,19 @@ private theorem hasReturnInHead_callStackSafe (e : Flat.Expr) (hret : HasReturnI
     | call_args h => right; right; cases h; exact HasReturnInHeadList_valuesFromExprList_none h
     | _ => exact absurd h (by intro h'; exact Flat.Expr.noConfusion h')
 
+/-- At every steppable intermediate state reachable from a HasReturnInHead expression,
+    the expression has HasReturnInHead (so callStack safety conditions hold). -/
+private theorem HasReturnInHead_Steps_steppable
+    {a : Flat.Expr} {env : Flat.Env} {heap : Core.Heap} {trace : List Core.TraceEvent}
+    {funcs : Array Flat.FuncDef} {cs : List Flat.Env}
+    (hret : HasReturnInHead a)
+    {smid : Flat.State} {evs_pre : List Core.TraceEvent}
+    (hsteps : Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs_pre smid)
+    {t : Core.TraceEvent} {smid' : Flat.State}
+    (hstep : Flat.step? smid = some (t, smid')) :
+    HasReturnInHead smid.expr := by
+  sorry
+
 /-- Main inductive theorem: if HasReturnInHead e and normalizeExpr e K produces .return arg,
     then Flat.Steps from e match the return behavior. Works with ANY continuation K
     (does not require trivial-preserving). Proved by induction on expression depth. -/
@@ -13344,13 +13357,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · -- smid'.expr came from stepping a with HasReturnInHead a.
-                -- HasReturnInHead has no .tryCatch constructor and step? never creates
-                -- "__call_frame_return__" tryCatch unless call-with-all-values fires,
-                -- which is prevented by HasReturnInHead.
-                sorry
-              · -- smid'.expr = .call f' env' args' with some non-value sub-expr
-                sorry),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.seq · b)
