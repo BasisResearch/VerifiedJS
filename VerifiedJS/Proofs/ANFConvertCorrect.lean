@@ -12205,9 +12205,12 @@ private theorem trivialChain_await_steps
       simp only [ANF.normalizeExpr, htofv, pure, Pure.pure, StateT.pure,
         Except.ok.injEq, Prod.mk.injEq] at hnorm
       obtain ⟨rfl, rfl⟩ := hnorm
+      have hstep_await_lit : Flat.step? ⟨.await (.lit v), env, heap, trace, funcs, cs⟩ =
+          some (.silent, ⟨.lit v, env, heap, trace ++ [.silent], funcs, cs⟩) := by
+        unfold Flat.step?; rfl
       exact ⟨fun val heval => by
           rw [evalTrivial_trivialOfValue] at heval; cases heval
-          exact ⟨_, _, .tail ⟨Flat.step?_await_lit_eq v env heap trace funcs cs⟩ (.refl _),
+          exact ⟨_, _, .tail ⟨hstep_await_lit⟩ (.refl _),
             rfl, rfl, rfl, by simp [List.append_assoc], rfl⟩,
         fun msg heval => by rw [evalTrivial_trivialOfValue] at heval; cases heval⟩
     | var _ => simp [trivialChainCost] at hcost
@@ -12221,9 +12224,12 @@ private theorem trivialChain_await_steps
       simp only [ANF.normalizeExpr, htofv, pure, Pure.pure, StateT.pure,
         Except.ok.injEq, Prod.mk.injEq] at hnorm
       obtain ⟨rfl, rfl⟩ := hnorm
+      have hstep_await_lit : Flat.step? ⟨.await (.lit v), env, heap, trace, funcs, cs⟩ =
+          some (.silent, ⟨.lit v, env, heap, trace ++ [.silent], funcs, cs⟩) := by
+        unfold Flat.step?; rfl
       exact ⟨fun val heval => by
           rw [evalTrivial_trivialOfValue] at heval; cases heval
-          exact ⟨_, _, .tail ⟨Flat.step?_await_lit_eq v env heap trace funcs cs⟩ (.refl _),
+          exact ⟨_, _, .tail ⟨hstep_await_lit⟩ (.refl _),
             rfl, rfl, rfl, by simp [List.append_assoc], rfl⟩,
         fun msg heval => by rw [evalTrivial_trivialOfValue] at heval; cases heval⟩
     | var name =>
@@ -12236,11 +12242,17 @@ private theorem trivialChain_await_steps
         simp only [ANF.Env.lookup, Flat.Env.lookup] at hval ⊢; exact hval
       have hv_flat : Flat.Env.lookup env name = some val := by
         simp only [Flat.Env.lookup, ANF.Env.lookup] at hval ⊢; exact hval
+      have hstep1 : Flat.step? ⟨.await (.var name), env, heap, trace, funcs, cs⟩ =
+          some (.silent, ⟨.await (.lit val), env, heap, trace ++ [.silent], funcs, cs⟩) := by
+        simp only [Flat.step?, Flat.exprValue?, hv_flat]; rfl
+      have hstep2 : Flat.step? ⟨.await (.lit val), env, heap, trace ++ [.silent], funcs, cs⟩ =
+          some (.silent, ⟨.lit val, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
+        unfold Flat.step?; rfl
       exact ⟨fun v heval => by
           simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval; subst heval
-          exact ⟨_, _, .tail ⟨Flat.step?_await_var_ok name val env heap trace funcs cs hv_flat⟩
-            (.tail ⟨Flat.step?_await_lit_eq val env heap (trace ++ [.silent]) funcs cs⟩ (.refl _)),
-            rfl, rfl, rfl, by simp [List.append_assoc], by simp [observableTrace]; rfl⟩,
+          exact ⟨_, _, .tail ⟨hstep1⟩
+            (.tail ⟨hstep2⟩ (.refl _)),
+            rfl, rfl, rfl, by simp [List.append_assoc], by simp [observableTrace, List.filter]⟩,
         fun msg heval => by
           simp only [ANF.evalTrivial, hv_anf] at heval; exact absurd heval (by simp)⟩
     | «this» =>
@@ -12253,11 +12265,17 @@ private theorem trivialChain_await_steps
         simp only [ANF.Env.lookup, Flat.Env.lookup] at hval ⊢; exact hval
       have hv_flat : Flat.Env.lookup env "this" = some val := by
         simp only [Flat.Env.lookup, ANF.Env.lookup] at hval ⊢; exact hval
+      have hstep1 : Flat.step? ⟨.await .this, env, heap, trace, funcs, cs⟩ =
+          some (.silent, ⟨.await (.lit val), env, heap, trace ++ [.silent], funcs, cs⟩) := by
+        simp only [Flat.step?, Flat.exprValue?, hv_flat]; rfl
+      have hstep2 : Flat.step? ⟨.await (.lit val), env, heap, trace ++ [.silent], funcs, cs⟩ =
+          some (.silent, ⟨.lit val, env, heap, (trace ++ [.silent]) ++ [.silent], funcs, cs⟩) := by
+        unfold Flat.step?; rfl
       exact ⟨fun v heval => by
           simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval; subst heval
-          exact ⟨_, _, .tail ⟨Flat.step?_await_this_ok val env heap trace funcs cs hv_flat⟩
-            (.tail ⟨Flat.step?_await_lit_eq val env heap (trace ++ [.silent]) funcs cs⟩ (.refl _)),
-            rfl, rfl, rfl, by simp [List.append_assoc], by simp [observableTrace]; rfl⟩,
+          exact ⟨_, _, .tail ⟨hstep1⟩
+            (.tail ⟨hstep2⟩ (.refl _)),
+            rfl, rfl, rfl, by simp [List.append_assoc], by simp [observableTrace, List.filter]⟩,
         fun msg heval => by
           simp only [ANF.evalTrivial, hv_anf] at heval; exact absurd heval (by simp)⟩
     | seq a b =>
@@ -12379,6 +12397,335 @@ private theorem normalizeExpr_await_compound_case
     exact trivialChain_await_steps (trivialChainCost e) e env heap trace funcs cs arg n m
       htc (Nat.le_refl _) hnorm'
       (fun x hfx => hewf x (.await_arg _ _ hfx))
+
+/-- If normalizeExpr e k produces .yield arg delegate and e has no yield-in-head,
+    then e must be a trivial chain. -/
+private theorem no_yield_head_implies_trivial_chain :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    ∀ (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : Option ANF.Trivial) (delegate : Bool) (n m : Nat),
+    (ANF.normalizeExpr e k).run n = .ok (.yield arg delegate, m) →
+    ¬ HasYieldInHead e →
+    isTrivialChain e = true := by
+  intro d; induction d with
+  | zero =>
+    intro e hd k arg delegate n m h hno
+    cases e with
+    | lit _ => rfl
+    | var _ => rfl
+    | «this» => rfl
+    | «break» _ | «continue» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | «return» arg_r =>
+      cases arg_r with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some _ => exfalso; simp [Flat.Expr.depth] at hd
+    | yield arg_y _ =>
+      cases arg_y with
+      | none => exfalso; exact hno HasYieldInHead.yield_none_direct
+      | some _ => exfalso; simp [Flat.Expr.depth] at hd
+    | tryCatch _ _ _ fin => exfalso; cases fin <;> (simp [Flat.Expr.depth] at hd; try omega)
+    | _ => exfalso; simp [Flat.Expr.depth] at hd; try omega
+  | succ d ih =>
+    intro e hd k arg delegate n m h hno
+    cases e with
+    | lit _ => rfl
+    | var _ => rfl
+    | «this» => rfl
+    | «break» _ | «continue» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | yield arg_y dlg =>
+      cases arg_y with
+      | none => exfalso; exact hno HasYieldInHead.yield_none_direct
+      | some _ => exfalso; exact hno HasYieldInHead.yield_some_direct
+    | «throw» _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_yield_or_k _ _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.throw_arg hleft)
+      · simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hkt
+    | «return» arg_r =>
+      cases arg_r with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some v =>
+        exfalso; simp only [ANF.normalizeExpr] at h
+        rcases ANF.normalizeExpr_yield_or_k v _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+        · exact hno (HasYieldInHead.return_some_arg hleft)
+        · simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hkt
+    | await v =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_yield_or_k v _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.await_arg hleft)
+      · simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hkt
+    | labeled l body => exact absurd h (ANF.normalizeExpr_labeled_not_yield l body k arg delegate n m)
+    | while_ c b => exact absurd h (ANF.normalizeExpr_while_not_yield c b k arg delegate n m)
+    | tryCatch body cp cb fin =>
+      exact absurd h (ANF.normalizeExpr_tryCatch_not_yield body cp cb fin k arg delegate n m)
+    | seq a b =>
+      simp only [ANF.normalizeExpr] at h
+      have htc_a := ih a (by simp [Flat.Expr.depth] at hd; omega) (fun _ => ANF.normalizeExpr b k) arg delegate n m h (fun ha => hno (HasYieldInHead.seq_left ha))
+      have hpass := normalizeExpr_trivialChain_passthrough a.depth a (Nat.le_refl _) htc_a (ANF.normalizeExpr b k) n
+      have h_b : (ANF.normalizeExpr b k).run n = .ok (.yield arg delegate, m) := by rw [← hpass]; exact h
+      have htc_b := ih b (by simp [Flat.Expr.depth] at hd; omega) k arg delegate n m h_b (fun hb => hno (HasYieldInHead.seq_right hb))
+      simp [isTrivialChain, htc_a, htc_b]
+    | «let» name init body =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_yield_or_k init _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.let_init hleft)
+      · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure, Except.pure, Except.bind] at hkt; split at hkt <;> simp_all
+    | «if» c t e =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_yield_or_k c _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.if_cond hleft)
+      · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure, Except.pure, Except.bind] at hkt; split at hkt <;> (try simp_all); split at hkt <;> simp_all
+    | assign _ val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_yield_or_k val _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.assign_val hleft)
+      · exact absurd hkt (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+    | getProp obj _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_yield_or_k obj _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.getProp_obj hleft)
+      · exact absurd hkt (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+    | deleteProp obj _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_yield_or_k obj _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.deleteProp_obj hleft)
+      · exact absurd hkt (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+    | typeof val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_yield_or_k val _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.typeof_arg hleft)
+      · exact absurd hkt (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+    | unary _ val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_yield_or_k val _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.unary_arg hleft)
+      · exact absurd hkt (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+    | getEnv envPtr _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_yield_or_k envPtr _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.getEnv_env hleft)
+      · exact absurd hkt (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+    | makeClosure _ env =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_yield_or_k env _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.makeClosure_env hleft)
+      · exact absurd hkt (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+    | setProp obj _ val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_yield_or_k obj _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.setProp_obj hleft)
+      · rcases ANF.normalizeExpr_yield_or_k val _ arg delegate _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasYieldInHead.setProp_val hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+    | binary _ lhs rhs =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_yield_or_k lhs _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.binary_lhs hleft)
+      · rcases ANF.normalizeExpr_yield_or_k rhs _ arg delegate _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasYieldInHead.binary_rhs hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+    | getIndex obj idx =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_yield_or_k obj _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.getIndex_obj hleft)
+      · rcases ANF.normalizeExpr_yield_or_k idx _ arg delegate _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasYieldInHead.getIndex_idx hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+    | setIndex obj idx val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_yield_or_k obj _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.setIndex_obj hleft)
+      · rcases ANF.normalizeExpr_yield_or_k idx _ arg delegate _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasYieldInHead.setIndex_idx hleft)
+        · rcases ANF.normalizeExpr_yield_or_k val _ arg delegate _ _ hkt₂ with hleft | ⟨_, _, _, hkt₃⟩
+          · exact hno (HasYieldInHead.setIndex_val hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+    | call f env args =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_yield_or_k f _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.call_func hleft)
+      · rcases ANF.normalizeExpr_yield_or_k env _ arg delegate _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasYieldInHead.call_env hleft)
+        · have args_ih := fun e (_ : e ∈ args) => ANF.normalizeExpr_yield_or_k e
+          rcases normalizeExprList_yield_or_k args args_ih _ _ _ _ _ hkt₂ with hleft | ⟨_, _, _, hkt₃⟩
+          · exact hno (HasYieldInHead.call_args hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+    | newObj f env args =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_yield_or_k f _ arg delegate _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.newObj_func hleft)
+      · rcases ANF.normalizeExpr_yield_or_k env _ arg delegate _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasYieldInHead.newObj_env hleft)
+        · have args_ih := fun e (_ : e ∈ args) => ANF.normalizeExpr_yield_or_k e
+          rcases normalizeExprList_yield_or_k args args_ih _ _ _ _ _ hkt₂ with hleft | ⟨_, _, _, hkt₃⟩
+          · exact hno (HasYieldInHead.newObj_args hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+    | makeEnv values =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have vals_ih := fun e (_ : e ∈ values) => ANF.normalizeExpr_yield_or_k e
+      rcases normalizeExprList_yield_or_k values vals_ih _ _ _ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.makeEnv_values hleft)
+      · exact absurd hkt (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+    | objectLit props =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have props_ih := fun (name : Flat.PropName) (e : Flat.Expr) (_ : (name, e) ∈ props) => ANF.normalizeExpr_yield_or_k e
+      rcases normalizeProps_yield_or_k props props_ih _ _ _ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.objectLit_props hleft)
+      · exact absurd hkt (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+    | arrayLit elems =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have elems_ih := fun e (_ : e ∈ elems) => ANF.normalizeExpr_yield_or_k e
+      rcases normalizeExprList_yield_or_k elems elems_ih _ _ _ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasYieldInHead.arrayLit_elems hleft)
+      · exact absurd hkt (ANF.bindComplex_never_yield_general _ _ _ _ _ _)
+
+/-- Evaluation of a trivial chain through .yield (some ·) delegate context. -/
+private theorem trivialChain_yield_some_steps
+    (fuel : Nat) (e : Flat.Expr) (delegate : Bool)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+    (arg : Option ANF.Trivial) (n m : Nat)
+    (htc : isTrivialChain e = true) (hcost : trivialChainCost e ≤ fuel)
+    (hnorm : (ANF.normalizeExpr e (fun t => pure (ANF.Expr.yield (some t) delegate))).run n =
+        Except.ok (ANF.Expr.yield arg delegate, m))
+    (hwf : ∀ x, VarFreeIn x e → env.lookup x ≠ none) :
+    (arg = none → False) ∧
+    (∀ t v, arg = some t → ANF.evalTrivial env t = .ok v →
+      ∃ evs sf', Flat.Steps ⟨.yield (some e) delegate, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit v ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧
+        observableTrace evs = observableTrace [Core.TraceEvent.silent]) ∧
+    (∀ t msg, arg = some t → ANF.evalTrivial env t = .error msg →
+      ∃ evs sf', Flat.Steps ⟨.yield (some e) delegate, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧
+        observableTrace evs = observableTrace [Core.TraceEvent.error msg]) := by
+  induction fuel generalizing e trace arg n m with
+  | zero =>
+    cases e with
+    | lit v =>
+      have htofv := trivialOfFlatValue_eq_trivialOfValue v
+      simp only [ANF.normalizeExpr, htofv, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm; obtain ⟨rfl, rfl⟩ := hnorm
+      exact ⟨by simp, fun t val harg heval => by
+        simp only [Option.some.injEq] at harg; subst harg; rw [evalTrivial_trivialOfValue] at heval; cases heval
+        exact ⟨_, _, .tail ⟨by unfold Flat.step?; simp [Flat.exprValue?]⟩ (.refl _), rfl, rfl, rfl, by simp [List.append_assoc], rfl⟩,
+       fun t msg harg heval => by simp only [Option.some.injEq] at harg; subst harg; rw [evalTrivial_trivialOfValue] at heval; cases heval⟩
+    | var _ => simp [trivialChainCost] at hcost
+    | «this» => simp [trivialChainCost] at hcost
+    | seq _ _ => simp [trivialChainCost] at hcost
+    | _ => simp [isTrivialChain] at htc
+  | succ fuel ih =>
+    cases e with
+    | lit v =>
+      have htofv := trivialOfFlatValue_eq_trivialOfValue v
+      simp only [ANF.normalizeExpr, htofv, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm; obtain ⟨rfl, rfl⟩ := hnorm
+      exact ⟨by simp, fun t val harg heval => by
+        simp only [Option.some.injEq] at harg; subst harg; rw [evalTrivial_trivialOfValue] at heval; cases heval
+        exact ⟨_, _, .tail ⟨by unfold Flat.step?; simp [Flat.exprValue?]⟩ (.refl _), rfl, rfl, rfl, by simp [List.append_assoc], rfl⟩,
+       fun t msg harg heval => by simp only [Option.some.injEq] at harg; subst harg; rw [evalTrivial_trivialOfValue] at heval; cases heval⟩
+    | var name =>
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm; obtain ⟨rfl, rfl⟩ := hnorm
+      have hbound := hwf name (.var _); obtain ⟨val, hval⟩ := Option.ne_none_iff_exists'.mp hbound
+      have hv_anf : ANF.Env.lookup env name = some val := by simp only [ANF.Env.lookup, Flat.Env.lookup] at hval ⊢; exact hval
+      exact ⟨by simp, fun t v harg heval => by
+        simp only [Option.some.injEq] at harg; subst harg; simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval; subst heval
+        exact ⟨_, _, .tail ⟨by unfold Flat.step?; simp [Flat.exprValue?, hv_anf, Flat.step?_pushTrace_expand, Flat.step?]⟩
+          (.tail ⟨by unfold Flat.step?; simp [Flat.exprValue?]⟩ (.refl _)), rfl, rfl, rfl, by simp [List.append_assoc], by simp [observableTrace]; rfl⟩,
+       fun t msg harg heval => by simp only [Option.some.injEq] at harg; subst harg; simp only [ANF.evalTrivial, hv_anf] at heval; exact absurd heval (by simp)⟩
+    | «this» =>
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm; obtain ⟨rfl, rfl⟩ := hnorm
+      have hbound := hwf "this" .this_var; obtain ⟨val, hval⟩ := Option.ne_none_iff_exists'.mp hbound
+      have hv_anf : ANF.Env.lookup env "this" = some val := by simp only [ANF.Env.lookup, Flat.Env.lookup] at hval ⊢; exact hval
+      exact ⟨by simp, fun t v harg heval => by
+        simp only [Option.some.injEq] at harg; subst harg; simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval; subst heval
+        exact ⟨_, _, .tail ⟨by unfold Flat.step?; simp [Flat.exprValue?, hv_anf, Flat.step?_pushTrace_expand, Flat.step?]⟩
+          (.tail ⟨by unfold Flat.step?; simp [Flat.exprValue?]⟩ (.refl _)), rfl, rfl, rfl, by simp [List.append_assoc], by simp [observableTrace]; rfl⟩,
+       fun t msg harg heval => by simp only [Option.some.injEq] at harg; subst harg; simp only [ANF.evalTrivial, hv_anf] at heval; exact absurd heval (by simp)⟩
+    | seq a b =>
+      simp [isTrivialChain] at htc; obtain ⟨htc_a, htc_b⟩ := htc
+      have hnorm_b : (ANF.normalizeExpr b (fun t => pure (ANF.Expr.yield (some t) delegate))).run n = Except.ok (ANF.Expr.yield arg delegate, m) := by
+        simp only [ANF.normalizeExpr] at hnorm; rwa [normalizeExpr_trivialChain_passthrough a.depth a (Nat.le_refl _) htc_a] at hnorm
+      have hnotval_seq : Flat.exprValue? (.seq a b) = none := by simp [Flat.exprValue?]
+      cases ha_val : Flat.exprValue? a with
+      | some v_a =>
+        have ha_lit : a = .lit v_a := by match a, ha_val with | .lit _, h => simp [Flat.exprValue?] at h; subst h; rfl
+        subst ha_lit
+        obtain ⟨s_seq, hstep_seq, _, henv_seq, hheap_seq, _, _, htrace_seq⟩ := step?_seq_lit ⟨.seq (.lit v_a) b, env, heap, trace, funcs, cs⟩ v_a b
+        have hs_seq_eq : s_seq = ⟨b, env, heap, trace ++ [.silent], funcs, cs⟩ := by cases s_seq; simp_all
+        obtain ⟨s_r, hstep_r, hexpr_r, henv_r, hheap_r, _, _, htrace_r⟩ :=
+          step?_yield_some_ctx ⟨.yield (some (.seq (.lit v_a) b)) delegate, env, heap, trace, funcs, cs⟩ (.seq (.lit v_a) b) delegate hnotval_seq .silent s_seq hstep_seq (fun _ h => Core.TraceEvent.noConfusion h)
+        rw [hs_seq_eq] at hexpr_r henv_r hheap_r
+        have hs_r_eq : s_r = ⟨.yield (some b) delegate, env, heap, trace ++ [.silent], funcs, cs⟩ := by cases s_r; simp_all
+        rw [hs_r_eq] at hstep_r
+        obtain ⟨hnone, hok, herr⟩ := ih b delegate (trace ++ [.silent]) arg n m htc_b (by simp [trivialChainCost] at hcost; omega) hnorm_b (fun x hfx => hwf x (.seq_r _ _ _ hfx))
+        exact ⟨hnone, fun t v harg heval => by
+          obtain ⟨evs', sf', hsteps', h1, h2, h3, h4, h5⟩ := hok t v harg heval
+          exact ⟨.silent :: evs', sf', .tail ⟨hstep_r⟩ hsteps', h1, h2, h3, by simp [List.append_assoc] at h4 ⊢; exact h4, by simp [observableTrace] at h5 ⊢; exact h5⟩,
+         fun t msg harg heval => by
+          obtain ⟨evs', sf', hsteps', h1, h2, h3, h4, h5⟩ := herr t msg harg heval
+          exact ⟨.silent :: evs', sf', .tail ⟨hstep_r⟩ hsteps', h1, h2, h3, by simp [List.append_assoc] at h4 ⊢; exact h4, by simp [observableTrace] at h5 ⊢; exact h5⟩⟩
+      | none =>
+        have hwf_a := fun x hfx => hwf x (.seq_l _ _ _ hfx)
+        obtain ⟨a', ha'_step, ha'_tc, ha'_cost, ha'_wf⟩ := trivialChain_inner_step (trivialChainCost a - 1) a env heap trace funcs cs htc_a (by omega) ha_val hwf_a
+        obtain ⟨s_seq, hstep_seq, _, _, _, _, _, _⟩ := step?_seq_ctx ⟨.seq a b, env, heap, trace, funcs, cs⟩ a b ha_val .silent ⟨a', env, heap, trace ++ [.silent], funcs, cs⟩ ha'_step (fun _ h => Core.TraceEvent.noConfusion h)
+        have hs_seq_eq : s_seq = ⟨.seq a' b, env, heap, trace ++ [.silent], funcs, cs⟩ := by cases s_seq; simp_all
+        obtain ⟨s_r, hstep_r, hexpr_r, henv_r, hheap_r, _, _, htrace_r⟩ :=
+          step?_yield_some_ctx ⟨.yield (some (.seq a b)) delegate, env, heap, trace, funcs, cs⟩ (.seq a b) delegate hnotval_seq .silent s_seq hstep_seq (fun _ h => Core.TraceEvent.noConfusion h)
+        rw [hs_seq_eq] at hexpr_r henv_r hheap_r
+        have hs_r_eq : s_r = ⟨.yield (some (.seq a' b)) delegate, env, heap, trace ++ [.silent], funcs, cs⟩ := by cases s_r; simp_all
+        rw [hs_r_eq] at hstep_r
+        have hnorm_e' : (ANF.normalizeExpr (.seq a' b) (fun t => pure (ANF.Expr.yield (some t) delegate))).run n = Except.ok (ANF.Expr.yield arg delegate, m) := by
+          simp only [ANF.normalizeExpr]; rw [normalizeExpr_trivialChain_passthrough a'.depth a' (Nat.le_refl _) ha'_tc]; exact hnorm_b
+        obtain ⟨hnone, hok, herr⟩ := ih (.seq a' b) delegate (trace ++ [.silent]) arg n m (by simp [isTrivialChain, ha'_tc, htc_b]) (by simp [trivialChainCost] at hcost ⊢; omega) hnorm_e' (by intro x hfx; cases hfx with | seq_l _ _ _ h => exact ha'_wf x h | seq_r _ _ _ h => exact hwf x (.seq_r _ _ _ h))
+        exact ⟨hnone, fun t v harg heval => by
+          obtain ⟨evs', sf', hsteps', h1, h2, h3, h4, h5⟩ := hok t v harg heval
+          exact ⟨.silent :: evs', sf', .tail ⟨hstep_r⟩ hsteps', h1, h2, h3, by simp [List.append_assoc] at h4 ⊢; exact h4, by simp [observableTrace] at h5 ⊢; exact h5⟩,
+         fun t msg harg heval => by
+          obtain ⟨evs', sf', hsteps', h1, h2, h3, h4, h5⟩ := herr t msg harg heval
+          exact ⟨.silent :: evs', sf', .tail ⟨hstep_r⟩ hsteps', h1, h2, h3, by simp [List.append_assoc] at h4 ⊢; exact h4, by simp [observableTrace] at h5 ⊢; exact h5⟩⟩
+    | _ => simp [isTrivialChain] at htc
+
+/-- Helper for compound yield (some) case: inner val is trivial chain. -/
+private theorem normalizeExpr_yield_some_compound_case
+    (e : Flat.Expr) (delegate : Bool)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+    (arg : Option ANF.Trivial) (n m : Nat)
+    (hnorm' : (ANF.normalizeExpr e (fun t => pure (ANF.Expr.yield (some t) delegate))).run n =
+        .ok (.yield arg delegate, m))
+    (hewf : ExprWellFormed (.yield (some e) delegate) env)
+    (hna : NoNestedAbrupt (.yield (some e) delegate)) :
+    (arg = none →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps ⟨.yield (some e) delegate, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧ observableTrace evs = observableTrace [.silent]) ∧
+    (∀ t v, arg = some t → ANF.evalTrivial env t = .ok v →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps ⟨.yield (some e) delegate, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit v ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧ observableTrace evs = observableTrace [.silent]) ∧
+    (∀ t msg, arg = some t → ANF.evalTrivial env t = .error msg →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps ⟨.yield (some e) delegate, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧ observableTrace evs = observableTrace [.error msg]) := by
+  have hab : hasAbruptCompletion e = false := NoNestedAbrupt.yield_some_arg_abruptFree hna
+  have hno_yield : ¬ HasYieldInHead e :=
+    fun h => absurd (hasYieldInHead_implies_hasAbruptCompletion h) (by rw [hab]; exact Bool.false_ne_true)
+  have htc := no_yield_head_implies_trivial_chain e.depth e (Nat.le_refl _)
+    (fun t => pure (.yield (some t) delegate)) arg delegate n m hnorm' hno_yield
+  obtain ⟨hnone, hok, herr⟩ := trivialChain_yield_some_steps (trivialChainCost e) e delegate
+    env heap trace funcs cs arg n m htc (Nat.le_refl _) hnorm'
+    (fun x hfx => hewf x (.yield_some_arg _ _ _ hfx))
+  exact ⟨fun h => absurd h hnone, hok, herr⟩
 
 /-- Evaluation of a trivial chain through .throw context produces matching error events.
     By induction on trivialChainCost: base cases are lit/var/this (1-2 steps),
