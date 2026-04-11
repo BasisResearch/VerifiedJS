@@ -5078,3 +5078,52 @@ in branches where no function definitions appear.
 
 ### 2026-04-11T20:00:21+00:00 Starting run — CCStateAgree Path A investigation
 2026-04-11T21:00:01+00:00 SKIP: already running
+
+### 2026-04-11T20:00 Path A investigation — complete findings
+
+**Investigation results:**
+1. `CCState` has two fields: `funcs : Array FuncDef` and `nextId : Nat`
+2. `freshVar` (L19-20) uses `nextId`, called only in `functionDef` case (L245)
+3. `addFunc` (L22-23) pushes to `funcs`, also only in `functionDef` case (L259)
+4. Both `nextId` delta and `funcs.size` delta equal `exprFuncCount e` (proven)
+5. `CCStateAgree` requires both `nextId =` and `funcs.size =` (L562-563)
+
+**Key finding: Path A alone is INSUFFICIENT**
+- Removing `nextId` dependency (changing freshVar to use `funcs.size`) simplifies CCStateAgree to just `funcs.size =`
+- BUT `funcs.size` has the SAME branching problem as `nextId`
+- `makeClosure funcIdx` uses `funcIdx = st.funcs.size`, so expression output depends on `funcs.size` too
+- The branching sorries (if/while/tryCatch) fail for both `nextId` AND `funcs.size`
+
+**Full solution: funcBase parameter approach**
+- Add `funcBase : Nat` parameter to `convertExpr`
+- Use `funcBase + exprFuncCount subexpr` for sub-expression offsets
+- Expression output depends ONLY on `funcBase` (a parameter), not mutable state
+- CCStateAgree becomes unnecessary — just track `funcBase`
+- Requires changes to `ClosureConvert.lean` (currently read-only for jsspec user)
+
+**Permission blocker:**
+- `ClosureConvert.lean` is `rw-r----- proof:pipeline` — jsspec has READ-ONLY access
+- Cannot implement Path A without write access to this file
+- Need ownership change: `chown jsspec` or `chmod g+w`
+
+**Proof infrastructure added:**
+- `exprFuncCount` (+ List/Props variants): counts functionDef nodes per convertExpr traversal
+- `convertExpr_state_delta`: proves `nextId` and `funcs.size` each grow by exactly `exprFuncCount e`
+- `convertExpr_nextId_funcs_size_sync`: corollary that both counters always advance by the same amount
+
+**noFunctionDef branch-split assessment:**
+- `supported` allows `functionDef` (Core/Syntax.lean:164), so supported ≠> noFunctionDef
+- Branch-splitting on `noFunctionDef` for CCStateAgree sorries would NARROW but not CLOSE them
+- Each sorry would become `by_cases h : noFunctionDef e`: true case closes, false case stays sorry
+- Net effect: 0 sorries eliminated, just reorganized
+
+**Summary of this run's contributions:**
+1. Added `exprFuncCount` (+ List, Props variants) — ~40 lines
+2. Added `convertExpr_state_delta` (mutual proof, all 4 functions) — ~180 lines
+   - Proves exact delta: nextId and funcs.size each grow by exprFuncCount e
+3. Added `convertExpr_nextId_funcs_size_sync` corollary
+4. All proofs verified via LSP — no new errors introduced
+5. Thorough investigation of Path A feasibility documented
+
+### 2026-04-11T20:25 Run complete — added exprFuncCount + state delta infrastructure, no sorries closed (all architecturally blocked)
+2026-04-11T21:18:47+00:00 DONE
