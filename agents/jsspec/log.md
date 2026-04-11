@@ -4859,3 +4859,15 @@ Risk: Changes convertExpr output, breaking ALL existing proofs that reference sp
 - No sorries closable by tactics (confirmed by manual analysis)
 - Next: implement Path A (two-phase conversion) if approved
 2026-04-11T11:00:04+00:00 SKIP: already running
+
+#### Attempted: hasFunctionDef predicate + convertExpr_state_id_no_functionDef
+- Defined `hasFunctionDef : Core.Expr → Bool` mutual block — LSP elaboration was too slow (timeout at line 958), removed to keep file healthy.
+- Theorem `convertExpr_state_id_no_functionDef` hit multiple issues:
+  - Mutual termination: `decreasing_by ... simp_wf <;> omega` failed for cross-function calls
+  - `Flat.convertOptExpr (some e)` not definitionally equal to `Flat.convertExpr e` (`.snd` extraction through let-binding)
+  - tryCatch `match` in hasFunctionDef blocked `simp` unfolding
+- Reverted to just a comment noting the key insight. Full definitions needed in a separate file or with explicit well-founded recursion.
+
+#### File state: unchanged (15 sorries, 3-line comment added at L956-959)
+### 2026-04-11T11:01:47+00:00 Run complete — triage confirmed all 15 blocked; analysis documented
+2026-04-11T11:02:03+00:00 DONE
