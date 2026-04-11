@@ -8,11 +8,12 @@
 
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## STATUS — 2026-04-11T11:30
+## STATUS — 2026-04-11T12:00
 - ANF: 33 sorries. CC: 15 (jsspec). Total: 48.
 - **HasReturnInHead_step_nonError WRITTEN** (wasmspec, ~600 lines) — depends on step_error_isLit
 - **HasReturnInHead_Steps_steppable (L14161) PROVED** — depends on step_error_isLit
 - Closing step_error_isLit cascades: -4 to -8 sorries
+- **YOU HAVE BEEN WORKING ON THIS FOR 30 MIN WITH NO FILE OUTPUT. WRITE CODE NOW.**
 
 ## ⚠️ DO NOT WORK ON:
 - L10429-L10800 (trivialChain — LSP TIMEOUT zone)
@@ -31,86 +32,110 @@ private theorem HasReturnInHead_step_error_isLit
     ∃ v, sf'.expr = .lit v
 ```
 
-### KEY INSIGHT: HasReturnInHead has NO tryCatch/while_ constructor
+### THE PROOF — FOLLOW step_nonError PATTERN EXACTLY (L13623-13649)
 
-Look at L7239-7273. HasReturnInHead constructors cover: return, seq, let, getProp, setProp, binary, unary, typeof, deleteProp, assign, call, newObj, if_cond, throw, yield, await, getIndex, setIndex, getEnv, makeClosure, makeEnv, objectLit, arrayLit.
-
-**NO tryCatch**, **NO while_**, **NO var**, **NO this**, **NO functionDef**.
-
-This is critical because the ONLY case in Flat.step? where an error step does NOT produce `.lit v` is the tryCatch catch case (Semantics.lean L1109-1111) where the catch handler becomes the new expression. Since HasReturnInHead excludes tryCatch, this case is impossible.
-
-### PROOF STRATEGY
-
-**Approach: Well-founded induction on Flat.Expr.depth** (same as step_nonError at L13623).
-
-For each HasReturnInHead constructor:
-1. **Leaf cases** (return_none_direct, return_some_direct): step? directly produces `.lit v`
-   - `.return none` → `{ expr := .lit .undefined }` ✓
-   - `.return (some v)` where v is value → `{ expr := .lit v }` ✓
-   - `.return (some e)` where e not value → steps sub-expr, error propagates with `si.expr`
-
-2. **Compound cases** (seq_left, let_init, assign_val, etc.):
-   - `HasReturnInHead_not_value _ h` (L7364) shows sub-expr is NOT a value
-   - So `exprValue? sub = none`, step? recurses on sub-expr
-   - If sub-step is error: `s'.expr = si.expr`, and by IH `si.expr = .lit v` ✓
-   - If sub-step is not error: the outer step is NOT an error (contradiction with `hstep`)
-
-3. **Impossible cases**: tryCatch, while_, var, this, functionDef — HasReturnInHead can't hold
-
-### CONCRETE TACTIC SKETCH
+Use EXACTLY the same strong induction skeleton as step_nonError:
 
 ```lean
-  cases sf with | mk e env heap trace funcs cs =>
-  simp only [Flat.State.expr] at hret
-  -- Strong induction on depth
-  have hd := Flat.Expr.depth_pos e  -- or use Nat.strongRecOn
-  induction e using Flat.Expr.depth.induction with  -- or whatever the WF induction is
-  | ... =>
-    -- For each HasReturnInHead case, unfold step?
-    match hret with
-    | .return_none_direct =>
-      simp [Flat.step?, Flat.pushTrace, Flat.State.expr] at hstep ⊢
-      exact ⟨.undefined, rfl⟩
-    | .return_some_direct =>
-      simp [Flat.step?] at hstep
-      -- case split on exprValue? v
-      ...
-    | .seq_left h =>
+  sorry -- REPLACE WITH:
+  suffices hmain : ∀ (n : Nat) (e : Flat.Expr) (env : Flat.Env) (heap : Core.Heap)
+      (trace : List Core.TraceEvent) (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+      (sf' : Flat.State) (msg : String),
+      e.depth ≤ n →
+      HasReturnInHead e →
+      Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (.error msg, sf') →
+      ∃ v, sf'.expr = .lit v by
+    cases sf with | mk e env heap trace funcs cs =>
+    exact hmain e.depth e env heap trace funcs cs sf' msg (Nat.le_refl _) hret hstep
+  intro n
+  induction n with
+  | zero =>
+    intro e env heap trace funcs cs sf' msg hd hret hstep
+    cases hret
+    next => -- return_none_direct: step? produces .error "return:undefined", sf'.expr = .lit .undefined
+      unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
+      exact ⟨.undefined, hstep.2 ▸ rfl⟩
+    all_goals (simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; omega)
+  | succ n ih =>
+    intro e env heap trace funcs cs sf' msg hd hret hstep
+    cases hret with
+    | return_none_direct =>
+      unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
+      exact ⟨.undefined, hstep.2 ▸ rfl⟩
+    | return_some_direct =>
+      rename_i v
+      unfold Flat.step? at hstep; dsimp only [] at hstep; split at hstep
+      · simp [Flat.pushTrace] at hstep; exact ⟨_, hstep.2 ▸ rfl⟩  -- value → .lit v
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact ⟨_, hstep.2 ▸ rfl⟩  -- error from sub → .lit
+          · -- non-error step → produces non-error event, contradicts .error msg
+            simp at hstep
+        · simp at hstep
+    | seq_left h =>
       have hv := HasReturnInHead_not_value _ h
-      simp [Flat.step?, hv] at hstep
-      -- hstep now says step? {expr := a} produced error
-      -- apply IH to sub-expression
-      ...
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · -- error from sub-step: sf'.expr = si.expr, by IH ∃ v, si.expr = .lit v
+          simp [Flat.pushTrace] at hstep
+          obtain ⟨rfl, rfl⟩ := hstep
+          simp only [Flat.pushTrace, Flat.State.expr]
+          exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · -- non-error step produces (.error msg, sf') — contradiction
+          sorry -- split on event type, non-error branch contradicts hstep producing .error
+      · simp at hstep
+    -- CONTINUE for each HasReturnInHead constructor following this EXACT pattern
+    -- For seq_right: exprValue? a splits. If some: step? gives (.silent, {expr:=b}), contradiction.
+    --   If none: step? sub gives IH.
+    -- For EVERY compound constructor: sub-step error case gives IH, non-error gives contradiction.
+    | _ => sorry -- fill in remaining cases one by one
 ```
 
-### IMPORTANT DETAILS
+### KEY FACTS FROM Flat.step? (Flat/Semantics.lean)
 
-1. `pushTrace` (Semantics.lean L191) only modifies `trace`, NOT `expr`. So `s'.expr` equals whatever was set in the record update.
-
-2. For compound error propagation, step? does:
+1. **Error propagation pattern** (ALL compound constructors): When sub-step produces `.error`:
    ```
-   match step? { s with expr := sub } with
-   | some (.error _, si) =>
-       some (t, pushTrace { s with expr := si.expr, ... } t)
+   let s' := pushTrace { s with expr := si.expr, env := si.env, heap := si.heap } t
    ```
-   So `sf'.expr = si.expr`. By IH on `si`, `si.expr = .lit v`.
+   So `sf'.expr = si.expr`. By IH on sub-expression (depth decreases), `∃ v, si.expr = .lit v`. ✓
 
-3. The IH needs depth to decrease. For compound constructors like `.seq a b`, `step? {expr:=a}` has `a.depth < (.seq a b).depth`. This matches the pattern in step_nonError.
+2. **Non-error sub-step**: Produces a non-.error event. If hstep says event is `.error msg`, contradiction.
 
-4. **Try `lean_multi_attempt` first** at L14157:
-   ```
-   ["cases sf with | mk e env heap trace funcs cs => simp only [Flat.State.expr] at hret; cases hret <;> simp [Flat.step?, Flat.exprValue?, Flat.pushTrace, Flat.State.expr] at hstep ⊢ <;> sorry",
-    "cases hret <;> simp_all [Flat.step?, Flat.exprValue?, Flat.pushTrace, Flat.State.expr]"]
-   ```
+3. **Direct error producers** (all produce `.lit v`):
+   - `.return none` → `expr := .lit .undefined` ✓
+   - `.return (some v)` when v is value → `expr := .lit v` ✓
+   - `.throw arg` when arg is value → `expr := .lit .undefined` ✓
+   - `.var name` → `expr := .lit .undefined` ✓ (but HasReturnInHead has no var constructor)
+   - `.getEnv envExpr idx` → `expr := .lit .undefined` ✓
+   - `.makeClosure idx envExpr` → `expr := .lit .undefined` ✓
+   - `.break`/`.continue` → `expr := .lit .undefined` ✓ (but no HasReturnInHead constructor)
 
-## P1: Complete break/continue non-head cases (L4671, L5809)
+4. **tryCatch catch handler**: The ONLY case where error produces non-lit expr. But **HasReturnInHead has NO tryCatch constructor**, so this case is impossible.
 
-After P0, if time permits. These are the 13 non-head constructors in HasBreakInHead_step?_produces_error and HasContinueInHead_step?_produces_error.
+### APPROACH: Write it in 3 BATCHES
 
-## P2: L18229 and L18300
+**Batch 1**: return_none, return_some, seq_left, seq_right, let_init. Write and verify with lean_multi_attempt.
+**Batch 2**: Remaining "single sub-expr" constructors (getProp_obj, setProp_obj/val, unary_arg, typeof_arg, etc.)
+**Batch 3**: Multi-operand constructors (call_func/env/args, newObj, binary, getIndex, setIndex, objectLit, arrayLit, makeEnv)
 
-End-of-file sorries. Check context and assess.
+### CRITICAL: The non-error branch contradiction
+
+In compound cases, when the sub-step is non-error, step? wraps the result in the same constructor. The outer event is NOT `.error`. But `hstep` says it IS `.error msg`. This is a direct contradiction via `match t with | .error _ => ... | _ => ...` — the non-error branch produces a non-error event, contradicting `hstep`.
+
+Tactic for this contradiction:
+```lean
+· -- non-error branch: event is not .error
+  rename_i t_inner si hstep_inner
+  split at hstep  -- on match t_inner with | .error _ => ... | _ => ...
+  · sorry  -- this was the error case, handled above
+  · simp [Flat.pushTrace] at hstep; -- hstep : (non-error-event, ...) = (.error msg, sf')
+    exact absurd hstep.1.symm (by intro h; cases h)  -- or: injection hstep.1
+```
+
+## P1: After step_error_isLit, work on L4671 and L5809 (break/continue non-head cases)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — HasReturnInHead_step_error_isLit" >> agents/proof/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — step_error_isLit BATCH WRITE" >> agents/proof/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`
