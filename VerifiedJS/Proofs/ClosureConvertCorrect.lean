@@ -1177,6 +1177,264 @@ private theorem convertOptExpr_state_id_no_functionDef (oe : Option Core.Expr)
   decreasing_by all_goals simp_all <;> omega
 end
 
+/-! ### exprFuncCount: exact count of functionDef nodes processed by convertExpr.
+    Both `nextId` and `funcs.size` grow by exactly `exprFuncCount e` when
+    converting expression `e`. This precisely characterizes the CCState delta
+    and is the foundation for position-based function indexing (Path A). -/
+
+mutual
+/-- Count functionDef nodes matching convertExpr's traversal pattern. -/
+def exprFuncCount : Core.Expr → Nat
+  | .lit _ => 0
+  | .var _ => 0
+  | .this => 0
+  | .«let» _ init body => exprFuncCount init + exprFuncCount body
+  | .assign _ value => exprFuncCount value
+  | .«if» cond then_ else_ => exprFuncCount cond + exprFuncCount then_ + exprFuncCount else_
+  | .seq a b => exprFuncCount a + exprFuncCount b
+  | .call callee args => exprFuncCount callee + exprFuncCountList args
+  | .newObj callee args => exprFuncCount callee + exprFuncCountList args
+  | .getProp obj _ => exprFuncCount obj
+  | .setProp obj _ value => exprFuncCount obj + exprFuncCount value
+  | .getIndex obj idx => exprFuncCount obj + exprFuncCount idx
+  | .setIndex obj idx value => exprFuncCount obj + exprFuncCount idx + exprFuncCount value
+  | .deleteProp obj _ => exprFuncCount obj
+  | .typeof arg => exprFuncCount arg
+  | .unary _ arg => exprFuncCount arg
+  | .binary _ lhs rhs => exprFuncCount lhs + exprFuncCount rhs
+  | .objectLit props => exprFuncCountProps props
+  | .arrayLit elems => exprFuncCountList elems
+  | .functionDef _ _ body _ _ => exprFuncCount body + 1
+  | .throw arg => exprFuncCount arg
+  | .tryCatch body _ catchBody fin =>
+    exprFuncCount body + exprFuncCount catchBody +
+      match fin with | some e => exprFuncCount e | none => 0
+  | .while_ cond body => exprFuncCount cond + exprFuncCount body
+  | .forIn _ _ _ => 0
+  | .forOf _ _ _ => 0
+  | .«break» _ => 0
+  | .«continue» _ => 0
+  | .«return» arg => match arg with | some e => exprFuncCount e | none => 0
+  | .labeled _ body => exprFuncCount body
+  | .yield arg _ => match arg with | some e => exprFuncCount e | none => 0
+  | .await arg => exprFuncCount arg
+def exprFuncCountList : List Core.Expr → Nat
+  | [] => 0
+  | e :: rest => exprFuncCount e + exprFuncCountList rest
+def exprFuncCountProps : List (Core.PropName × Core.Expr) → Nat
+  | [] => 0
+  | (_, e) :: rest => exprFuncCount e + exprFuncCountProps rest
+end
+
+/-! ### State delta theorem: convertExpr grows nextId and funcs.size by exactly exprFuncCount -/
+
+mutual
+private theorem convertExpr_state_delta (e : Core.Expr)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    (Flat.convertExpr e scope envVar envMap st).snd.nextId = st.nextId + exprFuncCount e ∧
+    (Flat.convertExpr e scope envVar envMap st).snd.funcs.size = st.funcs.size + exprFuncCount e := by
+  cases e with
+  | lit _ => simp [Flat.convertExpr, exprFuncCount]
+  | var n => simp only [Flat.convertExpr, exprFuncCount]; cases Flat.lookupEnv envMap n <;> simp
+  | this => simp [Flat.convertExpr, exprFuncCount]
+  | «break» _ => simp [Flat.convertExpr, exprFuncCount]
+  | «continue» _ => simp [Flat.convertExpr, exprFuncCount]
+  | forIn _ _ _ => simp [Flat.convertExpr, exprFuncCount]
+  | forOf _ _ _ => simp [Flat.convertExpr, exprFuncCount]
+  | «let» name init body =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    have hi := convertExpr_state_delta init scope envVar envMap st
+    have hb := convertExpr_state_delta body (name :: scope) envVar envMap
+      (Flat.convertExpr init scope envVar envMap st).snd
+    exact ⟨by rw [hb.1, hi.1]; omega, by rw [hb.2, hi.2]; omega⟩
+  | assign _ value =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    exact convertExpr_state_delta value scope envVar envMap st
+  | «if» cond then_ else_ =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    have hc := convertExpr_state_delta cond scope envVar envMap st
+    have ht := convertExpr_state_delta then_ scope envVar envMap
+      (Flat.convertExpr cond scope envVar envMap st).snd
+    have he := convertExpr_state_delta else_ scope envVar envMap
+      (Flat.convertExpr then_ scope envVar envMap
+        (Flat.convertExpr cond scope envVar envMap st).snd).snd
+    exact ⟨by rw [he.1, ht.1, hc.1]; omega, by rw [he.2, ht.2, hc.2]; omega⟩
+  | seq a b =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    have ha := convertExpr_state_delta a scope envVar envMap st
+    have hb := convertExpr_state_delta b scope envVar envMap
+      (Flat.convertExpr a scope envVar envMap st).snd
+    exact ⟨by rw [hb.1, ha.1]; omega, by rw [hb.2, ha.2]; omega⟩
+  | call callee args =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    have hc := convertExpr_state_delta callee scope envVar envMap st
+    have ha := convertExprList_state_delta args scope envVar envMap
+      (Flat.convertExpr callee scope envVar envMap st).snd
+    exact ⟨by rw [ha.1, hc.1]; omega, by rw [ha.2, hc.2]; omega⟩
+  | newObj callee args =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    have hc := convertExpr_state_delta callee scope envVar envMap st
+    have ha := convertExprList_state_delta args scope envVar envMap
+      (Flat.convertExpr callee scope envVar envMap st).snd
+    exact ⟨by rw [ha.1, hc.1]; omega, by rw [ha.2, hc.2]; omega⟩
+  | getProp obj _ =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    exact convertExpr_state_delta obj scope envVar envMap st
+  | setProp obj _ value =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    have ho := convertExpr_state_delta obj scope envVar envMap st
+    have hv := convertExpr_state_delta value scope envVar envMap
+      (Flat.convertExpr obj scope envVar envMap st).snd
+    exact ⟨by rw [hv.1, ho.1]; omega, by rw [hv.2, ho.2]; omega⟩
+  | getIndex obj idx =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    have ho := convertExpr_state_delta obj scope envVar envMap st
+    have hi := convertExpr_state_delta idx scope envVar envMap
+      (Flat.convertExpr obj scope envVar envMap st).snd
+    exact ⟨by rw [hi.1, ho.1]; omega, by rw [hi.2, ho.2]; omega⟩
+  | setIndex obj idx value =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    have ho := convertExpr_state_delta obj scope envVar envMap st
+    have hi := convertExpr_state_delta idx scope envVar envMap
+      (Flat.convertExpr obj scope envVar envMap st).snd
+    have hv := convertExpr_state_delta value scope envVar envMap
+      (Flat.convertExpr idx scope envVar envMap
+        (Flat.convertExpr obj scope envVar envMap st).snd).snd
+    exact ⟨by rw [hv.1, hi.1, ho.1]; omega, by rw [hv.2, hi.2, ho.2]; omega⟩
+  | deleteProp obj _ =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    exact convertExpr_state_delta obj scope envVar envMap st
+  | typeof arg =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    exact convertExpr_state_delta arg scope envVar envMap st
+  | unary _ arg =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    exact convertExpr_state_delta arg scope envVar envMap st
+  | binary _ lhs rhs =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    have hl := convertExpr_state_delta lhs scope envVar envMap st
+    have hr := convertExpr_state_delta rhs scope envVar envMap
+      (Flat.convertExpr lhs scope envVar envMap st).snd
+    exact ⟨by rw [hr.1, hl.1]; omega, by rw [hr.2, hl.2]; omega⟩
+  | objectLit props =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    exact convertPropList_state_delta props scope envVar envMap st
+  | arrayLit elems =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    exact convertExprList_state_delta elems scope envVar envMap st
+  | functionDef fname params body _isAsync _isGenerator =>
+    unfold Flat.convertExpr
+    simp only [Flat.CCState.freshVar, Flat.CCState.addFunc, exprFuncCount]
+    have ih := convertExpr_state_delta body params
+      (toString "__env" ++ toString "_" ++ toString st.nextId)
+      (Flat.indexedMap
+        (Flat.dedupStrings
+          (match fname with
+          | some n => List.filter (fun x => x != n) (List.filter (fun v => !List.elem v params) (Flat.freeVars body))
+          | none => List.filter (fun v => !List.elem v params) (Flat.freeVars body)) []) 0)
+      { st with nextId := st.nextId + 1 }
+    constructor
+    · -- nextId: addFunc doesn't change nextId, so result = body's output nextId
+      show (Flat.convertExpr body _ _ _ _).snd.nextId = st.nextId + (exprFuncCount body + 1)
+      rw [ih.1]; omega
+    · -- funcs.size: addFunc pushes one entry
+      show Array.size (Array.push _ _) = st.funcs.size + (exprFuncCount body + 1)
+      simp only [Array.size_push]; rw [ih.2]; omega
+  | throw arg =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    exact convertExpr_state_delta arg scope envVar envMap st
+  | tryCatch body catchParam catchBody finally_ =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    have hb := convertExpr_state_delta body scope envVar envMap st
+    have hc := convertExpr_state_delta catchBody (catchParam :: scope) envVar envMap
+      (Flat.convertExpr body scope envVar envMap st).snd
+    have hf := convertOptExpr_state_delta finally_ scope envVar envMap
+      (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap
+        (Flat.convertExpr body scope envVar envMap st).snd).snd
+    exact ⟨by rw [hf.1, hc.1, hb.1]; omega, by rw [hf.2, hc.2, hb.2]; omega⟩
+  | while_ cond body =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    have hc := convertExpr_state_delta cond scope envVar envMap st
+    have hb := convertExpr_state_delta body scope envVar envMap
+      (Flat.convertExpr cond scope envVar envMap st).snd
+    exact ⟨by rw [hb.1, hc.1]; omega, by rw [hb.2, hc.2]; omega⟩
+  | «return» arg =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    cases arg with
+    | none => simp [Flat.convertOptExpr]
+    | some e =>
+      simp only [Flat.convertOptExpr]
+      exact convertExpr_state_delta e scope envVar envMap st
+  | labeled _ body =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    exact convertExpr_state_delta body scope envVar envMap st
+  | yield arg delegate =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    cases arg with
+    | none => simp [Flat.convertOptExpr]
+    | some e =>
+      simp only [Flat.convertOptExpr]
+      exact convertExpr_state_delta e scope envVar envMap st
+  | await arg =>
+    simp only [Flat.convertExpr, exprFuncCount]
+    exact convertExpr_state_delta arg scope envVar envMap st
+  termination_by sizeOf e
+  decreasing_by all_goals (try cases ‹Option Core.Expr›) <;> simp_wf <;> omega
+
+private theorem convertExprList_state_delta (es : List Core.Expr)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    (Flat.convertExprList es scope envVar envMap st).snd.nextId = st.nextId + exprFuncCountList es ∧
+    (Flat.convertExprList es scope envVar envMap st).snd.funcs.size = st.funcs.size + exprFuncCountList es := by
+  cases es with
+  | nil => simp [Flat.convertExprList, exprFuncCountList]
+  | cons e rest =>
+    simp only [Flat.convertExprList, exprFuncCountList]
+    have he := convertExpr_state_delta e scope envVar envMap st
+    have hr := convertExprList_state_delta rest scope envVar envMap
+      (Flat.convertExpr e scope envVar envMap st).snd
+    exact ⟨by rw [hr.1, he.1]; omega, by rw [hr.2, he.2]; omega⟩
+  termination_by sizeOf es
+  decreasing_by all_goals (try simp_wf) <;> omega
+
+private theorem convertPropList_state_delta (ps : List (Core.PropName × Core.Expr))
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    (Flat.convertPropList ps scope envVar envMap st).snd.nextId = st.nextId + exprFuncCountProps ps ∧
+    (Flat.convertPropList ps scope envVar envMap st).snd.funcs.size = st.funcs.size + exprFuncCountProps ps := by
+  cases ps with
+  | nil => simp [Flat.convertPropList, exprFuncCountProps]
+  | cons p rest =>
+    obtain ⟨pn, pe⟩ := p
+    simp only [Flat.convertPropList, exprFuncCountProps]
+    have he := convertExpr_state_delta pe scope envVar envMap st
+    have hr := convertPropList_state_delta rest scope envVar envMap
+      (Flat.convertExpr pe scope envVar envMap st).snd
+    exact ⟨by rw [hr.1, he.1]; omega, by rw [hr.2, he.2]; omega⟩
+  termination_by sizeOf ps
+  decreasing_by all_goals (try simp_wf) <;> simp_all <;> omega
+
+private theorem convertOptExpr_state_delta (oe : Option Core.Expr)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    (Flat.convertOptExpr oe scope envVar envMap st).snd.nextId =
+      st.nextId + (match oe with | some e => exprFuncCount e | none => 0) ∧
+    (Flat.convertOptExpr oe scope envVar envMap st).snd.funcs.size =
+      st.funcs.size + (match oe with | some e => exprFuncCount e | none => 0) := by
+  cases oe with
+  | none => simp [Flat.convertOptExpr]
+  | some e =>
+    simp only [Flat.convertOptExpr]
+    exact convertExpr_state_delta e scope envVar envMap st
+  termination_by sizeOf oe
+  decreasing_by all_goals simp_all <;> omega
+end
+
+/-- Corollary: nextId and funcs.size always advance by the same amount. -/
+theorem convertExpr_nextId_funcs_size_sync (e : Core.Expr)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    (Flat.convertExpr e scope envVar envMap st).snd.nextId - st.nextId =
+    (Flat.convertExpr e scope envVar envMap st).snd.funcs.size - st.funcs.size := by
+  have hd := convertExpr_state_delta e scope envVar envMap st
+  omega
+
 mutual
 /-- Returns true if the expression never uses "__call_frame_return__" as a tryCatch catchParam.
     Source programs from `elaborate` satisfy this predicate since "__call_frame_return__" is only
