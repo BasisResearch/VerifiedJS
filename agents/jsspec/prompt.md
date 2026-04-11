@@ -1,57 +1,77 @@
-# jsspec — CLOSE FuncsCorr INIT (L1519) + ERROR CASES
+# jsspec — FIX closureConvert TO ADD logBuiltin AT INDEX 0
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
 - **DO NOT** use while/until loops, sleep loops, pgrep.
-- **YOU OWN** ClosureConvertCorrect.lean exclusively.
+- **YOU OWN** ClosureConvertCorrect.lean AND Flat/ClosureConvert.lean exclusively.
 - **DO NOT** edit ANFConvertCorrect.lean or Flat/Semantics.lean
 - **CRASH PREVENTION**: KEEP TASKS SMALL.
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — FuncsCorr BULK CLOSE DONE!
-- The 72 FuncsCorr sorry⟩ bulk close worked! Only 2 sorry⟩ remain (L5333, L8201).
-- CC now has **16 real sorries**. Total project: 46.
-- Excellent work on the bulk close.
+## STATUS — 15 CC sorries remain. Total: 46.
 
-## P0: CLOSE L1519 (FuncsCorr initial state)
+## P0: FIX closureConvert TO SEED logBuiltin AT INDEX 0 — THEN CLOSE L1519
 
-This is the FuncsCorr for the initial CC_SimRel. Run `lean_goal` at L1519.
+**THE PROBLEM**: Core.initialState has `funcs := #[logBuiltin]` at index 0. But closureConvert starts from `CCState.empty` (funcs = #[]). So FuncsCorr cannot be proved for the initial state.
 
-Context (L1510-1519):
+**THE FIX** (2 edits):
+
+### Step 1: Add logBuiltin FuncDef in Flat/ClosureConvert.lean
+
+After `CCState.empty` definition (L17), add:
+
 ```lean
-unfold CC_SimRel Flat.initialState Core.initialState
-refine ⟨rfl, ⟨id, HeapInj_id _, ?_, ?funcCorr_init⟩, h_wf, ...⟩
-case funcCorr_init =>
-  -- FuncsCorr for initial state: Core has [logBuiltin], Flat has t.functions
-  sorry
+/-- Flat equivalent of Core's logBuiltin: reserved at function index 0. -/
+def logBuiltinFuncDef : FuncDef :=
+  { name := "log", params := ["__arg__"], envParam := "__env_log", body := .lit .undefined }
 ```
 
-**APPROACH**:
-1. Run `lean_goal` at L1519 to see the exact goal
-2. FuncsCorr relates Core funcs and Flat funcs through injMap. Initial Core funcs = `#[logBuiltin]` (from elaborate). Initial Flat funcs = `t.functions` (from closureConvert).
-3. `closureConvert` adds the console.log builtin as the first function. Check if `t.functions` at init = `#[flatLogBuiltin]` or similar.
-4. With `injMap = id`, FuncsCorr should require that for each Core func at index i, Flat has a matching func at index id(i) = i.
-5. Try: `unfold FuncsCorr; intro i fi hfi; ...` then case split on the single function.
+### Step 2: Modify closureConvert to seed with logBuiltin
 
-## P1: ERROR STRUCTURAL MISMATCH (L5152, L5251, L5490)
+Change L326 from:
+```lean
+  let st0 := CCState.empty
+```
+to:
+```lean
+  let st0 := { CCState.empty with funcs := #[logBuiltinFuncDef] }
+```
 
-These say "Flat.step? drops the .let wrapper on error but Core.step? keeps it". Run `lean_goal` at each.
+This shifts user function indices to 1+, but `addFunc` uses `st.funcs.size` so all `.closure` funcIdx values will be correct. `consoleLogIdx = 0` is already special-cased in Flat.step? (L499), so `funcs[0]` is never actually looked up at runtime.
 
-**Key insight**: On error, Flat produces `sa.expr = error_result` (no .let wrapper) while Core produces `sc'.expr = .let name error_result body`. The SimRel needs `convertExpr sc'.expr = sf'.expr`. But `convertExpr (.let name err body) = .let name (convertExpr err) (convertExpr body)` ≠ `error_result`.
+### Step 3: Close L1519
 
-If this is truly a structural mismatch, it may need a SimRel adjustment (error states don't need expression matching). **Investigate first** — run lean_goal and check if there's a way around it.
+After making the fix, the goal at L1519 becomes:
+```
+FuncsCorr id #[logBuiltin] t.functions t.functions
+```
 
-## P2: L5933 (call case, non-consoleLog)
+Where `t.functions[0] = logBuiltinFuncDef`. Now provable:
+1. `unfold FuncsCorr`
+2. Part (1): ccFuncs ≤ flatFuncs: trivially `t.functions.size ≤ t.functions.size`
+3. Part (2): `1 ≤ t.functions.size` — follows from closureConvert producing at least logBuiltinFuncDef
+4. For i=0: `fd = logBuiltinFuncDef`, `fd.params = ["__arg__"] = logBuiltin.params` ✓
+5. `fd.body = .lit .undefined = (convertExpr (.lit .undefined) ...).fst` — `convertExpr` on `.lit` is identity
 
-FuncsCorr is now available in scope. The comment says "needs multi-step simulation (Flat call is N steps vs Core's 1)". Run `lean_goal` to check if this is truly multi-step blocked or if it's now partially provable with FuncsCorr.
+You also need to update L1538-1539 in ClosureConvertCorrect.lean which reference `CCState.empty` — change to `{ CCState.empty with funcs := #[logBuiltinFuncDef] }`.
+
+### Step 4: Verify with lean_diagnostic_messages
+
+Check that no new errors appear from the change. The key risk: proofs that assume `closureConvert` starts with empty funcs.
+
+**EXPECTED RESULT**: -1 sorry (L1519 closed).
+
+## P1: ERROR STRUCTURAL MISMATCH (L5152, L5251, L5490) — INVESTIGATE
+
+Run `lean_goal` at each. If they're truly structural (Flat drops .let on error, Core keeps it), document the mismatch. If there's a workaround, close them.
 
 ## KNOWN BLOCKED (DO NOT ATTEMPT):
 - L5333, L5359, L8201, L8204, L8278, L8394: CCStateAgree (6 total)
-- L4984, L6141, L6152: multi-step simulation gap (3 total)
+- L4984, L5933, L6141, L6152: multi-step simulation gap (4 total)
 - L6792: semantic mismatch (UNPROVABLE)
 - L8044: functionDef (multi-step + FuncsCorr maintenance)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — FuncsCorr init L1519" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — logBuiltin fix + L1519" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`
