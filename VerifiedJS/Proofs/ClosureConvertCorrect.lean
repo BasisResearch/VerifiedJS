@@ -5405,7 +5405,8 @@ private theorem closureConvert_step_simulation
               | lit cv =>
                 simp [Flat.convertExpr] at h_sa_eq
                 exact ⟨Or.inr ⟨Flat.convertValue cv, msg, h_sa_eq, rfl⟩, hfuncCorr_sub⟩
-              | _ => exact ⟨Or.inr ⟨by exact sorry, msg, by exact sorry, rfl⟩, hfuncCorr_sub⟩
+              | _ => -- tryCatch catch path (sorry-derived from L8482)
+                exact ⟨Or.inr sorry, hfuncCorr_sub⟩
         · -- Non-error case
           simp only [not_exists] at herr
           have hne : ∀ msg, t ≠ .error msg := herr
@@ -5691,7 +5692,8 @@ private theorem closureConvert_step_simulation
               | lit cv =>
                 simp [Flat.convertExpr] at h_sa_eq
                 exact ⟨Or.inr ⟨Flat.convertValue cv, msg, h_sa_eq, rfl⟩, hfuncCorr_sub⟩
-              | _ => exact ⟨Or.inr ⟨by exact sorry, msg, by exact sorry, rfl⟩, hfuncCorr_sub⟩
+              | _ => -- tryCatch catch path (sorry-derived from L8482)
+                exact ⟨Or.inr sorry, hfuncCorr_sub⟩
         · -- Non-error case
           simp only [not_exists] at herr
           have hne : ∀ msg, t ≠ .error msg := herr
