@@ -1,3 +1,67 @@
+## Run: 2026-04-11T15:00:04+00:00
+
+### Metrics
+- **Sorry count**: ANF 46 + CC 15 + Lower 0 = **61 total** (real sorries, excluding comment mentions)
+- **grep -c sorry**: ANF 50, CC 22 (inflated by ~4 and ~7 comment mentions respectively)
+- **Delta from last run (12:00)**: +13 (48→61). UP by 13.
+- **Explanation for increase**: ALL from structural decomposition in ANF, NO regression.
+  - `step_error_isLit` (L14289): Was 1 monolithic sorry → Now nearly fully proved, only 1 sorry remaining (tryCatch case L14759). MAJOR PROGRESS.
+  - Old `| _ => sorry` catch-all in `hasReturnInHead_return_steps`: Was 1 sorry → Decomposed into 12 individual HasReturnInHead constructor cases (L16148-16159) + 2 "Case B continuation" sorries (L16091, L16147). Net: 1→14 = +13.
+  - CC: UNCHANGED at 15 real sorries.
+- **BUILD**: No compile errors in ANF or CC. Clean.
+- **File sizes**: ANF 20991 lines (was ~18300), CC 9620 lines (unchanged).
+
+### What Happened Since Last Run (12:00→15:00)
+1. **proof/wasmspec**: Massive progress on `HasReturnInHead_step_error_isLit` — proved ALL cases except tryCatch (L14759). Proved ALL first-position compound cases in `hasReturnInHead_return_steps` (seq_left, let_init, unary_arg, getProp_obj, typeof_arg, deleteProp_obj, assign_val, getEnv_env, makeClosure_env, call_func, newObj_func, binary_lhs, setProp_obj, getIndex_obj, setIndex_obj). ~2700 new lines of proof code.
+2. **jsspec**: No file modifications to CC. Still at 15 sorries.
+3. **wasmspec**: Contributed to ANF infrastructure (step_error_isLit expansion).
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: Redirected to second-position HasReturnInHead cases (L16148-16152: binary_rhs, setProp_val, getIndex_idx, setIndex_idx, setIndex_val) + call_env, newObj_env (L16153, L16155). All ctx/error lemmas exist. Provided EXACT proof template following the proven seq_left pattern. Then list cases (P2).
+2. **wasmspec**: Redirected to step_error_isLit tryCatch (L14759). Key insight: HasReturnInHead may not have a tryCatch constructor — if so, `cases hret` closes this case. Also assigned Case B continuation sorries (L16091, L16147) and await/yield compound (L16515, L16688).
+3. **jsspec**: Refreshed Or.inr focus (L5270, L5414, L5701). Added lean_goal instructions. Emphasized need for progress this run.
+
+### Sorry Classification (61 total)
+- **TrivialChain (proof)**: 12 (L10566-L10937) — BLOCKED by LSP timeout
+- **Break/continue non-head**: 2 (L4808, L5946)
+- **step_error_isLit tryCatch**: 1 (L14759) — wasmspec P0
+- **Second-position HasReturnInHead**: 5 (L16148-16152) — proof P0
+- **Second-position object HasReturnInHead**: 2 (L16153, L16155) — proof P1
+- **List HasReturnInHead**: 5 (L16154, L16156-L16159) — proof P2
+- **Case B continuation**: 2 (L16091, L16147) — wasmspec P1
+- **Compound HasAwait/YieldInHead**: 2 (L16515, L16688) — wasmspec P2
+- **Return/yield .let compound**: 3 (L16744, L16748, L16749) — deferred
+- **While condition**: 2 (L16839, L16851) — BLOCKED
+- **If branch**: 2 (L17576, L17616) — BLOCKED
+- **TryCatch**: 3 (L18457, L18475, L18478) — BLOCKED
+- **noCallFrameReturn/body_sim**: 2 (L19805, L19816) — BLOCKED
+- **End-of-file**: 2 (L20035, L20106)
+- **anfConvert_step_sim compound**: 1 (L13352)
+- **CC Or.inr**: 3 (L5270, L5414, L5701) — jsspec P0
+- **CC CCStateAgree**: 5 (L5496, L5522, L8407, L8484, L8600) — BLOCKED
+- **CC HeapInj/finally**: 2 (L8250, L8410) — BLOCKED
+- **CC multi-step**: 3 (L5049, L6352, L6363) — BLOCKED
+- **CC other**: 2 (L6144, L7003)
+
+### Critical Path
+1. **L14759 (step_error_isLit tryCatch)** → may cascade -2 to -4. wasmspec P0.
+2. **L16148-16155 (second-position)** → -7. proof P0+P1. MOST TRACTABLE.
+3. **L5270/L5414/L5701 (Or.inr)** → -3. jsspec P0.
+4. Best case next run: ~48-51.
+
+### Trend
+- 01:30: 59 → 04:05: 48 → 06:05: 46 → 08:30: 51 → 09:00: 46 → 11:30: 48 → 12:00: 48 → 15:00: 61*
+- (*61 = decomposition from 48; effective complexity DOWN due to tractable individual cases)
+- Major infrastructure investment in step_error_isLit and first-position proofs paying off.
+- The 7 second-position cases are the lowest-hanging fruit — each follows the proven pattern exactly.
+
+### Risk Assessment
+- jsspec has made NO progress on CC in 3+ hours. If still no progress by next run, consider supervisor intervention on Or.inr sorries.
+- proof agent logs are 10 days stale (last entry April 1). Agents may not be logging. Need to verify they read the new prompts.
+- The decomposition-driven sorry increase is expected and healthy — but we need to START CLOSING these individual cases to show net reduction.
+
+---
+
 ## Run: 2026-04-11T12:00:03+00:00
 
 ### Metrics
@@ -7338,3 +7402,4 @@ echo "2026-04-11T03:00:32+00:00,49,ongoing" >> logs/time_estimate.csv
 ## Run: 2026-04-11T15:00:04+00:00
 
 2026-04-11T15:05:01+00:00 SKIP: already running
+2026-04-11T15:27:57+00:00 DONE
