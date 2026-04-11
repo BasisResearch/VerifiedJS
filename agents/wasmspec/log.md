@@ -8271,3 +8271,37 @@ The common missing lemma is `no_return_none_head_implies_trivial_chain` (~80 lin
 ## Run: 2026-04-11T16:15:01+00:00
 
 ### 2026-04-11T16:15:11+00:00 Starting run — Case B sorries + compound await/yield
+### 2026-04-11T16:39:48+00:00 Case B sorries closed
+
+**P0 — Case B seq_right (L16456, L16512): CLOSED — 2 sorries eliminated**
+
+Proof strategy for both `none` and `some arg_t` cases:
+- Use `Classical.em (HasReturnInHead a)` to split:
+  - If yes: same as Case A (IH on `a`, lift error through `.seq · b` via `Steps_compound_error_lift`)
+  - If no: `a` is trivialChain via `no_return_{none,some}_head_implies_trivial_chain`
+    1. Evaluate `a` to value via `trivialChain_eval_value`
+    2. Lift steps through `.seq · b` via `Steps_seq_ctx_b`
+    3. Discard step `.seq (.lit v) b → b`
+    4. Apply IH on `b` (which has `HasReturnInHead b`)
+    5. Chain all steps via `Flat.Steps.append`
+
+**P1 — compound HasAwaitInHead (L17057) + HasYieldInHead (L17230): BLOCKED**
+
+Analysis: These are fundamentally different from the return case.
+- Return: error event propagates upward through compound context (single direction)
+- Await/Yield ok: resolves to a value but execution CONTINUES in the compound context
+  - E.g., `.seq (.await inner) b` → `.seq (.lit v) b` → `b` → ...
+  - Theorem expects `sf'.expr = .lit v` but compound expression continues past the await
+- Await/Yield error: could use `Steps_compound_error_lift` but ok case is unprovable
+- Needs: restructured theorem where compound cases return different conclusion
+
+**P2 — Break/continue list cases (L4906, L6044): BLOCKED**
+
+Analysis: `HasBreakInHead_step?_produces_error` claims single-step error for ALL constructors.
+For list cases (`makeEnv_values`, `objectLit_props`, `arrayLit_elems`):
+- Break may be in Nth element of list
+- Flat `step?` evaluates the FIRST non-value element
+- If break is not in first non-value element, single step fails
+- Needs: multi-step lemma or split into head/tail list cases
+
+**ANF sorry count: 44 (down from 46)**
