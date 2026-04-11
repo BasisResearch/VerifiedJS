@@ -12505,12 +12505,8 @@ private theorem normalizeExpr_return_step_sim
   | yield_some_arg h => exfalso; exact noNestedAbrupt_hasReturnInHead_absurd_yield hna h
   | await_arg h => exfalso; exact noNestedAbrupt_hasReturnInHead_absurd_await hna h
   | _ =>
-    -- Compound wrapper (seq_left, let_init, etc.) with HasReturnInHead
-    -- Since NoNestedAbrupt says hasAbruptCompletion e = false, and HasReturnInHead implies
-    -- hasAbruptCompletion = true, this is a contradiction
-    exfalso
-    have hab := noNestedAbrupt_hasAbruptCompletion_false hna
-    exact absurd (hasReturnInHead_implies_hasAbruptCompletion ‹_›) (by rw [hab]; exact Bool.false_ne_true)
+    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
+    sorry -- compound HasReturnInHead: needs error propagation through compound wrappers
 
 /-- step? on .await (.lit v) resolves immediately to .lit v with silent event. -/
 private theorem Flat.step?_await_lit_eq (v : Flat.Value)
