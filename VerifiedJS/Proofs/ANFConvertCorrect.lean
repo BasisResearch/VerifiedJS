@@ -9660,7 +9660,7 @@ private theorem HasNonCallFrameTryCatchInHeadProps_mid_or_tail
     have hds_done : ∀ p ∈ ds, ∃ v, p.snd = .lit v := fun p hp => hdone p (by simp [hp])
     cases h with
     | head hd =>
-      obtain ⟨v, hv⟩ := hd_lit; rw [hv] at hd; exact nomatch hd
+      obtain ⟨v, hv⟩ := hd_lit; simp only [Prod.snd] at hv; rw [hv] at hd; exact nomatch hd
     | tail h =>
       exact ih hds_done h
 

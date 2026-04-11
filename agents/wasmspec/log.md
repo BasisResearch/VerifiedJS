@@ -8405,3 +8405,5 @@ The theorem quantifies over ALL expressions with HasReturnInHead, but is only TR
 
 ### 2026-04-11T21:15:12+00:00 Starting run — HasNonCallFrameTryCatch P0+P1+P2
 2026-04-11T22:15:01+00:00 SKIP: already running
+### 2026-04-11T22:18:52+00:00 Run complete — P0+P1 closed (-2 sorries), P2 remains (needs theorem restructuring)
+2026-04-11T22:19:10+00:00 DONE

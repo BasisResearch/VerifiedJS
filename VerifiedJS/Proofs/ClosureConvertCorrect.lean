@@ -1440,6 +1440,143 @@ theorem convertExpr_nextId_funcs_size_sync (e : Core.Expr)
   have hd := convertExpr_state_delta e scope envVar envMap st
   omega
 
+/-! ### CCExprEquiv: structural equivalence of Flat expressions modulo function indices.
+
+When `convertExpr` is applied to the same Core expression with two different CCState values
+that differ by δ in `funcs.size`, the resulting Flat expressions are structurally identical
+except that `makeClosure` function indices in the second expression are shifted by +δ.
+`CCExprEquiv δ e1 e2` captures exactly this relationship. At δ = 0, it is structural equality.
+
+This relation is the key ingredient for relaxing `CCStateAgree` (equality) to
+`CCStateAgreeWeak` (≤) in the simulation invariant: branching constructs (if/while/tryCatch)
+produce different output CCStates for taken vs. untaken branches, but the resulting
+expressions are `CCExprEquiv` with an appropriate offset. -/
+
+mutual
+/-- Two Flat expressions are CC-equivalent with function index offset δ.
+    `CCExprEquiv δ e1 e2` holds when e2 has the same structure as e1 but with all
+    `makeClosure` function indices shifted by +δ. -/
+private def CCExprEquiv (δ : Nat) : Flat.Expr → Flat.Expr → Prop
+  | .lit v1, .lit v2 => v1 = v2
+  | .var n1, .var n2 => n1 = n2
+  | .this, .this => True
+  | .«let» n1 i1 b1, .«let» n2 i2 b2 => n1 = n2 ∧ CCExprEquiv δ i1 i2 ∧ CCExprEquiv δ b1 b2
+  | .assign n1 v1, .assign n2 v2 => n1 = n2 ∧ CCExprEquiv δ v1 v2
+  | .«if» c1 t1 e1, .«if» c2 t2 e2 => CCExprEquiv δ c1 c2 ∧ CCExprEquiv δ t1 t2 ∧ CCExprEquiv δ e1 e2
+  | .seq a1 b1, .seq a2 b2 => CCExprEquiv δ a1 a2 ∧ CCExprEquiv δ b1 b2
+  | .call f1 e1 args1, .call f2 e2 args2 =>
+      CCExprEquiv δ f1 f2 ∧ CCExprEquiv δ e1 e2 ∧ CCExprListEquiv δ args1 args2
+  | .newObj f1 e1 args1, .newObj f2 e2 args2 =>
+      CCExprEquiv δ f1 f2 ∧ CCExprEquiv δ e1 e2 ∧ CCExprListEquiv δ args1 args2
+  | .getProp o1 p1, .getProp o2 p2 => p1 = p2 ∧ CCExprEquiv δ o1 o2
+  | .setProp o1 p1 v1, .setProp o2 p2 v2 => p1 = p2 ∧ CCExprEquiv δ o1 o2 ∧ CCExprEquiv δ v1 v2
+  | .getIndex o1 i1, .getIndex o2 i2 => CCExprEquiv δ o1 o2 ∧ CCExprEquiv δ i1 i2
+  | .setIndex o1 i1 v1, .setIndex o2 i2 v2 =>
+      CCExprEquiv δ o1 o2 ∧ CCExprEquiv δ i1 i2 ∧ CCExprEquiv δ v1 v2
+  | .deleteProp o1 p1, .deleteProp o2 p2 => p1 = p2 ∧ CCExprEquiv δ o1 o2
+  | .typeof a1, .typeof a2 => CCExprEquiv δ a1 a2
+  | .getEnv e1 idx1, .getEnv e2 idx2 => idx1 = idx2 ∧ CCExprEquiv δ e1 e2
+  | .makeEnv vs1, .makeEnv vs2 => CCExprListEquiv δ vs1 vs2
+  | .makeClosure fi1 e1, .makeClosure fi2 e2 => fi1 + δ = fi2 ∧ CCExprEquiv δ e1 e2
+  | .objectLit ps1, .objectLit ps2 => CCPropListEquiv δ ps1 ps2
+  | .arrayLit es1, .arrayLit es2 => CCExprListEquiv δ es1 es2
+  | .throw a1, .throw a2 => CCExprEquiv δ a1 a2
+  | .tryCatch b1 cp1 cb1 f1, .tryCatch b2 cp2 cb2 f2 =>
+      cp1 = cp2 ∧ CCExprEquiv δ b1 b2 ∧ CCExprEquiv δ cb1 cb2 ∧ CCOptExprEquiv δ f1 f2
+  | .while_ c1 b1, .while_ c2 b2 => CCExprEquiv δ c1 c2 ∧ CCExprEquiv δ b1 b2
+  | .«break» l1, .«break» l2 => l1 = l2
+  | .«continue» l1, .«continue» l2 => l1 = l2
+  | .labeled l1 b1, .labeled l2 b2 => l1 = l2 ∧ CCExprEquiv δ b1 b2
+  | .«return» a1, .«return» a2 => CCOptExprEquiv δ a1 a2
+  | .yield a1 d1, .yield a2 d2 => d1 = d2 ∧ CCOptExprEquiv δ a1 a2
+  | .await a1, .await a2 => CCExprEquiv δ a1 a2
+  | .unary op1 a1, .unary op2 a2 => op1 = op2 ∧ CCExprEquiv δ a1 a2
+  | .binary op1 l1 r1, .binary op2 l2 r2 => op1 = op2 ∧ CCExprEquiv δ l1 l2 ∧ CCExprEquiv δ r1 r2
+  | _, _ => False
+private def CCExprListEquiv (δ : Nat) : List Flat.Expr → List Flat.Expr → Prop
+  | [], [] => True
+  | e1 :: r1, e2 :: r2 => CCExprEquiv δ e1 e2 ∧ CCExprListEquiv δ r1 r2
+  | _, _ => False
+private def CCPropListEquiv (δ : Nat) : List (Flat.PropName × Flat.Expr) → List (Flat.PropName × Flat.Expr) → Prop
+  | [], [] => True
+  | (p1, e1) :: r1, (p2, e2) :: r2 => p1 = p2 ∧ CCExprEquiv δ e1 e2 ∧ CCPropListEquiv δ r1 r2
+  | _, _ => False
+private def CCOptExprEquiv (δ : Nat) : Option Flat.Expr → Option Flat.Expr → Prop
+  | none, none => True
+  | some e1, some e2 => CCExprEquiv δ e1 e2
+  | _, _ => False
+end
+
+/-! #### CCExprEquiv reflexivity: at δ = 0, any expression is equivalent to itself. -/
+
+mutual
+private theorem CCExprEquiv_refl (e : Flat.Expr) : CCExprEquiv 0 e e := by
+  cases e with
+  | lit _ => exact rfl
+  | var _ => exact rfl
+  | this => trivial
+  | «let» n i b => exact ⟨rfl, CCExprEquiv_refl i, CCExprEquiv_refl b⟩
+  | assign n v => exact ⟨rfl, CCExprEquiv_refl v⟩
+  | «if» c t e => exact ⟨CCExprEquiv_refl c, CCExprEquiv_refl t, CCExprEquiv_refl e⟩
+  | seq a b => exact ⟨CCExprEquiv_refl a, CCExprEquiv_refl b⟩
+  | call f e args => exact ⟨CCExprEquiv_refl f, CCExprEquiv_refl e, CCExprListEquiv_refl args⟩
+  | newObj f e args => exact ⟨CCExprEquiv_refl f, CCExprEquiv_refl e, CCExprListEquiv_refl args⟩
+  | getProp o p => exact ⟨rfl, CCExprEquiv_refl o⟩
+  | setProp o p v => exact ⟨rfl, CCExprEquiv_refl o, CCExprEquiv_refl v⟩
+  | getIndex o i => exact ⟨CCExprEquiv_refl o, CCExprEquiv_refl i⟩
+  | setIndex o i v => exact ⟨CCExprEquiv_refl o, CCExprEquiv_refl i, CCExprEquiv_refl v⟩
+  | deleteProp o p => exact ⟨rfl, CCExprEquiv_refl o⟩
+  | typeof a => exact CCExprEquiv_refl a
+  | getEnv e idx => exact ⟨rfl, CCExprEquiv_refl e⟩
+  | makeEnv vs => exact CCExprListEquiv_refl vs
+  | makeClosure fi e => exact ⟨by omega, CCExprEquiv_refl e⟩
+  | objectLit ps => exact CCPropListEquiv_refl ps
+  | arrayLit es => exact CCExprListEquiv_refl es
+  | throw a => exact CCExprEquiv_refl a
+  | tryCatch b cp cb f => exact ⟨rfl, CCExprEquiv_refl b, CCExprEquiv_refl cb, CCOptExprEquiv_refl f⟩
+  | while_ c b => exact ⟨CCExprEquiv_refl c, CCExprEquiv_refl b⟩
+  | «break» l => exact rfl
+  | «continue» l => exact rfl
+  | labeled l b => exact ⟨rfl, CCExprEquiv_refl b⟩
+  | «return» a => exact CCOptExprEquiv_refl a
+  | yield a d => exact ⟨rfl, CCOptExprEquiv_refl a⟩
+  | await a => exact CCExprEquiv_refl a
+  | unary op a => exact ⟨rfl, CCExprEquiv_refl a⟩
+  | binary op l r => exact ⟨rfl, CCExprEquiv_refl l, CCExprEquiv_refl r⟩
+private theorem CCExprListEquiv_refl (es : List Flat.Expr) : CCExprListEquiv 0 es es := by
+  cases es with
+  | nil => trivial
+  | cons e rest => exact ⟨CCExprEquiv_refl e, CCExprListEquiv_refl rest⟩
+private theorem CCPropListEquiv_refl (ps : List (Flat.PropName × Flat.Expr)) : CCPropListEquiv 0 ps ps := by
+  cases ps with
+  | nil => trivial
+  | cons p rest => exact ⟨rfl, CCExprEquiv_refl p.2, CCPropListEquiv_refl rest⟩
+private theorem CCOptExprEquiv_refl (oe : Option Flat.Expr) : CCOptExprEquiv 0 oe oe := by
+  cases oe with
+  | none => trivial
+  | some e => exact CCExprEquiv_refl e
+end
+
+/-! #### Equality implies CCExprEquiv: if two expressions are equal, they are CCExprEquiv for any δ.
+    (Only meaningful for non-makeClosure expressions; makeClosure with different fi requires fi1+δ=fi2.) -/
+
+private theorem eq_implies_CCExprEquiv_zero {e1 e2 : Flat.Expr} (h : e1 = e2) :
+    CCExprEquiv 0 e1 e2 := by subst h; exact CCExprEquiv_refl e1
+
+/-! #### convertExpr_CCExprEquiv: converting the same Core expression with two CCStates that
+    agree (CCStateAgree) produces identical expressions (hence CCExprEquiv at any δ).
+    This follows directly from convertExpr_state_determined. -/
+
+private theorem convertExpr_CCExprEquiv_of_agree (e : Core.Expr)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping)
+    (st1 st2 : Flat.CCState)
+    (hid : st1.nextId = st2.nextId) (hsz : st1.funcs.size = st2.funcs.size) :
+    CCExprEquiv 0
+      (Flat.convertExpr e scope envVar envMap st1).fst
+      (Flat.convertExpr e scope envVar envMap st2).fst := by
+  have hdet := convertExpr_state_determined e scope envVar envMap st1 st2 hid hsz
+  rw [hdet.1]; exact CCExprEquiv_refl _
+
 mutual
 /-- Returns true if the expression never uses "__call_frame_return__" as a tryCatch catchParam.
     Source programs from `elaborate` satisfy this predicate since "__call_frame_return__" is only
