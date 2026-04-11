@@ -1,4 +1,4 @@
-# proof — CLOSE trivialChain BATCH (L10183-L10554, 12 sorries)
+# proof — CLOSE L17229/L17300 (compound break/continue) + L16999 (noCallFrameReturn)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,42 +9,83 @@
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
 ## STATUS
-- NoNestedAbrupt_step_preserved: PROVED (nice!)
+- hasAbruptCompletion_step_preserved: PROVED
+- NoNestedAbrupt_step_preserved: PROVED
 - ANF: 31 sorries. CC: 15 (jsspec). Total: 46.
 
-## P0: TRIVIALCHAIN BATCH (L10183-L10554, 12 sorries) — HIGHEST ROI
+## IMPORTANT: trivialChain batch (L10183-L10554) is BLOCKED
 
-These 12 sorries are ALL in `normalizeExpr_labeled_step_sim` and share a common pattern. Each is a case where a sub-expression of `.call`/`.newObj`/`.objectLit`/`.arrayLit` steps.
+wasmspec confirmed ALL 12 trivialChain sorries are blocked by ANF trivial ↔ flat value mismatch. Specifically: after stepping the first sub-expression to a value, `normalizeExpr` uses the original ANF trivial `.var x` but the flat state has `.lit v`. These are fundamentally different and no existing infrastructure bridges them. DO NOT attempt these.
 
-**INVESTIGATE FIRST**: Run `lean_goal` at L10183, L10408, L10460 to see the exact shapes.
+## P0: L17229, L17300 — COMPOUND BREAK/CONTINUE ERROR PROPAGATION (2 sorries)
 
-**EXPECTED PATTERN**: Each sorry needs to show that when a sub-expression `e` of a compound form steps (Flat.step? on the inner `e`), the whole compound form also steps (via a context-lifting lemma).
+These are Category B cases in `normalizeExpr_break_step_sim` (L17229) and `normalizeExpr_continue_step_sim` (L17300). They handle compound expressions (seq, let, binary, etc.) that have `HasBreakInHead` / `HasContinueInHead`.
+
+**THE PATTERN**: When a compound expression `e` has `HasBreakInHead e`, then `normalizeExpr e k` produces `.break label`. Flat.step? on `e` steps some sub-expression, and we need to show that the compound form ALSO produces a matching `.break label` error event.
+
+**KEY INSIGHT**: You ALREADY proved this pattern for `hasAbruptCompletion_step_preserved` and `NoNestedAbrupt_step_preserved`. The compound cases there follow the EXACT same structure:
+1. The compound expression has a sub-expression with HasBreakInHead/HasContinueInHead
+2. Flat.step? steps that sub-expression
+3. The result still has HasBreakInHead/HasContinueInHead (preservation)
+4. Therefore normalizeExpr still produces .break/.continue
 
 **APPROACH**:
-1. Run `lean_local_search "trivialChain"` to find existing helpers
-2. Run `lean_local_search "Steps_ctx"` for context-lifting lemmas
-3. For each sorry:
-   - Run `lean_goal` to see the exact goal
-   - Identify which sub-expression steps (func, env, arg, prop value, element)
-   - Find or create a `Flat_step?_FOO_ctx` lemma that lifts the inner step
-   - Apply it
-4. If a helper lemma is missing, create ONE that covers the general pattern, then reuse it
+1. For each compound case (seq_left, let_init, binary_lhs, etc.):
+   - The sub-expression steps: `Flat.step? ⟨sub, env, heap, trace, funcs, cs⟩ = some (t, sa)`
+   - The result expression still has the abrupt head (by preservation, which you PROVED)
+   - Show that from the ORIGINAL compound state `sf`, Flat.step? ALSO produces `(t, sa')` where `sa'` wraps the result in the same compound form
+   - Apply the IH on the stepped sub-expression
 
-**DO THEM ONE AT A TIME**: Close L10183, verify, log, then L10231, verify, log, etc.
+2. You need the compound stepping lemmas (`step?_seq_ctx`, `step?_let_ctx`, etc.) to lift the inner step through the compound wrapper.
 
-## P1: L16999 (noCallFrameReturn) — IF P0 IS BLOCKED
+3. The error event from break/continue propagates through compound wrappers because Flat.step? propagates errors directly.
 
-The sorry needs `catchParam ≠ "__call_frame_return__"`:
-1. Run `lean_goal` at L16999
-2. Look for `hncfr : noCallFrameReturn sf.expr = true` in scope
-3. Use `noCallFrameReturn_tryCatch_param` (L4120) to extract the proof
+**CONCRETE TACTIC SKETCH** (for one compound case, e.g., seq_left):
+```lean
+| seq_left hsub =>
+  -- hsub : HasBreakInHead a (for seq a b)
+  -- hna : NoNestedAbrupt (seq a b)
+  -- Need: ∃ sf', Steps sf evs sf' ∧ ...
+  -- Strategy: take one flat step on the seq, which steps a.
+  -- After stepping, the result still has HasBreakInHead (by preservation).
+  -- Use normalizeExpr_break_implies_hasBreakInHead on the result.
+  sorry -- fill with step lifting + IH
+```
 
-## P2: L17229, L17300 — INVESTIGATE ONLY
+**DO THEM TOGETHER**: Both L17229 and L17300 are identical structure. Write one helper theorem that handles all compound cases generically (parameterized by HasXInHead), then instantiate for break and continue.
 
-Run `lean_goal` on each. Document what they need. Do NOT attempt without understanding.
+## P1: L16999 — noCallFrameReturn
 
-## SKIP: compound error prop (wasmspec), CC (jsspec), if_branch (K-mismatch), while (blocked)
+The sorry needs `catchParam ≠ "__call_frame_return__"`. From the comment at L17000-17009:
+- The ANF catchParam comes from source code
+- Source programs never use `"__call_frame_return__"` — it's only from Flat.step? function calls
+- Under the SimRel, `sf.expr` was produced by `normalizeExpr sc.expr k`
+- `normalizeExpr` preserves the original catchParam from the source tryCatch
+- `noCallFrameReturn sc.expr = true` is in the SimRel (L1496 of CC file)
+
+**APPROACH**:
+1. Check if `hncfr : noCallFrameReturn sf.expr = true` is in scope (from ANF_SimRel or normalizeExpr)
+2. If normalizeExpr preserves catchParam, then `noCallFrameReturn (normalizeExpr ...)` should follow
+3. You may need a `normalizeExpr_preserves_noCallFrameReturn` lemma — but check `lean_local_search "noCallFrameReturn"` first
+
+## P2: L13312-L13344 — Steps preservation (3 sorries)
+
+These need:
+```
+∀ smid evs1, Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs1 smid →
+    evs1.length ≤ evs.length →
+    smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1
+```
+
+**APPROACH**: Prove by induction on `Flat.Steps`. For each step:
+- `step?` preserves `funcs` (always true — no step modifies funcs)
+- `step?` preserves `callStack` (true except call entry/return — but under HasReturnInHead + NoNestedAbrupt, no calls complete)
+- `trace` is appended with the event
+
+Search for existing helpers: `lean_local_search "step?_preserves"`, `lean_local_search "Steps_pres"`.
+
+## SKIP: L10183-L10554 (trivial mismatch), L13353/L13709/L13882 (compound, wasmspec owns), L14033/14045/14770/14810 (while/if blocked), L15651-15672 (tryCatch blocked), L17010 (body_sim, needs anfConvert_step_star)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — trivialChain batch L10183-L10554" >> agents/proof/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — L17229/L17300 compound break/continue + L16999" >> agents/proof/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`

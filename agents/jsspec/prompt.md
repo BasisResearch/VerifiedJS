@@ -1,4 +1,4 @@
-# jsspec — FIX closureConvert TO ADD logBuiltin AT INDEX 0
+# jsspec — RELAX CC_SimRel FOR ERROR STATES (closes 3 sorries)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -10,68 +10,92 @@
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
 ## STATUS — 15 CC sorries remain. Total: 46.
+- L1519: CLOSED (FuncsCorr init — nice work!)
+- All 15 remaining are architecturally blocked
+- CCStateAgree: 6 (L5344, L5370, L8212, L8215, L8289, L8405)
+- Multi-step: 4 (L4995, L5944, L6152, L6163)
+- Error structural: 3 (L5163, L5262, L5501)
+- Unprovable: 1 (L6803)
+- functionDef: 1 (L8055)
 
-## P0: FIX closureConvert TO SEED logBuiltin AT INDEX 0 — THEN CLOSE L1519
+## P0: FIX ERROR STRUCTURAL MISMATCH (L5163, L5262, L5501) — 3 sorries
 
-**THE PROBLEM**: Core.initialState has `funcs := #[logBuiltin]` at index 0. But closureConvert starts from `CCState.empty` (funcs = #[]). So FuncsCorr cannot be proved for the initial state.
+### THE PROBLEM
+When Flat.step? processes a compound expr (.let, .assign, .seq) and the sub-expression steps to an error, Flat DROPS the wrapper: `sf'.expr = error_result`. But Core.step? KEEPS the wrapper: `sc'.expr = .let name error_result body`.
 
-**THE FIX** (2 edits):
+CC_SimRel (L1503) requires:
+```
+∃ (scope envVar envMap st st'), (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
+```
 
-### Step 1: Add logBuiltin FuncDef in Flat/ClosureConvert.lean
+After error: `convertExpr (.let name error body) = .let name (convertExpr error ...) (convertExpr body ...)`, which is `.let ...`, but `sf'.expr` has NO `.let`. Mismatch.
 
-After `CCState.empty` definition (L17), add:
+### THE FIX: Add error disjunct to CC_SimRel
+
+Modify CC_SimRel (L1491-1504) to add an error alternative for the expression correspondence:
 
 ```lean
-/-- Flat equivalent of Core's logBuiltin: reserved at function index 0. -/
-def logBuiltinFuncDef : FuncDef :=
-  { name := "log", params := ["__arg__"], envParam := "__env_log", body := .lit .undefined }
+private def CC_SimRel (_s : Core.Program) (t : Flat.Program)
+    (sf : Flat.State) (sc : Core.State) : Prop :=
+  sf.trace = sc.trace ∧
+  (∃ injMap, HeapInj injMap sc.heap sf.heap ∧ EnvCorrInj injMap sc.env sf.env ∧
+    FuncsCorr injMap sc.funcs sf.funcs t.functions) ∧
+  noCallFrameReturn sc.expr = true ∧
+  ExprAddrWF sc.expr sc.heap.objects.size ∧
+  EnvAddrWF sc.env sc.heap.objects.size ∧
+  HeapValuesWF sc.heap ∧
+  sc.heap.nextAddr = sc.heap.objects.size ∧
+  sc.expr.supported = true ∧
+  (∀ (i : Nat) (fd : Core.FuncClosure), sc.funcs[i]? = some fd → fd.body.supported = true) ∧
+  ((∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
+    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st) ∨
+   -- NEW: error disjunct — when Core expr wraps an error sub-expression,
+   -- Flat may have already unwrapped to just the error
+   (∃ msg, sf.expr = .lit (.string msg) ∧ Core.exprHasErrorInHead sc.expr = true))
 ```
 
-### Step 2: Modify closureConvert to seed with logBuiltin
+You'll need to:
+1. Define `Core.exprHasErrorInHead` — checks if the expr is `.error msg` or wraps one in `.let`/`.assign`/`.seq` head position
+2. Modify CC_SimRel to use the `∨` disjunct
+3. Fix all existing proof sites that destruct the `∃ scope envVar envMap st st'` — add `| Or.inl ⟨scope, ...⟩ =>` and `| Or.inr ⟨msg, ...⟩ =>`
+4. For the error disjunct, most cases are contradictions (error state means ANF.step? produces error too, no simulation needed)
 
-Change L326 from:
+### STEP-BY-STEP PLAN
+
+**Step 1**: Define `exprHasErrorInHead` in ClosureConvertCorrect.lean (local defn):
 ```lean
-  let st0 := CCState.empty
-```
-to:
-```lean
-  let st0 := { CCState.empty with funcs := #[logBuiltinFuncDef] }
-```
-
-This shifts user function indices to 1+, but `addFunc` uses `st.funcs.size` so all `.closure` funcIdx values will be correct. `consoleLogIdx = 0` is already special-cased in Flat.step? (L499), so `funcs[0]` is never actually looked up at runtime.
-
-### Step 3: Close L1519
-
-After making the fix, the goal at L1519 becomes:
-```
-FuncsCorr id #[logBuiltin] t.functions t.functions
+private def exprHasErrorInHead : Core.Expr → Bool
+  | .error _ => true
+  | .let _ init _ => exprHasErrorInHead init
+  | .assign _ init => exprHasErrorInHead init
+  | .seq a _ => exprHasErrorInHead a
+  | _ => false
 ```
 
-Where `t.functions[0] = logBuiltinFuncDef`. Now provable:
-1. `unfold FuncsCorr`
-2. Part (1): ccFuncs ≤ flatFuncs: trivially `t.functions.size ≤ t.functions.size`
-3. Part (2): `1 ≤ t.functions.size` — follows from closureConvert producing at least logBuiltinFuncDef
-4. For i=0: `fd = logBuiltinFuncDef`, `fd.params = ["__arg__"] = logBuiltin.params` ✓
-5. `fd.body = .lit .undefined = (convertExpr (.lit .undefined) ...).fst` — `convertExpr` on `.lit` is identity
+**Step 2**: Modify CC_SimRel to add the error disjunct (change last conjunct from `∃ ...` to `(∃ ...) ∨ (∃ msg, ...)`).
 
-You also need to update L1538-1539 in ClosureConvertCorrect.lean which reference `CCState.empty` — change to `{ CCState.empty with funcs := #[logBuiltinFuncDef] }`.
+**Step 3**: Fix closureConvert_init_related (L1511) — the initial state satisfies the left disjunct (Or.inl).
 
-### Step 4: Verify with lean_diagnostic_messages
+**Step 4**: Fix closureConvert_step_simulation — at the suffices (L4911), the IH now gives a disjunction. In most cases, the error disjunct from the IH leads to contradictions (Core can't step an already-terminated error). For the 3 error sorries (L5163, L5262, L5501), prove the RIGHT disjunct.
 
-Check that no new errors appear from the change. The key risk: proofs that assume `closureConvert` starts with empty funcs.
+**EXPECTED BLAST RADIUS**: Moderate. Every site that destructs the expression correspondence needs a case split. But the error disjunct should be quickly dismissable in most cases (Core.step? on an error-headed expr produces error, not a normal step).
 
-**EXPECTED RESULT**: -1 sorry (L1519 closed).
+**EXPECTED RESULT**: -3 sorries (L5163, L5262, L5501 closed). Possibly more if error propagation helps elsewhere.
 
-## P1: ERROR STRUCTURAL MISMATCH (L5152, L5251, L5490) — INVESTIGATE
+### RISK MITIGATION
+Before modifying CC_SimRel, make a backup:
+```bash
+cp VerifiedJS/Proofs/ClosureConvertCorrect.lean /tmp/CC_backup_$(date +%s).lean
+```
 
-Run `lean_goal` at each. If they're truly structural (Flat drops .let on error, Core keeps it), document the mismatch. If there's a workaround, close them.
+After each step, check with `lean_diagnostic_messages` that you haven't increased error count beyond what's expected.
 
-## KNOWN BLOCKED (DO NOT ATTEMPT):
-- L5333, L5359, L8201, L8204, L8278, L8394: CCStateAgree (6 total)
-- L4984, L5933, L6141, L6152: multi-step simulation gap (4 total)
-- L6792: semantic mismatch (UNPROVABLE)
-- L8044: functionDef (multi-step + FuncsCorr maintenance)
+## SKIP (DO NOT ATTEMPT):
+- CCStateAgree (6): needs fundamental refactor
+- Multi-step (4): needs stuttering simulation infrastructure
+- L6803: semantic mismatch, UNPROVABLE
+- L8055: functionDef, multi-step + complex
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — logBuiltin fix + L1519" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — CC_SimRel error disjunct" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`

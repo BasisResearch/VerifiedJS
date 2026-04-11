@@ -1,4 +1,4 @@
-# wasmspec — CLOSE HasReturnInHead PRESERVATION + COMPOUND CASES
+# wasmspec — CLOSE PRESERVATION SORRIES + COMPOUND HasReturnInHead
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -10,45 +10,90 @@
 
 ## STATUS
 - Total: 46 sorries (ANF 31, CC 15).
-- Your HasReturnInHead decomposition added 3 preservation sorries but removed the monolithic one.
-- 28 remaining compound cases are mechanical.
+- Your last run CRASHED (exit code 1) on preservation sorries. Retry.
+- hasAbruptCompletion_step_preserved: PROVED (by proof agent)
+- NoNestedAbrupt_step_preserved: PROVED (by proof agent)
 
 ## P0: CLOSE 3 PRESERVATION SORRIES (L13312, L13328, L13344)
 
-These need `step?_preserves_callStack` and `step?_preserves_funcs`.
+These are in `hasReturnInHead_return_steps`, seq_left case. Each needs:
+```lean
+∀ smid evs1, Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs1 smid →
+    evs1.length ≤ evs.length →
+    smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1
+```
 
-**APPROACH**:
-1. Run `lean_goal` at L13312 to see the exact preservation goal
-2. The goal should be something like: after a Flat.step?, `s'.funcs = s.funcs ∧ s'.callStack = s.callStack`
-3. This is TRUE for ALL Flat.step? cases EXCEPT call entry (pushes to callStack) and return/throw-through-callStack (pops from callStack)
-4. Under HasReturnInHead + NoNestedAbrupt, calls never complete within the compound step, so callStack IS preserved
+### APPROACH: Prove a `Steps_preserves` lemma
 
-**OPTIONS**:
-- **Option A**: Prove a general `step?_preserves_funcs_callStack` lemma in Flat/Semantics.lean by case split on step?. Add restriction: `¬ isCallReturn s.expr` or use the NoNestedAbrupt hypothesis.
-- **Option B**: Inline the proof. Each sorry is in a specific case where the expr form is known. Just unfold step? for that case and show funcs/callStack unchanged.
+Add this in the proof file (near `Steps_compound_error_lift`):
 
-**PREFER Option B** (less blast radius). Each preservation sorry is within a known expr case — you know what step? does.
+```lean
+/-- Each Flat.step? preserves funcs, and appends exactly one event to trace.
+    callStack is preserved when NoNestedAbrupt holds. -/
+private theorem step?_preserves_funcs_trace
+    (sf : Flat.State) (t : Flat.Event) (sf' : Flat.State)
+    (hstep : Flat.step? sf = some (t, sf')) :
+    sf'.funcs = sf.funcs ∧ sf'.trace = sf.trace ++ [t] := by
+  -- Case split on sf.expr. In EVERY case of step?, funcs is unchanged
+  -- and trace gets one event appended.
+  cases sf with | mk e env heap trace funcs cs =>
+  simp only [Flat.step?] at hstep
+  -- exhaustive match on e
+  sorry -- fill by cases on e, each is rfl/rfl
+```
 
-## P1: CLOSE REMAINING 28 COMPOUND CASES (L13353)
+Then prove `Steps_preserves_funcs_trace` by induction on Steps:
+```lean
+private theorem Steps_preserves_funcs_trace
+    (sf : Flat.State) (evs : List Flat.Event) (sf' : Flat.State)
+    (hsteps : Flat.Steps sf evs sf') :
+    sf'.funcs = sf.funcs ∧ sf'.trace = sf.trace ++ evs := by
+  induction hsteps with
+  | refl => simp
+  | tail hsteps hstep ih =>
+    obtain ⟨hf1, ht1⟩ := ih
+    obtain ⟨hf2, ht2⟩ := step?_preserves_funcs_trace _ _ _ hstep.h
+    exact ⟨hf2.trans hf1, by rw [ht2, ht1]; simp [List.append_assoc]⟩
+```
 
-After P0, the `| _ => sorry` at L13353 covers remaining compound HasReturnInHead cases. These all follow the seq_left pattern you already proved.
+For callStack preservation, you need the NoNestedAbrupt + HasReturnInHead context. The key insight: under these conditions, no function calls COMPLETE (calls push to callStack but never pop because return is intercepted by HasReturnInHead). So step? never modifies callStack.
 
-**APPROACH**: Expand `| _ =>` into explicit constructor matches and use the same IH + Steps_compound_error_lift pattern as seq_left.
+### STEP-BY-STEP:
+1. Search: `lean_local_search "step?_preserves"` — check if helpers exist
+2. Prove `step?_preserves_funcs_trace` by exhaustive case analysis on `sf.expr`
+3. Prove `Steps_preserves_funcs_trace` by induction on Steps
+4. For callStack: prove `step?_preserves_callStack` under NoNestedAbrupt (no call return)
+5. Apply to L13312, L13328, L13344 — replace each sorry with the lemma
 
-Do them in batches of 5-6 constructors at a time. After each batch, verify with lean_diagnostic_messages.
+### CONCRETE APPLICATION at L13312:
+```lean
+have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs1 smid →
+    evs1.length ≤ evs.length →
+    smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+  intro smid evs1 hsteps _
+  obtain ⟨hf, ht⟩ := Steps_preserves_funcs_trace _ _ _ hsteps
+  exact ⟨hf, Steps_preserves_callStack _ _ _ hsteps hna_sub, ht⟩
+```
+
+## P1: CLOSE REMAINING COMPOUND CASES (L13353)
+
+After P0, expand `| _ => sorry` at L13353 into explicit constructor matches. Each follows the SAME pattern as the seq_left case (L13296-L13352):
+1. Decompose normalizeExpr for the compound form
+2. Get depth bound for sub-expression
+3. Apply IH on sub-expression
+4. Lift through compound wrapper via Steps_compound_error_lift
+5. Apply the preservation lemma from P0
+
+Do 5-6 constructors at a time. Verify after each batch.
 
 ## P2: COMPOUND HasAwaitInHead + HasYieldInHead (L13709, L13882)
 
-Same architecture as HasReturnInHead. After P0-P1, apply the same pattern.
+Same architecture as HasReturnInHead. Apply the same pattern from P0-P1.
 
-## P3: REMAINING COMPOUND CATCH-ALLS (L12969, L13938, L13942, L13943)
+## P3: REMAINING (L12969, L13938, L13942, L13943)
 
-Run `lean_goal` on each. Use the same compound lifting approach.
-
-## P4: WHILE (L14033, L14045) and TRYCATCH (L15651, L15669, L15672)
-
-Lower priority. Check with `lean_goal` after P0-P3.
+Run `lean_goal` on each (or read context). Use same compound lifting approach.
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — preservation sorries L13312-L13344" >> agents/wasmspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — Steps preservation + compound expansion" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`
