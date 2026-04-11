@@ -18641,9 +18641,623 @@ private theorem hasReturnInHead_return_steps :
                     by rw [htrace'.trans htrace_a]; simp [List.append_assoc],
                     by rw [observableTrace_append, observableTrace_append, observableTrace_all_silent hsil_b,
                            observableTrace_all_silent hsil_c, List.nil_append, List.nil_append]; exact hobs_a⟩
-    | call_env h_a => sorry -- second-position: return in env of call f env args
+    | call_env h_a =>
+      rename_i a b args_list
+      simp only [ANF.normalizeExpr] at hnorm
+      have hb_depth : b.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have ha_depth : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      cases harg_eq : arg with
+      | none =>
+        rw [harg_eq] at hnorm
+        rcases ANF.normalizeExpr_return_none_or_k b _ n m hnorm with hret_b | ⟨_, n', m', hcont⟩
+        · -- Case A: HasReturnInHead b (func) → compound error lift through (.call · a args_list)
+          obtain ⟨ih_none, ih_ok, ih_err⟩ :=
+            ih b hb_depth hret_b env heap trace funcs cs _ n m none
+              hnorm (fun x hfx => hewf x (VarFreeIn.call_func _ _ _ _ hfx))
+              (by cases hna with | call ha _ _ => exact ha)
+          refine ⟨?_, ?_, ?_⟩
+          · intro _
+            obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_none rfl
+            have herr : ∃ msg, .error msg ∈ evs := observableTrace_return_has_error hobs_b
+            have hpres : ∀ smid evs1, Flat.Steps ⟨b, env, heap, trace, funcs, cs⟩ evs1 smid →
+                evs1.length ≤ evs.length →
+                smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+              intro smid evs1 hsteps _hlen
+              exact ⟨Flat.Steps_preserves_funcs hsteps,
+                Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                  refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                  · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable hret_b hsteps' hstep')).1 body catch_ fin h
+                  · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable hret_b hsteps' hstep')).2 f' env' args' h),
+                Flat.Steps_trace_append hsteps⟩
+            obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+              Steps_compound_error_lift (.call · a args_list)
+                (fun s inner hv t si hs he => step?_call_func_ctx s inner a args_list hv t si hs he)
+                (fun s inner hv msg si hs => step?_call_func_error s inner a args_list hv msg si hs)
+                hsteps_b herr hpres
+            exact ⟨evs, sf', hsteps',
+              hexpr'.trans hexpr_b, henv'.trans henv_b, hheap'.trans hheap_b,
+              htrace'.trans htrace_b, hobs_b⟩
+          · intro t v harg _; exact absurd harg (by simp)
+          · intro t msg harg _; exact absurd harg (by simp)
+        · -- Case B: return from continuation
+          rcases Classical.em (HasReturnInHead b) with h_b_ret | h_b_noret
+          · -- Sub-case B1: HasReturnInHead b — same as Case A
+            obtain ⟨ih_none, ih_ok, ih_err⟩ :=
+              ih b hb_depth h_b_ret env heap trace funcs cs _ n m none
+                hnorm (fun x hfx => hewf x (VarFreeIn.call_func _ _ _ _ hfx))
+                (by cases hna with | call ha _ _ => exact ha)
+            refine ⟨?_, ?_, ?_⟩
+            · intro _
+              obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_none rfl
+              have herr : ∃ msg, .error msg ∈ evs := observableTrace_return_has_error hobs_b
+              have hpres : ∀ smid evs1, Flat.Steps ⟨b, env, heap, trace, funcs, cs⟩ evs1 smid →
+                  evs1.length ≤ evs.length →
+                  smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+                intro smid evs1 hsteps _hlen
+                exact ⟨Flat.Steps_preserves_funcs hsteps,
+                  Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                    refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_b_ret hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_b_ret hsteps' hstep')).2 f' env' args' h),
+                  Flat.Steps_trace_append hsteps⟩
+              obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+                Steps_compound_error_lift (.call · a args_list)
+                  (fun s inner hv t si hs he => step?_call_func_ctx s inner a args_list hv t si hs he)
+                  (fun s inner hv msg si hs => step?_call_func_error s inner a args_list hv msg si hs)
+                  hsteps_b herr hpres
+              exact ⟨evs, sf', hsteps',
+                hexpr'.trans hexpr_b, henv'.trans henv_b, hheap'.trans hheap_b,
+                htrace'.trans htrace_b, hobs_b⟩
+            · intro t v harg _; exact absurd harg (by simp)
+            · intro t msg harg _; exact absurd harg (by simp)
+          · -- Sub-case B2: b has no HasReturnInHead — b is a trivialChain; peel b then IH on a
+            have htc_b := no_return_none_head_implies_trivial_chain b.depth b (Nat.le_refl _)
+              (fun ft => ANF.normalizeExpr a (fun et => ANF.normalizeExprList args_list (fun ats => ANF.bindComplex (.call ft et ats) K))) n m hnorm h_b_noret
+            obtain ⟨t_b, ht_b⟩ := normalizeExpr_trivialChain_apply b.depth b (Nat.le_refl _) htc_b
+            have hnorm_a : (ANF.normalizeExpr a (fun et => ANF.normalizeExprList args_list (fun ats => ANF.bindComplex (.call t_b et ats) K))).run n =
+                .ok (.return none, m) := by rwa [ht_b] at hnorm
+            obtain ⟨v_b, evs_b, hsteps_b, hnoerr_b, hobs_b, hpres_b⟩ :=
+              trivialChain_eval_value (trivialChainCost b) b env heap trace funcs cs
+                htc_b (Nat.le_refl _) (fun x hfx => hewf x (VarFreeIn.call_func _ _ _ _ hfx))
+            have hsil_b : ∀ ev ∈ evs_b, ev = Core.TraceEvent.silent := by
+              intro ev hev
+              cases ev with
+              | silent => rfl
+              | log s =>
+                exfalso
+                have hmem : Core.TraceEvent.log s ∈ observableTrace evs_b := by
+                  simp only [observableTrace, List.mem_filter]; exact ⟨hev, by rfl⟩
+                simp [hobs_b] at hmem
+              | error s => exfalso; exact hnoerr_b _ hev s rfl
+            obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+              Steps_call_func_ctx_b a args_list hsteps_b
+                (fun ev hev msg => by rw [hsil_b ev hev]; exact Core.TraceEvent.noConfusion)
+                (fun smid evs1 h _ => hpres_b smid evs1 h)
+            have hws_eq : ws = ⟨.call (.lit v_b) a args_list, env, heap, trace ++ evs_b, funcs, cs⟩ := by
+              cases ws; simp_all
+            rw [hws_eq] at hwsteps
+            obtain ⟨ih_none_a, _, _⟩ :=
+              ih a ha_depth h_a env heap (trace ++ evs_b) funcs cs
+                (fun et => ANF.normalizeExprList args_list (fun ats => ANF.bindComplex (.call t_b et ats) K)) n m none
+                hnorm_a (fun x hfx => hewf x (VarFreeIn.call_env _ _ _ _ hfx))
+                (by cases hna with | call _ ha _ => exact ha)
+            refine ⟨?_, ?_, ?_⟩
+            · intro _
+              obtain ⟨evs_a, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_none_a rfl
+              have herr : ∃ msg, .error msg ∈ evs_a := observableTrace_return_has_error hobs_a
+              have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace ++ evs_b, funcs, cs⟩ evs1 smid →
+                  evs1.length ≤ evs_a.length →
+                  smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = (trace ++ evs_b) ++ evs1 := by
+                intro smid evs1 hsteps _hlen
+                exact ⟨Flat.Steps_preserves_funcs hsteps,
+                  Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                    refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
+                  Flat.Steps_trace_append hsteps⟩
+              obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+                Steps_compound_error_lift (.call (.lit v_b) · args_list)
+                  (fun s inner hv t' si hs he => step?_call_env_ctx s v_b inner args_list hv t' si hs he)
+                  (fun s inner hv msg si hs => step?_call_env_error s v_b inner args_list hv msg si hs)
+                  hsteps_a herr hpres
+              exact ⟨evs_b ++ evs_a, sf',
+                Flat.Steps.append hwsteps hsteps',
+                hexpr'.trans hexpr_a, henv'.trans henv_a, hheap'.trans hheap_a,
+                by rw [htrace'.trans htrace_a]; simp [List.append_assoc],
+                by rw [observableTrace_append, observableTrace_all_silent hsil_b, List.nil_append]; exact hobs_a⟩
+            · intro t v harg _; exact absurd harg (by simp)
+            · intro t msg harg _; exact absurd harg (by simp)
+      | some arg_t =>
+        rw [harg_eq] at hnorm
+        rcases ANF.normalizeExpr_return_some_or_k b _ arg_t n m hnorm with hret_b | ⟨_, n', m', hcont⟩
+        · -- Case A: HasReturnInHead b (func) → compound error lift through (.call · a args_list)
+          obtain ⟨ih_none, ih_ok, ih_err⟩ :=
+            ih b hb_depth hret_b env heap trace funcs cs _ n m (some arg_t)
+              hnorm (fun x hfx => hewf x (VarFreeIn.call_func _ _ _ _ hfx))
+              (by cases hna with | call ha _ _ => exact ha)
+          refine ⟨?_, ?_, ?_⟩
+          · intro harg; exact absurd harg (by simp)
+          · intro t v harg heval
+            obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_ok t v harg heval
+            have herr : ∃ msg, .error msg ∈ evs := observableTrace_return_has_error hobs_b
+            have hpres : ∀ smid evs1, Flat.Steps ⟨b, env, heap, trace, funcs, cs⟩ evs1 smid →
+                evs1.length ≤ evs.length →
+                smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+              intro smid evs1 hsteps _hlen
+              exact ⟨Flat.Steps_preserves_funcs hsteps,
+                Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                  refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                  · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable hret_b hsteps' hstep')).1 body catch_ fin h
+                  · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable hret_b hsteps' hstep')).2 f' env' args' h),
+                Flat.Steps_trace_append hsteps⟩
+            obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+              Steps_compound_error_lift (.call · a args_list)
+                (fun s inner hv t si hs he => step?_call_func_ctx s inner a args_list hv t si hs he)
+                (fun s inner hv msg si hs => step?_call_func_error s inner a args_list hv msg si hs)
+                hsteps_b herr hpres
+            exact ⟨evs, sf', hsteps',
+              hexpr'.trans hexpr_b, henv'.trans henv_b, hheap'.trans hheap_b,
+              htrace'.trans htrace_b, hobs_b⟩
+          · intro t msg harg heval
+            obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_err t msg harg heval
+            have herr : ∃ msg', .error msg' ∈ evs := observableTrace_return_has_error hobs_b
+            have hpres : ∀ smid evs1, Flat.Steps ⟨b, env, heap, trace, funcs, cs⟩ evs1 smid →
+                evs1.length ≤ evs.length →
+                smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+              intro smid evs1 hsteps _hlen
+              exact ⟨Flat.Steps_preserves_funcs hsteps,
+                Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                  refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                  · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable hret_b hsteps' hstep')).1 body catch_ fin h
+                  · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable hret_b hsteps' hstep')).2 f' env' args' h),
+                Flat.Steps_trace_append hsteps⟩
+            obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+              Steps_compound_error_lift (.call · a args_list)
+                (fun s inner hv t si hs he => step?_call_func_ctx s inner a args_list hv t si hs he)
+                (fun s inner hv msg' si hs => step?_call_func_error s inner a args_list hv msg' si hs)
+                hsteps_b herr hpres
+            exact ⟨evs, sf', hsteps',
+              hexpr'.trans hexpr_b, henv'.trans henv_b, hheap'.trans hheap_b,
+              htrace'.trans htrace_b, hobs_b⟩
+        · -- Case B: return from continuation
+          rcases Classical.em (HasReturnInHead b) with h_b_ret | h_b_noret
+          · -- Sub-case B1: HasReturnInHead b — same as Case A
+            obtain ⟨ih_none, ih_ok, ih_err⟩ :=
+              ih b hb_depth h_b_ret env heap trace funcs cs _ n m (some arg_t)
+                hnorm (fun x hfx => hewf x (VarFreeIn.call_func _ _ _ _ hfx))
+                (by cases hna with | call ha _ _ => exact ha)
+            refine ⟨?_, ?_, ?_⟩
+            · intro harg; exact absurd harg (by simp)
+            · intro t v harg heval
+              obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_ok t v harg heval
+              have herr : ∃ msg, .error msg ∈ evs := observableTrace_return_has_error hobs_b
+              have hpres : ∀ smid evs1, Flat.Steps ⟨b, env, heap, trace, funcs, cs⟩ evs1 smid →
+                  evs1.length ≤ evs.length →
+                  smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+                intro smid evs1 hsteps _hlen
+                exact ⟨Flat.Steps_preserves_funcs hsteps,
+                  Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                    refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_b_ret hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_b_ret hsteps' hstep')).2 f' env' args' h),
+                  Flat.Steps_trace_append hsteps⟩
+              obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+                Steps_compound_error_lift (.call · a args_list)
+                  (fun s inner hv t' si hs he => step?_call_func_ctx s inner a args_list hv t' si hs he)
+                  (fun s inner hv msg si hs => step?_call_func_error s inner a args_list hv msg si hs)
+                  hsteps_b herr hpres
+              exact ⟨evs, sf', hsteps',
+                hexpr'.trans hexpr_b, henv'.trans henv_b, hheap'.trans hheap_b,
+                htrace'.trans htrace_b, hobs_b⟩
+            · intro t msg harg heval
+              obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_err t msg harg heval
+              have herr : ∃ msg', .error msg' ∈ evs := observableTrace_return_has_error hobs_b
+              have hpres : ∀ smid evs1, Flat.Steps ⟨b, env, heap, trace, funcs, cs⟩ evs1 smid →
+                  evs1.length ≤ evs.length →
+                  smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+                intro smid evs1 hsteps _hlen
+                exact ⟨Flat.Steps_preserves_funcs hsteps,
+                  Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                    refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_b_ret hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_b_ret hsteps' hstep')).2 f' env' args' h),
+                  Flat.Steps_trace_append hsteps⟩
+              obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+                Steps_compound_error_lift (.call · a args_list)
+                  (fun s inner hv t si hs he => step?_call_func_ctx s inner a args_list hv t si hs he)
+                  (fun s inner hv msg' si hs => step?_call_func_error s inner a args_list hv msg' si hs)
+                  hsteps_b herr hpres
+              exact ⟨evs, sf', hsteps',
+                hexpr'.trans hexpr_b, henv'.trans henv_b, hheap'.trans hheap_b,
+                htrace'.trans htrace_b, hobs_b⟩
+          · -- Sub-case B2: b has no HasReturnInHead — b is a trivialChain; peel b then IH on a
+            have htc_b := no_return_some_head_implies_trivial_chain b.depth b (Nat.le_refl _)
+              (fun ft => ANF.normalizeExpr a (fun et => ANF.normalizeExprList args_list (fun ats => ANF.bindComplex (.call ft et ats) K))) arg_t n m hnorm h_b_noret
+            obtain ⟨t_b, ht_b⟩ := normalizeExpr_trivialChain_apply b.depth b (Nat.le_refl _) htc_b
+            have hnorm_a : (ANF.normalizeExpr a (fun et => ANF.normalizeExprList args_list (fun ats => ANF.bindComplex (.call t_b et ats) K))).run n =
+                .ok (.return (some arg_t), m) := by rwa [ht_b] at hnorm
+            obtain ⟨v_b, evs_b, hsteps_b, hnoerr_b, hobs_b, hpres_b⟩ :=
+              trivialChain_eval_value (trivialChainCost b) b env heap trace funcs cs
+                htc_b (Nat.le_refl _) (fun x hfx => hewf x (VarFreeIn.call_func _ _ _ _ hfx))
+            have hsil_b : ∀ ev ∈ evs_b, ev = Core.TraceEvent.silent := by
+              intro ev hev
+              cases ev with
+              | silent => rfl
+              | log s =>
+                exfalso
+                have hmem : Core.TraceEvent.log s ∈ observableTrace evs_b := by
+                  simp only [observableTrace, List.mem_filter]; exact ⟨hev, by rfl⟩
+                simp [hobs_b] at hmem
+              | error s => exfalso; exact hnoerr_b _ hev s rfl
+            obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+              Steps_call_func_ctx_b a args_list hsteps_b
+                (fun ev hev msg => by rw [hsil_b ev hev]; exact Core.TraceEvent.noConfusion)
+                (fun smid evs1 h _ => hpres_b smid evs1 h)
+            have hws_eq : ws = ⟨.call (.lit v_b) a args_list, env, heap, trace ++ evs_b, funcs, cs⟩ := by
+              cases ws; simp_all
+            rw [hws_eq] at hwsteps
+            obtain ⟨_, ih_ok_a, ih_err_a⟩ :=
+              ih a ha_depth h_a env heap (trace ++ evs_b) funcs cs
+                (fun et => ANF.normalizeExprList args_list (fun ats => ANF.bindComplex (.call t_b et ats) K)) n m (some arg_t)
+                hnorm_a (fun x hfx => hewf x (VarFreeIn.call_env _ _ _ _ hfx))
+                (by cases hna with | call _ ha _ => exact ha)
+            refine ⟨?_, ?_, ?_⟩
+            · intro harg; exact absurd harg (by simp)
+            · intro t v harg heval
+              obtain ⟨evs_a, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_ok_a t v harg heval
+              have herr : ∃ msg, .error msg ∈ evs_a := observableTrace_return_has_error hobs_a
+              have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace ++ evs_b, funcs, cs⟩ evs1 smid →
+                  evs1.length ≤ evs_a.length →
+                  smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = (trace ++ evs_b) ++ evs1 := by
+                intro smid evs1 hsteps _hlen
+                exact ⟨Flat.Steps_preserves_funcs hsteps,
+                  Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                    refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
+                  Flat.Steps_trace_append hsteps⟩
+              obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+                Steps_compound_error_lift (.call (.lit v_b) · args_list)
+                  (fun s inner hv t' si hs he => step?_call_env_ctx s v_b inner args_list hv t' si hs he)
+                  (fun s inner hv msg si hs => step?_call_env_error s v_b inner args_list hv msg si hs)
+                  hsteps_a herr hpres
+              exact ⟨evs_b ++ evs_a, sf',
+                Flat.Steps.append hwsteps hsteps',
+                hexpr'.trans hexpr_a, henv'.trans henv_a, hheap'.trans hheap_a,
+                by rw [htrace'.trans htrace_a]; simp [List.append_assoc],
+                by rw [observableTrace_append, observableTrace_all_silent hsil_b, List.nil_append]; exact hobs_a⟩
+            · intro t msg harg heval
+              obtain ⟨evs_a, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_err_a t msg harg heval
+              have herr : ∃ msg', .error msg' ∈ evs_a := observableTrace_return_has_error hobs_a
+              have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace ++ evs_b, funcs, cs⟩ evs1 smid →
+                  evs1.length ≤ evs_a.length →
+                  smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = (trace ++ evs_b) ++ evs1 := by
+                intro smid evs1 hsteps _hlen
+                exact ⟨Flat.Steps_preserves_funcs hsteps,
+                  Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                    refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
+                  Flat.Steps_trace_append hsteps⟩
+              obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+                Steps_compound_error_lift (.call (.lit v_b) · args_list)
+                  (fun s inner hv t' si hs he => step?_call_env_ctx s v_b inner args_list hv t' si hs he)
+                  (fun s inner hv msg' si hs => step?_call_env_error s v_b inner args_list hv msg' si hs)
+                  hsteps_a herr hpres
+              exact ⟨evs_b ++ evs_a, sf',
+                Flat.Steps.append hwsteps hsteps',
+                hexpr'.trans hexpr_a, henv'.trans henv_a, hheap'.trans hheap_a,
+                by rw [htrace'.trans htrace_a]; simp [List.append_assoc],
+                by rw [observableTrace_append, observableTrace_all_silent hsil_b, List.nil_append]; exact hobs_a⟩
     | call_args h_a => sorry -- list: return in args of call f env args
-    | newObj_env h_a => sorry -- second-position: return in env of newObj f env args
+    | newObj_env h_a =>
+      rename_i a b args_list
+      simp only [ANF.normalizeExpr] at hnorm
+      have hb_depth : b.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have ha_depth : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      cases harg_eq : arg with
+      | none =>
+        rw [harg_eq] at hnorm
+        rcases ANF.normalizeExpr_return_none_or_k b _ n m hnorm with hret_b | ⟨_, n', m', hcont⟩
+        · -- Case A: HasReturnInHead b (func) → compound error lift through (.newObj · a args_list)
+          obtain ⟨ih_none, ih_ok, ih_err⟩ :=
+            ih b hb_depth hret_b env heap trace funcs cs _ n m none
+              hnorm (fun x hfx => hewf x (VarFreeIn.newObj_func _ _ _ _ hfx))
+              (by cases hna with | newObj ha _ _ => exact ha)
+          refine ⟨?_, ?_, ?_⟩
+          · intro _
+            obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_none rfl
+            have herr : ∃ msg, .error msg ∈ evs := observableTrace_return_has_error hobs_b
+            have hpres : ∀ smid evs1, Flat.Steps ⟨b, env, heap, trace, funcs, cs⟩ evs1 smid →
+                evs1.length ≤ evs.length →
+                smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+              intro smid evs1 hsteps _hlen
+              exact ⟨Flat.Steps_preserves_funcs hsteps,
+                Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                  refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                  · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable hret_b hsteps' hstep')).1 body catch_ fin h
+                  · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable hret_b hsteps' hstep')).2 f' env' args' h),
+                Flat.Steps_trace_append hsteps⟩
+            obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+              Steps_compound_error_lift (.newObj · a args_list)
+                (fun s inner hv t si hs he => step?_newObj_func_ctx s inner a args_list hv t si hs he)
+                (fun s inner hv msg si hs => step?_newObj_func_error s inner a args_list hv msg si hs)
+                hsteps_b herr hpres
+            exact ⟨evs, sf', hsteps',
+              hexpr'.trans hexpr_b, henv'.trans henv_b, hheap'.trans hheap_b,
+              htrace'.trans htrace_b, hobs_b⟩
+          · intro t v harg _; exact absurd harg (by simp)
+          · intro t msg harg _; exact absurd harg (by simp)
+        · -- Case B: return from continuation
+          rcases Classical.em (HasReturnInHead b) with h_b_ret | h_b_noret
+          · -- Sub-case B1: HasReturnInHead b — same as Case A
+            obtain ⟨ih_none, ih_ok, ih_err⟩ :=
+              ih b hb_depth h_b_ret env heap trace funcs cs _ n m none
+                hnorm (fun x hfx => hewf x (VarFreeIn.newObj_func _ _ _ _ hfx))
+                (by cases hna with | newObj ha _ _ => exact ha)
+            refine ⟨?_, ?_, ?_⟩
+            · intro _
+              obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_none rfl
+              have herr : ∃ msg, .error msg ∈ evs := observableTrace_return_has_error hobs_b
+              have hpres : ∀ smid evs1, Flat.Steps ⟨b, env, heap, trace, funcs, cs⟩ evs1 smid →
+                  evs1.length ≤ evs.length →
+                  smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+                intro smid evs1 hsteps _hlen
+                exact ⟨Flat.Steps_preserves_funcs hsteps,
+                  Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                    refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_b_ret hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_b_ret hsteps' hstep')).2 f' env' args' h),
+                  Flat.Steps_trace_append hsteps⟩
+              obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+                Steps_compound_error_lift (.newObj · a args_list)
+                  (fun s inner hv t si hs he => step?_newObj_func_ctx s inner a args_list hv t si hs he)
+                  (fun s inner hv msg si hs => step?_newObj_func_error s inner a args_list hv msg si hs)
+                  hsteps_b herr hpres
+              exact ⟨evs, sf', hsteps',
+                hexpr'.trans hexpr_b, henv'.trans henv_b, hheap'.trans hheap_b,
+                htrace'.trans htrace_b, hobs_b⟩
+            · intro t v harg _; exact absurd harg (by simp)
+            · intro t msg harg _; exact absurd harg (by simp)
+          · -- Sub-case B2: b has no HasReturnInHead — b is a trivialChain; peel b then IH on a
+            have htc_b := no_return_none_head_implies_trivial_chain b.depth b (Nat.le_refl _)
+              (fun ft => ANF.normalizeExpr a (fun et => ANF.normalizeExprList args_list (fun ats => ANF.bindComplex (.newObj ft et ats) K))) n m hnorm h_b_noret
+            obtain ⟨t_b, ht_b⟩ := normalizeExpr_trivialChain_apply b.depth b (Nat.le_refl _) htc_b
+            have hnorm_a : (ANF.normalizeExpr a (fun et => ANF.normalizeExprList args_list (fun ats => ANF.bindComplex (.newObj t_b et ats) K))).run n =
+                .ok (.return none, m) := by rwa [ht_b] at hnorm
+            obtain ⟨v_b, evs_b, hsteps_b, hnoerr_b, hobs_b, hpres_b⟩ :=
+              trivialChain_eval_value (trivialChainCost b) b env heap trace funcs cs
+                htc_b (Nat.le_refl _) (fun x hfx => hewf x (VarFreeIn.newObj_func _ _ _ _ hfx))
+            have hsil_b : ∀ ev ∈ evs_b, ev = Core.TraceEvent.silent := by
+              intro ev hev
+              cases ev with
+              | silent => rfl
+              | log s =>
+                exfalso
+                have hmem : Core.TraceEvent.log s ∈ observableTrace evs_b := by
+                  simp only [observableTrace, List.mem_filter]; exact ⟨hev, by rfl⟩
+                simp [hobs_b] at hmem
+              | error s => exfalso; exact hnoerr_b _ hev s rfl
+            obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+              Steps_newObj_func_ctx_b a args_list hsteps_b
+                (fun ev hev msg => by rw [hsil_b ev hev]; exact Core.TraceEvent.noConfusion)
+                (fun smid evs1 h _ => hpres_b smid evs1 h)
+            have hws_eq : ws = ⟨.newObj (.lit v_b) a args_list, env, heap, trace ++ evs_b, funcs, cs⟩ := by
+              cases ws; simp_all
+            rw [hws_eq] at hwsteps
+            obtain ⟨ih_none_a, _, _⟩ :=
+              ih a ha_depth h_a env heap (trace ++ evs_b) funcs cs
+                (fun et => ANF.normalizeExprList args_list (fun ats => ANF.bindComplex (.newObj t_b et ats) K)) n m none
+                hnorm_a (fun x hfx => hewf x (VarFreeIn.newObj_env _ _ _ _ hfx))
+                (by cases hna with | newObj _ ha _ => exact ha)
+            refine ⟨?_, ?_, ?_⟩
+            · intro _
+              obtain ⟨evs_a, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_none_a rfl
+              have herr : ∃ msg, .error msg ∈ evs_a := observableTrace_return_has_error hobs_a
+              have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace ++ evs_b, funcs, cs⟩ evs1 smid →
+                  evs1.length ≤ evs_a.length →
+                  smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = (trace ++ evs_b) ++ evs1 := by
+                intro smid evs1 hsteps _hlen
+                exact ⟨Flat.Steps_preserves_funcs hsteps,
+                  Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                    refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
+                  Flat.Steps_trace_append hsteps⟩
+              obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+                Steps_compound_error_lift (.newObj (.lit v_b) · args_list)
+                  (fun s inner hv t' si hs he => step?_newObj_env_ctx s v_b inner args_list hv t' si hs he)
+                  (fun s inner hv msg si hs => step?_newObj_env_error s v_b inner args_list hv msg si hs)
+                  hsteps_a herr hpres
+              exact ⟨evs_b ++ evs_a, sf',
+                Flat.Steps.append hwsteps hsteps',
+                hexpr'.trans hexpr_a, henv'.trans henv_a, hheap'.trans hheap_a,
+                by rw [htrace'.trans htrace_a]; simp [List.append_assoc],
+                by rw [observableTrace_append, observableTrace_all_silent hsil_b, List.nil_append]; exact hobs_a⟩
+            · intro t v harg _; exact absurd harg (by simp)
+            · intro t msg harg _; exact absurd harg (by simp)
+      | some arg_t =>
+        rw [harg_eq] at hnorm
+        rcases ANF.normalizeExpr_return_some_or_k b _ arg_t n m hnorm with hret_b | ⟨_, n', m', hcont⟩
+        · -- Case A: HasReturnInHead b (func) → compound error lift through (.newObj · a args_list)
+          obtain ⟨ih_none, ih_ok, ih_err⟩ :=
+            ih b hb_depth hret_b env heap trace funcs cs _ n m (some arg_t)
+              hnorm (fun x hfx => hewf x (VarFreeIn.newObj_func _ _ _ _ hfx))
+              (by cases hna with | newObj ha _ _ => exact ha)
+          refine ⟨?_, ?_, ?_⟩
+          · intro harg; exact absurd harg (by simp)
+          · intro t v harg heval
+            obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_ok t v harg heval
+            have herr : ∃ msg, .error msg ∈ evs := observableTrace_return_has_error hobs_b
+            have hpres : ∀ smid evs1, Flat.Steps ⟨b, env, heap, trace, funcs, cs⟩ evs1 smid →
+                evs1.length ≤ evs.length →
+                smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+              intro smid evs1 hsteps _hlen
+              exact ⟨Flat.Steps_preserves_funcs hsteps,
+                Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                  refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                  · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable hret_b hsteps' hstep')).1 body catch_ fin h
+                  · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable hret_b hsteps' hstep')).2 f' env' args' h),
+                Flat.Steps_trace_append hsteps⟩
+            obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+              Steps_compound_error_lift (.newObj · a args_list)
+                (fun s inner hv t si hs he => step?_newObj_func_ctx s inner a args_list hv t si hs he)
+                (fun s inner hv msg si hs => step?_newObj_func_error s inner a args_list hv msg si hs)
+                hsteps_b herr hpres
+            exact ⟨evs, sf', hsteps',
+              hexpr'.trans hexpr_b, henv'.trans henv_b, hheap'.trans hheap_b,
+              htrace'.trans htrace_b, hobs_b⟩
+          · intro t msg harg heval
+            obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_err t msg harg heval
+            have herr : ∃ msg', .error msg' ∈ evs := observableTrace_return_has_error hobs_b
+            have hpres : ∀ smid evs1, Flat.Steps ⟨b, env, heap, trace, funcs, cs⟩ evs1 smid →
+                evs1.length ≤ evs.length →
+                smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+              intro smid evs1 hsteps _hlen
+              exact ⟨Flat.Steps_preserves_funcs hsteps,
+                Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                  refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                  · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable hret_b hsteps' hstep')).1 body catch_ fin h
+                  · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable hret_b hsteps' hstep')).2 f' env' args' h),
+                Flat.Steps_trace_append hsteps⟩
+            obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+              Steps_compound_error_lift (.newObj · a args_list)
+                (fun s inner hv t si hs he => step?_newObj_func_ctx s inner a args_list hv t si hs he)
+                (fun s inner hv msg' si hs => step?_newObj_func_error s inner a args_list hv msg' si hs)
+                hsteps_b herr hpres
+            exact ⟨evs, sf', hsteps',
+              hexpr'.trans hexpr_b, henv'.trans henv_b, hheap'.trans hheap_b,
+              htrace'.trans htrace_b, hobs_b⟩
+        · -- Case B: return from continuation
+          rcases Classical.em (HasReturnInHead b) with h_b_ret | h_b_noret
+          · -- Sub-case B1: HasReturnInHead b — same as Case A
+            obtain ⟨ih_none, ih_ok, ih_err⟩ :=
+              ih b hb_depth h_b_ret env heap trace funcs cs _ n m (some arg_t)
+                hnorm (fun x hfx => hewf x (VarFreeIn.newObj_func _ _ _ _ hfx))
+                (by cases hna with | newObj ha _ _ => exact ha)
+            refine ⟨?_, ?_, ?_⟩
+            · intro harg; exact absurd harg (by simp)
+            · intro t v harg heval
+              obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_ok t v harg heval
+              have herr : ∃ msg, .error msg ∈ evs := observableTrace_return_has_error hobs_b
+              have hpres : ∀ smid evs1, Flat.Steps ⟨b, env, heap, trace, funcs, cs⟩ evs1 smid →
+                  evs1.length ≤ evs.length →
+                  smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+                intro smid evs1 hsteps _hlen
+                exact ⟨Flat.Steps_preserves_funcs hsteps,
+                  Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                    refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_b_ret hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_b_ret hsteps' hstep')).2 f' env' args' h),
+                  Flat.Steps_trace_append hsteps⟩
+              obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+                Steps_compound_error_lift (.newObj · a args_list)
+                  (fun s inner hv t' si hs he => step?_newObj_func_ctx s inner a args_list hv t' si hs he)
+                  (fun s inner hv msg si hs => step?_newObj_func_error s inner a args_list hv msg si hs)
+                  hsteps_b herr hpres
+              exact ⟨evs, sf', hsteps',
+                hexpr'.trans hexpr_b, henv'.trans henv_b, hheap'.trans hheap_b,
+                htrace'.trans htrace_b, hobs_b⟩
+            · intro t msg harg heval
+              obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_err t msg harg heval
+              have herr : ∃ msg', .error msg' ∈ evs := observableTrace_return_has_error hobs_b
+              have hpres : ∀ smid evs1, Flat.Steps ⟨b, env, heap, trace, funcs, cs⟩ evs1 smid →
+                  evs1.length ≤ evs.length →
+                  smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+                intro smid evs1 hsteps _hlen
+                exact ⟨Flat.Steps_preserves_funcs hsteps,
+                  Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                    refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_b_ret hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_b_ret hsteps' hstep')).2 f' env' args' h),
+                  Flat.Steps_trace_append hsteps⟩
+              obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+                Steps_compound_error_lift (.newObj · a args_list)
+                  (fun s inner hv t si hs he => step?_newObj_func_ctx s inner a args_list hv t si hs he)
+                  (fun s inner hv msg' si hs => step?_newObj_func_error s inner a args_list hv msg' si hs)
+                  hsteps_b herr hpres
+              exact ⟨evs, sf', hsteps',
+                hexpr'.trans hexpr_b, henv'.trans henv_b, hheap'.trans hheap_b,
+                htrace'.trans htrace_b, hobs_b⟩
+          · -- Sub-case B2: b has no HasReturnInHead — b is a trivialChain; peel b then IH on a
+            have htc_b := no_return_some_head_implies_trivial_chain b.depth b (Nat.le_refl _)
+              (fun ft => ANF.normalizeExpr a (fun et => ANF.normalizeExprList args_list (fun ats => ANF.bindComplex (.newObj ft et ats) K))) arg_t n m hnorm h_b_noret
+            obtain ⟨t_b, ht_b⟩ := normalizeExpr_trivialChain_apply b.depth b (Nat.le_refl _) htc_b
+            have hnorm_a : (ANF.normalizeExpr a (fun et => ANF.normalizeExprList args_list (fun ats => ANF.bindComplex (.newObj t_b et ats) K))).run n =
+                .ok (.return (some arg_t), m) := by rwa [ht_b] at hnorm
+            obtain ⟨v_b, evs_b, hsteps_b, hnoerr_b, hobs_b, hpres_b⟩ :=
+              trivialChain_eval_value (trivialChainCost b) b env heap trace funcs cs
+                htc_b (Nat.le_refl _) (fun x hfx => hewf x (VarFreeIn.newObj_func _ _ _ _ hfx))
+            have hsil_b : ∀ ev ∈ evs_b, ev = Core.TraceEvent.silent := by
+              intro ev hev
+              cases ev with
+              | silent => rfl
+              | log s =>
+                exfalso
+                have hmem : Core.TraceEvent.log s ∈ observableTrace evs_b := by
+                  simp only [observableTrace, List.mem_filter]; exact ⟨hev, by rfl⟩
+                simp [hobs_b] at hmem
+              | error s => exfalso; exact hnoerr_b _ hev s rfl
+            obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+              Steps_newObj_func_ctx_b a args_list hsteps_b
+                (fun ev hev msg => by rw [hsil_b ev hev]; exact Core.TraceEvent.noConfusion)
+                (fun smid evs1 h _ => hpres_b smid evs1 h)
+            have hws_eq : ws = ⟨.newObj (.lit v_b) a args_list, env, heap, trace ++ evs_b, funcs, cs⟩ := by
+              cases ws; simp_all
+            rw [hws_eq] at hwsteps
+            obtain ⟨_, ih_ok_a, ih_err_a⟩ :=
+              ih a ha_depth h_a env heap (trace ++ evs_b) funcs cs
+                (fun et => ANF.normalizeExprList args_list (fun ats => ANF.bindComplex (.newObj t_b et ats) K)) n m (some arg_t)
+                hnorm_a (fun x hfx => hewf x (VarFreeIn.newObj_env _ _ _ _ hfx))
+                (by cases hna with | newObj _ ha _ => exact ha)
+            refine ⟨?_, ?_, ?_⟩
+            · intro harg; exact absurd harg (by simp)
+            · intro t v harg heval
+              obtain ⟨evs_a, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_ok_a t v harg heval
+              have herr : ∃ msg, .error msg ∈ evs_a := observableTrace_return_has_error hobs_a
+              have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace ++ evs_b, funcs, cs⟩ evs1 smid →
+                  evs1.length ≤ evs_a.length →
+                  smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = (trace ++ evs_b) ++ evs1 := by
+                intro smid evs1 hsteps _hlen
+                exact ⟨Flat.Steps_preserves_funcs hsteps,
+                  Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                    refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
+                  Flat.Steps_trace_append hsteps⟩
+              obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+                Steps_compound_error_lift (.newObj (.lit v_b) · args_list)
+                  (fun s inner hv t' si hs he => step?_newObj_env_ctx s v_b inner args_list hv t' si hs he)
+                  (fun s inner hv msg si hs => step?_newObj_env_error s v_b inner args_list hv msg si hs)
+                  hsteps_a herr hpres
+              exact ⟨evs_b ++ evs_a, sf',
+                Flat.Steps.append hwsteps hsteps',
+                hexpr'.trans hexpr_a, henv'.trans henv_a, hheap'.trans hheap_a,
+                by rw [htrace'.trans htrace_a]; simp [List.append_assoc],
+                by rw [observableTrace_append, observableTrace_all_silent hsil_b, List.nil_append]; exact hobs_a⟩
+            · intro t msg harg heval
+              obtain ⟨evs_a, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_err_a t msg harg heval
+              have herr : ∃ msg', .error msg' ∈ evs_a := observableTrace_return_has_error hobs_a
+              have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace ++ evs_b, funcs, cs⟩ evs1 smid →
+                  evs1.length ≤ evs_a.length →
+                  smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = (trace ++ evs_b) ++ evs1 := by
+                intro smid evs1 hsteps _hlen
+                exact ⟨Flat.Steps_preserves_funcs hsteps,
+                  Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+                    refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
+                  Flat.Steps_trace_append hsteps⟩
+              obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+                Steps_compound_error_lift (.newObj (.lit v_b) · args_list)
+                  (fun s inner hv t' si hs he => step?_newObj_env_ctx s v_b inner args_list hv t' si hs he)
+                  (fun s inner hv msg' si hs => step?_newObj_env_error s v_b inner args_list hv msg' si hs)
+                  hsteps_a herr hpres
+              exact ⟨evs_b ++ evs_a, sf',
+                Flat.Steps.append hwsteps hsteps',
+                hexpr'.trans hexpr_a, henv'.trans henv_a, hheap'.trans hheap_a,
+                by rw [htrace'.trans htrace_a]; simp [List.append_assoc],
+                by rw [observableTrace_append, observableTrace_all_silent hsil_b, List.nil_append]; exact hobs_a⟩
     | newObj_args h_a => sorry -- list: return in args of newObj f env args
     | makeEnv_values h_a => sorry -- list: return in values of makeEnv values
     | objectLit_props h_a => sorry -- list: return in props of objectLit props
