@@ -7746,3 +7746,32 @@ The sorry moved from inside step_error_isLit to the call site in Steps_steppable
 ## Run: 2026-04-11T22:30:08+00:00
 
 ### 2026-04-11T22:30:20+00:00 Starting run — P0 labeled list tail + P1 break/continue non-head
+
+**Dead code removal: -2 sorries (30 → 28)**
+- Deleted `HasBreakInHead_step?_produces_error` + `HasBreakInHead_steps_to_break_error` (break)
+- Deleted `HasContinueInHead_step?_produces_error` + `HasContinueInHead_steps_to_continue_error` (continue)
+- All 4 were dead code (private, never used externally)
+- The `step?_produces_error` functions claimed single-step error for ALL `HasBreakInHead`/`HasContinueInHead` constructors, but non-head-position cases (seq_right, binary_rhs, call_args, makeEnv_values, etc.) need multi-step simulation — the statement was unprovable for those cases.
+
+**Blocker analysis for remaining sorries:**
+
+### P0: Labeled list tail (L11345, L11377, L11408) — BLOCKED
+Root cause: **Trivial mismatch**. `normalizeExpr_labeled_branch_step` conclusion requires `normalizeExpr sf'.expr K = body` (exact same body). But stepping a trivialChain element (e.g., `.var "x"`) to its value (`.lit (env("x"))`) changes the ANF trivial from `.var "x"` to `.lit (number)`. Since the trivial appears in the continuation that computes `body`, the body changes. Same blocker affects L11260, L11262, L11312, L11314.
+
+**Fix needed**: Either (a) change theorem to allow `k'` flexibility (like `normalizeExpr_labeled_step_sim` does), or (b) prove trivials are equivalent under `evalTrivial` (they evaluate to the same value but have different representations).
+
+### P1: Break/continue non-head (was L5005, L6143) — RESOLVED by deletion
+Dead code with false statement. Removed.
+
+### Throw compound (L14047) — CLOSABLE in principle
+`hasThrowInHead_compound_throw_step_sim` catches ~30 HasThrowInHead constructors in `| _ => sorry`. Head-position cases (~17) could be proved via induction + `Steps_compound_error_lift`. Non-head cases (~13) need trivialChain evaluation first. But LSP completely times out on this file (even line 100), making blind proof writing very risky.
+
+### Break/continue compound (L25507, L25578) — same pattern as throw compound
+
+### All other sorries — BLOCKED by deeper infrastructure issues
+- L11037-L11210: Skip per instructions
+- L21987+: Compound cases blocked by various issues
+- L23048, L23088: K-mismatch
+- L23929-23950: TryCatch context lifting
+### 2026-04-11T23:05:58+00:00 Run complete — -2 sorries (dead code removal), P0/P1/P2 blocked by trivial mismatch
+2026-04-11T23:06:16+00:00 DONE
