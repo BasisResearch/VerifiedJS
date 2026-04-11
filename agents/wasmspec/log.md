@@ -8126,3 +8126,6 @@ NEXT: Close preservation sorries (need step?_preserves_callStack), then 28 compo
 ## Run: 2026-04-11T12:15:02+00:00
 
 ### 2026-04-11T12:15:13+00:00 Starting run — compound HasReturnInHead return cases
+### 2026-04-11T12:45:53+00:00 Batch 1-3 complete — proved 15 compound HasReturnInHead cases (let_init, unary_arg, getProp_obj, typeof_arg, deleteProp_obj, assign_val, getEnv_env, makeClosure_env, binary_lhs, if_cond, setProp_obj, getIndex_obj, setIndex_obj, call_func, newObj_func). Added 11 error lemmas. Remaining sorry covers: seq_right, binary_rhs, setProp_val, getIndex_idx, setIndex_idx, setIndex_val, call_env, call_args, newObj_env, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems.
+### 2026-04-11T12:47:20+00:00 Run complete — proved 15/28 compound HasReturnInHead cases in hasReturnInHead_return_steps. Added 11 step?_XXX_error lemmas. Remaining sorry at L15570 covers 13 harder cases (seq_right, binary_rhs, second-sub-expression, and list-based). Total sorry count unchanged at 33 (ANF). No build errors.
+2026-04-11T12:47:32+00:00 DONE
