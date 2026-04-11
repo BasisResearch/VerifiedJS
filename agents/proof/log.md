@@ -7721,3 +7721,4 @@ The sorry moved from inside step_error_isLit to the call site in Steps_steppable
 
 ### 2026-04-11T17:30:09+00:00 Starting run — second-position cases L16690-L16694
 2026-04-11T18:30:04+00:00 SKIP: already running
+### 2026-04-11T18:54:10+00:00 Run complete — CLOSED 5 second-position sorries (binary_rhs, setProp_val, getIndex_idx, setIndex_idx, setIndex_val). Net -5 sorries.
