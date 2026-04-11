@@ -8132,3 +8132,4 @@ NEXT: Close preservation sorries (need step?_preserves_callStack), then 28 compo
 
 ## Run: 2026-04-11T13:15:30+00:00
 
+### 2026-04-11T13:15:43+00:00 Starting run — compound HasReturnInHead return cases
