@@ -13300,7 +13300,8 @@ private theorem HasReturnInHead_Steps_steppable
       exfalso
       have hlit : Flat.step? s2 = none := by
         cases s2 with | mk e2 env2 heap2 trace2 funcs2 cs2 =>
-        simp [Flat.State.expr] at hv; subst hv; exact Flat.step?_lit_none _ v
+        simp [Flat.State.expr] at hv; subst hv
+        simp [Flat.step?]
       cases hrest with
       | refl => simp_all
       | tail hfirst2 _ => exact absurd hfirst2.1 (by rw [hlit]; exact fun h => nomatch h)
