@@ -8178,3 +8178,6 @@ All 13 remaining constructors have the return in a non-first sub-expression. The
 **LSP status**: File too large (~21k lines) for LSP to process past ~L14500 within timeout. Cannot verify edits via LSP. Code follows exact patterns from proven cases.
 ### 2026-04-11T14:07:29+00:00 Run complete — split catch-all into 13 individual sorries, proved seq_right case A, fixed args✝ syntax error, assessed P1-P3
 2026-04-11T14:07:39+00:00 DONE
+
+## Run: 2026-04-11T14:15:38+00:00
+
