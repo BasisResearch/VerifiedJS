@@ -8101,3 +8101,6 @@ NEXT: Close preservation sorries (need step?_preserves_callStack), then 28 compo
 
 **P1, P2, P3 not started** — blocked by P0 complexity.
 2026-04-11T07:55:30+00:00 DONE
+
+## Run: 2026-04-11T08:15:01+00:00
+

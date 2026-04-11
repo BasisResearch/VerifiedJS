@@ -9,21 +9,10 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## ⚠️ YOUR LAST RUN CRASHED (exit code 1 at 07:00). Investigate.
-
-Before starting work, check the file is in a good state:
-```bash
-wc -l VerifiedJS/Proofs/ClosureConvertCorrect.lean
-```
-If the file was corrupted by the crash, restore from git:
-```bash
-git diff VerifiedJS/Proofs/ClosureConvertCorrect.lean | head -50
-```
-
-## STATUS — 15 CC sorries remain. Total: 47.
-- L1519: CLOSED (FuncsCorr init — nice work!)
-- All 15 remaining are architecturally blocked WITHOUT the CC_SimRel fix below
-- CCStateAgree: 6 (L5344, L5370, L8212, L8215, L8289, L8405)
+## STATUS — 14 CC sorries remain. Total: 47.
+- L1519: CLOSED
+- All remaining are architecturally blocked WITHOUT the CC_SimRel fix below
+- CCStateAgree: 5 (L5344, L5370, L8212, L8215, L8289, L8405)
 - Multi-step: 4 (L4995, L5944, L6152, L6163)
 - Error structural: 3 (L5163, L5262, L5501) ← YOUR TARGET
 - Unprovable: 1 (L6803)
@@ -43,13 +32,11 @@ After error: `convertExpr (.let name error body) = .let name (convertExpr error 
 
 ### THE FIX: Add error disjunct to CC_SimRel
 
-Modify CC_SimRel (L1491-1504) to add an error alternative for the expression correspondence:
+Modify CC_SimRel (L1491-1504) to add an error alternative:
 
 ```lean
   ((∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
     (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st) ∨
-   -- NEW: error disjunct — when Core expr wraps an error sub-expression,
-   -- Flat may have already unwrapped to just the error
    (∃ msg, sf.expr = .lit (.string msg) ∧ Core.exprHasErrorInHead sc.expr = true))
 ```
 
@@ -65,15 +52,15 @@ private def exprHasErrorInHead : Core.Expr → Bool
   | _ => false
 ```
 
-**Step 2**: Modify CC_SimRel to add the error disjunct (change last conjunct from `∃ ...` to `(∃ ...) ∨ (∃ msg, ...)`).
+**Step 2**: Modify CC_SimRel to add the error disjunct.
 
-**Step 3**: Fix closureConvert_init_related (L1511) — the initial state satisfies the left disjunct (Or.inl).
+**Step 3**: Fix closureConvert_init_related (L1511) — initial state satisfies left disjunct (Or.inl).
 
-**Step 4**: Fix closureConvert_step_simulation — at the suffices (L4911), the IH now gives a disjunction. In most cases, the error disjunct from the IH leads to contradictions (Core can't step an already-terminated error). For the 3 error sorries (L5163, L5262, L5501), prove the RIGHT disjunct.
+**Step 4**: Fix closureConvert_step_simulation — at the suffices, the IH now gives a disjunction. In most cases, the error disjunct from the IH leads to contradictions (Core can't step an already-terminated error). For the 3 error sorries (L5163, L5262, L5501), prove the RIGHT disjunct.
 
-**EXPECTED BLAST RADIUS**: Moderate. Every site that destructs the expression correspondence needs a case split. But the error disjunct should be quickly dismissable in most cases (Core.step? on an error-headed expr produces error, not a normal step).
+**EXPECTED BLAST RADIUS**: Moderate. Every site that destructs the expression correspondence needs a case split. But the error disjunct should be quickly dismissable in most cases.
 
-**EXPECTED RESULT**: -3 sorries (L5163, L5262, L5501 closed). Possibly more if error propagation helps elsewhere.
+**EXPECTED RESULT**: -3 sorries (L5163, L5262, L5501 closed).
 
 ### RISK MITIGATION
 Before modifying CC_SimRel, make a backup:
@@ -81,10 +68,10 @@ Before modifying CC_SimRel, make a backup:
 cp VerifiedJS/Proofs/ClosureConvertCorrect.lean /tmp/CC_backup_$(date +%s).lean
 ```
 
-After each step, check with `lean_diagnostic_messages` that you haven't increased error count beyond what's expected.
+After each step, check with `lean_diagnostic_messages` that you haven't increased error count beyond expected.
 
 ## SKIP (DO NOT ATTEMPT):
-- CCStateAgree (6): needs fundamental refactor
+- CCStateAgree (5): needs fundamental refactor
 - Multi-step (4): needs stuttering simulation infrastructure
 - L6803: semantic mismatch, UNPROVABLE
 - L8055: functionDef, multi-step + complex

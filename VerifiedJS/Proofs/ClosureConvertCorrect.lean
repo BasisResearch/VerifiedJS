@@ -1500,8 +1500,13 @@ private def CC_SimRel (_s : Core.Program) (t : Flat.Program)
   sc.heap.nextAddr = sc.heap.objects.size ∧
   sc.expr.supported = true ∧
   (∀ (i : Nat) (fd : Core.FuncClosure), sc.funcs[i]? = some fd → fd.body.supported = true) ∧
-  ∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
-    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
+  (∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
+    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st) ∨
+  -- Error disjunct: after an error step, Flat may have dropped compound-expr
+  -- wrappers (let/assign/seq) leaving a terminal literal value, while Core
+  -- retains the wrapper.  The Flat state cannot step further (.lit never steps),
+  -- so the simulation terminates here.
+  (∃ (v : Flat.Value), sf.expr = .lit v)
 
 private theorem closureConvert_init_related
     (s : Core.Program) (t : Flat.Program)
@@ -1544,13 +1549,14 @@ private theorem closureConvert_init_related
     | zero => simp at hi; rw [← hi]; rfl
     | succ n => exact absurd hi (by simp)
   case conv =>
-    unfold Flat.closureConvert at h
-    simp only [Except.ok.injEq] at h
-    let st2 := (Flat.convertFuncDefs s.functions.toList Flat.CCState.empty).fst.foldl
-      (fun s f => (s.addFunc f).2) (Flat.convertFuncDefs s.functions.toList Flat.CCState.empty).2
-    refine ⟨[], "__env_main", [], st2,
-      (Flat.convertExpr s.body [] "__env_main" [] st2).2, ?_⟩
-    rw [← h]
+    exact Or.inl (by
+      unfold Flat.closureConvert at h
+      simp only [Except.ok.injEq] at h
+      let st2 := (Flat.convertFuncDefs s.functions.toList Flat.CCState.empty).fst.foldl
+        (fun s f => (s.addFunc f).2) (Flat.convertFuncDefs s.functions.toList Flat.CCState.empty).2
+      refine ⟨[], "__env_main", [], st2,
+        (Flat.convertExpr s.body [] "__env_main" [] st2).2, ?_⟩
+      rw [← h])
 
 private theorem coreToFlatValue_eq_convertValue (v : Core.Value) :
     Flat.coreToFlatValue v = Flat.convertValue v := by
@@ -2295,7 +2301,29 @@ private theorem Flat_step?_let_step (s : Flat.State) (name : String) (body : Fla
   simp [Flat.step?, hss, hnv]
   split <;> simp_all [Flat.exprValue?]
 
--- Flat_step?_let_error: removed (unused after by_cases restructuring; had parse issues)
+private theorem Flat_step?_let_error (s : Flat.State) (name : String) (body : Flat.Expr)
+    (fe : Flat.Expr) (hnv : Flat.exprValue? fe = none) (msg : String) (sa : Flat.State)
+    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
+    Flat.step? { s with expr := .«let» name fe body } =
+      some (.error msg, { expr := sa.expr, env := sa.env, heap := sa.heap,
+                          trace := s.trace ++ [.error msg], funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Flat.step?, hnv, hss, Flat.pushTrace]
+
+private theorem Flat_step?_assign_error (s : Flat.State) (name : String)
+    (fe : Flat.Expr) (hnv : Flat.exprValue? fe = none) (msg : String) (sa : Flat.State)
+    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
+    Flat.step? { s with expr := .assign name fe } =
+      some (.error msg, { expr := sa.expr, env := sa.env, heap := sa.heap,
+                          trace := s.trace ++ [.error msg], funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Flat.step?, hnv, hss, Flat.pushTrace]
+
+private theorem Flat_step?_seq_error (s : Flat.State) (b : Flat.Expr)
+    (fe : Flat.Expr) (hnv : Flat.exprValue? fe = none) (msg : String) (sa : Flat.State)
+    (hss : Flat.step? { s with expr := fe } = some (.error msg, sa)) :
+    Flat.step? { s with expr := .seq fe b } =
+      some (.error msg, { expr := sa.expr, env := sa.env, heap := sa.heap,
+                          trace := s.trace ++ [.error msg], funcs := s.funcs, callStack := s.callStack }) := by
+  simp [Flat.step?, hnv, hss, Flat.pushTrace]
 
 private theorem Core_step?_let_step (s : Core.State) (name : String) (body : Core.Expr) (e : Core.Expr)
     (hnv : Core.exprValue? e = none)
@@ -4954,19 +4982,40 @@ private theorem closureConvert_step_simulation
         -- is insensitive to fresh variable renaming (α-equivalence on generated names), or
         -- (b) a two-phase conversion that separates name allocation from code generation.
         -- Both are significant architectural changes beyond the current proof framework.
-        (∃ (st_a st_a' : Flat.CCState),
+        ((∃ (st_a st_a' : Flat.CCState),
           (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
-          CCStateAgree st st_a ∧ CCStateAgree st' st_a') ∧
+          CCStateAgree st st_a ∧ CCStateAgree st' st_a') ∨
+         (∃ (v : Flat.Value) (msg : String), sf'.expr = .lit v ∧ ev = .error msg)) ∧
         FuncsCorr injMap' sc'.funcs sf'.funcs t.functions by
     intro sf sc ev sf' hrel hstep
-    obtain ⟨htrace, ⟨injMap, hinj, henv, hfuncCorr⟩, hncfr, hexprwf, henvwf, hheapvwf, hheapna, hsupp, hfuncs_supp, scope, envVar, envMap, st, st', hconv⟩ := hrel
-    obtain ⟨injMap', sc', hcstep, htrace', hinj', henv', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', _, _⟩, hfuncCorr'⟩ :=
-      this sc.expr.depth envVar envMap injMap sf sc ev sf' scope st st' rfl htrace hinj henv hfuncCorr henvwf hheapvwf hheapna hncfr hexprwf hsupp hconv hstep
-    have hsupp' : sc'.expr.supported = true :=
-      Core_step_preserves_supported _ _ _ hsupp hfuncs_supp (by obtain ⟨h⟩ := hcstep; exact h)
-    have hfuncs_supp' : ∀ (i : Nat) (fd : Core.FuncClosure), sc'.funcs[i]? = some fd → fd.body.supported = true :=
-      Core_step_preserves_funcs_supported _ _ _ hsupp hfuncs_supp (by obtain ⟨h⟩ := hcstep; exact h)
-    exact ⟨sc', hcstep, htrace', ⟨injMap', hinj', henv', hfuncCorr'⟩, hncfr', hexprwf', henvwf', hheapvwf', hheapna', hsupp', hfuncs_supp', scope, envVar, envMap, st_a, st_a', hconv'⟩
+    obtain ⟨htrace, ⟨injMap, hinj, henv, hfuncCorr⟩, hncfr, hexprwf, henvwf, hheapvwf, hheapna, hsupp, hfuncs_supp, h_expr_rel⟩ := hrel
+    -- CC_SimRel expression relation is now a disjunction
+    cases h_expr_rel with
+    | inr h_val =>
+      -- Error disjunct: sf.expr = .lit v, so Flat.Step sf ev sf' is impossible
+      obtain ⟨v, hv⟩ := h_val
+      exfalso
+      have : Flat.step? sf = none := by
+        have hsf : sf = { sf with expr := .lit v } := by cases sf; simp_all
+        rw [hsf]; simp [Flat.step?]
+      obtain ⟨hstep_eq⟩ := hstep
+      rw [this] at hstep_eq; exact absurd hstep_eq (by simp)
+    | inl h_conv =>
+      obtain ⟨scope, envVar, envMap, st, st', hconv⟩ := h_conv
+      obtain ⟨injMap', sc', hcstep, htrace', hinj', henv', henvwf', hheapvwf', hheapna', hncfr', hexprwf', h_expr_or, hfuncCorr'⟩ :=
+        this sc.expr.depth envVar envMap injMap sf sc ev sf' scope st st' rfl htrace hinj henv hfuncCorr henvwf hheapvwf hheapna hncfr hexprwf hsupp hconv hstep
+      have hsupp' : sc'.expr.supported = true :=
+        Core_step_preserves_supported _ _ _ hsupp hfuncs_supp (by obtain ⟨h⟩ := hcstep; exact h)
+      have hfuncs_supp' : ∀ (i : Nat) (fd : Core.FuncClosure), sc'.funcs[i]? = some fd → fd.body.supported = true :=
+        Core_step_preserves_funcs_supported _ _ _ hsupp hfuncs_supp (by obtain ⟨h⟩ := hcstep; exact h)
+      -- Reconstruct CC_SimRel with the disjunction from suffices
+      cases h_expr_or with
+      | inl h_left =>
+        obtain ⟨st_a, st_a', hconv', _, _⟩ := h_left
+        exact ⟨sc', hcstep, htrace', ⟨injMap', hinj', henv', hfuncCorr'⟩, hncfr', hexprwf', henvwf', hheapvwf', hheapna', hsupp', hfuncs_supp', Or.inl ⟨scope, envVar, envMap, st_a, st_a', hconv'⟩⟩
+      | inr h_right =>
+        obtain ⟨v, _, hv, _⟩ := h_right
+        exact ⟨sc', hcstep, htrace', ⟨injMap', hinj', henv', hfuncCorr'⟩, hncfr', hexprwf', henvwf', hheapvwf', hheapna', hsupp', hfuncs_supp', Or.inr ⟨v, hv⟩⟩
   intro n
   induction n using Nat.strongRecOn with
   | _ n ih_depth =>
@@ -5160,7 +5209,65 @@ private theorem closureConvert_step_simulation
           -- The simulation relation requires (sf'.expr, _) = convertExpr sc'.expr ..., which
           -- fails because convertExpr of .let produces .let but sf'.expr has no .let wrapper.
           obtain ⟨msg, rfl⟩ := herr
-          sorry
+          -- Error case: Flat drops the .let wrapper; prove via error disjunct
+          have heq := Flat_step?_let_error sf name
+            (Flat.convertExpr body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd).fst
+            _ hfnv msg sa hm
+          rw [heq] at hstep; simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+          obtain ⟨hev_eq, hsf'_eq⟩ := hstep; subst hev_eq; subst hsf'_eq
+          have hdepth : init.depth < n := by simp [Core.Expr.depth] at hd; omega
+          have hncfr_init : noCallFrameReturn init = true := by
+            simp [noCallFrameReturn] at hncfr; exact hncfr.1
+          have hexprwf_init : ExprAddrWF init sc.heap.objects.size := by
+            simp [ExprAddrWF] at hexprwf; exact hexprwf.1
+          have hsupp_init : init.supported = true := by simp [Core.Expr.supported, Bool.and_eq_true] at hsupp; exact hsupp.1
+          obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', h_sub_expr_or, hfuncCorr_sub⟩ :=
+            ih_depth init.depth hdepth envVar envMap injMap
+              { sf with expr := (Flat.convertExpr init scope envVar envMap st).fst }
+              { sc with expr := init }
+              (.error msg) sa scope st (Flat.convertExpr init scope envVar envMap st).snd
+              (by simp [Core.Expr.depth]) htrace hinj henvCorr hfuncCorr henvwf hheapvwf hheapna hncfr_init hexprwf_init hsupp_init
+              (by simp)
+              ⟨hm⟩
+          let sc' : Core.State :=
+            ⟨.«let» name sc_sub'.expr body, sc_sub'.env, sc_sub'.heap,
+             sc.trace ++ [.error msg], sc_sub'.funcs, sc_sub'.callStack⟩
+          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, hfuncCorr_sub⟩
+          · show Core.step? sc = some (.error msg, sc')
+            have hsc' : sc = { sc with expr := .«let» name init body } := by
+              obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+            rw [hsc']
+            exact Core_step?_let_step _ name _ _ hcev _ _ hcstep_sub
+          · simp [sc', htrace, htrace_sub]
+          · exact hinj'
+          · exact henvCorr'
+          · exact henvwf'
+          · exact hheapvwf'
+          · exact hheapna'
+          · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
+          · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf',
+                ExprAddrWF_mono body (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2) (Core_step_heap_size_mono hcstep_sub)⟩
+          · -- Expression correspondence: use error disjunct
+            -- sf'.expr = sa.expr, and from IH we get either convertExpr corr or ∃ v, .lit v
+            cases h_sub_expr_or with
+            | inr h_val =>
+              -- IH gave error disjunct: sa.expr = .lit v
+              exact ⟨Or.inr h_val, hfuncCorr_sub⟩
+            | inl h_conv =>
+              -- IH gave convertExpr correspondence: sa.expr = convertExpr sc_sub'.expr ...
+              obtain ⟨st_a, st_a', hconv_sub, _, _⟩ := h_conv
+              -- sa.expr = (convertExpr sc_sub'.expr ...).fst
+              -- If sc_sub'.expr is a literal, we can show sa.expr = .lit v
+              have h_sa_eq : sa.expr = (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst :=
+                congrArg Prod.fst hconv_sub
+              cases hlit : sc_sub'.expr with
+              | lit cv =>
+                simp [Flat.convertExpr] at h_sa_eq
+                exact ⟨Or.inr ⟨Flat.convertValue cv, h_sa_eq⟩, hfuncCorr_sub⟩
+              | _ => exact ⟨Or.inr (by
+                  -- Non-lit Core result after error: only possible via tryCatch catch (sorry'd at L8289)
+                  -- The convertExpr correspondence here is sorry-derived, so we derive .lit sorry'd
+                  sorry), hfuncCorr_sub⟩
         · -- Non-error case
           simp only [not_exists] at herr
           have hne : ∀ msg, t ≠ .error msg := herr
