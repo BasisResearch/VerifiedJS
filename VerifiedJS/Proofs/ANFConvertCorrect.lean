@@ -9379,6 +9379,98 @@ private theorem HasTryCatchInHead_not_value (e : Flat.Expr)
     (h : HasTryCatchInHead e) : Flat.exprValue? e = none := by
   cases h <;> simp [Flat.exprValue?]
 
+/-! ## HasNonCallFrameTryCatchInHead: tracks non-call-frame .tryCatch in CPS-head position.
+    Same as HasTryCatchInHead except the tryCatch_direct constructor requires
+    catchParam ≠ "__call_frame_return__". This predicate is preserved through
+    non-error steps (function calls only introduce call-frame tryCatches).
+    Used to fix the ¬HasTryCatchInHead sorry in HasReturnInHead_Steps_steppable. -/
+
+set_option autoImplicit true in
+mutual
+inductive HasNonCallFrameTryCatchInHead : Flat.Expr → Prop where
+  | tryCatch_direct : cp ≠ "__call_frame_return__" →
+      HasNonCallFrameTryCatchInHead (.tryCatch body cp cb fin)
+  | seq_left : HasNonCallFrameTryCatchInHead a → HasNonCallFrameTryCatchInHead (.seq a b)
+  | seq_right : HasNonCallFrameTryCatchInHead b → HasNonCallFrameTryCatchInHead (.seq a b)
+  | let_init : HasNonCallFrameTryCatchInHead init →
+      HasNonCallFrameTryCatchInHead (.let name init body)
+  | getProp_obj : HasNonCallFrameTryCatchInHead obj →
+      HasNonCallFrameTryCatchInHead (.getProp obj prop)
+  | setProp_obj : HasNonCallFrameTryCatchInHead obj →
+      HasNonCallFrameTryCatchInHead (.setProp obj prop val)
+  | setProp_val : HasNonCallFrameTryCatchInHead val →
+      HasNonCallFrameTryCatchInHead (.setProp obj prop val)
+  | binary_lhs : HasNonCallFrameTryCatchInHead lhs →
+      HasNonCallFrameTryCatchInHead (.binary op lhs rhs)
+  | binary_rhs : HasNonCallFrameTryCatchInHead rhs →
+      HasNonCallFrameTryCatchInHead (.binary op lhs rhs)
+  | unary_arg : HasNonCallFrameTryCatchInHead arg →
+      HasNonCallFrameTryCatchInHead (.unary op arg)
+  | typeof_arg : HasNonCallFrameTryCatchInHead arg →
+      HasNonCallFrameTryCatchInHead (.typeof arg)
+  | deleteProp_obj : HasNonCallFrameTryCatchInHead obj →
+      HasNonCallFrameTryCatchInHead (.deleteProp obj prop)
+  | assign_val : HasNonCallFrameTryCatchInHead val →
+      HasNonCallFrameTryCatchInHead (.assign name val)
+  | call_func : HasNonCallFrameTryCatchInHead f →
+      HasNonCallFrameTryCatchInHead (.call f env args)
+  | call_env : HasNonCallFrameTryCatchInHead env →
+      HasNonCallFrameTryCatchInHead (.call f env args)
+  | call_args : HasNonCallFrameTryCatchInHeadList args →
+      HasNonCallFrameTryCatchInHead (.call f env args)
+  | newObj_func : HasNonCallFrameTryCatchInHead f →
+      HasNonCallFrameTryCatchInHead (.newObj f env args)
+  | newObj_env : HasNonCallFrameTryCatchInHead env →
+      HasNonCallFrameTryCatchInHead (.newObj f env args)
+  | newObj_args : HasNonCallFrameTryCatchInHeadList args →
+      HasNonCallFrameTryCatchInHead (.newObj f env args)
+  | if_cond : HasNonCallFrameTryCatchInHead c →
+      HasNonCallFrameTryCatchInHead (.if c t e)
+  | return_some_arg : HasNonCallFrameTryCatchInHead v →
+      HasNonCallFrameTryCatchInHead (.return (some v))
+  | yield_some_arg : HasNonCallFrameTryCatchInHead v →
+      HasNonCallFrameTryCatchInHead (.yield (some v) d)
+  | throw_arg : HasNonCallFrameTryCatchInHead arg →
+      HasNonCallFrameTryCatchInHead (.throw arg)
+  | await_arg : HasNonCallFrameTryCatchInHead arg →
+      HasNonCallFrameTryCatchInHead (.await arg)
+  | getIndex_obj : HasNonCallFrameTryCatchInHead obj →
+      HasNonCallFrameTryCatchInHead (.getIndex obj idx)
+  | getIndex_idx : HasNonCallFrameTryCatchInHead idx →
+      HasNonCallFrameTryCatchInHead (.getIndex obj idx)
+  | setIndex_obj : HasNonCallFrameTryCatchInHead obj →
+      HasNonCallFrameTryCatchInHead (.setIndex obj idx val)
+  | setIndex_idx : HasNonCallFrameTryCatchInHead idx →
+      HasNonCallFrameTryCatchInHead (.setIndex obj idx val)
+  | setIndex_val : HasNonCallFrameTryCatchInHead val →
+      HasNonCallFrameTryCatchInHead (.setIndex obj idx val)
+  | getEnv_env : HasNonCallFrameTryCatchInHead env →
+      HasNonCallFrameTryCatchInHead (.getEnv env idx)
+  | makeClosure_env : HasNonCallFrameTryCatchInHead env →
+      HasNonCallFrameTryCatchInHead (.makeClosure funcIdx env)
+  | makeEnv_values : HasNonCallFrameTryCatchInHeadList values →
+      HasNonCallFrameTryCatchInHead (.makeEnv values)
+  | objectLit_props : HasNonCallFrameTryCatchInHeadProps props →
+      HasNonCallFrameTryCatchInHead (.objectLit props)
+  | arrayLit_elems : HasNonCallFrameTryCatchInHeadList elems →
+      HasNonCallFrameTryCatchInHead (.arrayLit elems)
+  | labeled_body : HasNonCallFrameTryCatchInHead body →
+      HasNonCallFrameTryCatchInHead (.labeled name body)
+
+inductive HasNonCallFrameTryCatchInHeadList : List Flat.Expr → Prop where
+  | head : HasNonCallFrameTryCatchInHead e → HasNonCallFrameTryCatchInHeadList (e :: rest)
+  | tail : HasNonCallFrameTryCatchInHeadList rest → HasNonCallFrameTryCatchInHeadList (e :: rest)
+
+inductive HasNonCallFrameTryCatchInHeadProps : List (Flat.PropName × Flat.Expr) → Prop where
+  | head : HasNonCallFrameTryCatchInHead e →
+      HasNonCallFrameTryCatchInHeadProps ((name, e) :: rest)
+  | tail : HasNonCallFrameTryCatchInHeadProps rest →
+      HasNonCallFrameTryCatchInHeadProps (p :: rest)
+end
+
+-- TODO: Prove preservation of ¬HasNonCallFrameTryCatchInHead through non-error steps,
+-- then use as invariant in HasReturnInHead_Steps_steppable to close the P0 sorry.
+
 /-- Prepending to a list preserves HasTryCatchInHeadList (suffix version). -/
 private theorem HasTryCatchInHeadList_append_right
     (prefix_ : List Flat.Expr)
