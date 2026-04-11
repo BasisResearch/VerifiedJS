@@ -1,3 +1,51 @@
+## Run: 2026-04-11T19:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 37 + CC 12 = **49 total**
+- **Delta from last run (15:30)**: -11 (60→49). DOWN by 11.
+- **Delta from 18:05 prompt update**: -6 (55→49). proof agent closed 6 more.
+- **Explanation for decrease**: proof agent closed setProp_val, getIndex_idx, setIndex_idx, setIndex_val (4 second-position HasReturnInHead cases) plus 2 additional cases between 15:30-18:05.
+- **BUILD**: Not verified (git blocked for agents). File timestamps show active editing (ANF 19:13).
+
+### What Happened Since Last Run (15:30→19:05)
+1. **proof agent**: EXCELLENT. Closed 6 ANF sorries. All 4 second-position cases from prompt (setProp_val, getIndex_idx, setIndex_idx, setIndex_val) done. Template pattern working perfectly.
+2. **wasmspec agent**: Working on HasNonCallFrameTryCatchInHead for L15343. No sorry reduction yet.
+3. **jsspec agent**: Investigating CCStateAgree Path A (position-based naming). No sorry reduction yet but investigating root cause fix.
+
+### Sorry Classification (49 total, UPDATED line numbers)
+**ANF (37):**
+- Break/continue list: 2 (L4906, L6044)
+- TrivialChain zone: 12 (L10843-L11214) — LSP timeout, deferred
+- Compound throw: 1 (L13853)
+- HasTryCatchInHead branch: 1 (L15343) — wasmspec P0
+- Second-position HasReturnInHead: 2 (L18644 call_env, L18646 newObj_env) — proof P0
+- List HasReturnInHead: 5 (L18645, L18647-18650) — proof P1
+- Compound HasAwait/YieldInHead: 2 (L19001, L19174) — blocked
+- Return/yield .let compound: 3 (L19230, L19234, L19235) — wasmspec P2
+- While condition: 2 (L19325, L19337) — BLOCKED
+- If branch: 2 (L20062, L20102) — BLOCKED
+- TryCatch: 3 (L20943, L20961, L20964) — BLOCKED
+- End-of-file: 2 (L22521, L22592) — BLOCKED
+
+**CC (12):**
+- Multi-step simulation: 3 (L5509, L6814, L6825) — BLOCKED
+- CCStateAgree: 5 (L5957, L5983, L8869, L8946, L9062) — jsspec Path A target
+- CCStateAgree + tryCatch finally: 1 (L8872)
+- Axiom/semantic mismatch: 1 (L7465) — UNPROVABLE
+- FuncsCorr/functionDef: 1 (L8712)
+- Multi-step (call): 1 (L6606)
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: Target call_env (L18644) + newObj_env (L18646). Template from setIndex_val. Clear instructions with exact lemma names. Expected: -2 sorries.
+2. **wasmspec**: Continue HasNonCallFrameTryCatchInHead for L15343. Expected: -1 sorry.
+3. **jsspec**: Continue CCStateAgree Path A investigation. Expected: -5 if feasible.
+
+### Critical Path
+1. **L18644+L18646 (call_env, newObj_env)** → -2. proof P0. MOST TRACTABLE.
+2. **L15343 (HasTryCatchInHead)** → -1. wasmspec P0. Infrastructure work.
+3. **CCStateAgree fix** → -5. jsspec Path A. HIGH IMPACT if feasible.
+4. Best case next run: ~41-43.
+
 ## Run: 2026-04-11T15:30:15+00:00
 
 ### Metrics
@@ -443,3 +491,4 @@
 
 ## Run: 2026-04-11T19:05:01+00:00
 
+2026-04-11T19:18:26+00:00 DONE

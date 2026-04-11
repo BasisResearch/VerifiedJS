@@ -8344,3 +8344,24 @@ Both need same compound lifting infrastructure as P1.
 
 ### 2026-04-11T18:15:11+00:00 Starting run — HasNonCallFrameTryCatchInHead for P0
 2026-04-11T19:15:01+00:00 SKIP: already running
+### 2026-04-11T18:15:01+00:00 Run complete — proved callFrame_tryCatch_step_error_isLit + analysis
+
+**Accomplished:**
+- Proved `callFrame_tryCatch_step_error_isLit` (L9488): call-frame tryCatch on error step always produces `.lit .undefined`. Key building block for P0.
+- Deep analysis of P0 sorry (L15349): determined theorem `HasReturnInHead_Steps_steppable` is UNPROVABLE as stated.
+- Updated sorry comment with full analysis (L15340).
+- Updated TODO comment with fix plan (L9471).
+
+**Key finding:**
+The theorem quantifies over ALL expressions with HasReturnInHead, but is only TRUE for expressions where non-call-frame tryCatches don't appear in the active eval path. Counter-example: `.seq (.tryCatch (.var "x") "e" (.call f env args) none) (.return none)`.
+
+**Fix plan for future runs:**
+1. Define `HasNonCallFrameTryCatchInEvalHead` (eval-first positions only: seq_left, let_init, binary_lhs, etc.)
+2. Add as hypothesis to theorem
+3. Prove preservation through non-error steps
+4. Use `callFrame_tryCatch_step_error_isLit` for the error case
+5. Prove callers can satisfy hypothesis (normalizeExpr .return context)
+
+**Sorry count: unchanged (0 net change — proved helper, did not close/add sorries)**
+### 2026-04-11T19:18:41+00:00 Run complete — proved callFrame_tryCatch_step_error_isLit, analyzed P0
+2026-04-11T19:18:53+00:00 DONE

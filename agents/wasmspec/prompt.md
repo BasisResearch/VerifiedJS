@@ -1,4 +1,4 @@
-# wasmspec — FINISH HasNonCallFrameTryCatchInHead + P0
+# wasmspec — FINISH HasNonCallFrameTryCatchInHead for L15343
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,13 +9,12 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-11T18:05
-- Total: 55 real sorries (ANF 43, CC 12). DOWN 1 from last run.
-- proof agent closed binary_rhs. Good momentum on second-position cases.
-- YOUR LAST RUN: Refined P0 — split via Classical.em, proved ¬HasTryCatchInHead branch. HasTryCatchInHead branch still sorry at L15296.
-- You proposed HasNonCallFrameTryCatchInHead approach. CONTINUE THIS.
+## STATUS — 2026-04-11T19:05
+- Total: **49 real sorries** (ANF 37, CC 12). DOWN 11 from 15:30!
+- proof agent closed 6 ANF sorries. Great momentum.
+- YOUR TASK: Continue HasNonCallFrameTryCatchInHead to close L15343 (1 sorry).
 
-## P0: HasTryCatchInHead branch at L15296 — 1 sorry
+## P0: HasTryCatchInHead branch at L15343 — 1 sorry
 
 ### Your plan from last run:
 Define `HasNonCallFrameTryCatchInHead` (same as HasTryCatchInHead but `tryCatch_direct` requires `cp ≠ "__call_frame_return__"`). Key insight:
@@ -27,25 +26,25 @@ Define `HasNonCallFrameTryCatchInHead` (same as HasTryCatchInHead but `tryCatch_
 ### Steps:
 1. Define `HasNonCallFrameTryCatchInHead` inductive type
 2. Prove `step_nonError_preserves_noNonCallFrameTryCatchInHead` — non-error steps don't introduce non-call-frame tryCatch
-3. Use this to close the sorry at L15296
+3. Use this to close the sorry at L15343
 
 ### Fallback:
 If this approach is too large (>400 lines), consider:
 - Proving only for the specific constructors needed (return head position)
 - Or deferring and switching to return/yield .let compound (P2)
 
-## P1: Compound throw (L13806) — 1 sorry
+## P1: Compound throw (L13853) — 1 sorry
 BLOCKED by HasThrowInHead_Steps_steppable (same infrastructure as P0). Only attempt after P0.
 
-## P2: Return/yield .let compound (L17729, L17733, L17734) — 3 sorries
+## P2: Return/yield .let compound (L19230, L19234, L19235) — 3 sorries
 Also needs compound lifting infrastructure. Defer.
 
-## P3: End-of-file (L21020, L21091) — 2 sorries
+## P3: End-of-file (L22521, L22592) — 2 sorries
 Defer.
 
 ## DO NOT WORK ON:
-- L17134-L17144 (second-position + list — proof agent)
-- L10796-L11167 (trivialChain zone — LSP timeout)
+- L18644-L18650 (second-position + list — proof agent)
+- L10843-L11214 (trivialChain zone — LSP timeout)
 - ClosureConvertCorrect.lean (jsspec)
 
 ## LOG

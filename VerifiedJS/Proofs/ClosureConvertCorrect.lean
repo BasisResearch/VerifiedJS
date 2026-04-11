@@ -958,6 +958,207 @@ end
     A formal `convertExpr_state_id_no_functionDef` theorem would enable proving
     CCStateAgree for branches without functionDef nodes. See log 2026-04-11. -/
 
+/-! ### noFunctionDef predicate: expression contains no functionDef nodes -/
+
+mutual
+def noFunctionDef : Core.Expr → Bool
+  | .functionDef _ _ _ _ _ => false
+  | .seq a b => noFunctionDef a && noFunctionDef b
+  | .«let» _ i b => noFunctionDef i && noFunctionDef b
+  | .«if» c t e => noFunctionDef c && noFunctionDef t && noFunctionDef e
+  | .while_ c b => noFunctionDef c && noFunctionDef b
+  | .tryCatch b _ c f => noFunctionDef b && noFunctionDef c &&
+      (match f with | some x => noFunctionDef x | none => true)
+  | .call f args => noFunctionDef f && listNoFunctionDef args
+  | .newObj f args => noFunctionDef f && listNoFunctionDef args
+  | .objectLit ps => propListNoFunctionDef ps
+  | .arrayLit es => listNoFunctionDef es
+  | .assign _ v => noFunctionDef v
+  | .getProp o _ => noFunctionDef o
+  | .setProp o _ v => noFunctionDef o && noFunctionDef v
+  | .getIndex o i => noFunctionDef o && noFunctionDef i
+  | .setIndex o i v => noFunctionDef o && noFunctionDef i && noFunctionDef v
+  | .deleteProp o _ => noFunctionDef o
+  | .typeof a => noFunctionDef a
+  | .unary _ a => noFunctionDef a
+  | .binary _ l r => noFunctionDef l && noFunctionDef r
+  | .throw a => noFunctionDef a
+  | .forIn _ o b => noFunctionDef o && noFunctionDef b
+  | .forOf _ i b => noFunctionDef i && noFunctionDef b
+  | .labeled _ b => noFunctionDef b
+  | .«return» arg => match arg with | some e => noFunctionDef e | none => true
+  | .yield arg _ => match arg with | some e => noFunctionDef e | none => true
+  | .await a => noFunctionDef a
+  | _ => true
+def listNoFunctionDef : List Core.Expr → Bool
+  | [] => true
+  | e :: rest => noFunctionDef e && listNoFunctionDef rest
+def propListNoFunctionDef : List (Core.PropName × Core.Expr) → Bool
+  | [] => true
+  | (_, e) :: rest => noFunctionDef e && propListNoFunctionDef rest
+end
+
+/-! ### State identity theorem: noFunctionDef expressions leave CCState unchanged -/
+
+mutual
+private theorem convertExpr_state_id_no_functionDef (e : Core.Expr)
+    (h : noFunctionDef e = true)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    (Flat.convertExpr e scope envVar envMap st).snd = st := by
+  cases e with
+  | lit _ => simp [Flat.convertExpr]
+  | var n => simp only [Flat.convertExpr]; cases Flat.lookupEnv envMap n <;> simp
+  | this => simp [Flat.convertExpr]
+  | «break» _ => simp [Flat.convertExpr]
+  | «continue» _ => simp [Flat.convertExpr]
+  | forIn _ _ _ => simp [Flat.convertExpr]
+  | forOf _ _ _ => simp [Flat.convertExpr]
+  | functionDef _ _ _ _ _ => simp [noFunctionDef] at h
+  | «let» name init body =>
+    simp only [Flat.convertExpr]
+    have hn : noFunctionDef init = true ∧ noFunctionDef body = true := by
+      simp [noFunctionDef, Bool.and_eq_true] at h; exact h
+    have hi := convertExpr_state_id_no_functionDef init hn.1 scope envVar envMap st
+    rw [hi]; exact convertExpr_state_id_no_functionDef body hn.2 (name :: scope) envVar envMap st
+  | assign _ value =>
+    simp only [Flat.convertExpr]
+    exact convertExpr_state_id_no_functionDef value (by simp [noFunctionDef] at h; exact h) scope envVar envMap st
+  | «if» cond then_ else_ =>
+    simp only [Flat.convertExpr]
+    have hn := by simp [noFunctionDef, Bool.and_eq_true] at h; exact h
+    have hc := convertExpr_state_id_no_functionDef cond hn.1.1 scope envVar envMap st; rw [hc]
+    have ht := convertExpr_state_id_no_functionDef then_ hn.1.2 scope envVar envMap st; rw [ht]
+    exact convertExpr_state_id_no_functionDef else_ hn.2 scope envVar envMap st
+  | seq a b =>
+    simp only [Flat.convertExpr]
+    have hn := by simp [noFunctionDef, Bool.and_eq_true] at h; exact h
+    have ha := convertExpr_state_id_no_functionDef a hn.1 scope envVar envMap st; rw [ha]
+    exact convertExpr_state_id_no_functionDef b hn.2 scope envVar envMap st
+  | call callee args =>
+    simp only [Flat.convertExpr]
+    have hn := by simp [noFunctionDef, Bool.and_eq_true] at h; exact h
+    have hc := convertExpr_state_id_no_functionDef callee hn.1 scope envVar envMap st; rw [hc]
+    exact convertExprList_state_id_no_functionDef args hn.2 scope envVar envMap st
+  | newObj callee args =>
+    simp only [Flat.convertExpr]
+    have hn := by simp [noFunctionDef, Bool.and_eq_true] at h; exact h
+    have hc := convertExpr_state_id_no_functionDef callee hn.1 scope envVar envMap st; rw [hc]
+    exact convertExprList_state_id_no_functionDef args hn.2 scope envVar envMap st
+  | getProp obj _ =>
+    simp only [Flat.convertExpr]
+    exact convertExpr_state_id_no_functionDef obj (by simp [noFunctionDef] at h; exact h) scope envVar envMap st
+  | setProp obj _ value =>
+    simp only [Flat.convertExpr]
+    have hn := by simp [noFunctionDef, Bool.and_eq_true] at h; exact h
+    have ho := convertExpr_state_id_no_functionDef obj hn.1 scope envVar envMap st; rw [ho]
+    exact convertExpr_state_id_no_functionDef value hn.2 scope envVar envMap st
+  | getIndex obj idx =>
+    simp only [Flat.convertExpr]
+    have hn := by simp [noFunctionDef, Bool.and_eq_true] at h; exact h
+    have ho := convertExpr_state_id_no_functionDef obj hn.1 scope envVar envMap st; rw [ho]
+    exact convertExpr_state_id_no_functionDef idx hn.2 scope envVar envMap st
+  | setIndex obj idx value =>
+    simp only [Flat.convertExpr]
+    have hn := by simp [noFunctionDef, Bool.and_eq_true] at h; exact h
+    have ho := convertExpr_state_id_no_functionDef obj hn.1.1 scope envVar envMap st; rw [ho]
+    have hi := convertExpr_state_id_no_functionDef idx hn.1.2 scope envVar envMap st; rw [hi]
+    exact convertExpr_state_id_no_functionDef value hn.2 scope envVar envMap st
+  | deleteProp obj _ =>
+    simp only [Flat.convertExpr]
+    exact convertExpr_state_id_no_functionDef obj (by simp [noFunctionDef] at h; exact h) scope envVar envMap st
+  | typeof arg =>
+    simp only [Flat.convertExpr]
+    exact convertExpr_state_id_no_functionDef arg (by simp [noFunctionDef] at h; exact h) scope envVar envMap st
+  | unary _ arg =>
+    simp only [Flat.convertExpr]
+    exact convertExpr_state_id_no_functionDef arg (by simp [noFunctionDef] at h; exact h) scope envVar envMap st
+  | binary _ lhs rhs =>
+    simp only [Flat.convertExpr]
+    have hn := by simp [noFunctionDef, Bool.and_eq_true] at h; exact h
+    have hl := convertExpr_state_id_no_functionDef lhs hn.1 scope envVar envMap st; rw [hl]
+    exact convertExpr_state_id_no_functionDef rhs hn.2 scope envVar envMap st
+  | objectLit props =>
+    simp only [Flat.convertExpr]
+    exact convertPropList_state_id_no_functionDef props (by simp [noFunctionDef] at h; exact h) scope envVar envMap st
+  | arrayLit elems =>
+    simp only [Flat.convertExpr]
+    exact convertExprList_state_id_no_functionDef elems (by simp [noFunctionDef] at h; exact h) scope envVar envMap st
+  | throw arg =>
+    simp only [Flat.convertExpr]
+    exact convertExpr_state_id_no_functionDef arg (by simp [noFunctionDef] at h; exact h) scope envVar envMap st
+  | tryCatch body catchParam catchBody finally_ =>
+    simp only [Flat.convertExpr]
+    have hb : noFunctionDef body = true := by
+      simp [noFunctionDef, Bool.and_eq_true] at h; exact h.1.1
+    have hc : noFunctionDef catchBody = true := by
+      simp [noFunctionDef, Bool.and_eq_true] at h; exact h.1.2
+    have hf : (match finally_ with | some e => noFunctionDef e | none => true) = true := by
+      simp [noFunctionDef, Bool.and_eq_true] at h; exact h.2
+    have hb' := convertExpr_state_id_no_functionDef body hb scope envVar envMap st; rw [hb']
+    have hc' := convertExpr_state_id_no_functionDef catchBody hc (catchParam :: scope) envVar envMap st; rw [hc']
+    exact convertOptExpr_state_id_no_functionDef finally_ hf scope envVar envMap st
+  | while_ cond body =>
+    simp only [Flat.convertExpr]
+    have hn := by simp [noFunctionDef, Bool.and_eq_true] at h; exact h
+    have hc := convertExpr_state_id_no_functionDef cond hn.1 scope envVar envMap st; rw [hc]
+    exact convertExpr_state_id_no_functionDef body hn.2 scope envVar envMap st
+  | «return» arg =>
+    simp only [Flat.convertExpr]
+    exact convertOptExpr_state_id_no_functionDef arg (by simp [noFunctionDef] at h; cases arg <;> simp_all) scope envVar envMap st
+  | labeled _ body =>
+    simp only [Flat.convertExpr]
+    exact convertExpr_state_id_no_functionDef body (by simp [noFunctionDef] at h; exact h) scope envVar envMap st
+  | yield arg delegate =>
+    simp only [Flat.convertExpr]
+    exact convertOptExpr_state_id_no_functionDef arg (by simp [noFunctionDef] at h; cases arg <;> simp_all) scope envVar envMap st
+  | await arg =>
+    simp only [Flat.convertExpr]
+    exact convertExpr_state_id_no_functionDef arg (by simp [noFunctionDef] at h; exact h) scope envVar envMap st
+  termination_by sizeOf e
+  decreasing_by all_goals (try simp_wf) <;> omega
+
+private theorem convertExprList_state_id_no_functionDef (es : List Core.Expr)
+    (h : listNoFunctionDef es = true)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    (Flat.convertExprList es scope envVar envMap st).snd = st := by
+  cases es with
+  | nil => simp [Flat.convertExprList]
+  | cons e rest =>
+    simp only [Flat.convertExprList]
+    have hn := by simp [listNoFunctionDef, Bool.and_eq_true] at h; exact h
+    have he := convertExpr_state_id_no_functionDef e hn.1 scope envVar envMap st; rw [he]
+    exact convertExprList_state_id_no_functionDef rest hn.2 scope envVar envMap st
+  termination_by sizeOf es
+  decreasing_by all_goals (try simp_wf) <;> omega
+
+private theorem convertPropList_state_id_no_functionDef (ps : List (Core.PropName × Core.Expr))
+    (h : propListNoFunctionDef ps = true)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    (Flat.convertPropList ps scope envVar envMap st).snd = st := by
+  cases ps with
+  | nil => simp [Flat.convertPropList]
+  | cons p rest =>
+    obtain ⟨pn, pe⟩ := p
+    simp only [Flat.convertPropList]
+    have hn := by simp [propListNoFunctionDef, Bool.and_eq_true] at h; exact h
+    have he := convertExpr_state_id_no_functionDef pe hn.1 scope envVar envMap st; rw [he]
+    exact convertPropList_state_id_no_functionDef rest hn.2 scope envVar envMap st
+  termination_by sizeOf ps
+  decreasing_by all_goals (try simp_wf) <;> omega
+
+private theorem convertOptExpr_state_id_no_functionDef (oe : Option Core.Expr)
+    (h : (match oe with | some e => noFunctionDef e | none => true) = true)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st : Flat.CCState) :
+    (Flat.convertOptExpr oe scope envVar envMap st).snd = st := by
+  cases oe with
+  | none => simp [Flat.convertOptExpr]
+  | some e =>
+    simp only [Flat.convertOptExpr]
+    exact convertExpr_state_id_no_functionDef e (by simp at h; exact h) scope envVar envMap st
+  termination_by sizeOf oe
+  decreasing_by all_goals simp_all <;> omega
+end
+
 mutual
 /-- Returns true if the expression never uses "__call_frame_return__" as a tryCatch catchParam.
     Source programs from `elaborate` satisfy this predicate since "__call_frame_return__" is only

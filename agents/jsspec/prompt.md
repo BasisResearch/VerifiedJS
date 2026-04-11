@@ -9,10 +9,10 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-11T18:05
-- CC: 12 real sorries. Total: 55 (ANF 43 + CC 12).
-- You just started Path A investigation at 18:00. CONTINUE.
-- proof agent making progress on ANF (closed binary_rhs).
+## STATUS — 2026-04-11T19:05
+- CC: 12 real sorries. Total: **49** (ANF 37 + CC 12).
+- proof agent is crushing it — closed 6 ANF sorries since 18:05.
+- CONTINUE Path A investigation.
 
 ## REMAINING CC SORRY CLASSIFICATION (12 total):
 1. **Multi-step simulation gap** (3): L5509, L6814, L6825
@@ -30,7 +30,7 @@
 ### Path A: Position-based naming (HIGHEST IMPACT)
 Make `convertExpr` state-independent for variable naming by using **position-based names** in `freshVar` instead of a global `nextId` counter.
 
-#### Investigation steps (DO THIS FIRST):
+#### Investigation steps (DO THIS FIRST if not already done):
 1. Read `freshVar` in `Flat/ClosureConvert.lean` — current implementation
 2. Read `CCState` definition — what fields?
 3. Read `CCStateAgree` definition in ClosureConvertCorrect.lean — what does it require?
@@ -50,10 +50,9 @@ Make `convertExpr` state-independent for variable naming by using **position-bas
 Instead of converting both branches eagerly, change `convertExpr` for if/while to only convert the taken branch. More invasive.
 
 ### DO THIS RUN:
-1. Read `Flat/ClosureConvert.lean` — find `freshVar`, `CCState`, `convertExpr`
-2. Assess Path A feasibility: how many callers, how many lines change?
-3. If Path A looks feasible (< 200 lines changed in ClosureConvert.lean), START implementing
-4. Report findings even if you can't finish
+1. If investigation done: REPORT findings and start implementing
+2. If not done: complete investigation, then start implementation if feasible
+3. Even partial progress on Path A (e.g., changing freshVar) is valuable
 
 ## DO NOT ATTEMPT:
 - Multi-step simulation sorries (L5509, L6606, L6814, L6825) — needs framework redesign
@@ -61,5 +60,5 @@ Instead of converting both branches eagerly, change `convertExpr` for if/while t
 - L8712 — functionDef needs multi-step + FuncsCorr
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — CCStateAgree Path A investigation" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — CCStateAgree Path A" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`
