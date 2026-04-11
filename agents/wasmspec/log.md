@@ -8311,3 +8311,29 @@ For list cases (`makeEnv_values`, `objectLit_props`, `arrayLit_elems`):
 ## Run: 2026-04-11T17:15:01+00:00
 
 ### 2026-04-11T17:15:08+00:00 Starting run — noTryCatchInHead + compound throw
+
+#### Progress
+- Added `HasThrowInHeadList_valuesFromExprList_none` (L13982): proves HasThrowInHeadList implies valuesFromExprList? is none. Infrastructure for P1 compound throw.
+- Added `hasThrowInHead_callStackSafe` (L13994): proves HasThrowInHead implies callStack safety (no call-frame tryCatch, no all-value call). Infrastructure for P1 compound throw.
+- Refactored P0 sorry (L15200): split on `HasTryCatchInHead s1.expr` via Classical.em. The `¬HasTryCatchInHead` branch is now fully proven using existing `HasReturnInHead_step_error_isLit`. The `HasTryCatchInHead` branch has a targeted sorry.
+
+#### Analysis: P0 approach
+The `HasTryCatchInHead` branch at L15204 requires proving that all tryCatches in head position during Steps are call-frame tryCatches (catchParam = "__call_frame_return__"). Key findings:
+1. Non-call-frame tryCatches come only from source try/catch — never introduced by stepping
+2. Call-frame tryCatches are introduced by function calls only
+3. normalizeExpr producing `.return` implies no tryCatch in the initial expression's head chain (because tryCatch case in normalizeExpr always produces .tryCatch output)
+4. So intermediate states can only have call-frame tryCatches in head
+
+FIX PLAN: Define `HasNonCallFrameTryCatchInHead` (same constructors as HasTryCatchInHead but `tryCatch_direct` requires `cp ≠ "__call_frame_return__"`). Prove preservation through non-error steps. Use `¬HasNonCallFrameTryCatchInHead` as invariant in HasReturnInHead_Steps_steppable.
+
+#### Analysis: P1 compound throw (L13744)
+Needs `induction hth` (change from `cases hth`) plus IH for recursive calls. Each compound case needs:
+1. Decompose normalizeExpr on compound expression
+2. Apply IH on inner expression
+3. Lift Steps through wrapper via Steps_compound_error_lift
+4. Prove callStack preservation (needs hasThrowInHead_callStackSafe + HasThrowInHead_Steps_steppable)
+
+BLOCKED BY: HasThrowInHead_Steps_steppable (analogous to HasReturnInHead_Steps_steppable but for throw) + same ¬HasTryCatchInHead infrastructure.
+
+#### Analysis: P2, P3
+Both need same compound lifting infrastructure as P1.
