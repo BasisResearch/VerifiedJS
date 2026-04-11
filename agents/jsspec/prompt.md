@@ -1,4 +1,4 @@
-# jsspec — RELAX CC_SimRel FOR ERROR STATES (closes 3 sorries)
+# jsspec — CLOSE CCStateAgree SORRIES (L5491 + L5517 first)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,73 +9,69 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 14 CC sorries remain. Total: 47.
-- L1519: CLOSED
-- All remaining are architecturally blocked WITHOUT the CC_SimRel fix below
-- CCStateAgree: 5 (L5344, L5370, L8212, L8215, L8289, L8405)
-- Multi-step: 4 (L4995, L5944, L6152, L6163)
-- Error structural: 3 (L5163, L5262, L5501) ← YOUR TARGET
-- Unprovable: 1 (L6803)
-- functionDef: 1 (L8055)
+## STATUS — 15 CC sorries remain. Total: 51.
+- CC_SimRel error disjunct: DONE (3 error sites filled, 3 tryCatch-init edge cases added)
+- The 3 new tryCatch-init sorries (L5265, L5409, L5696) are BLOCKED by L8484
+- All multi-step sorries (L5044, L6139, L6347, L6358) are BLOCKED
+- L6998 is UNPROVABLE
+- L8250 (functionDef) is BLOCKED (multi-step + complex)
 
-## P0: FIX ERROR STRUCTURAL MISMATCH (L5163, L5262, L5501) — 3 sorries
+## SORRY CLASSIFICATION (15 total)
+- CCStateAgree: 5 (L5491, L5517, L8407, L8484, L8600) ← YOUR TARGET
+- TryCatch-init edge: 3 (L5265, L5409, L5696) — blocked by L8484
+- Multi-step: 3 (L5044, L6347, L6358)
+- Non-consoleLog call: 1 (L6139) — multi-step
+- Unprovable: 1 (L6998)
+- functionDef: 1 (L8250)
+- tryCatch finally: 1 (L8410)
 
-### THE PROBLEM
-When Flat.step? processes a compound expr (.let, .assign, .seq) and the sub-expression steps to an error, Flat DROPS the wrapper: `sf'.expr = error_result`. But Core.step? KEEPS the wrapper: `sc'.expr = .let name error_result body`.
+## P0: CCStateAgree AT L5491 AND L5517
 
-CC_SimRel (L1503) requires:
-```
-∃ (scope envVar envMap st st'), (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st
-```
-
-After error: `convertExpr (.let name error body) = .let name (convertExpr error ...) (convertExpr body ...)`, which is `.let ...`, but `sf'.expr` has NO `.let`. Mismatch.
-
-### THE FIX: Add error disjunct to CC_SimRel
-
-Modify CC_SimRel (L1491-1504) to add an error alternative:
-
+### What CCStateAgree is
 ```lean
-  ((∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
-    (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st) ∨
-   (∃ msg, sf.expr = .lit (.string msg) ∧ Core.exprHasErrorInHead sc.expr = true))
+private abbrev CCStateAgree (st1 st2 : Flat.CCState) : Prop :=
+  st1.nextId = st2.nextId ∧ st1.funcs.size = st2.funcs.size
 ```
 
-### STEP-BY-STEP PLAN
+### The problem at L5491 (if_branch, else case)
+After stepping the condition sub-expression, the suffices needs `CCStateAgree st st_a` where:
+- `st` = the state BEFORE converting the full if-expression
+- `st_a` = some state that makes `(sf'.expr, st_a') = Flat.convertExpr sc'.expr ...`
 
-**Step 1**: Define `exprHasErrorInHead` in ClosureConvertCorrect.lean (local defn):
-```lean
-private def exprHasErrorInHead : Core.Expr → Bool
-  | .error _ => true
-  | .let _ init _ => exprHasErrorInHead init
-  | .assign _ init => exprHasErrorInHead init
-  | .seq a _ => exprHasErrorInHead a
-  | _ => false
+The issue: `convertExpr (.if cond then_ else_)` converts `cond`, `then_`, `else_` sequentially. After cond steps, the remaining expression (`.if cond' then_ else_`) needs conversion starting from a state that accounts for what cond consumed. But the IH gives a state from converting only cond.
+
+### APPROACH: Use convertExpr_state_determined (L570)
+The theorem `convertExpr_state_determined` (L570-574) proves:
+```
+If st1.nextId = st2.nextId ∧ st1.funcs.size = st2.funcs.size, then
+convertExpr e ... st1 = convertExpr e ... st2 (same output expression and state agreement)
 ```
 
-**Step 2**: Modify CC_SimRel to add the error disjunct.
+This means if you can show `CCStateAgree st st_a`, the conversion output is the same regardless of other CCState fields.
 
-**Step 3**: Fix closureConvert_init_related (L1511) — initial state satisfies left disjunct (Or.inl).
+**STEP BY STEP**:
+1. Run `lean_goal` at L5491 to see the exact proof state
+2. Identify what `st_a` needs to satisfy
+3. The key: after stepping `cond` (via IH), the IH gives back `CCStateAgree st' st_a'` for the output state. The INPUT state `st_a` should be constructible from `st` + the fact that stepping doesn't change CCState.
+4. Core.step? does NOT modify `CCState` — it's a compile-time artifact. So `st_a = st` should work!
 
-**Step 4**: Fix closureConvert_step_simulation — at the suffices, the IH now gives a disjunction. In most cases, the error disjunct from the IH leads to contradictions (Core can't step an already-terminated error). For the 3 error sorries (L5163, L5262, L5501), prove the RIGHT disjunct.
+**CHECK**: Does the IH destructuring at the sorry site give you `CCStateAgree` for the sub-expression? If so, you can thread it through using `convertExpr_state_determined`.
 
-**EXPECTED BLAST RADIUS**: Moderate. Every site that destructs the expression correspondence needs a case split. But the error disjunct should be quickly dismissable in most cases.
+## P1: L5517 (similar CCStateAgree, if_branch then case)
 
-**EXPECTED RESULT**: -3 sorries (L5163, L5262, L5501 closed).
+Same approach. After understanding L5491, apply the pattern.
 
-### RISK MITIGATION
-Before modifying CC_SimRel, make a backup:
-```bash
-cp VerifiedJS/Proofs/ClosureConvertCorrect.lean /tmp/CC_backup_$(date +%s).lean
-```
+## P2: IF P0/P1 CLOSED — TRY L8407
 
-After each step, check with `lean_diagnostic_messages` that you haven't increased error count beyond expected.
+L8407 is `by rw [hst'_eq]; sorry` in a tryCatch case. Run `lean_goal` to see what's needed after the rewrite.
 
 ## SKIP (DO NOT ATTEMPT):
-- CCStateAgree (5): needs fundamental refactor
-- Multi-step (4): needs stuttering simulation infrastructure
-- L6803: semantic mismatch, UNPROVABLE
-- L8055: functionDef, multi-step + complex
+- Multi-step (L5044, L6139, L6347, L6358): needs N-step simulation
+- L6998: UNPROVABLE semantic mismatch
+- L8250: functionDef, too complex
+- L8410, L8600: need deeper CCStateAgree + tryCatch/while infrastructure
+- L5265, L5409, L5696: blocked by L8484
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — CC_SimRel error disjunct" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — CCStateAgree L5491 + L5517" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`
