@@ -10179,8 +10179,12 @@ private theorem normalizeExpr_labeled_branch_step :
             cases hfx with
             | binary_lhs _ _ _ _ h => exact henv_lhs ▸ hewf_lhs x h
             | binary_rhs _ _ _ _ h => exact hewf x (VarFreeIn.binary_rhs _ _ _ _ h)
-      · -- ¬HasLabeledInHead lhs: lhs is trivialChain but stepping changes trivial
-        sorry -- blocked: trivialChain passthrough doesn't apply (continuation uses lhsTriv)
+      · -- ¬HasLabeledInHead lhs: zero-step witness (label is in rhs, normalization already sees it)
+        exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
+          fun _ _ hs hlen => by
+            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+            cases hs; exact ⟨rfl, rfl, by simp⟩,
+          ⟨n, m, hnorm⟩, hewf⟩
     | setProp_obj h_obj =>
       rename_i obj prop val
       simp only [ANF.normalizeExpr] at hnorm
@@ -10227,10 +10231,12 @@ private theorem normalizeExpr_labeled_branch_step :
             cases hfx with
             | setProp_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
             | setProp_value _ _ _ _ h => exact hewf x (VarFreeIn.setProp_value _ _ _ _ h)
-      · -- ¬HasLabeledInHead obj: obj is trivialChain; blocked by trivial mismatch
-        -- (normalizeExpr_trivialChain_apply gives ANF trivial t for obj, but flat eval gives
-        -- value v_obj where trivialOfFlatValue v_obj ≠ t for .var/.this cases)
-        sorry
+      · -- ¬HasLabeledInHead obj: zero-step witness (label is in val, normalization already sees it)
+        exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
+          fun _ _ hs hlen => by
+            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+            cases hs; exact ⟨rfl, rfl, by simp⟩,
+          ⟨n, m, hnorm⟩, hewf⟩
     | getIndex_obj h_obj =>
       rename_i obj idx
       simp only [ANF.normalizeExpr] at hnorm
@@ -10277,8 +10283,12 @@ private theorem normalizeExpr_labeled_branch_step :
             cases hfx with
             | getIndex_obj _ _ _ h => exact henv_obj ▸ hewf_obj x h
             | getIndex_idx _ _ _ h => exact hewf x (VarFreeIn.getIndex_idx _ _ _ h)
-      · -- ¬HasLabeledInHead obj: obj is trivialChain; blocked by trivial mismatch
-        sorry
+      · -- ¬HasLabeledInHead obj: zero-step witness (label is in idx, normalization already sees it)
+        exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
+          fun _ _ hs hlen => by
+            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+            cases hs; exact ⟨rfl, rfl, by simp⟩,
+          ⟨n, m, hnorm⟩, hewf⟩
     | setIndex_obj h_obj =>
       rename_i obj idx val
       simp only [ANF.normalizeExpr] at hnorm
@@ -10327,8 +10337,12 @@ private theorem normalizeExpr_labeled_branch_step :
             | setIndex_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
             | setIndex_idx _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_idx _ _ _ _ h)
             | setIndex_value _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_value _ _ _ _ h)
-      · -- ¬HasLabeledInHead obj: obj is trivialChain; blocked by trivial mismatch
-        sorry
+      · -- ¬HasLabeledInHead obj: zero-step witness (label is in idx, normalization already sees it)
+        exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
+          fun _ _ hs hlen => by
+            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+            cases hs; exact ⟨rfl, rfl, by simp⟩,
+          ⟨n, m, hnorm⟩, hewf⟩
     | setIndex_val h_val =>
       rename_i val obj idx
       simp only [ANF.normalizeExpr] at hnorm
@@ -10354,8 +10368,12 @@ private theorem normalizeExpr_labeled_branch_step :
             | setIndex_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
             | setIndex_idx _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_idx _ _ _ _ h)
             | setIndex_value _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_value _ _ _ _ h)
-      · -- ¬HasLabeledInHead obj: obj is trivialChain; blocked by trivial mismatch
-        sorry
+      · -- ¬HasLabeledInHead obj: zero-step witness (label is in val, normalization already sees it)
+        exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
+          fun _ _ hs hlen => by
+            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+            cases hs; exact ⟨rfl, rfl, by simp⟩,
+          ⟨n, m, hnorm⟩, hewf⟩
     | call_func h_f =>
       rename_i funcE envE argsL
       simp only [ANF.normalizeExpr] at hnorm
@@ -10404,8 +10422,12 @@ private theorem normalizeExpr_labeled_branch_step :
             | call_func _ _ _ _ h => exact henv_f ▸ hewf_f x h
             | call_env _ _ _ _ h => exact hewf x (VarFreeIn.call_env _ _ _ _ h)
             | call_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.call_arg _ _ _ _ _ hmem h)
-      · -- ¬HasLabeledInHead funcE: funcE is trivialChain; blocked by trivial mismatch
-        sorry
+      · -- ¬HasLabeledInHead funcE: zero-step witness (label is in envE, normalization already sees it)
+        exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
+          fun _ _ hs hlen => by
+            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+            cases hs; exact ⟨rfl, rfl, by simp⟩,
+          ⟨n, m, hnorm⟩, hewf⟩
     | call_args h_args =>
       sorry -- call_args: labeled in args list requires stepping f/env to values first + list decomposition
     | newObj_func h_f =>
@@ -10456,8 +10478,12 @@ private theorem normalizeExpr_labeled_branch_step :
             | newObj_func _ _ _ _ h => exact henv_f ▸ hewf_f x h
             | newObj_env _ _ _ _ h => exact hewf x (VarFreeIn.newObj_env _ _ _ _ h)
             | newObj_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.newObj_arg _ _ _ _ _ hmem h)
-      · -- ¬HasLabeledInHead funcE: funcE is trivialChain; blocked by trivial mismatch
-        sorry
+      · -- ¬HasLabeledInHead funcE: zero-step witness (label is in envE, normalization already sees it)
+        exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
+          fun _ _ hs hlen => by
+            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+            cases hs; exact ⟨rfl, rfl, by simp⟩,
+          ⟨n, m, hnorm⟩, hewf⟩
     | newObj_args h_args =>
       sorry -- newObj_args: labeled in args list requires stepping f/env to values first + list decomposition
     | makeEnv_values h_vals =>

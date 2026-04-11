@@ -1,4 +1,4 @@
-# jsspec — ERROR-CASE ASSESSMENT + FUNCCORR GROUNDWORK
+# jsspec — hasAbruptCompletion_step_preserved (L13922) + error cases
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -10,41 +10,53 @@
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
 ## STATUS
-- CC: 15 sorries. All thoroughly assessed and categorized. EXCELLENT analysis work.
-- Supervisor removed 4 dead-code sorries from ANF. Total: 56 (was 60).
-- Error propagation IS DONE in Flat/Semantics.lean — compound expressions now DROP wrapper on error.
+- CC: 23 sorries. ANF: 42. Total: 65.
+- Last jsspec run: 2026-03-31. 11 DAYS AGO.
+- Error propagation IS DONE in Flat/Semantics.lean.
+- All CC sorries thoroughly assessed. Most architecturally blocked.
 
-## ALL 15 CC SORRIES — CATEGORIZED:
-- **Error-case (3):** L5079, L5175, L5411 — MAY be closable now that error propagation is done
-- **CCStateAgree (6):** L5257, L5283, L8111, L8114, L8188, L8304 — architectural
-- **Multi-step (3):** L4921, L6062, L6071 — need multi-step simulation
-- **FuncsCorr (1):** L5851 — needs new invariant
-- **functionDef (1):** L7952 — needs FuncsCorr
-- **UNPROVABLE (1):** L6710 — getIndex string
+## ALL 23 CC SORRIES — CATEGORIZED:
 
-## P0: RE-ASSESS ERROR-CASE SORRIES (L5079, L5175, L5411)
+**Closable (potentially):**
+- L1469 + L1473 — closConvertExpr_state_mono (2 sorries)
+- L5116, L5215, L5454 — error-case sorries, may be closable with error propagation
 
-Error propagation is DONE. For all compound expressions, `Flat.step?` now drops the compound wrapper when a sub-expression produces `.error`. This means:
+**CCStateAgree (architecturally blocked, 6):**
+- L5297, L5323, L8169, L8172, L8246, L8362
 
-When `.seq (.throw (.lit v)) b` steps with error, result is `{expr := .lit .undefined}` NOT `{expr := .seq (.lit .undefined) b}`.
+**Multi-step (architecturally blocked, 3):**
+- L4949, L6108, L6119
 
-**Check if this unblocks L5079, L5175, L5411:**
-1. `lean_goal` at each to see current goal shape
-2. Try `lean_multi_attempt` with simple tactics
-3. If any become closable, close them
+**Other blocked:**
+- L5900 — functionDef
+- L6759 — getIndex string (UNPROVABLE — semantic mismatch)
+- L8012 — tryCatch
 
-## P1: DEFINE FuncsCorr INVARIANT STUB
+## P0: FIX hasAbruptCompletion_step_preserved (L13922 in ANFConvertCorrect.lean)
 
-L5851 and L7952 both need a `FuncsCorr` invariant. Define the type signature:
-1. `lean_goal` at L5851 to see what's needed
-2. Define `FuncsCorr` as a sorry'd relation above L5851
-3. Key property: Core function → corresponding Flat closure at `funcs[idx]` has right body
-4. Verify it compiles with `lean_diagnostic_messages`
+Wait — you DON'T own ANFConvertCorrect.lean. Skip this.
+
+## P0 (REVISED): CLOSE L1469 + L1473 (closConvertExpr_state_mono)
+
+These are about monotonicity of closure conversion state (nextId only increases).
+
+1. `lean_goal` at L1469 to see what's needed
+2. `lean_goal` at L1473 to see the main sorry
+3. This should be provable by induction on the expression — each case of `convertExpr` either calls `freshVar` (incrementing nextId) or threads state through sub-expressions
+4. `lean_local_search "convertExpr_state"` to see related lemmas
+5. Try `lean_multi_attempt` at L1473 with: `["induction e", "cases e"]`
+
+## P1: RE-ASSESS ERROR CASES (L5116, L5215, L5454)
+
+Error propagation IS DONE. Check if these are now closable:
+1. `lean_goal` at each
+2. `lean_multi_attempt` with simple tactics
+3. The key change: when a sub-expression steps with `.error msg`, the compound wrapper is dropped
 
 ## P2: COMMENT CLEANUP
 
-Update outdated "BLOCKED" comments on the 15 sorries with accurate status.
+Update "BLOCKED" comments with accurate status. Delete outdated comments about error propagation not being done.
 
 ## LOG YOUR WORK
-**FIRST**: `echo "### $(date -Iseconds) Starting run — error-case reassessment" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — state_mono L1469 L1473" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`
