@@ -2268,6 +2268,105 @@ private theorem step?_arrayLit_elem_ctx (s : Flat.State)
   | log _ => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   | silent => exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
+/-- Error propagation for call arg position: when inner step errors in a list context,
+    the error propagates directly (no wrap). -/
+private theorem step?_call_arg_error (s : Flat.State)
+    (funcExpr envExpr : Flat.Expr) (done remaining : List Flat.Expr) (inner : Flat.Expr)
+    (hfv : ∃ fv, Flat.exprValue? funcExpr = some fv)
+    (hev : ∃ ev, Flat.exprValue? envExpr = some ev)
+    (hdone : ∀ e ∈ done, ∃ v, e = .lit v)
+    (hnotval : Flat.exprValue? inner = none)
+    (msg : String) (sa : Flat.State)
+    (hstep : Flat.step? { s with expr := inner } = some (.error msg, sa)) :
+    ∃ s', Flat.step? { s with expr := .call funcExpr envExpr (done ++ [inner] ++ remaining) } = some (.error msg, s') ∧
+      s'.expr = sa.expr ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  obtain ⟨fv, hfv⟩ := hfv
+  obtain ⟨ev, hev⟩ := hev
+  have hnotlit : ∀ v, inner ≠ .lit v := fun v h => by subst h; simp [Flat.exprValue?] at hnotval
+  have hvnone := valuesFromExprList?_none_of_nonvalue done remaining inner hdone hnotval
+  have hfirst := firstNonValueExpr_of_done_lit done remaining inner hdone hnotlit
+  rw [Flat.step?.eq_1]
+  simp only [hfv, hev, hvnone]; rw [hfirst]; simp only [hstep, Flat.pushTrace]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for newObj arg position. -/
+private theorem step?_newObj_arg_error (s : Flat.State)
+    (funcExpr envExpr : Flat.Expr) (done remaining : List Flat.Expr) (inner : Flat.Expr)
+    (hfv : ∃ fv, Flat.exprValue? funcExpr = some fv)
+    (hev : ∃ ev, Flat.exprValue? envExpr = some ev)
+    (hdone : ∀ e ∈ done, ∃ v, e = .lit v)
+    (hnotval : Flat.exprValue? inner = none)
+    (msg : String) (sa : Flat.State)
+    (hstep : Flat.step? { s with expr := inner } = some (.error msg, sa)) :
+    ∃ s', Flat.step? { s with expr := .newObj funcExpr envExpr (done ++ [inner] ++ remaining) } = some (.error msg, s') ∧
+      s'.expr = sa.expr ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  obtain ⟨fv, hfv⟩ := hfv
+  obtain ⟨ev, hev⟩ := hev
+  have hnotlit : ∀ v, inner ≠ .lit v := fun v h => by subst h; simp [Flat.exprValue?] at hnotval
+  have hvnone := valuesFromExprList?_none_of_nonvalue done remaining inner hdone hnotval
+  have hfirst := firstNonValueExpr_of_done_lit done remaining inner hdone hnotlit
+  rw [Flat.step?.eq_1]
+  simp only [hfv, hev, hvnone]; rw [hfirst]; simp only [hstep, Flat.pushTrace]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for makeEnv values position. -/
+private theorem step?_makeEnv_values_error (s : Flat.State)
+    (done remaining : List Flat.Expr) (inner : Flat.Expr)
+    (hdone : ∀ e ∈ done, ∃ v, e = .lit v)
+    (hnotval : Flat.exprValue? inner = none)
+    (msg : String) (sa : Flat.State)
+    (hstep : Flat.step? { s with expr := inner } = some (.error msg, sa)) :
+    ∃ s', Flat.step? { s with expr := .makeEnv (done ++ [inner] ++ remaining) } = some (.error msg, s') ∧
+      s'.expr = sa.expr ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  have hnotlit : ∀ v, inner ≠ .lit v := fun v h => by subst h; simp [Flat.exprValue?] at hnotval
+  have hvnone := valuesFromExprList?_none_of_nonvalue done remaining inner hdone hnotval
+  have hfirst := firstNonValueExpr_of_done_lit done remaining inner hdone hnotlit
+  rw [Flat.step?.eq_1]
+  simp only [hvnone]; rw [hfirst]; simp only [hstep, Flat.pushTrace]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for arrayLit elem position. -/
+private theorem step?_arrayLit_elem_error (s : Flat.State)
+    (done remaining : List Flat.Expr) (inner : Flat.Expr)
+    (hdone : ∀ e ∈ done, ∃ v, e = .lit v)
+    (hnotval : Flat.exprValue? inner = none)
+    (msg : String) (sa : Flat.State)
+    (hstep : Flat.step? { s with expr := inner } = some (.error msg, sa)) :
+    ∃ s', Flat.step? { s with expr := .arrayLit (done ++ [inner] ++ remaining) } = some (.error msg, s') ∧
+      s'.expr = sa.expr ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  have hnotlit : ∀ v, inner ≠ .lit v := fun v h => by subst h; simp [Flat.exprValue?] at hnotval
+  have hvnone := valuesFromExprList?_none_of_nonvalue done remaining inner hdone hnotval
+  have hfirst := firstNonValueExpr_of_done_lit done remaining inner hdone hnotlit
+  rw [Flat.step?.eq_1]
+  simp only [hvnone]; rw [hfirst]; simp only [hstep, Flat.pushTrace]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for objectLit props value position. -/
+private theorem step?_objectLit_val_error (s : Flat.State)
+    (done remaining : List (Flat.PropName × Flat.Expr)) (propName : Flat.PropName) (inner : Flat.Expr)
+    (hdone : ∀ p ∈ done, ∃ v, p.snd = .lit v)
+    (hnotval : Flat.exprValue? inner = none)
+    (msg : String) (sa : Flat.State)
+    (hstep : Flat.step? { s with expr := inner } = some (.error msg, sa)) :
+    ∃ s', Flat.step? { s with expr := .objectLit (done ++ [(propName, inner)] ++ remaining) } = some (.error msg, s') ∧
+      s'.expr = sa.expr ∧ s'.env = sa.env ∧ s'.heap = sa.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  have hnotlit : ∀ v, inner ≠ .lit v := fun v h => by subst h; simp [Flat.exprValue?] at hnotval
+  have hvnone := valuesFromExprList?_none_of_props_nonvalue done remaining propName inner hdone hnotval
+  have hfirst := firstNonValueProp_of_done_lit done remaining propName inner hdone hnotlit
+  rw [Flat.step?.eq_1]
+  simp only [hvnone]; rw [hfirst]; simp only [hstep, Flat.pushTrace]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
 /-- Error propagation for seq: when inner step errors, seq propagates directly (no seq wrap). -/
 private theorem step?_seq_error (s : Flat.State) (a b : Flat.Expr)
     (hnotval : Flat.exprValue? a = none)
@@ -9468,16 +9567,14 @@ inductive HasNonCallFrameTryCatchInHeadProps : List (Flat.PropName × Flat.Expr)
       HasNonCallFrameTryCatchInHeadProps (p :: rest)
 end
 
--- TODO: Close HasReturnInHead_Steps_steppable sorry (L15296).
--- ANALYSIS (2026-04-11): The theorem is stated too generally. It quantifies over ALL
--- expressions with HasReturnInHead, but is only true for expressions where non-call-frame
--- tryCatches don't appear in the active evaluation path. In the normalizeExpr .return context
--- (where the theorem is used), this holds because:
---   (1) Source expressions with tryCatch in eval-head never produce .return from normalizeExpr
---   (2) Non-error steps only introduce call-frame tryCatches (from function calls)
---   (3) Call-frame tryCatch on error always produces .lit .undefined
--- FIX PLAN: Add ¬HasNonCallFrameTryCatchInHead restricted to "eval-head" positions as
--- a hypothesis, prove preservation, and prove callers can satisfy it from normalizeExpr context.
+-- DONE (2026-04-11): HasReturnInHead_Steps_steppable sorry closed.
+-- Fix: Carry ¬HasNonCallFrameTryCatchInHead as invariant through the Steps induction.
+-- The by_cases on HasTryCatchInHead was replaced by a single error-step path using
+-- step_error_noNonCallFrameTryCatch_isLit (all error steps with ¬NCFTC → .lit → stuck).
+-- Remaining sorries:
+--   (a) step_error_noNonCallFrameTryCatch_isLit body (prove by induction on depth)
+--   (b) step_nonError_preserves_noNonCallFrameTryCatch body (prove by induction on depth)
+--   (c) ¬HasNonCallFrameTryCatchInHead a at outer application (prove from normalizeExpr context)
 -- Key building block (proved below): callFrame_tryCatch_step_error_isLit.
 
 /-- Call-frame tryCatch (catchParam = "__call_frame_return__") on error step always
