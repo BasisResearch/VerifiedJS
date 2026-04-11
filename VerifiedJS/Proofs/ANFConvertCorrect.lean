@@ -10180,11 +10180,11 @@ private theorem normalizeExpr_labeled_branch_step :
             | binary_lhs _ _ _ _ h => exact henv_lhs ▸ hewf_lhs x h
             | binary_rhs _ _ _ _ h => exact hewf x (VarFreeIn.binary_rhs _ _ _ _ h)
       · -- ¬HasLabeledInHead lhs: zero-step witness (label is in rhs, normalization already sees it)
-        exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
-          fun _ _ hs hlen => by
-            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-            cases hs; exact ⟨rfl, rfl, by simp⟩,
-          ⟨n, m, hnorm⟩, hewf⟩
+        refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
+        · intro _ h; exact absurd h (List.not_mem_nil _)
+        · intro _ _ hs hlen
+          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+          cases hs; exact ⟨rfl, rfl, by simp⟩
     | setProp_obj h_obj =>
       rename_i obj prop val
       simp only [ANF.normalizeExpr] at hnorm
@@ -10232,11 +10232,11 @@ private theorem normalizeExpr_labeled_branch_step :
             | setProp_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
             | setProp_value _ _ _ _ h => exact hewf x (VarFreeIn.setProp_value _ _ _ _ h)
       · -- ¬HasLabeledInHead obj: zero-step witness (label is in val, normalization already sees it)
-        exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
-          fun _ _ hs hlen => by
-            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-            cases hs; exact ⟨rfl, rfl, by simp⟩,
-          ⟨n, m, hnorm⟩, hewf⟩
+        refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
+        · intro _ h; exact absurd h (List.not_mem_nil _)
+        · intro _ _ hs hlen
+          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+          cases hs; exact ⟨rfl, rfl, by simp⟩
     | getIndex_obj h_obj =>
       rename_i obj idx
       simp only [ANF.normalizeExpr] at hnorm
@@ -10284,11 +10284,11 @@ private theorem normalizeExpr_labeled_branch_step :
             | getIndex_obj _ _ _ h => exact henv_obj ▸ hewf_obj x h
             | getIndex_idx _ _ _ h => exact hewf x (VarFreeIn.getIndex_idx _ _ _ h)
       · -- ¬HasLabeledInHead obj: zero-step witness (label is in idx, normalization already sees it)
-        exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
-          fun _ _ hs hlen => by
-            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-            cases hs; exact ⟨rfl, rfl, by simp⟩,
-          ⟨n, m, hnorm⟩, hewf⟩
+        refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
+        · intro _ h; exact absurd h (List.not_mem_nil _)
+        · intro _ _ hs hlen
+          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+          cases hs; exact ⟨rfl, rfl, by simp⟩
     | setIndex_obj h_obj =>
       rename_i obj idx val
       simp only [ANF.normalizeExpr] at hnorm
@@ -10338,11 +10338,11 @@ private theorem normalizeExpr_labeled_branch_step :
             | setIndex_idx _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_idx _ _ _ _ h)
             | setIndex_value _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_value _ _ _ _ h)
       · -- ¬HasLabeledInHead obj: zero-step witness (label is in idx, normalization already sees it)
-        exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
-          fun _ _ hs hlen => by
-            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-            cases hs; exact ⟨rfl, rfl, by simp⟩,
-          ⟨n, m, hnorm⟩, hewf⟩
+        refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
+        · intro _ h; exact absurd h (List.not_mem_nil _)
+        · intro _ _ hs hlen
+          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+          cases hs; exact ⟨rfl, rfl, by simp⟩
     | setIndex_val h_val =>
       rename_i val obj idx
       simp only [ANF.normalizeExpr] at hnorm
@@ -10369,11 +10369,11 @@ private theorem normalizeExpr_labeled_branch_step :
             | setIndex_idx _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_idx _ _ _ _ h)
             | setIndex_value _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_value _ _ _ _ h)
       · -- ¬HasLabeledInHead obj: zero-step witness (label is in val, normalization already sees it)
-        exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
-          fun _ _ hs hlen => by
-            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-            cases hs; exact ⟨rfl, rfl, by simp⟩,
-          ⟨n, m, hnorm⟩, hewf⟩
+        refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
+        · intro _ h; exact absurd h (List.not_mem_nil _)
+        · intro _ _ hs hlen
+          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+          cases hs; exact ⟨rfl, rfl, by simp⟩
     | call_func h_f =>
       rename_i funcE envE argsL
       simp only [ANF.normalizeExpr] at hnorm
@@ -10423,18 +10423,18 @@ private theorem normalizeExpr_labeled_branch_step :
             | call_env _ _ _ _ h => exact hewf x (VarFreeIn.call_env _ _ _ _ h)
             | call_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.call_arg _ _ _ _ _ hmem h)
       · -- ¬HasLabeledInHead funcE: zero-step witness (label is in envE, normalization already sees it)
-        exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
-          fun _ _ hs hlen => by
-            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-            cases hs; exact ⟨rfl, rfl, by simp⟩,
-          ⟨n, m, hnorm⟩, hewf⟩
+        refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
+        · intro _ h; exact absurd h (List.not_mem_nil _)
+        · intro _ _ hs hlen
+          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+          cases hs; exact ⟨rfl, rfl, by simp⟩
     | call_args h_args =>
       -- call_args: zero-step witness (label is in args, normalization already sees it)
-      exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
-        fun _ _ hs hlen => by
-          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-          cases hs; exact ⟨rfl, rfl, by simp⟩,
-        ⟨n, m, hnorm⟩, hewf⟩
+      refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
+      · intro _ h; exact absurd h (List.not_mem_nil _)
+      · intro _ _ hs hlen
+        have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+        cases hs; exact ⟨rfl, rfl, by simp⟩
     | newObj_func h_f =>
       rename_i funcE envE argsL
       simp only [ANF.normalizeExpr] at hnorm
@@ -10484,18 +10484,18 @@ private theorem normalizeExpr_labeled_branch_step :
             | newObj_env _ _ _ _ h => exact hewf x (VarFreeIn.newObj_env _ _ _ _ h)
             | newObj_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.newObj_arg _ _ _ _ _ hmem h)
       · -- ¬HasLabeledInHead funcE: zero-step witness (label is in envE, normalization already sees it)
-        exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
-          fun _ _ hs hlen => by
-            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-            cases hs; exact ⟨rfl, rfl, by simp⟩,
-          ⟨n, m, hnorm⟩, hewf⟩
+        refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
+        · intro _ h; exact absurd h (List.not_mem_nil _)
+        · intro _ _ hs hlen
+          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+          cases hs; exact ⟨rfl, rfl, by simp⟩
     | newObj_args h_args =>
       -- newObj_args: zero-step witness (label is in args, normalization already sees it)
-      exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
-        fun _ _ hs hlen => by
-          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-          cases hs; exact ⟨rfl, rfl, by simp⟩,
-        ⟨n, m, hnorm⟩, hewf⟩
+      refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
+      · intro _ h; exact absurd h (List.not_mem_nil _)
+      · intro _ _ hs hlen
+        have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+        cases hs; exact ⟨rfl, rfl, by simp⟩
     | makeEnv_values h_vals =>
       rename_i values
       simp only [ANF.normalizeExpr] at hnorm
@@ -10527,11 +10527,11 @@ private theorem normalizeExpr_labeled_branch_step :
                 | head => exact henv_e ▸ hewf_e x hfv
                 | tail _ hmem' => exact hewf x (VarFreeIn.makeEnv_elem _ _ v (List.mem_cons_of_mem _ hmem') hfv)
         · -- first element has no labeled: zero-step witness (label is in tail)
-          exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
-            fun _ _ hs hlen => by
-              have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-              cases hs; exact ⟨rfl, rfl, by simp⟩,
-            ⟨n, m, hnorm⟩, hewf⟩
+          refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
+          · intro _ h; exact absurd h (List.not_mem_nil _)
+          · intro _ _ hs hlen
+            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+            cases hs; exact ⟨rfl, rfl, by simp⟩
     | objectLit_props h_props =>
       rename_i props
       simp only [ANF.normalizeExpr] at hnorm
@@ -10564,11 +10564,11 @@ private theorem normalizeExpr_labeled_branch_step :
                 | head => exact henv_e ▸ hewf_e x hfv
                 | tail _ hmem' => exact hewf x (VarFreeIn.objectLit_value _ _ q (List.mem_cons_of_mem _ hmem') hfv)
         · -- first prop value has no labeled: zero-step witness (label is in tail)
-          exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
-            fun _ _ hs hlen => by
-              have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-              cases hs; exact ⟨rfl, rfl, by simp⟩,
-            ⟨n, m, hnorm⟩, hewf⟩
+          refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
+          · intro _ h; exact absurd h (List.not_mem_nil _)
+          · intro _ _ hs hlen
+            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+            cases hs; exact ⟨rfl, rfl, by simp⟩
     | arrayLit_elems h_elems =>
       rename_i elems
       simp only [ANF.normalizeExpr] at hnorm
@@ -10600,11 +10600,11 @@ private theorem normalizeExpr_labeled_branch_step :
                 | head => exact henv_e ▸ hewf_e x hfv
                 | tail _ hmem' => exact hewf x (VarFreeIn.arrayLit_elem _ _ v (List.mem_cons_of_mem _ hmem') hfv)
         · -- first element has no labeled: zero-step witness (label is in tail)
-          exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
-            fun _ _ hs hlen => by
-              have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-              cases hs; exact ⟨rfl, rfl, by simp⟩,
-            ⟨n, m, hnorm⟩, hewf⟩
+          refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
+          · intro _ h; exact absurd h (List.not_mem_nil _)
+          · intro _ _ hs hlen
+            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+            cases hs; exact ⟨rfl, rfl, by simp⟩
 
 /-- When normalizeExpr sf.expr k produces .labeled label body, there exist Flat steps
     from sf to sf' such that normalizeExpr sf'.expr k' produces body (with k' trivial-preserving).
@@ -11703,24 +11703,35 @@ private theorem normalizeExpr_throw_step_sim
   | return_some_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_return hna h
   | yield_some_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_yield hna h
   | await_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_await hna h
-  | _ =>
-    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
-    -- BLOCKED: 29 compound HasThrowInHead cases (seq_left, seq_right, let_init, getProp_obj,
-    -- setProp_obj, setProp_val, binary_lhs, binary_rhs, unary_arg, typeof_arg, deleteProp_obj,
-    -- assign_val, call_func, call_env, call_args, newObj_func, newObj_env, newObj_args,
-    -- if_cond, getIndex_obj, getIndex_idx, setIndex_obj, setIndex_idx, setIndex_val,
-    -- getEnv_env, makeClosure_env, makeEnv_values, objectLit_props, arrayLit_elems).
-    --
-    -- ROOT CAUSE (same as break/continue compound at L17701/L17780):
-    -- Flat.step? does not propagate error events through compound expressions.
-    -- When .throw (.lit v) fires inside e.g. .seq (.throw (.lit v)) b, Flat.step?
-    -- wraps the result: (.error msg, {expr := .seq (.lit .undefined) b, ...}).
-    -- The dead code b is NOT skipped, so sf'.expr ≠ .lit .undefined.
-    -- The goal requires sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap.
-    --
-    -- FIX: Change Flat.step? to propagate .error events directly (see L17710 analysis).
-    -- Requires coordinating with jsspec to update ClosureConvertCorrect.lean.
-    sorry
+  | seq_left h => exact hasThrowInHead_compound_throw_step_sim _ (.seq_left h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | seq_right h => exact hasThrowInHead_compound_throw_step_sim _ (.seq_right h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | let_init h => exact hasThrowInHead_compound_throw_step_sim _ (.let_init h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | getProp_obj h => exact hasThrowInHead_compound_throw_step_sim _ (.getProp_obj h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | setProp_obj h => exact hasThrowInHead_compound_throw_step_sim _ (.setProp_obj h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | setProp_val h => exact hasThrowInHead_compound_throw_step_sim _ (.setProp_val h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | binary_lhs h => exact hasThrowInHead_compound_throw_step_sim _ (.binary_lhs h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | binary_rhs h => exact hasThrowInHead_compound_throw_step_sim _ (.binary_rhs h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | unary_arg h => exact hasThrowInHead_compound_throw_step_sim _ (.unary_arg h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | typeof_arg h => exact hasThrowInHead_compound_throw_step_sim _ (.typeof_arg h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | deleteProp_obj h => exact hasThrowInHead_compound_throw_step_sim _ (.deleteProp_obj h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | assign_val h => exact hasThrowInHead_compound_throw_step_sim _ (.assign_val h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | call_func h => exact hasThrowInHead_compound_throw_step_sim _ (.call_func h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | call_env h => exact hasThrowInHead_compound_throw_step_sim _ (.call_env h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | call_args h => exact hasThrowInHead_compound_throw_step_sim _ (.call_args h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | newObj_func h => exact hasThrowInHead_compound_throw_step_sim _ (.newObj_func h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | newObj_env h => exact hasThrowInHead_compound_throw_step_sim _ (.newObj_env h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | newObj_args h => exact hasThrowInHead_compound_throw_step_sim _ (.newObj_args h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | if_cond h => exact hasThrowInHead_compound_throw_step_sim _ (.if_cond h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | getIndex_obj h => exact hasThrowInHead_compound_throw_step_sim _ (.getIndex_obj h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | getIndex_idx h => exact hasThrowInHead_compound_throw_step_sim _ (.getIndex_idx h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | setIndex_obj h => exact hasThrowInHead_compound_throw_step_sim _ (.setIndex_obj h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | setIndex_idx h => exact hasThrowInHead_compound_throw_step_sim _ (.setIndex_idx h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | setIndex_val h => exact hasThrowInHead_compound_throw_step_sim _ (.setIndex_val h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | getEnv_env h => exact hasThrowInHead_compound_throw_step_sim _ (.getEnv_env h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | makeClosure_env h => exact hasThrowInHead_compound_throw_step_sim _ (.makeClosure_env h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | makeEnv_values h => exact hasThrowInHead_compound_throw_step_sim _ (.makeEnv_values h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | objectLit_props h => exact hasThrowInHead_compound_throw_step_sim _ (.objectLit_props h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | arrayLit_elems h => exact hasThrowInHead_compound_throw_step_sim _ (.arrayLit_elems h) env heap trace funcs cs k arg n m hnorm hewf hna
 
 /-- If normalizeExpr sf.expr k produces .return arg (with trivial-preserving k),
     then there exist Flat steps from sf matching the ANF return step. -/
