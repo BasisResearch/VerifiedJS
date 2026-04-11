@@ -7649,3 +7649,14 @@ Moving to P2 (L18229, L18300).
 - And cascading through all dependent sorry sites
 
 **ACTION NEEDED**: wasmspec team needs to make ANF/Semantics.lean group-writable, OR apply the 2-line fix to ANF/Semantics.lean L403-405.
+
+### 2026-04-11T13:15 Progress: Added 16 head-position cases to HasReturnInHead_step_error_isLit
+
+Added proved cases for: unary_arg, typeof_arg, assign_val, deleteProp_obj, getProp_obj, setProp_obj, binary_lhs, call_func, newObj_func, if_cond, throw_arg, yield_some_arg, await_arg, getIndex_obj, setIndex_obj, getEnv_env, makeClosure_env.
+
+Changed fallback from `| all_goals sorry` (invalid syntax causing cascading errors) to explicit right-position alternatives: `| setProp_val _ | binary_rhs _ | call_env _ | call_args _ | newObj_env _ | newObj_args _ | getIndex_idx _ | setIndex_idx _ | setIndex_val _ | makeEnv_values _ | objectLit_props _ | arrayLit_elems _ => sorry`
+
+Verified: 0 errors in theorem range (L14289-14542).
+
+Sorry count unchanged (2: seq_right `sorry` at ~L14348, right-position `sorry` at ~L14540).
+Right-position cases remain BLOCKED by tryCatch semantics issue.

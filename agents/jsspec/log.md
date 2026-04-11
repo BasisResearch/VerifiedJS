@@ -4896,3 +4896,4 @@ Risk: Changes convertExpr output, breaking ALL existing proofs that reference sp
 
 ## Run: 2026-04-11T13:00:01+00:00
 
+### 2026-04-11T13:00:13+00:00 Starting run — Or.inr sorries L5270/L5414/L5701

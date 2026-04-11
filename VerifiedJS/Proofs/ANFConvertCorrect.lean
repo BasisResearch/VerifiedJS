@@ -14534,7 +14534,10 @@ private theorem HasReturnInHead_step_error_isLit
     -- BLOCKED: tryCatch non-call-frame catch in Flat.step? emits .error with non-lit expr
     -- FIX: Change Flat/Semantics.lean L1109-1111 and ANF/Semantics.lean L403-405
     --       tryCatch catch from (.error msg) to (.silent) — see agents/proof/log.md
-    | all_goals sorry
+    | setProp_val _ | binary_rhs _ | call_env _ | call_args _
+    | newObj_env _ | newObj_args _
+    | getIndex_idx _ | setIndex_idx _ | setIndex_val _
+    | makeEnv_values _ | objectLit_props _ | arrayLit_elems _ => sorry
 
 /-- At every steppable intermediate state reachable from a HasReturnInHead expression,
     the expression has HasReturnInHead (so callStack safety conditions hold). -/
