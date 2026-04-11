@@ -10764,7 +10764,7 @@ private theorem normalizeExpr_labeled_step_sim :
                     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace, Flat.State.funcs, Flat.State.callStack] at hwf ⊢
                     obtain ⟨sf_v, evs_v, hsteps_v, hsil_v, henv_v, hheap_v, hfuncs_v, hcs_v,
                       htrace_v, hpres_v, ⟨n_v, m_v, hnorm_v⟩, hewf_v⟩ :=
-                      normalizeExpr_labeled_branch_step d _ (by simp [Flat.Expr.depth] at hd; omega) label hlh_inner
+                      normalizeExpr_labeled_branch_step d _ (by simp [Flat.Expr.depth] at hd ⊢; try omega) label hlh_inner
                         sf_env sf_heap sf_trace sf_funcs sf_cs
                         (fun t => pure (ANF.Expr.return (some t))) n m body hnorm
                         (fun x hfx => hwf x (VarFreeIn.return_some_arg _ _ (VarFreeIn.return_some_arg _ _ hfx)))
@@ -10840,7 +10840,7 @@ private theorem normalizeExpr_labeled_step_sim :
                     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace, Flat.State.funcs, Flat.State.callStack] at hwf ⊢
                     obtain ⟨sf_v, evs_v, hsteps_v, hsil_v, henv_v, hheap_v, hfuncs_v, hcs_v,
                       htrace_v, hpres_v, ⟨n_v, m_v, hnorm_v⟩, hewf_v⟩ :=
-                      normalizeExpr_labeled_branch_step d _ (by simp [Flat.Expr.depth] at hd; omega) label hlh_inner
+                      normalizeExpr_labeled_branch_step d _ (by simp [Flat.Expr.depth] at hd ⊢; try omega) label hlh_inner
                         sf_env sf_heap sf_trace sf_funcs sf_cs
                         (fun t => pure (ANF.Expr.yield (some t) delegate)) n m body hnorm
                         (fun x hfx => hwf x (VarFreeIn.return_some_arg _ _ (VarFreeIn.yield_some_arg _ _ _ hfx)))
@@ -10892,7 +10892,7 @@ private theorem normalizeExpr_labeled_step_sim :
                 simp only [Flat.State.env, Flat.State.heap, Flat.State.trace, Flat.State.funcs, Flat.State.callStack] at hwf ⊢
                 obtain ⟨sf_v, evs_v, hsteps_v, hsil_v, henv_v, hheap_v, hfuncs_v, hcs_v,
                   htrace_v, hpres_v, ⟨n_v, m_v, hnorm_v⟩, hewf_v⟩ :=
-                  normalizeExpr_labeled_branch_step d _ (by simp [Flat.Expr.depth] at hd; omega) label hlh_val
+                  normalizeExpr_labeled_branch_step d _ (by simp [Flat.Expr.depth] at hd ⊢; try omega) label hlh_val
                     sf_env sf_heap sf_trace sf_funcs sf_cs
                     (fun t => pure (ANF.Expr.return (some t))) n m body hnorm
                     (fun x hfx => hwf x (VarFreeIn.return_some_arg _ _ hfx))
@@ -11004,7 +11004,7 @@ private theorem normalizeExpr_labeled_step_sim :
                     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace, Flat.State.funcs, Flat.State.callStack] at hwf ⊢
                     obtain ⟨sf_v, evs_v, hsteps_v, hsil_v, henv_v, hheap_v, hfuncs_v, hcs_v,
                       htrace_v, hpres_v, ⟨n_v, m_v, hnorm_v⟩, hewf_v⟩ :=
-                      normalizeExpr_labeled_branch_step d _ (by simp [Flat.Expr.depth] at hd; omega) label hlh_inner
+                      normalizeExpr_labeled_branch_step d _ (by simp [Flat.Expr.depth] at hd ⊢; try omega) label hlh_inner
                         sf_env sf_heap sf_trace sf_funcs sf_cs
                         (fun t => pure (ANF.Expr.return (some t))) n m body hnorm
                         (fun x hfx => hwf x (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.return_some_arg _ _ hfx)))
@@ -11078,7 +11078,7 @@ private theorem normalizeExpr_labeled_step_sim :
                     simp only [Flat.State.env, Flat.State.heap, Flat.State.trace, Flat.State.funcs, Flat.State.callStack] at hwf ⊢
                     obtain ⟨sf_v, evs_v, hsteps_v, hsil_v, henv_v, hheap_v, hfuncs_v, hcs_v,
                       htrace_v, hpres_v, ⟨n_v, m_v, hnorm_v⟩, hewf_v⟩ :=
-                      normalizeExpr_labeled_branch_step d _ (by simp [Flat.Expr.depth] at hd; omega) label hlh_inner
+                      normalizeExpr_labeled_branch_step d _ (by simp [Flat.Expr.depth] at hd ⊢; try omega) label hlh_inner
                         sf_env sf_heap sf_trace sf_funcs sf_cs
                         (fun t => pure (ANF.Expr.yield (some t) delegate')) n m body hnorm
                         (fun x hfx => hwf x (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.yield_some_arg _ _ _ hfx)))
@@ -11130,7 +11130,7 @@ private theorem normalizeExpr_labeled_step_sim :
                 simp only [Flat.State.env, Flat.State.heap, Flat.State.trace, Flat.State.funcs, Flat.State.callStack] at hwf ⊢
                 obtain ⟨sf_v, evs_v, hsteps_v, hsil_v, henv_v, hheap_v, hfuncs_v, hcs_v,
                   htrace_v, hpres_v, ⟨n_v, m_v, hnorm_v⟩, hewf_v⟩ :=
-                  normalizeExpr_labeled_branch_step d _ (by simp [Flat.Expr.depth] at hd; omega) label hlh_val
+                  normalizeExpr_labeled_branch_step d _ (by simp [Flat.Expr.depth] at hd ⊢; try omega) label hlh_val
                     sf_env sf_heap sf_trace sf_funcs sf_cs
                     (fun t => pure (ANF.Expr.yield (some t) delegate)) n m body hnorm
                     (fun x hfx => hwf x (VarFreeIn.yield_some_arg _ _ _ hfx))
