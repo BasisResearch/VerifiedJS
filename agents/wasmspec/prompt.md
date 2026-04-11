@@ -1,4 +1,4 @@
-# wasmspec — HasNonCallFrameTryCatchInEvalHead for L15348
+# wasmspec — PROVE HasNonCallFrameTryCatch HELPER LEMMAS (3 sorries)
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,41 +9,62 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-11T20:05
-- Total: **49 real sorries** (ANF 37, CC 12).
-- YOU proved `callFrame_tryCatch_step_error_isLit` at L9488. Great work.
-- The L15348 sorry is in `HasReturnInHead_Steps_steppable`: needs `¬HasTryCatchInHead s1.expr` but this is NOT preserved in general (function calls introduce call-frame tryCatch).
+## STATUS — 2026-04-11T21:05
+- Total: ~50 real sorries (ANF ~38, CC 12).
+- You already defined `HasNonCallFrameTryCatchInHead` at L9489. EXCELLENT.
+- The `HasReturnInHead_Steps_steppable` proof was restructured with `suffices` at L15458.
+- **3 sorries remain from your infrastructure work**:
 
-## P0: Close L15348 (HasTryCatchInHead sorry in Steps_steppable)
+```
+L15421: step_error_isLit_general — strong induction proof
+L15441: step_nonError_preserves_noNonCallFrameTryCatch — preservation lemma
+L15469: initial ¬HasNonCallFrameTryCatchInHead for normalizeExpr output
+```
 
-### YOUR PLAN from analysis (EXECUTE THIS):
+## P0: step_nonError_preserves_noNonCallFrameTryCatch (L15441)
 
-1. **Define `HasNonCallFrameTryCatchInEvalHead`** — same as `HasTryCatchInHead` but the `tryCatch_direct` constructor requires `cp ≠ "__call_frame_return__"`. Only tracks non-call-frame tryCatch in eval-first positions (seq_left, let_init, binary_lhs, etc.).
+This is the KEY lemma. Prove that non-error steps preserve `¬HasNonCallFrameTryCatchInHead`.
 
-2. **Prove `step_nonError_preserves_noNonCallFrameTryCatchInEvalHead`** — non-error steps don't introduce non-call-frame tryCatch. Key insight: only `call_func` introduces tryCatch (call-frame), and only source try/catch produces non-call-frame tryCatch.
+### Proof approach:
+Strong induction on `e.depth`. Case split on `e`:
+- **Compound expressions** (seq, let, binary, etc.): Non-error step modifies a sub-expression. The wrapper structure is preserved. Sub-expression result has `¬HasNonCallFrameTryCatch` by IH (since depth decreased). The wrapper doesn't introduce non-call-frame tryCatch.
+- **`.call f env args` with all values**: Produces `tryCatch body "__call_frame_return__" ...` — this IS a call-frame tryCatch, so `¬HasNonCallFrameTryCatchInHead` holds (cp = "__call_frame_return__").
+- **`.tryCatch body cp cb fin`**:
+  - If `cp = "__call_frame_return__"`: body steps, result wrapped in same tryCatch. OK by IH.
+  - If `cp ≠ "__call_frame_return__"`: Can't happen (hypothesis says `¬HasNonCallFrameTryCatchInHead`... wait, it says ¬, so we have NO non-call-frame tryCatch. But the expression IS a tryCatch with cp ≠ "__call_frame_return__". So the hypothesis gives contradiction directly via `tryCatch_direct`.
 
-3. **Prove normalizeExpr .return context has ¬HasNonCallFrameTryCatchInEvalHead** — since normalizeExpr(.return) never produces tryCatch in eval head.
+### Size: ~200-300 lines. Do constructor-by-constructor.
 
-4. **Use as invariant in Steps_steppable** — replace `¬HasTryCatchInHead` with `¬HasNonCallFrameTryCatchInEvalHead` in the hypothesis.
+## P1: step_error_isLit_general (L15421)
 
-5. **Close L15348** using the new invariant + `callFrame_tryCatch_step_error_isLit` (already proved at L9488).
+Prove that error steps from `¬HasNonCallFrameTryCatchInHead` expressions produce `.lit v`.
 
-### CONCRETE IMPLEMENTATION:
-Write the inductive type FIRST. Verify with LSP. Then write preservation lemma one constructor at a time. Each constructor should be independently verifiable.
+### Proof approach:
+Strong induction on `e.depth`. Case split on `e`:
+- **Non-tryCatch compound**: Error from sub-expression → wrapper drops → recurse on sub-expression by IH.
+- **`.tryCatch body cp cb fin`**: Must be call-frame (since `¬HasNonCallFrameTryCatchInHead`). For call-frame tryCatch, you already proved `callFrame_tryCatch_step_error_isLit` at L~9485. Apply that.
+- **`.lit`, `.var`, etc.**: These don't step to error (or step deterministically to non-error).
 
-### SIZE BUDGET: ~400 lines total
-- Inductive definition: ~30 lines
-- Preservation lemma: ~300 lines
-- Caller fixup: ~70 lines
+### Size: ~100-200 lines.
 
-### FALLBACK:
-If this is too large for one run, write JUST the inductive definition + 5 preservation cases, verify they compile, and leave the rest for next run.
+## P2: Initial condition (L15469)
+
+Prove `¬HasNonCallFrameTryCatchInHead a` where `a` comes from `normalizeExpr ... (.return ...)`.
+
+### Proof approach:
+normalizeExpr with a return continuation never produces tryCatch in eval-head position. This should follow from the `normalizeExpr_return_*_or_k` theorems (already proved around L~5800+). If the output is `.return (some t)` or `.return none`, the eval-head is `.return` which doesn't have `HasNonCallFrameTryCatchInHead`. If the output is `k t`, the continuation is trivial-preserving so produces `.trivial t` which also doesn't have it.
+
+### Size: ~50 lines.
+
+## PRIORITY ORDER: P0 → P1 → P2
+P0 is the biggest and most important. If you close all 3: **-3 sorries**.
 
 ## DO NOT WORK ON:
-- L18952-L19264 (list cases — proof agent)
+- L19085-L19553 (list cases — proof agent)
+- L11248, L11280, L11311 (labeled list tail — proof agent)
 - ClosureConvertCorrect.lean (jsspec)
-- L10843-L11214 (trivialChain zone)
+- L10940-L11217 (trivialChain zone)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — HasNonCallFrameTryCatchInEvalHead P0" >> agents/wasmspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — HasNonCallFrameTryCatch P0+P1+P2" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`
