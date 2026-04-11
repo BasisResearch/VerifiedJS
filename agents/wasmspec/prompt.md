@@ -1,4 +1,4 @@
-# wasmspec — FIX step_error_isLit tryCatch (L14759) + Case B sorries
+# wasmspec — Case B sorries + compound Await/Yield
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,75 +9,61 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-11T15:00
-- Total: 61 real sorries (ANF 46, CC 15).
-- **step_error_isLit (L14289)**: NEARLY PROVED. Only 1 sorry remaining at L14759 (tryCatch case).
-- **hasReturnInHead_return_steps**: First-position cases ALL PROVED. Second-position being worked on by proof agent.
-- **You wrote most of the current infrastructure. Excellent work.**
+## STATUS — 2026-04-11T15:30
+- Total: 60 real sorries (ANF 45, CC 15).
+- **step_error_isLit: FULLY PROVED (0 sorries!)**. tryCatch case closed by simp. GREAT WORK.
+- **step_nonError: PROVED**. Your infrastructure work is paying off.
+- proof agent is on second-position HasReturnInHead (L16490-16501).
+- CC: All 15 blocked (jsspec confirmed).
 
-## P0: step_error_isLit tryCatch (L14759) — CASCADE BLOCKER
+## P0: Case B continuation sorries (L16433, L16489) — 2 sorries
 
-The sorry at L14759 is in the tryCatch case of `HasReturnInHead_step_error_isLit`:
+These are in hasReturnInHead_return_steps, in the seq_right case. They handle:
+- **Case B**: the return does NOT come from HasReturnInHead on sub-expression `a`, but from the continuation `K` applied after `a` evaluates to value.
 
-```
-14755:    | tryCatch body catchParam catchBody fin =>
-14756:      -- BLOCKED: tryCatch non-call-frame catch (Flat/Semantics.lean L1104-1111) emits
-14757:      -- (.error msg, {expr := handler}) where handler is not .lit.
-14758:      -- Fix: change Flat/Semantics.lean to emit (.silent, ...) for caught errors.
-14759:      sorry
-```
+Read 20 lines above L16433 and L16489 to see context. They follow from `normalizeExpr_return_none_or_k` / `normalizeExpr_return_some_or_k` rcases.
 
-### THE PROBLEM
-When Flat.step? on tryCatch body catches an error (body evaluates to `.error msg`), it steps to `{expr := catchBody}` — which is NOT `.lit v`. So the theorem `∃ v, sf'.expr = .lit v` is FALSE for this case.
+### The proof strategy for Case B:
+1. Sub-expression `a` has NO HasReturnInHead (otherwise it would be Case A)
+2. `a` is a "trivial chain" — it evaluates to a value in finite steps without errors
+3. After `a` evaluates to value `v`, the seq steps once to produce `K(v)`
+4. `K(v)` is then the normalizeExpr of continuation `b`, which has HasReturnInHead
+5. By IH on `b` (or `K(v)`), this produces the required error trace
 
-### BUT: HasReturnInHead has NO tryCatch constructor!
+### What you need:
+- A lemma: if `a` has no HasReturnInHead AND `a` is well-formed, then `a` evaluates to value (trivial chain terminates)
+- Check if `trivialChain_terminates` or similar exists — use `lean_local_search "trivialChain"`
+- The seq_right Case A proof (L16399-16431 for none, L16437-16487 for some) shows the first-position pattern
+- Case B needs: Steps on `a` → value, then one step of seq, then IH on continuation
 
-Wait — check if `HasReturnInHead` has a `tryCatch_body` constructor. If it does NOT, then the match `| tryCatch body catchParam catchBody fin =>` is matching on the EXPRESSION, not the HasReturnInHead constructor. The `hret : HasReturnInHead (.tryCatch body catchParam catchBody fin)` needs to be case-split:
+### Assessment first
+Before writing code:
+1. `lean_goal` at L16433 to see the exact goal
+2. `lean_local_search "trivialChain"` to find existing infrastructure
+3. `lean_local_search "terminates"` to find termination lemmas
+4. Read 100 lines above L16433 for context (the seq_right match structure)
 
-```lean
-    | tryCatch body catchParam catchBody fin =>
-      cases hret with
-      | seq_left h => -- HasReturnInHead in body via seq_left? No — tryCatch is not seq
-      ...
-```
+If the infrastructure doesn't exist, DOCUMENT what's needed and move to P1.
 
-### APPROACH 1: Check what HasReturnInHead constructors apply to tryCatch
-Use `lean_goal` at L14759 to see hret. Then `cases hret` — if HasReturnInHead has no constructor that produces `.tryCatch`, this case is impossible and `cases hret` should close it.
+## P1: compound HasAwaitInHead (L16857) + HasYieldInHead (L17030) — 2 sorries
 
-### APPROACH 2: If HasReturnInHead DOES have tryCatch_body
-Then the theorem statement needs strengthening — add a precondition excluding tryCatch with non-call-frame catchParam, OR change Flat/Semantics.lean so caught errors also produce `.lit v`.
+These are in `hasAwaitInHead_return_steps` and `hasYieldInHead_return_steps`. They follow the SAME pattern as HasReturnInHead compound cases. Check if the first-position infrastructure (ctx/error lemmas) exists for these.
 
-### VERIFICATION
-After fixing, check that `HasReturnInHead_step_error_isLit` has NO remaining sorries:
-```
-lean_diagnostic_messages ANFConvertCorrect.lean declaration_name=HasReturnInHead_step_error_isLit
-```
+Use lean_local_search:
+- `lean_local_search "HasAwaitInHead"`
+- `lean_local_search "HasYieldInHead"`
 
-This is the #1 priority because closing step_error_isLit cascades to close/unblock multiple downstream sorries.
+If these follow the same `Steps_compound_error_lift` pattern, they may be closable using the exact same approach as the HasReturnInHead cases. Even splitting the monolithic sorry into per-constructor cases (like was done for HasReturnInHead) would be progress.
 
-## P1: Case B continuation sorries (L16091, L16147)
+## P2: Break/continue list cases (L4906, L6044) — 2 sorries
 
-These are in hasReturnInHead_return_steps, inside the newObj_func case. They say:
-```
--- Case B: return from continuation (normalizeExpr b K produces return (some arg_t))
-sorry
-```
-
-Read 30 lines around L16091 and L16147 to understand. Case B happens when the return doesn't come from HasReturnInHead on the sub-expression `a`, but from the continuation `K` applied to `a`'s result. This needs a different proof strategy:
-- After sub-expression `a` evaluates to value, the continuation produces `.return arg`
-- Need to show Flat steps: first evaluate `a` to value, then the wrapper (seq/newObj) steps once, THEN the continuation body produces return
-
-This is structurally different from Case A (return from sub-expr). Assess feasibility before writing code.
-
-## P2: compound HasAwaitInHead (L16515) + compound HasYieldInHead (L16688)
-
-Same pattern as HasReturnInHead compound cases. Check if these follow the same infrastructure.
+These are `makeEnv_values | objectLit_props | arrayLit_elems => sorry` in break/continue head-position theorems. Check if list-stepping infrastructure can close them.
 
 ## DO NOT WORK ON:
-- L16148-16159 (second-position — proof agent is on this)
+- L16490-16501 (second-position HasReturnInHead — proof agent is on this)
+- L10664-L11035 (trivialChain zone — LSP timeout)
 - ClosureConvertCorrect.lean (jsspec)
-- L10566-L10937 (trivialChain zone)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — step_error_isLit tryCatch fix" >> agents/wasmspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — Case B sorries + compound await/yield" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

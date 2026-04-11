@@ -1,4 +1,4 @@
-# jsspec — CLOSE Or.inr SORRIES (L5270, L5414, L5701)
+# jsspec — ARCHITECTURAL FIX: CCStateAgree
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,66 +9,54 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-11T15:00
-- CC: 15 real sorries. Total: 61.
-- No change in CC since last run. **You need to make progress this run.**
-- Or.inr sorries at L5270, L5414, L5701 are the MOST LIKELY closable.
+## STATUS — 2026-04-11T15:30
+- CC: 15 real sorries. Total: 60.
+- **ALL 15 CC sorries are architecturally blocked.** You confirmed this last 4 runs.
+- No quick wins remain. The ONLY way forward is architectural fixes.
 
-## SORRY CLASSIFICATION (15 total)
-- **Or.inr (TryCatch-init)**: 3 (L5270, L5414, L5701) — LIKELY CLOSABLE ← WORK ON THESE
-- **CCStateAgree**: 5 (L5496, L5522, L8407, L8484, L8600) — ARCHITECTURALLY BLOCKED
-- **HeapInj staging**: 1 (L8250) — BLOCKED
-- **TryCatch finally**: 1 (L8410) — BLOCKED
-- **Multi-step**: 3 (L5049, L6352, L6363) — BLOCKED
-- **Non-consoleLog call**: 1 (L6144) — ASSESS after P0
-- **Unprovable**: 1 (L7003) — CANNOT BE PROVED
+## ROOT CAUSES (your analysis)
+1. **CCStateAgree** (5 sorries: L5496, L5522, L8407, L8484, L8600): convertExpr converts BOTH branches of if/while, but execution only takes one, leaving state gap.
+2. **Or.inr structural mismatch** (3 sorries: L5270, L5414, L5701): Flat drops outer wrapper on error, Core keeps it. Neither `Or.inl` nor `Or.inr` works.
+3. **Multi-step simulation** (4 sorries: L5049, L6144, L6352, L6363): Core compound op = 1 step, Flat = N steps.
+4. **Unprovable** (1: L7003) + **HeapInj/finally** (2: L8250, L8410)
 
-## P0: Close Or.inr sorries at L5270, L5414, L5701
+## YOUR MISSION: Fix CCStateAgree (5 sorries → 0)
 
-These 3 sorries have the pattern:
-```lean
-exact ⟨Or.inr sorry, hfuncCorr_sub⟩
-```
+CCStateAgree is the single biggest blocker (5 sorries). The problem:
+- `convertExpr` produces a new CC state after converting BOTH branches
+- But at runtime, only one branch executes
+- The IH provides `CCStateAgree` for the state AFTER the taken branch
+- We need `CCStateAgree` for the state AFTER both branches (the "join" state)
 
-### Step 1: Use lean_goal at each location
-```
-lean_goal ClosureConvertCorrect.lean line=5270 column=26
-lean_goal ClosureConvertCorrect.lean line=5414 column=26
-lean_goal ClosureConvertCorrect.lean line=5701 column=26
-```
+### Approach 1: Monotonic state + weakening lemma
+If CC state only grows (fresh name counter increases, no deletions), then:
+- State after branch1 ≤ state after both branches
+- Any `CCStateAgree` for a sub-state should lift to a super-state
+- Prove: `CCStateAgree st_sub st → st_sub.counter ≤ st.counter → CCStateAgree st st`
 
-### Step 2: Understand the Or type
-The `Or.inr` suggests the goal is `A ∨ B` and we're providing B. The sorry is the proof of B. Use lean_goal to see what B is — likely something about the Core result being from a tryCatch catch handler.
+### Investigation steps:
+1. `lean_hover_info` on `CCStateAgree` to get its definition
+2. Read the definition. Is it a simple counter comparison? Or does it track more?
+3. `lean_local_search "CCStateAgree"` — find all existing lemmas
+4. `lean_local_search "convertExpr_state_mono"` — does state monotonicity exist?
+5. Read 30 lines around L5496 to understand the exact gap
 
-### Step 3: Check hypotheses
-Read 50 lines above each sorry to find available hypotheses. Look for:
-- `herr` or `hstep_err` — evidence of error event
-- `hcatch` — evidence of catch handler execution
-- Type of the disjunction — what does `Or.inr` need?
+### Approach 2: Change simulation relation
+Instead of requiring exact `CCStateAgree st_after_both`, weaken the post-condition to `CCStateAgree st_after_taken_branch`. This requires changing the theorem statement — check if downstream consumers can tolerate this.
 
-### Step 4: Try closing tactics
-```
-lean_multi_attempt at each line:
-["exact .inl ⟨_, rfl⟩", "simp", "assumption",
- "exact ⟨_, _, rfl⟩", "exact .inr ⟨_, _, rfl⟩",
- "exact herr", "exact hev", "exact ⟨_, rfl⟩",
- "obtain ⟨msg, hmsg⟩ := herr; exact ⟨msg, hmsg⟩",
- "exact hresult", "exact hcatch_result"]
-```
+### Approach 3: Lazy conversion
+Convert branches lazily (only the taken branch). This requires changing `convertExpr` — MORE INVASIVE but correct.
 
-### Step 5: If the Or.inr needs a witness about tryCatch catch
-The pattern at all 3 locations follows the tryCatch error-catching path. The Or.inr branch likely needs a proof that the result came through the catch handler. Check if there's a hypothesis about the catch handler stepping.
-
-## P1: Assess L6144 (non-consoleLog call)
-Read 30 lines of context. Is this truly blocked or just hard?
+### DO THIS FIRST:
+1. Understand CCStateAgree's definition
+2. Check if `convertExpr_state_mono` exists
+3. Try Approach 1 — it's the least invasive
 
 ## DO NOT ATTEMPT:
-- CCStateAgree sorries — architecturally blocked
-- convertExpr_state_mono refactor — too large
-- Multi-step simulation redesign
-- HeapInj staging (L8250)
-- tryCatch finally (L8410)
+- Or.inr sorries — deeper architectural issue
+- Multi-step simulation — needs framework redesign
+- L7003 — unprovable
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — Or.inr sorries L5270/L5414/L5701" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — CCStateAgree architectural fix investigation" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`
