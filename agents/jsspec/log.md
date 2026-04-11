@@ -4983,3 +4983,46 @@ Also blocked. Multi-step simulation gap: Core function call is 1 step, Flat is N
 ## Run: 2026-04-11T18:00:01+00:00
 
 ### 2026-04-11T18:00:12+00:00 Starting run — CCStateAgree Path A investigation
+
+### 2026-04-11T18:00 Starting run — CCStateAgree Path A investigation
+
+### Investigation Results
+
+**Mission**: Assess and implement Path A (position-based naming in freshVar).
+
+**Key findings**:
+
+1. **freshVar is called exactly once** (L245, functionDef case), returns `"__env_{nextId}"` and increments nextId.
+2. **nextId is also read at L252** for anonymous function names: `s!"__anon_{st2.nextId}"`.
+3. **CCState threads TWO concerns**: `nextId` (naming) and `funcs` (function table).
+
+**Path A patch** (2 lines in ClosureConvert.lean):
+- freshVar: return `(pfx, st)` — fixed name, no state change
+- L252: use `funcs.size` instead of `nextId` for anonymous names
+
+**Path A assessment: NECESSARY BUT NOT SUFFICIENT**
+
+Path A removes the `nextId` dependency from expression output. But `funcs.size` dependency remains through `makeClosure funcIdx` where `funcIdx = st.funcs.size`. The CCStateAgree sorries require `st3.funcs.size = st2.funcs.size` (after if branches), which fails identically to the nextId problem when branches contain functionDef nodes.
+
+**Path A would simplify**:
+- CCStateAgree → just funcs.size equality (drop nextId clause)
+- convertExpr_state_determined/mono functionDef cases (~20 lines)
+- But closes 0 additional sorries alone
+
+**True fix** requires also removing funcIdx dependency (e.g., function names instead of indices in makeClosure). This needs changes to Syntax.lean + Semantics.lean.
+
+**BLOCKER**: ClosureConvert.lean is read-only for jsspec (permissions: `-rw-r-----`, owner: proof). Cannot apply even the 2-line Path A patch.
+
+**Artifacts created**:
+- `.lake/_tmp_fix/cc_path_a_patch.diff` — ready-to-apply patch
+- `.lake/_tmp_fix/cc_path_a_analysis.md` — full analysis document
+
+**Sorry count**: 12 total (unchanged). 0 closable without ClosureConvert.lean write access.
+
+**Sorry classification (all architecturally blocked)**:
+- CCStateAgree (6): L5957, L5983, L8869, L8872, L8946, L9062 — needs state-independent expressions
+- Multi-step simulation (4): L5509, L6606, L6814, L6825 — needs N:1 step correspondence
+- Axiom mismatch (1): L7465 — semantic mismatch, unprovable
+- FuncsCorr/functionDef (1): L8712 — needs multi-step + FuncsCorr maintenance
+### 2026-04-11T18:12:04+00:00 Run complete — Path A assessed: necessary but not sufficient, blocked by file permissions
+2026-04-11T18:12:18+00:00 DONE

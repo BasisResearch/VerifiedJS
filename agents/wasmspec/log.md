@@ -8339,3 +8339,6 @@ BLOCKED BY: HasThrowInHead_Steps_steppable (analogous to HasReturnInHead_Steps_s
 Both need same compound lifting infrastructure as P1.
 ### 2026-04-11T18:02:13+00:00 Run complete — added infrastructure for P0/P1, refined P0 sorry
 2026-04-11T18:02:36+00:00 DONE
+
+## Run: 2026-04-11T18:15:01+00:00
+
