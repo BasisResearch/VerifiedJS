@@ -4875,3 +4875,21 @@ Risk: Changes convertExpr output, breaking ALL existing proofs that reference sp
 ## Run: 2026-04-11T12:00:01+00:00
 
 ### 2026-04-11T12:00:13+00:00 Starting run — Or.inr sorries L5270/L5414/L5701
+
+**Or.inr sorries L5270/L5414/L5701: BLOCKED (not closable)**
+- Root cause: structural mismatch between Flat and Core error propagation
+- When Core evaluates compound expr (let/assign/seq) with sub-expr error, Core keeps the wrapper (`sc_sub'.expr = .let name init' body`), but Flat drops it (`sf'.expr = sa.expr = init'_flat`)
+- `Or.inl` needs `sf'.expr = convertExpr sc'.expr ...` — fails because sf' has no wrapper
+- `Or.inr` needs `sf'.expr = .lit v` — fails because `convertExpr` of non-lit compound expr is non-lit
+- The `| _ =>` branch IS reachable via nested compound expressions (e.g. let-inside-let errors)
+- These are NOT blocked by tryCatch catch sorry (despite code comments); they are blocked by the Flat/Core wrapper-stripping mismatch in the simulation relation itself
+
+**L6144 (non-consoleLog call): BLOCKED**
+- Multi-step simulation required: Core call = 1 step, Flat call = N steps
+- Cannot close without multi-step simulation framework
+
+**L7003 (getIndex string): AXIOM-marked**
+- Updated comment to shorter AXIOM format
+- Genuinely unprovable due to opaque Float.toString
+### 2026-04-11T12:36:30+00:00 Run complete — Or.inr L5270/L5414/L5701 confirmed BLOCKED (structural mismatch); L6144 BLOCKED (multi-step); L7003 AXIOM-marked
+2026-04-11T12:36:39+00:00 DONE

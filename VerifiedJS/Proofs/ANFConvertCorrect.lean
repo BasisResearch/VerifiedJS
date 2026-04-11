@@ -14495,18 +14495,18 @@ private theorem hasReturnInHead_return_steps :
           hexpr'.trans hexpr_a, henv'.trans henv_a, hheap'.trans hheap_a,
           htrace'.trans htrace_a, hobs_a⟩
     | unary_arg h_a =>
-      rename_i arg op
+      rename_i a op
       simp only [ANF.normalizeExpr] at hnorm
-      have ha_depth : arg.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have ha_depth : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
       obtain ⟨ih_none, ih_ok, ih_err⟩ :=
-        ih arg ha_depth h_a env heap trace funcs cs _ n m arg
+        ih a ha_depth h_a env heap trace funcs cs _ n m arg
           hnorm (fun x hfx => hewf x (VarFreeIn.unary_arg _ _ _ hfx))
           (by cases hna with | unary ha => exact ha)
       refine ⟨?_, ?_, ?_⟩
       · intro harg
         obtain ⟨evs, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_none harg
         have herr : ∃ msg, .error msg ∈ evs := observableTrace_return_has_error hobs_a
-        have hpres : ∀ smid evs1, Flat.Steps ⟨arg, env, heap, trace, funcs, cs⟩ evs1 smid →
+        have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs1 smid →
             evs1.length ≤ evs.length →
             smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
           intro smid evs1 hsteps _hlen
@@ -14527,7 +14527,7 @@ private theorem hasReturnInHead_return_steps :
       · intro t v harg heval
         obtain ⟨evs, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_ok t v harg heval
         have herr : ∃ msg, .error msg ∈ evs := observableTrace_return_has_error hobs_a
-        have hpres : ∀ smid evs1, Flat.Steps ⟨arg, env, heap, trace, funcs, cs⟩ evs1 smid →
+        have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs1 smid →
             evs1.length ≤ evs.length →
             smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
           intro smid evs1 hsteps _hlen
@@ -14548,7 +14548,7 @@ private theorem hasReturnInHead_return_steps :
       · intro t msg harg heval
         obtain ⟨evs, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_err t msg harg heval
         have herr : ∃ msg', .error msg' ∈ evs := observableTrace_return_has_error hobs_a
-        have hpres : ∀ smid evs1, Flat.Steps ⟨arg, env, heap, trace, funcs, cs⟩ evs1 smid →
+        have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs1 smid →
             evs1.length ≤ evs.length →
             smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
           intro smid evs1 hsteps _hlen
@@ -14639,18 +14639,18 @@ private theorem hasReturnInHead_return_steps :
           hexpr'.trans hexpr_a, henv'.trans henv_a, hheap'.trans hheap_a,
           htrace'.trans htrace_a, hobs_a⟩
     | typeof_arg h_a =>
-      rename_i arg✝
+      rename_i a
       simp only [ANF.normalizeExpr] at hnorm
-      have ha_depth : arg✝.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have ha_depth : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
       obtain ⟨ih_none, ih_ok, ih_err⟩ :=
-        ih arg✝ ha_depth h_a env heap trace funcs cs _ n m arg
+        ih a ha_depth h_a env heap trace funcs cs _ n m arg
           hnorm (fun x hfx => hewf x (VarFreeIn.typeof_arg _ _ hfx))
           (by cases hna with | typeof ha => exact ha)
       refine ⟨?_, ?_, ?_⟩
       · intro harg
         obtain ⟨evs, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_none harg
         have herr : ∃ msg, .error msg ∈ evs := observableTrace_return_has_error hobs_a
-        have hpres : ∀ smid evs1, Flat.Steps ⟨arg✝, env, heap, trace, funcs, cs⟩ evs1 smid →
+        have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs1 smid →
             evs1.length ≤ evs.length →
             smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
           intro smid evs1 hsteps _hlen
@@ -14671,7 +14671,7 @@ private theorem hasReturnInHead_return_steps :
       · intro t v harg heval
         obtain ⟨evs, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_ok t v harg heval
         have herr : ∃ msg, .error msg ∈ evs := observableTrace_return_has_error hobs_a
-        have hpres : ∀ smid evs1, Flat.Steps ⟨arg✝, env, heap, trace, funcs, cs⟩ evs1 smid →
+        have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs1 smid →
             evs1.length ≤ evs.length →
             smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
           intro smid evs1 hsteps _hlen
@@ -14692,7 +14692,7 @@ private theorem hasReturnInHead_return_steps :
       · intro t msg harg heval
         obtain ⟨evs, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_err t msg harg heval
         have herr : ∃ msg', .error msg' ∈ evs := observableTrace_return_has_error hobs_a
-        have hpres : ∀ smid evs1, Flat.Steps ⟨arg✝, env, heap, trace, funcs, cs⟩ evs1 smid →
+        have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs1 smid →
             evs1.length ≤ evs.length →
             smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
           intro smid evs1 hsteps _hlen
