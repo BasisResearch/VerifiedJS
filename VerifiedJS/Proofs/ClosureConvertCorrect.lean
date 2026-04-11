@@ -4945,18 +4945,16 @@ private theorem closureConvert_step_simulation
         -- Both are significant architectural changes beyond the current proof framework.
         (∃ (st_a st_a' : Flat.CCState),
           (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
-          CCStateAgree st st_a ∧ CCStateAgree st' st_a') by
+          CCStateAgree st st_a ∧ CCStateAgree st' st_a') ∧
+        FuncsCorr injMap' sc'.funcs sf'.funcs t.functions by
     intro sf sc ev sf' hrel hstep
     obtain ⟨htrace, ⟨injMap, hinj, henv, hfuncCorr⟩, hncfr, hexprwf, henvwf, hheapvwf, hheapna, hsupp, hfuncs_supp, scope, envVar, envMap, st, st', hconv⟩ := hrel
-    obtain ⟨injMap', sc', hcstep, htrace', hinj', henv', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', _, _⟩ :=
+    obtain ⟨injMap', sc', hcstep, htrace', hinj', henv', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', _, _⟩, hfuncCorr'⟩ :=
       this sc.expr.depth envVar envMap injMap sf sc ev sf' scope st st' rfl htrace hinj henv hfuncCorr henvwf hheapvwf hheapna hncfr hexprwf hsupp hconv hstep
     have hsupp' : sc'.expr.supported = true :=
       Core_step_preserves_supported _ _ _ hsupp hfuncs_supp (by obtain ⟨h⟩ := hcstep; exact h)
     have hfuncs_supp' : ∀ (i : Nat) (fd : Core.FuncClosure), sc'.funcs[i]? = some fd → fd.body.supported = true :=
       Core_step_preserves_funcs_supported _ _ _ hsupp hfuncs_supp (by obtain ⟨h⟩ := hcstep; exact h)
-    -- FuncsCorr preservation: injMap is unused in FuncsCorr body, so we only need
-    -- sc'.funcs/sf'.funcs correspondence. Sorry'd pending per-case proof threading.
-    have hfuncCorr' : FuncsCorr injMap' sc'.funcs sf'.funcs t.functions := sorry
     exact ⟨sc', hcstep, htrace', ⟨injMap', hinj', henv', hfuncCorr'⟩, hncfr', hexprwf', henvwf', hheapvwf', hheapna', hsupp', hfuncs_supp', scope, envVar, envMap, st_a, st_a', hconv'⟩
   intro n
   induction n using Nat.strongRecOn with
@@ -5009,7 +5007,7 @@ private theorem closureConvert_step_simulation
         obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
         obtain ⟨cv, hclookup, hfvcv⟩ := hfwd name fv hflookup
         let sc' : Core.State := ⟨.lit cv, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · have hsc' : sc = { sc with expr := .var name } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
           rw [hsc']; exact Core_step?_var_found _ _ _ hclookup
@@ -5033,7 +5031,7 @@ private theorem closureConvert_step_simulation
             obtain ⟨fv', hfl, _⟩ := hbwd name cv hcl
             simp [hflookup] at hfl
         let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap, sc.trace ++ [.error ("ReferenceError: " ++ name)], sc.funcs, sc.callStack⟩
-        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · have hsc' : sc = { sc with expr := .var name } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
           rw [hsc']; exact Core_step?_var_not_found _ _ hclookup
@@ -5062,7 +5060,7 @@ private theorem closureConvert_step_simulation
       obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
       obtain ⟨cv, hclookup, hfvcv⟩ := hfwd "this" fv hflookup
       let sc' : Core.State := ⟨.lit cv, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · have hsc' : sc = { sc with expr := .this } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
         rw [hsc']; exact Core_step?_this_found _ _ hclookup
@@ -5086,7 +5084,7 @@ private theorem closureConvert_step_simulation
           obtain ⟨fv', hfl, _⟩ := hbwd "this" cv hcl
           simp [hflookup] at hfl
       let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · have hsc' : sc = { sc with expr := .this } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
         rw [hsc']; exact Core_step?_this_not_found _ hclookup
@@ -5116,7 +5114,7 @@ private theorem closureConvert_step_simulation
       obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
       let sc' : Core.State :=
         ⟨body, Core.Env.extend sc.env name cv, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · show Core.step? sc = some (.silent, sc')
         have hsc' : sc = { sc with expr := .«let» name (.lit cv) body } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -5166,7 +5164,7 @@ private theorem closureConvert_step_simulation
             simp [noCallFrameReturn] at hncfr; exact hncfr.1
           have hexprwf_init : ExprAddrWF init sc.heap.objects.size := by
             simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-          obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+          obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
             ih_depth init.depth hdepth envVar envMap injMap
               { sf with expr := (Flat.convertExpr init scope envVar envMap st).fst }
               { sc with expr := init }
@@ -5177,7 +5175,7 @@ private theorem closureConvert_step_simulation
           let sc' : Core.State :=
             ⟨.«let» name sc_sub'.expr body, sc_sub'.env, sc_sub'.heap,
              sc.trace ++ [t], sc_sub'.funcs, sc_sub'.callStack⟩
-          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
           · show Core.step? sc = some (t, sc')
             have hsc' : sc = { sc with expr := .«let» name init body } := by
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -5223,7 +5221,7 @@ private theorem closureConvert_step_simulation
       obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
       let sc' : Core.State := ⟨.lit cv, sc.env.assign name cv, sc.heap,
         sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · have hsc' : sc = { sc with expr := .assign name (.lit cv) } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
         rw [hsc']; simp [Core.step?, Core.exprValue?, Core.pushTrace]; rfl
@@ -5263,7 +5261,7 @@ private theorem closureConvert_step_simulation
             simp [noCallFrameReturn] at hncfr; exact hncfr
           have hexprwf_rhs : ExprAddrWF rhs sc.heap.objects.size := by
             simp [ExprAddrWF] at hexprwf; exact hexprwf
-          obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+          obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
             ih_depth rhs.depth hdepth envVar envMap injMap
               { sf with expr := (Flat.convertExpr rhs scope envVar envMap st).fst }
               { sc with expr := rhs }
@@ -5274,7 +5272,7 @@ private theorem closureConvert_step_simulation
           let sc' : Core.State :=
             ⟨.assign name sc_sub'.expr, sc_sub'.env, sc_sub'.heap,
              sc.trace ++ [t], sc_sub'.funcs, sc_sub'.callStack⟩
-          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
           · show Core.step? sc = some (t, sc')
             have hsc' : sc = { sc with expr := .assign name rhs } := by
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -5317,7 +5315,7 @@ private theorem closureConvert_step_simulation
         obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
         let sc' : Core.State :=
           ⟨then_, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · show Core.step? sc = some (.silent, sc')
           have hsc' : sc = { sc with expr := .«if» (.lit cv) then_ else_ } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -5342,7 +5340,7 @@ private theorem closureConvert_step_simulation
         obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
         let sc' : Core.State :=
           ⟨else_, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · show Core.step? sc = some (.silent, sc')
           have hsc' : sc = { sc with expr := .«if» (.lit cv) then_ else_ } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -5403,7 +5401,7 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr.1.1
       have hexprwf_cond : ExprAddrWF cond sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
         ih_depth cond.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr cond scope envVar envMap st).fst }
           { sc with expr := cond }
@@ -5414,7 +5412,7 @@ private theorem closureConvert_step_simulation
       let sc' : Core.State :=
         ⟨.«if» sc_sub'.expr then_ else_, sc_sub'.env, sc_sub'.heap,
          sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · show Core.step? sc = some (ev, sc')
         have hsc' : sc = { sc with expr := .«if» cond then_ else_ } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -5458,7 +5456,7 @@ private theorem closureConvert_step_simulation
       obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
       let sc' : Core.State :=
         ⟨b, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · show Core.step? sc = some (.silent, sc')
         have hsc' : sc = { sc with expr := .seq (.lit cv) b } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -5504,7 +5502,7 @@ private theorem closureConvert_step_simulation
             simp [noCallFrameReturn] at hncfr; exact hncfr.1
           have hexprwf_a : ExprAddrWF a sc.heap.objects.size := by
             simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-          obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+          obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
             ih_depth a.depth hdepth envVar envMap injMap
               { sf with expr := (Flat.convertExpr a scope envVar envMap st).fst }
               { sc with expr := a }
@@ -5515,7 +5513,7 @@ private theorem closureConvert_step_simulation
           let sc' : Core.State :=
             ⟨.seq sc_sub'.expr b, sc_sub'.env, sc_sub'.heap,
              sc.trace ++ [t], sc_sub'.funcs, sc_sub'.callStack⟩
-          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
           · show Core.step? sc = some (t, sc')
             have hsc' : sc = { sc with expr := .seq a b } := by
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -5561,7 +5559,7 @@ private theorem closureConvert_step_simulation
       obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
       let sc' : Core.State := ⟨.lit (Core.evalUnary op cv), sc.env, sc.heap,
         sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · have hsc' : sc = { sc with expr := .unary op (.lit cv) } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
         rw [hsc']; simp [Core.step?, Core.exprValue?, Core.pushTrace]; rfl
@@ -5601,7 +5599,7 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr
       have hexprwf_arg : ExprAddrWF arg sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
         ih_depth arg.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr arg scope envVar envMap st).fst }
           { sc with expr := arg }
@@ -5612,7 +5610,7 @@ private theorem closureConvert_step_simulation
       let sc' : Core.State :=
         ⟨.unary op sc_sub'.expr, sc_sub'.env, sc_sub'.heap,
          sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · show Core.step? sc = some (ev, sc')
         have hsc' : sc = { sc with expr := .unary op arg } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -5653,7 +5651,7 @@ private theorem closureConvert_step_simulation
         obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
         let sc' : Core.State :=
           ⟨.lit (Core.evalBinary op lv rv), sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · show Core.step? sc = some (.silent, sc')
           have hsc' : sc = { sc with expr := .binary op (.lit lv) (.lit rv) } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -5701,7 +5699,7 @@ private theorem closureConvert_step_simulation
           simp [noCallFrameReturn] at hncfr; exact hncfr
         have hexprwf_rhs : ExprAddrWF rhs sc.heap.objects.size := by
           simp [ExprAddrWF] at hexprwf; exact hexprwf.2
-        obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+        obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
           ih_depth rhs.depth hdepth envVar envMap injMap
             { sf with expr := (Flat.convertExpr rhs scope envVar envMap st).fst }
             { sc with expr := rhs }
@@ -5712,7 +5710,7 @@ private theorem closureConvert_step_simulation
         let sc' : Core.State :=
           ⟨.binary op (.lit lv) sc_sub'.expr, sc_sub'.env, sc_sub'.heap,
            sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-        refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · show Core.step? sc = some (ev, sc')
           have hsc' : sc = { sc with expr := .binary op (.lit lv) rhs } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -5762,7 +5760,7 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr.1
       have hexprwf_lhs : ExprAddrWF lhs sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
         ih_depth lhs.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr lhs scope envVar envMap st).fst }
           { sc with expr := lhs }
@@ -5773,7 +5771,7 @@ private theorem closureConvert_step_simulation
       let sc' : Core.State :=
         ⟨.binary op sc_sub'.expr rhs, sc_sub'.env, sc_sub'.heap,
          sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · show Core.step? sc = some (ev, sc')
         have hsc' : sc = { sc with expr := .binary op lhs rhs } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -5836,7 +5834,7 @@ private theorem closureConvert_step_simulation
       have hexprwf_f : ExprAddrWF f sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf.1
       obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
-             hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+             hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
         ih_depth f.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr f scope envVar envMap st).fst }
           { sc with expr := f }
@@ -5847,7 +5845,7 @@ private theorem closureConvert_step_simulation
       let sc' : Core.State :=
         ⟨.call sc_sub'.expr args, sc_sub'.env, sc_sub'.heap,
          sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · show Core.step? sc = some (ev, sc')
         have hsc' : sc = { sc with expr := .call f args } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -5910,7 +5908,7 @@ private theorem closureConvert_step_simulation
             simp only [Option.some.injEq, Prod.mk.injEq] at hpair
             obtain ⟨hev_eq, hsf'_eq⟩ := hpair
             subst hev_eq; subst hsf'_eq
-            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
             · -- Core.step?: eliminate dependent match by case splitting
               revert hcore
               cases argVals with
@@ -5945,7 +5943,7 @@ private theorem closureConvert_step_simulation
           obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
           let sc' : Core.State :=
             ⟨.lit .undefined, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
           · show Core.step? sc = some (.silent, sc')
             have hsc' : sc = { sc with expr := .call (.lit cv) args } := by
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -6013,7 +6011,7 @@ private theorem closureConvert_step_simulation
             simp [ExprAddrWF] at hexprwf
             exact ExprAddrListWF_firstNonValueExpr_target hcfnv hexprwf.2
           obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
-                  hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+                  hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
             ih_depth target_c.depth hdepth envVar envMap injMap
               { sf with expr := (Flat.convertExpr target_c scope envVar envMap
                 (Flat.convertExprList done_c scope envVar envMap st).snd).fst }
@@ -6029,7 +6027,7 @@ private theorem closureConvert_step_simulation
             ⟨.call (.lit cv) (done_c ++ [sc_sub'.expr] ++ rest_c),
              sc_sub'.env, sc_sub'.heap,
              sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
           · -- Core.step?
             show Core.step? sc = some (ev, sc')
             have hsc' : sc = { sc with expr := .call (.lit cv) args } := by
@@ -6191,7 +6189,7 @@ private theorem closureConvert_step_simulation
             have haddr' : addr < sc.heap.objects.size := by omega
             exact ValueAddrWF_mono (hheapvwf addr haddr' props' hprops' kv hkv) (by simp only [cheap', Array.size_push]; omega)
         refine ⟨injMap, sc', ⟨hcstep⟩, ?trace_, ?hinj_, ?envcorr_, ?envwf_, ?hvwf_,
-          ?hna_, ?ncfr_, ?ewf_, ?ccst_⟩
+          ?hna_, ?ncfr_, ?ewf_, ?ccst_, sorry⟩
         case trace_ => simp [sc', htrace]
         case hinj_ => exact hinj'
         case envcorr_ => exact henvCorr
@@ -6234,7 +6232,7 @@ private theorem closureConvert_step_simulation
         | none =>
           let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
             sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
           · have hsc' : sc = { sc with expr := .getProp (.lit (.object addr)) prop } := by
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
             rw [hsc']
@@ -6258,7 +6256,7 @@ private theorem closureConvert_step_simulation
             let coreResult := if prop == "length" then Core.Value.number (Float.ofNat props.length) else Core.Value.undefined
             let sc' : Core.State := ⟨.lit coreResult, sc.env, sc.heap,
               sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
             · have hsc' : sc = { sc with expr := .getProp (.lit (.object addr)) prop } := by
                 obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
               rw [hsc']
@@ -6283,7 +6281,7 @@ private theorem closureConvert_step_simulation
           | some kv =>
             let sc' : Core.State := ⟨.lit kv.2, sc.env, sc.heap,
               sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
             · have hsc' : sc = { sc with expr := .getProp (.lit (.object addr)) prop } := by
                 obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
               rw [hsc']
@@ -6311,7 +6309,7 @@ private theorem closureConvert_step_simulation
         let coreResult := if prop == "length" then Core.Value.number (Float.ofNat str.length) else Core.Value.undefined
         let sc' : Core.State := ⟨.lit coreResult, sc.env, sc.heap,
           sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · have hsc' : sc = { sc with expr := .getProp (.lit (.string str)) prop } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
           rw [hsc']
@@ -6334,7 +6332,7 @@ private theorem closureConvert_step_simulation
         simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
         let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
           sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · have hsc' : sc = { sc with expr := .getProp (.lit cv) prop } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
           rw [hsc']
@@ -6374,7 +6372,7 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr
       have hexprwf_arg : ExprAddrWF obj sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
         ih_depth obj.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst }
           { sc with expr := obj }
@@ -6385,7 +6383,7 @@ private theorem closureConvert_step_simulation
       let sc' : Core.State :=
         ⟨.getProp sc_sub'.expr prop, sc_sub'.env, sc_sub'.heap,
          sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · show Core.step? sc = some (ev, sc')
         have hsc' : sc = { sc with expr := .getProp obj prop } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -6453,7 +6451,7 @@ private theorem closureConvert_step_simulation
             | none => sc.heap
           let sc' : Core.State := ⟨.lit vv, sc.env, coreHeap',
             sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
           · -- Core step
             have hsc' : sc = { sc with expr := .setProp (.lit (.object addr)) prop (.lit vv) } := by
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -6519,7 +6517,7 @@ private theorem closureConvert_step_simulation
           simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
           let sc' : Core.State := ⟨.lit vv, sc.env, sc.heap,
             sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
           · have hsc' : sc = { sc with expr := .setProp (.lit cv) prop (.lit vv) } := by
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
             rw [hsc']
@@ -6576,7 +6574,7 @@ private theorem closureConvert_step_simulation
         have hexprwf_v : ExprAddrWF value sc.heap.objects.size := by
           have := hexprwf; simp [ExprAddrWF] at this; exact this.2
         obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf',
-                st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+                ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
           ih_depth value.depth hdepth envVar envMap injMap
             { sf with expr := (Flat.convertExpr value scope envVar envMap st).fst }
             { sc with expr := value }
@@ -6587,7 +6585,7 @@ private theorem closureConvert_step_simulation
         let sc' : Core.State :=
           ⟨.setProp (.lit cv) prop sc_sub'.expr, sc_sub'.env, sc_sub'.heap,
            sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-        refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · show Core.step? sc = some (ev, sc')
           have hsc' : sc = { sc with expr := .setProp (.lit cv) prop value } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -6638,7 +6636,7 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr.1
       have hexprwf_obj : ExprAddrWF obj sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
         ih_depth obj.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst }
           { sc with expr := obj }
@@ -6649,7 +6647,7 @@ private theorem closureConvert_step_simulation
       let sc' : Core.State :=
         ⟨.setProp sc_sub'.expr prop value, sc_sub'.env, sc_sub'.heap,
          sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · show Core.step? sc = some (ev, sc')
         have hsc' : sc = { sc with expr := .setProp obj prop value } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -6725,7 +6723,7 @@ private theorem closureConvert_step_simulation
           | none =>
             let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
               sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
             · have hsc' : sc = { sc with expr := .getIndex (.lit (.object addr)) (.lit iv) } := by
                 obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
               rw [hsc']
@@ -6747,7 +6745,7 @@ private theorem closureConvert_step_simulation
               let coreResult := if Core.valueToString iv == "length" then Core.Value.number (Float.ofNat props.length) else Core.Value.undefined
               let sc' : Core.State := ⟨.lit coreResult, sc.env, sc.heap,
                 sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-              refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+              refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
               · have hsc' : sc = { sc with expr := .getIndex (.lit (.object addr)) (.lit iv) } := by
                   obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
                 rw [hsc']
@@ -6771,7 +6769,7 @@ private theorem closureConvert_step_simulation
             | some kv =>
               let sc' : Core.State := ⟨.lit kv.2, sc.env, sc.heap,
                 sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-              refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+              refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
               · have hsc' : sc = { sc with expr := .getIndex (.lit (.object addr)) (.lit iv) } := by
                   obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
                 rw [hsc']
@@ -6812,7 +6810,7 @@ private theorem closureConvert_step_simulation
           obtain ⟨hev, hsf'⟩ := hstep; subst hev; subst hsf'
           let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
             sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
           · have hsc' : sc = { sc with expr := .getIndex (.lit cv) (.lit iv) } := by
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
             rw [hsc']
@@ -6876,7 +6874,7 @@ private theorem closureConvert_step_simulation
         have hcv_wf : ValueAddrWF cv sc.heap.objects.size := by
           simp [ExprAddrWF] at hexprwf; exact hexprwf.1
         obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf',
-                st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+                ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
           ih_depth idx.depth hdepth envVar envMap injMap
             { sf with expr := (Flat.convertExpr idx scope envVar envMap st).fst }
             { sc with expr := idx }
@@ -6887,7 +6885,7 @@ private theorem closureConvert_step_simulation
         let sc' : Core.State :=
           ⟨.getIndex (.lit cv) sc_sub'.expr, sc_sub'.env, sc_sub'.heap,
            sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-        refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · show Core.step? sc = some (ev, sc')
           have hsc' : sc = { sc with expr := .getIndex (.lit cv) idx } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -6937,7 +6935,7 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr.1
       have hexprwf_arg : ExprAddrWF obj sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
         ih_depth obj.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst }
           { sc with expr := obj }
@@ -6948,7 +6946,7 @@ private theorem closureConvert_step_simulation
       let sc' : Core.State :=
         ⟨.getIndex sc_sub'.expr idx, sc_sub'.env, sc_sub'.heap,
          sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · show Core.step? sc = some (ev, sc')
         have hsc' : sc = { sc with expr := .getIndex obj idx } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -7034,7 +7032,7 @@ private theorem closureConvert_step_simulation
               | none => sc.heap
             let sc' : Core.State := ⟨.lit vv, sc.env, coreHeap',
               sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
             · -- Core step
               have hsc' : sc = { sc with expr := .setIndex (.lit (.object addr)) (.lit iv) (.lit vv) } := by
                 obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -7101,7 +7099,7 @@ private theorem closureConvert_step_simulation
             simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
             let sc' : Core.State := ⟨.lit vv, sc.env, sc.heap,
               sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+            refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
             · have hsc' : sc = { sc with expr := .setIndex (.lit cv) (.lit iv) (.lit vv) } := by
                 obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
               rw [hsc']
@@ -7167,7 +7165,7 @@ private theorem closureConvert_step_simulation
           have hiv_wf : ValueAddrWF iv sc.heap.objects.size := by
             simp [ExprAddrWF] at hexprwf; exact hexprwf.2.1
           obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf',
-                  st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+                  ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
             ih_depth value.depth hdepth envVar envMap injMap
               { sf with expr := (Flat.convertExpr value scope envVar envMap st).fst }
               { sc with expr := value }
@@ -7178,7 +7176,7 @@ private theorem closureConvert_step_simulation
           let sc' : Core.State :=
             ⟨.setIndex (.lit cv) (.lit iv) sc_sub'.expr, sc_sub'.env, sc_sub'.heap,
              sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
           · show Core.step? sc = some (ev, sc')
             have hsc' : sc = { sc with expr := .setIndex (.lit cv) (.lit iv) value } := by
               obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -7245,7 +7243,7 @@ private theorem closureConvert_step_simulation
         have hcv_wf : ValueAddrWF cv sc.heap.objects.size := by
           simp [ExprAddrWF] at hexprwf; exact hexprwf.1
         obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf',
-                st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+                ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
           ih_depth idx.depth hdepth envVar envMap injMap
             { sf with expr := (Flat.convertExpr idx scope envVar envMap st).fst }
             { sc with expr := idx }
@@ -7256,7 +7254,7 @@ private theorem closureConvert_step_simulation
         let sc' : Core.State :=
           ⟨.setIndex (.lit cv) sc_sub'.expr value, sc_sub'.env, sc_sub'.heap,
            sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-        refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · show Core.step? sc = some (ev, sc')
           have hsc' : sc = { sc with expr := .setIndex (.lit cv) idx value } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -7322,7 +7320,7 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr.1.1
       have hexprwf_obj : ExprAddrWF obj sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf.1
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
         ih_depth obj.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst }
           { sc with expr := obj }
@@ -7333,7 +7331,7 @@ private theorem closureConvert_step_simulation
       let sc' : Core.State :=
         ⟨.setIndex sc_sub'.expr idx value, sc_sub'.env, sc_sub'.heap,
          sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · show Core.step? sc = some (ev, sc')
         have hsc' : sc = { sc with expr := .setIndex obj idx value } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -7396,7 +7394,7 @@ private theorem closureConvert_step_simulation
           | none => sc.heap
         let sc' : Core.State := ⟨.lit (.bool true), sc.env, coreHeap',
           sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · -- Core step
           have hsc' : sc = { sc with expr := .deleteProp (.lit (.object addr)) prop } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -7447,7 +7445,7 @@ private theorem closureConvert_step_simulation
         simp at hstep; obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
         let sc' : Core.State := ⟨.lit (.bool true), sc.env, sc.heap,
           sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · -- Core step
           have hsc' : sc = { sc with expr := .deleteProp (.lit cv) prop } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -7489,7 +7487,7 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr
       have hexprwf_arg : ExprAddrWF obj sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
         ih_depth obj.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr obj scope envVar envMap st).fst }
           { sc with expr := obj }
@@ -7500,7 +7498,7 @@ private theorem closureConvert_step_simulation
       let sc' : Core.State :=
         ⟨.deleteProp sc_sub'.expr prop, sc_sub'.env, sc_sub'.heap,
          sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · show Core.step? sc = some (ev, sc')
         have hsc' : sc = { sc with expr := .deleteProp obj prop } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -7539,7 +7537,7 @@ private theorem closureConvert_step_simulation
         | .object _ => "object"
       let sc' : Core.State := ⟨.lit (.string coreResult), sc.env, sc.heap,
         sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · have hsc' : sc = { sc with expr := .typeof (.lit cv) } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
         rw [hsc']; simp [Core.step?, Core.exprValue?, Core.pushTrace]
@@ -7580,7 +7578,7 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr
       have hexprwf_arg : ExprAddrWF arg sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
         ih_depth arg.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr arg scope envVar envMap st).fst }
           { sc with expr := arg }
@@ -7591,7 +7589,7 @@ private theorem closureConvert_step_simulation
       let sc' : Core.State :=
         ⟨.typeof sc_sub'.expr, sc_sub'.env, sc_sub'.heap,
          sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · show Core.step? sc = some (ev, sc')
         have hsc' : sc = { sc with expr := .typeof arg } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -7676,7 +7674,7 @@ private theorem closureConvert_step_simulation
           have haddr' : addr < sc.heap.objects.size := by omega
           exact ValueAddrWF_mono (hheapvwf addr haddr' props' hprops' kv hkv) (by simp only [cheap', Array.size_push]; omega)
       refine ⟨injMap, sc', ⟨hcstep⟩, ?trace_, ?hinj_, ?envcorr_, ?envwf_, ?hvwf_,
-        ?hna_, ?ncfr_, ?ewf_, ?ccst_⟩
+        ?hna_, ?ncfr_, ?ewf_, ?ccst_, sorry⟩
       case trace_ => simp [sc', htrace]
       case hinj_ => exact hinj'
       case envcorr_ => exact henvCorr
@@ -7735,7 +7733,7 @@ private theorem closureConvert_step_simulation
         simp [ExprAddrWF] at hexprwf
         exact ExprAddrPropListWF_firstNonValueProp_target hcfnv hexprwf
       obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
-              hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+              hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
         ih_depth target_c.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr target_c scope envVar envMap
             (Flat.convertPropList done_c scope envVar envMap st).snd).fst }
@@ -7751,7 +7749,7 @@ private theorem closureConvert_step_simulation
         ⟨.objectLit (done_c ++ [(propName_c, sc_sub'.expr)] ++ rest_c),
          sc_sub'.env, sc_sub'.heap,
          sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · -- Core.step?
         show Core.step? sc = some (ev, sc')
         have hsc' : sc = { sc with expr := .objectLit props } := by
@@ -7892,7 +7890,7 @@ private theorem closureConvert_step_simulation
           have haddr' : addr < sc.heap.objects.size := by omega
           exact ValueAddrWF_mono (hheapvwf addr haddr' props' hprops' kv hkv) (by simp only [cheap', Array.size_push]; omega)
       refine ⟨injMap, sc', ⟨hcstep⟩, ?trace_, ?hinj_, ?envcorr_, ?envwf_, ?hvwf_,
-        ?hna_, ?ncfr_, ?ewf_, ?ccst_⟩
+        ?hna_, ?ncfr_, ?ewf_, ?ccst_, sorry⟩
       case trace_ => simp [sc', htrace]
       case hinj_ => exact hinj'
       case envcorr_ => exact henvCorr
@@ -7951,7 +7949,7 @@ private theorem closureConvert_step_simulation
         simp [ExprAddrWF] at hexprwf
         exact ExprAddrListWF_firstNonValueExpr_target hcfnv hexprwf
       obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
-              hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+              hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
         ih_depth target_c.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr target_c scope envVar envMap
             (Flat.convertExprList done_c scope envVar envMap st).snd).fst }
@@ -7967,7 +7965,7 @@ private theorem closureConvert_step_simulation
         ⟨.arrayLit (done_c ++ [sc_sub'.expr] ++ rest_c),
          sc_sub'.env, sc_sub'.heap,
          sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · -- Core.step?
         show Core.step? sc = some (ev, sc')
         have hsc' : sc = { sc with expr := .arrayLit elems } := by
@@ -8062,7 +8060,7 @@ private theorem closureConvert_step_simulation
       obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
       let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
         sc.trace ++ [.error (Core.valueToString cv)], sc.funcs, sc.callStack⟩
-      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · rw [valueToString_convertValue]
         have hsc' : sc = { sc with expr := .throw (.lit cv) } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -8104,7 +8102,7 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr
       have hexprwf_val : ExprAddrWF val sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
         ih_depth val.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr val scope envVar envMap st).fst }
           { sc with expr := val }
@@ -8116,7 +8114,7 @@ private theorem closureConvert_step_simulation
       let sc' : Core.State :=
         ⟨.throw sc_sub'.expr, sc_sub'.env, sc_sub'.heap,
          sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · -- Core step
         show Core.step? sc = some (ev, sc')
         have hsc' : sc = { sc with expr := .throw val } := by
@@ -8182,7 +8180,7 @@ private theorem closureConvert_step_simulation
         obtain ⟨hev, hsf'⟩ := hstep; subst hev; subst hsf'
         let sc' : Core.State :=
           ⟨.lit v, sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · show Core.step? sc = some (.silent, sc')
           have hsc' : sc = { sc with expr := .tryCatch (.lit v) catchParam catchBody none } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -8227,7 +8225,7 @@ private theorem closureConvert_step_simulation
           have hdepth : body.depth < n := by
             have := tryCatch_body_depth_lt body catchParam catchBody finally_; omega
           obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
-              hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+              hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
             ih_depth body.depth hdepth envVar envMap injMap
               { sf with expr := fbody }
               { sc with expr := body }
@@ -8239,7 +8237,7 @@ private theorem closureConvert_step_simulation
           let sc' : Core.State :=
             ⟨handler, Core.Env.extend sc_sub'.env catchParam (.string msg), sc_sub'.heap,
              sc.trace ++ [.error msg], sc_sub'.funcs, sc_sub'.callStack⟩
-          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
           · -- Core step: tryCatch body error → catch handler
             show Core.step? sc = some (.error msg, sc')
             have hsc_rw : sc = { sc with expr := .tryCatch body catchParam catchBody finally_ } := by
@@ -8295,7 +8293,7 @@ private theorem closureConvert_step_simulation
           have hdepth : body.depth < n := by
             have := tryCatch_body_depth_lt body catchParam catchBody finally_; omega
           obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf',
-              hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+              hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
             ih_depth body.depth hdepth envVar envMap injMap
               { sf with expr := fbody }
               { sc with expr := body }
@@ -8306,7 +8304,7 @@ private theorem closureConvert_step_simulation
           let sc' : Core.State :=
             ⟨.tryCatch sc_sub'.expr catchParam catchBody finally_, sc_sub'.env, sc_sub'.heap,
              sc.trace ++ [t], sc_sub'.funcs, sc_sub'.callStack⟩
-          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
           · -- Core step
             show Core.step? sc = some (t, sc')
             have hsc_rw : sc = { sc with expr := .tryCatch body catchParam catchBody finally_ } := by
@@ -8377,7 +8375,7 @@ private theorem closureConvert_step_simulation
     let sc' : Core.State :=
       ⟨.«if» cond (.seq body (.while_ cond body)) (.lit .undefined),
        sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-    refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
     · show Core.step? sc = some (.silent, sc')
       have hsc' : sc = { sc with expr := .while_ cond body } := by
         obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -8421,7 +8419,7 @@ private theorem closureConvert_step_simulation
     obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
     let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
       sc.trace ++ [.error ("break:" ++ label.getD "")], sc.funcs, sc.callStack⟩
-    refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
     · have hsc' : sc = { sc with expr := .«break» label } := by
         obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
       rw [hsc']; exact Core_step?_break _ _
@@ -8445,7 +8443,7 @@ private theorem closureConvert_step_simulation
     obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
     let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
       sc.trace ++ [.error ("continue:" ++ label.getD "")], sc.funcs, sc.callStack⟩
-    refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
     · have hsc' : sc = { sc with expr := .«continue» label } := by
         obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
       rw [hsc']; exact Core_step?_continue _ _
@@ -8471,7 +8469,7 @@ private theorem closureConvert_step_simulation
       obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
       let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
         sc.trace ++ [.error "return:undefined"], sc.funcs, sc.callStack⟩
-      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · show Core.step? sc = some (.error "return:undefined", sc')
         have hsc' : sc = { sc with expr := .«return» none } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -8502,7 +8500,7 @@ private theorem closureConvert_step_simulation
         obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
         let sc' : Core.State := ⟨.lit cv, sc.env, sc.heap,
           sc.trace ++ [.error ("return:" ++ Core.valueToString cv)], sc.funcs, sc.callStack⟩
-        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · rw [valueToString_convertValue]
           have hsc' : sc = { sc with expr := .«return» (some (.lit cv)) } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -8544,7 +8542,7 @@ private theorem closureConvert_step_simulation
           simp [noCallFrameReturn] at hncfr; exact hncfr
         have hexprwf_val : ExprAddrWF e sc.heap.objects.size := by
           simp [ExprAddrWF] at hexprwf; exact hexprwf
-        obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+        obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
           ih_depth e.depth hdepth envVar envMap injMap
             { sf with expr := (Flat.convertExpr e scope envVar envMap st).fst }
             { sc with expr := e }
@@ -8556,7 +8554,7 @@ private theorem closureConvert_step_simulation
         let sc' : Core.State :=
           ⟨.«return» (some sc_sub'.expr), sc_sub'.env, sc_sub'.heap,
            sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-        refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · show Core.step? sc = some (ev, sc')
           have hsc' : sc = { sc with expr := .«return» (some e) } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -8585,7 +8583,7 @@ private theorem closureConvert_step_simulation
     obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
     let sc' : Core.State := ⟨body, sc.env, sc.heap,
       sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-    refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
     · have hsc' : sc = { sc with expr := .labeled label body } := by
         obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
       rw [hsc']; exact Core_step?_labeled _ _ _
@@ -8613,7 +8611,7 @@ private theorem closureConvert_step_simulation
       obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
       let sc' : Core.State := ⟨.lit .undefined, sc.env, sc.heap,
         sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · show Core.step? sc = some (.silent, sc')
         have hsc' : sc = { sc with expr := .yield none delegate } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -8644,7 +8642,7 @@ private theorem closureConvert_step_simulation
         obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
         let sc' : Core.State := ⟨.lit cv, sc.env, sc.heap,
           sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · show Core.step? sc = some (.silent, sc')
           have hsc' : sc = { sc with expr := .yield (some (.lit cv)) delegate } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -8686,7 +8684,7 @@ private theorem closureConvert_step_simulation
           simp [noCallFrameReturn] at hncfr; exact hncfr
         have hexprwf_val : ExprAddrWF e sc.heap.objects.size := by
           simp [ExprAddrWF] at hexprwf; exact hexprwf
-        obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+        obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
           ih_depth e.depth hdepth envVar envMap injMap
             { sf with expr := (Flat.convertExpr e scope envVar envMap st).fst }
             { sc with expr := e }
@@ -8698,7 +8696,7 @@ private theorem closureConvert_step_simulation
         let sc' : Core.State :=
           ⟨.yield (some sc_sub'.expr) delegate, sc_sub'.env, sc_sub'.heap,
            sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-        refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
         · show Core.step? sc = some (ev, sc')
           have hsc' : sc = { sc with expr := .yield (some e) delegate } := by
             obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -8733,7 +8731,7 @@ private theorem closureConvert_step_simulation
       obtain ⟨hev, hsf'⟩ := hstep; subst hev hsf'
       let sc' : Core.State := ⟨.lit cv, sc.env, sc.heap,
         sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
-      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · show Core.step? sc = some (.silent, sc')
         have hsc' : sc = { sc with expr := .await (.lit cv) } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
@@ -8775,7 +8773,7 @@ private theorem closureConvert_step_simulation
         simp [noCallFrameReturn] at hncfr; exact hncfr
       have hexprwf_val : ExprAddrWF arg sc.heap.objects.size := by
         simp [ExprAddrWF] at hexprwf; exact hexprwf
-      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩ :=
+      obtain ⟨injMap', sc_sub', ⟨hcstep_sub⟩, htrace_sub, hinj', henvCorr', henvwf', hheapvwf', hheapna', hncfr', hexprwf', ⟨st_a, st_a', hconv', hAgreeIn, hAgreeOut⟩, _⟩ :=
         ih_depth arg.depth hdepth envVar envMap injMap
           { sf with expr := (Flat.convertExpr arg scope envVar envMap st).fst }
           { sc with expr := arg }
@@ -8787,7 +8785,7 @@ private theorem closureConvert_step_simulation
       let sc' : Core.State :=
         ⟨.await sc_sub'.expr, sc_sub'.env, sc_sub'.heap,
          sc.trace ++ [ev], sc_sub'.funcs, sc_sub'.callStack⟩
-      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨injMap', sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, sorry⟩
       · show Core.step? sc = some (ev, sc')
         have hsc' : sc = { sc with expr := .await arg } := by
           obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl

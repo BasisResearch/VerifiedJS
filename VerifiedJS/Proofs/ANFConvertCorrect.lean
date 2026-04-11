@@ -15890,8 +15890,7 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
     (hfuncs_ac : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → hasAbruptCompletion fd.body = false)
     (hstep : Flat.step? sf = some (ev, sf')) :
     NoNestedAbrupt sf'.expr := by
-  sorry -- TODO: fix for error propagation; cases need split at hstep for match t with
-  /-obtain ⟨e, env, heap, trace, funcs, cs⟩ := sf
+  obtain ⟨e, env, heap, trace, funcs, cs⟩ := sf
   simp only [] at hna hfuncs_na hfuncs_ac hstep ⊢
   cases hna with
   -- Base cases: always produce .lit
