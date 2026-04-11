@@ -1333,11 +1333,10 @@ private theorem convertExpr_state_delta (e : Core.Expr)
           | some n => List.filter (fun x => x != n) (List.filter (fun v => !List.elem v params) (Flat.freeVars body))
           | none => List.filter (fun v => !List.elem v params) (Flat.freeVars body)) []) 0)
       { st with nextId := st.nextId + 1 }
-    constructor
-    · -- nextId: addFunc doesn't change nextId, so result = body's output nextId
-      have := ih.1; simp only [Flat.CCState.nextId] at this; omega
-    · -- funcs.size: addFunc pushes one entry
-      simp only [Array.size_push]; have := ih.2; simp only [Flat.CCState.funcs] at this; omega
+    obtain ⟨ih_nid, ih_fsz⟩ := ih
+    rw [show ({ funcs := st.funcs, nextId := st.nextId + 1 } : Flat.CCState).nextId = st.nextId + 1 from rfl] at ih_nid
+    rw [show ({ funcs := st.funcs, nextId := st.nextId + 1 } : Flat.CCState).funcs.size = st.funcs.size from rfl] at ih_fsz
+    exact ⟨by omega, by simp only [Array.size_push]; omega⟩
   | throw arg =>
     simp only [Flat.convertExpr, exprFuncCount]
     exact convertExpr_state_delta arg scope envVar envMap st
