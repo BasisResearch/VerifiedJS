@@ -8024,3 +8024,4 @@ All these sorries share the same structure:
 
 ## Run: 2026-04-11T03:15:01+00:00
 
+### 2026-04-11T03:15:12+00:00 Starting run — compound error prop L12048
