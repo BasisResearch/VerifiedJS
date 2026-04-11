@@ -13309,7 +13309,18 @@ private theorem hasReturnInHead_return_steps :
         have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs1 smid →
             evs1.length ≤ evs.length →
             smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
-          sorry -- preservation: need standard Steps preservation for return steps
+          intro smid evs1 hsteps _hlen
+          exact ⟨Flat.Steps_preserves_funcs hsteps,
+            Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+              refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+              · -- smid'.expr came from stepping a with HasReturnInHead a.
+                -- HasReturnInHead has no .tryCatch constructor and step? never creates
+                -- "__call_frame_return__" tryCatch unless call-with-all-values fires,
+                -- which is prevented by HasReturnInHead.
+                sorry
+              · -- smid'.expr = .call f' env' args' with some non-value sub-expr
+                sorry),
+            Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.seq · b)
             (fun s inner hv t si hs he => step?_seq_ctx s inner b hv t si hs he)
@@ -13325,7 +13336,13 @@ private theorem hasReturnInHead_return_steps :
         have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs1 smid →
             evs1.length ≤ evs.length →
             smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
-          sorry -- preservation
+          intro smid evs1 hsteps _hlen
+          exact ⟨Flat.Steps_preserves_funcs hsteps,
+            Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+              refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+              · sorry
+              · sorry),
+            Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.seq · b)
             (fun s inner hv t si hs he => step?_seq_ctx s inner b hv t si hs he)
@@ -13341,7 +13358,13 @@ private theorem hasReturnInHead_return_steps :
         have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs1 smid →
             evs1.length ≤ evs.length →
             smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
-          sorry -- preservation
+          intro smid evs1 hsteps _hlen
+          exact ⟨Flat.Steps_preserves_funcs hsteps,
+            Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+              refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+              · sorry
+              · sorry),
+            Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.seq · b)
             (fun s inner hv t si hs he => step?_seq_ctx s inner b hv t si hs he)
