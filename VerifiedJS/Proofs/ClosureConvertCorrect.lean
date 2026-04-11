@@ -955,8 +955,8 @@ end
 
 /-! ### Key insight: only functionDef cases modify CCState (nextId, funcs).
     convertExpr for all other expression forms threads state through unchanged.
-    A formal `convertExpr_state_id_no_functionDef` theorem would enable proving
-    CCStateAgree for branches without functionDef nodes. See log 2026-04-11. -/
+    Formalized below as `convertExpr_state_id_no_functionDef`:
+    if `noFunctionDef e`, then `(convertExpr e ... st).snd = st`. -/
 
 /-! ### noFunctionDef predicate: expression contains no functionDef nodes -/
 
@@ -1162,7 +1162,7 @@ private theorem convertPropList_state_id_no_functionDef (ps : List (Core.PropNam
     have he := convertExpr_state_id_no_functionDef pe hn.1 scope envVar envMap st; rw [he]
     exact convertPropList_state_id_no_functionDef rest hn.2 scope envVar envMap st
   termination_by sizeOf ps
-  decreasing_by all_goals simp_all <;> omega
+  decreasing_by all_goals (try simp_wf) <;> simp_all <;> omega
 
 private theorem convertOptExpr_state_id_no_functionDef (oe : Option Core.Expr)
     (h : (match oe with | some e => noFunctionDef e | none => true) = true)

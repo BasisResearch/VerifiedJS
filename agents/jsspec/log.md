@@ -5030,3 +5030,46 @@ Path A removes the `nextId` dependency from expression output. But `funcs.size` 
 ## Run: 2026-04-11T19:00:01+00:00
 
 ### 2026-04-11T19:00:08+00:00 Starting run — CCStateAgree Path A investigation
+
+### 2026-04-11T19:00 Starting run — CCStateAgree Path A investigation
+
+### Path A feasibility assessment
+
+**CCState structure:**
+- `nextId : Nat` (for `freshVar` — called only once, in `functionDef` case, line 245)
+- `funcs : Array FuncDef` (for `addFunc` — called in `functionDef` case, line 259)
+
+**CCStateAgree:** `st1.nextId = st2.nextId ∧ st1.funcs.size = st2.funcs.size` (strict equality)
+
+**Path A verdict: INSUFFICIENT to close sorries.**
+Position-based naming removes `nextId` dependency but `funcs.size` has the SAME branching problem.
+`funcIdx` is embedded in output expressions via `makeClosure funcIdx envExpr` (line 266),
+so `convertExpr_state_determined` still requires `funcs.size` equality.
+
+The fundamental issue: `convertExpr` converts both branches of if/while/tryCatch sequentially,
+but runtime only executes one. The state gap exists for BOTH `nextId` AND `funcs.size` when
+branches contain `functionDef` nodes.
+
+### Implemented: `noFunctionDef` + `convertExpr_state_id_no_functionDef`
+
+Added to ClosureConvertCorrect.lean (lines ~963-1178):
+1. `noFunctionDef` predicate (mutual: `noFunctionDef`, `listNoFunctionDef`, `propListNoFunctionDef`)
+2. `convertExpr_state_id_no_functionDef` theorem (mutual, ~180 lines):
+   - `noFunctionDef e = true → (convertExpr e scope envVar envMap st).snd = st`
+   - Also for `convertExprList`, `convertPropList`, `convertOptExpr`
+
+This formalizes the key insight mentioned in the code comments: expressions without `functionDef`
+nodes leave CCState completely unchanged. This is the prerequisite for proving CCStateAgree
+in branches where no function definitions appear.
+
+**What this enables (future work):**
+- For if/while/tryCatch branches without `functionDef`: CCStateAgree becomes trivially `⟨rfl, rfl⟩`
+- Does NOT close existing sorries yet (they handle general expressions including functionDef)
+- To close sorries, would need to either:
+  (a) Split proof into noFunctionDef / hasFunctionDef cases, or
+  (b) Implement full α-equivalence relation, or
+  (c) Two-phase conversion separating name allocation from code generation
+
+### Sorry count: unchanged at 12 CC + 43 ANF = 55 total
+### 2026-04-11T19:29:38+00:00 Run complete — Path A assessed (insufficient alone); implemented noFunctionDef + convertExpr_state_id_no_functionDef theorem (compiles clean)
+2026-04-11T19:29:57+00:00 DONE
