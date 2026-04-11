@@ -4598,3 +4598,40 @@ Sorry count now 17 (was 23). All architecturally blocked. Line numbers shifted s
 ## Run: 2026-04-11T05:00:01+00:00
 
 ### 2026-04-11T05:00:10+00:00 Starting run — BULK FuncsCorr close
+
+### 2026-04-11T05:00 Starting run — BULK FuncsCorr close
+
+### Analysis: P0 already done, P1/P2 blocked
+
+**P0 (Bulk FuncsCorr sorry⟩ close):** Already completed in prior run. Only 2 `sorry⟩` remain (L5333, L8201), both BLOCKED on CCStateAgree.
+
+**Current sorry count: 21** (down from ~87). All remaining are architecturally blocked:
+
+| Category | Lines | Count | Blocker |
+|---|---|---|---|
+| CCStateAgree | L5333, L5359, L8201, L8204, L8278, L8394 | 6 | Needs CCStateAgreeWeak invariant |
+| Multi-step simulation | L4984, L5933, L6141, L6152 | 4 | Flat call is N steps vs Core's 1 |
+| Error structural mismatch | L5152, L5251, L5490 | 3 | Flat drops wrapper on error, Core keeps it |
+| FuncsCorr initial (P1) | L1519 | 1 | See analysis below |
+| functionDef case | L8044 | 1 | Multi-step + FuncsCorr maintenance |
+| Semantic mismatch | L6792 | 1 | UNPROVABLE |
+
+**P1 (L1519) — FuncsCorr initial state: BLOCKED (architectural)**
+
+The goal is `FuncsCorr id #[logBuiltin] t.functions t.functions`. This requires:
+- `1 ≤ t.functions.size` (Core has 1 func at index 0)
+- Correspondence: t.functions[0] must match logBuiltin's shape
+
+But `closureConvert` starts from `CCState.empty` (funcs = #[]) and only adds converted source functions + lifted lambdas. There is NO provision for the console.log built-in (logBuiltin). Core.initialState hardcodes `funcs := #[logBuiltin]` at index 0, but closureConvert doesn't produce a corresponding entry.
+
+**Fix options (all architectural):**
+1. Add logBuiltin placeholder at index 0 in closureConvert
+2. Exclude consoleLogIdx from FuncsCorr's coreFuncs conditions
+3. Change Core.initialState to start with empty funcs (handle logBuiltin purely via special-case dispatch)
+
+**P2 (L5933) — call case: BLOCKED (multi-step simulation)**
+
+Non-consoleLog function calls in Flat involve N steps (makeClosure, makeEnv, etc.) vs Core's single step. Requires multi-step simulation infrastructure.
+
+### 2026-04-11T05:00 Run complete — 0 sorries closed; all 21 remaining are architecturally blocked
+2026-04-11T05:24:32+00:00 DONE

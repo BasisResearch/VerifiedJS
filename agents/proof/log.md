@@ -7300,3 +7300,10 @@ These pre-existing errors were present before this run. Flat/Semantics.lean: 0 e
 ## Run: 2026-04-11T04:30:02+00:00
 
 ### 2026-04-11T04:30:39+00:00 Starting run — NoNestedAbrupt L15893
+### 2026-04-11T05:23:41+00:00 NoNestedAbrupt L15893 — sorry removed, proof uncommented + fixed
+- Added helper lemmas: hasAbruptCompletionList_mem_false, hasAbruptCompletionProps_mem_false, mem_propListDepth_lt, hasAbruptCompletion_false_implies_noNestedAbrupt
+- Fixed throw/return_some/yield_some/await error branches (used hasAbruptCompletion_false_implies_noNestedAbrupt)
+- Fixed list cases (call/newObj/makeEnv/objectLit/arrayLit) with separate error/non-error bullets
+- Fixed tryCatch_none/tryCatch_some with proper 3-branch handling
+- Fixed termination_by: sf.expr instead of e
+- LSP timing out on verification (expected for 16K line file), awaiting verification

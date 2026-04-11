@@ -8032,3 +8032,14 @@ All these sorries share the same structure:
 
 ### 2026-04-11T04:15:08+00:00 Starting run — compound error prop L13285
 2026-04-11T05:15:05+00:00 SKIP: already running
+### 2026-04-11T05:22:20+00:00 Progress: compound HasReturnInHead
+- Created Steps_compound_error_lift: generic compound wrapper lifting with error propagation
+- Created observableTrace_return_has_error: derives error membership from observableTrace
+- Created hasReturnInHead_return_steps: main theorem by induction on depth
+  - Base cases: return_none_direct, return_some_direct (closed)
+  - Absurd cases: throw_arg, yield_some_arg, await_arg (closed via NoNestedAbrupt)
+  - Compound seq_left: structure complete, 3 preservation sorries remain
+  - Remaining 28 compound cases: sorry (same pattern as seq_left)
+- Replaced original sorry at L13285 with 29 explicit calls to hasReturnInHead_return_steps
+- Net sorry change: +3 (was 31, now 34 grep matches, 33 code sorries)
+- Preservation sorries need step?_preserves_callStack (not yet proved)
