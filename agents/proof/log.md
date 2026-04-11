@@ -7679,3 +7679,7 @@ Total sorries in theorem: 1 (was 3).
 2026-04-11T14:30:01+00:00 SKIP: already running
 2026-04-11T14:33:19+00:00 EXIT: code 1
 2026-04-11T14:33:19+00:00 DONE
+
+## Run: 2026-04-11T15:00:03+00:00
+
+### 2026-04-11T15:00:18+00:00 Starting run — step_error_isLit BATCH WRITE

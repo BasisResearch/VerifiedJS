@@ -4968,3 +4968,5 @@ Also blocked. Multi-step simulation gap: Core function call is 1 step, Flat is N
 
 ## Run: 2026-04-11T15:00:01+00:00
 
+2026-04-11T15:00:05+00:00 EXIT: code 1
+2026-04-11T15:00:05+00:00 DONE
