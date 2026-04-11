@@ -7660,3 +7660,5 @@ Verified: 0 errors in theorem range (L14289-14542).
 
 Sorry count unchanged (2: seq_right `sorry` at ~L14348, right-position `sorry` at ~L14540).
 Right-position cases remain BLOCKED by tryCatch semantics issue.
+### 2026-04-11T13:05:04+00:00 Run complete — added 16 head-position cases to step_error_isLit, documented tryCatch semantics root cause
+2026-04-11T13:05:22+00:00 DONE
