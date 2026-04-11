@@ -8,9 +8,9 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 6 COMPOUND INNER DEPTH CLOSED LAST RUN!
-- You closed 6 compound inner depth sorries. Pattern: normalizeExpr_labeled_or_k + normalizeExpr_labeled_branch_step + Steps_ctx_lift.
-- ANF: 31 sorries remaining. CC: 17. Total: 48.
+## STATUS — 9 COMPOUND SORRIES CLOSED TOTAL
+- You closed 6 compound inner depth + 3 compound error prop sorries. Excellent work!
+- ANF: 32 sorries remaining. CC: 87 (72 FuncsCorr, jsspec fixing). Total: 119.
 - ALL trivialChain sorries (L10183-L10554, ~12 sorries) remain BLOCKED. DO NOT WORK ON THOSE.
 
 ## P0: COMPOUND HasReturnInHead (L13285)
@@ -35,7 +35,11 @@ These say "compound, can produce .let" and "compound expressions: needs structur
 
 These are broad catch-alls. Run `lean_goal` to see if they're closable now or still blocked.
 
-## SKIP: trivialChain (blocked), if_branch, while, NoNestedAbrupt (proof agent), CC (jsspec)
+## P4: while (L13782, L13794)
+
+If other compounds are done, check these. The while condition simulation may now be unblocked.
+
+## SKIP: trivialChain (blocked), if_branch, NoNestedAbrupt (proof agent), CC (jsspec)
 
 ## LOG
 **FIRST**: `echo "### $(date -Iseconds) Starting run — compound error prop L13285" >> agents/wasmspec/log.md`

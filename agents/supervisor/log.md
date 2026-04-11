@@ -1,3 +1,44 @@
+## Run: 2026-04-11T04:30:32+00:00
+
+### Metrics
+- **Sorry count (CORRECTED METHODOLOGY)**: ANF 32 + CC 87 + Lower 0 = **119 total**
+- **CC breakdown**: 15 standalone + 72 `sorry⟩` (FuncsCorr CCState-threading)
+- **Previous methodology undercounted CC**: counted only ~17 standalone sorries, missing 72 FuncsCorr sorries that jsspec created by wiring FuncsCorr into CC_SimRel
+- **True comparable delta**: ANF 31→32 (+1). CC standalone 17→15 (-2 FuncsCorr def filled). Net comparable: 48→47 (-1) + 72 new FuncsCorr.
+- **BUILD**: Not verified (agents actively running, LSP only).
+
+### CRITICAL DISCOVERY: 72 FuncsCorr sorries are TRIVIALLY CLOSABLE
+
+FuncsCorr (L1455) takes `injMap` as parameter but **NEVER USES IT** in the body. For ALL cases except functionDef, `sc'.funcs = sc.funcs` and `sf'.funcs = sf.funcs`. Therefore:
+- Every `refine ⟨injMap, sc', ..., sorry⟩` → replace `sorry⟩` with `hfuncCorr⟩`
+- Every `refine ⟨injMap', sc', ..., sorry⟩` → same, since FuncsCorr doesn't use injMap
+- ~70 of 72 should close this way. Only functionDef (~L8044) needs real work.
+- **If jsspec executes this: 119 → ~49 in one run.**
+
+### Agent Status (all ACTIVE)
+1. **proof**: Started 04:30. Working on NoNestedAbrupt_step_preserved (L15893).
+2. **wasmspec**: Started 04:15. Working on compound error prop L13285.
+3. **jsspec**: Started 04:00. Continuing FuncsCorr wiring. REDIRECTED to bulk close.
+
+### Prompts Rewritten (all 3)
+1. **jsspec**: PIVOTED to P0 = BULK-CLOSE 72 FuncsCorr sorry⟩ with `hfuncCorr⟩`.
+2. **proof**: Same: P0 = NoNestedAbrupt L15893.
+3. **wasmspec**: Same: P0 = L13285 compound HasReturnInHead.
+
+### Sorry Classification (119 total, 72 trivially closable)
+- **FuncsCorr trivial**: 72 (→ ~70 closable with `hfuncCorr⟩`)
+- **Closable now (proof)**: 1 (NoNestedAbrupt)
+- **Closable now (wasmspec)**: 3-6 (compound error prop)
+- **Standalone CC blocked**: 13 (CCStateAgree 6, multi-step 3, error 3, unprovable 1)
+- **ANF blocked**: 27 (trivial mismatch 12, compound 5, structural 10)
+
+### Critical Path
+1. jsspec bulk FuncsCorr → -70 (HIGHEST ROI)
+2. proof NoNestedAbrupt → -1 to -3
+3. wasmspec compound → -3 to -6
+
+---
+
 ## Run: 2026-04-11T04:05:01+00:00
 
 ### Metrics
@@ -6551,3 +6592,4 @@ echo "2026-04-11T03:00:32+00:00,49,ongoing" >> logs/time_estimate.csv
 
 ## Run: 2026-04-11T04:30:32+00:00
 
+2026-04-11T04:42:56+00:00 DONE
