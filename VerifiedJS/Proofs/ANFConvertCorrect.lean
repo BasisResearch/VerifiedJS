@@ -9379,16 +9379,33 @@ private theorem HasTryCatchInHead_not_value (e : Flat.Expr)
     (h : HasTryCatchInHead e) : Flat.exprValue? e = none := by
   cases h <;> simp [Flat.exprValue?]
 
+/-- Prepending to a list preserves HasTryCatchInHeadList (suffix version). -/
+private theorem HasTryCatchInHeadList_append_right
+    (prefix_ : List Flat.Expr)
+    {suffix_ : List Flat.Expr}
+    (h : HasTryCatchInHeadList suffix_) :
+    HasTryCatchInHeadList (prefix_ ++ suffix_) := by
+  induction prefix_ with
+  | nil => exact h
+  | cons _ _ ih => exact .tail ih
+
 /-- If a firstNonValueExpr target has HasTryCatchInHead, so does the original list. -/
 private theorem HasTryCatchInHeadList_of_firstNonValue
     {args done : List Flat.Expr} {target : Flat.Expr} {remaining : List Flat.Expr}
     (hfnv : Flat.firstNonValueExpr args = some (done, target, remaining))
     (h : HasTryCatchInHead target) :
     HasTryCatchInHeadList args := by
-  have hsplit := firstNonValueExpr_eq_append hfnv
-  rw [hsplit]; clear hsplit
-  induction done with
-  | nil => exact .head h
+  rw [firstNonValueExpr_eq_append hfnv]
+  exact HasTryCatchInHeadList_append_right done (.head h)
+
+/-- Prepending to a prop list preserves HasTryCatchInHeadProps (suffix version). -/
+private theorem HasTryCatchInHeadProps_append_right
+    (prefix_ : List (Flat.PropName × Flat.Expr))
+    {suffix_ : List (Flat.PropName × Flat.Expr)}
+    (h : HasTryCatchInHeadProps suffix_) :
+    HasTryCatchInHeadProps (prefix_ ++ suffix_) := by
+  induction prefix_ with
+  | nil => exact h
   | cons _ _ ih => exact .tail ih
 
 /-- If a firstNonValueProp target has HasTryCatchInHead, so does the original prop list. -/
@@ -9398,11 +9415,8 @@ private theorem HasTryCatchInHeadProps_of_firstNonValue
     (hfnv : Flat.firstNonValueProp props = some (done, name, target, remaining))
     (h : HasTryCatchInHead target) :
     HasTryCatchInHeadProps props := by
-  have hsplit := firstNonValueProp_eq_append hfnv
-  rw [hsplit]; clear hsplit
-  induction done with
-  | nil => exact .head h
-  | cons _ _ ih => exact .tail ih
+  rw [firstNonValueProp_eq_append hfnv]
+  exact HasTryCatchInHeadProps_append_right done (.head h)
 
 /-! ## Helper lemmas: certain constructors never produce .tryCatch -/
 
