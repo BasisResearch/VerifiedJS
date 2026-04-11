@@ -1,4 +1,4 @@
-# proof — WRITE HELPER LEMMAS FOR break/continue COMPOUND CASES
+# proof — WRITE hasBreakInHead_break_steps (MIRROR hasReturnInHead_return_steps)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -8,87 +8,104 @@
 
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## STATUS — 2026-04-11T10:00
+## STATUS — 2026-04-11T10:30
 - ANF: 32 sorries. CC: 15 (jsspec). Total: 47.
-- **trivialChain (L10183-L10554) is CONFIRMED BLOCKED** — you confirmed this in 3 consecutive runs. DO NOT ATTEMPT.
+- **trivialChain (L10183-L10554) CONFIRMED BLOCKED** — do NOT attempt.
 - **LSP times out past ~L10000** in the 18K-line ANFConvertCorrect.lean.
-- ALL your previous targets are blocked or past LSP range.
-- **NEW ASSIGNMENT**: Write helper lemmas EARLY in file (L4000-L7000, within LSP range) that will enable closing L17340/L17411 later.
+- **Your target**: Write `hasBreakInHead_break_steps` near L5400 (in LSP range).
 
 ## ⚠️ DO NOT WORK ON:
 - L10183-L10554 (trivialChain — BLOCKED, confirmed 3x)
-- L12969-L14054 (wasmspec-owned HasReturnInHead sorries)
-- L14144-L14921 (while/if — BLOCKED)
-- L15762-L15783 (tryCatch — BLOCKED)
-- L17110, L17121 (noCallFrameReturn/body_sim — BLOCKED)
+- L12969-L14177 (wasmspec-owned)
+- L14267-L14279 (while — BLOCKED)
+- L15004-L15044 (if — BLOCKED)
+- L15885-L15906 (tryCatch — BLOCKED)
+- L17233, L17244 (noCallFrameReturn/body_sim — BLOCKED)
 
-## P0: HELPER LEMMAS FOR break/continue COMPOUND CASES
+## P0: hasBreakInHead_break_steps — FOLLOW THE hasReturnInHead_return_steps PATTERN
 
-The sorries at L17340 and L17411 are in `anfConvert_step_star` for break/continue. The pattern: `HasBreakInHead e label` (or HasContinueInHead) through compound constructors (seq_left, binary_lhs, call_func, etc.). Each needs a proof that Flat.step? of the compound expression delegates to stepping the sub-expression.
+The sorries at L17463 (break) and L17534 (continue) need error propagation through compound constructors. The EXACT SAME pattern was already implemented for HasReturnInHead at L13346 (`hasReturnInHead_return_steps`). You need to mirror it for HasBreakInHead.
 
-### STEP 1: Check what exists
+### Step 1: Study the existing pattern
 
-Use `lean_local_search` for:
-- "HasBreakInHead_not_value" or "HasBreak.*value"
-- "step?_seq_left" or "step?_binary_lhs" (step delegation lemmas)
-- "compound_step_delegates"
-- "HasAbruptCompletion_not_value"
+Read L13346-L13600 to understand `hasReturnInHead_return_steps`. Key structure:
+- Induction on depth `d`
+- For each HasReturnInHead constructor, shows Steps from the expression to an error event
+- Uses `Steps_compound_error_lift` (L13135) for compound cases
+- Base cases: direct return → error event. Compound cases: IH on sub-expression, then lift.
 
-### STEP 2: Write `HasBreakInHead_not_value`
+### Step 2: Check what already exists for break
 
-Place near L5400 (after existing break lemmas). If `HasBreakInHead e label`, then `e` is not a flat value.
+Use `lean_local_search "HasBreakInHead"` and look at the grep results:
+- `HasBreakInHead` inductive at L4463
+- `HasBreakInHeadList` at L4498
+- `HasBreakInHeadProps` at L4503
+- `normalizeExpr_break_implies_hasBreakInHead` at L4906
 
-```lean
-private theorem HasBreakInHead_not_value (h : HasBreakInHead e label) :
-    Flat.exprValue? e = none := by
-  cases h <;> rfl
-```
+What's MISSING: a `hasBreakInHead_break_steps` theorem (analogous to `hasReturnInHead_return_steps`).
 
-Verify with `lean_diagnostic_messages`.
+### Step 3: Write hasBreakInHead_break_steps
 
-### STEP 3: Write step? delegation lemmas
-
-These show that compound expressions delegate step? to the head sub-expression. Place near L4500 or wherever step? lemmas live.
-
-For each compound constructor where step? delegates to a non-value head:
+Place near L5400 (after the existing break infrastructure, within LSP range).
 
 ```lean
-/-- seq delegates step to non-value head -/
-private theorem step?_seq_delegates_head
-    (hnv : Flat.exprValue? a = none)
-    (hstep_a : Flat.step? ⟨a, env, heap, trace, funcs, cs⟩ = some (ev, sa')) :
-    Flat.step? ⟨.seq a b, env, heap, trace, funcs, cs⟩ =
-      some (ev, ⟨.seq sa'.expr b, sa'.env, sa'.heap, sa'.trace, sa'.funcs, sa'.callStack⟩) := by
-  simp [Flat.step?, hnv, hstep_a]
+/-- Expressions with HasBreakInHead eventually reach a break error event through Flat.Steps.
+    Mirrors hasReturnInHead_return_steps. -/
+private theorem hasBreakInHead_break_steps
+    (d : Nat) :
+    ∀ (e : Flat.Expr),
+    e.depth ≤ d →
+    HasBreakInHead e label →
+    ∀ (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+      (funcs : Array Flat.FuncDef) (cs : List Flat.Env),
+    ExprWellFormed e env →
+    NoNestedAbrupt e →
+    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+      Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs sf' ∧
+      sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+      sf'.trace = trace ++ evs ∧
+      observableTrace evs = observableTrace [.error ("break:" ++ (label.getD ""))] := by
+  sorry -- fill cases below
 ```
 
-Write similar for: binary_lhs (when lhs not value), call_func (when func not value), getProp_obj, setProp_obj, unary_arg, etc.
-
-**IMPORTANT**: First check what step? actually does for each compound. Use `lean_hover_info` on `Flat.step?` to understand the definition, or `lean_goal` on a test position.
-
-### STEP 4: Write the compound step-through lemma
-
-Once delegation lemmas exist, write:
+### Step 4: Fill base case
 
 ```lean
-/-- For compound expressions with HasBreakInHead in head position,
-    Flat.step? delegates to stepping the head sub-expression. -/
-private theorem HasBreakInHead_compound_step_exists
-    (hbreak : HasBreakInHead e label)
-    (hna : NoNestedAbrupt e)
-    (he_compound : ∀ l, e ≠ .break l)  -- e is compound, not direct break
-    (hwf : ExprWellFormed e env) :
-    ∃ ev (sf' : Flat.State), Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf') ∧
-      HasBreakInHead sf'.expr label := by
-  sorry -- fill in using the delegation lemmas + cases on hbreak
+  intro d; induction d with
+  | zero =>
+    intro e hd hbreak
+    cases hbreak with
+    | break_direct =>
+      intro env heap trace funcs cs _ _
+      refine ⟨[.error ("break:" ++ (label.getD ""))], _,
+        .tail ⟨by unfold Flat.step?; rfl⟩ (.refl _),
+        rfl, rfl, rfl, rfl, rfl⟩
+    | _ => simp [Flat.Expr.depth] at hd; omega
 ```
 
-Even if this is sorry'd, it structures the proof. The sorry can be filled later.
+### Step 5: Fill compound cases (succ d)
 
-### STEP 5: Verify everything with lean_diagnostic_messages
+Follow EXACTLY the same pattern as `hasReturnInHead_return_steps` L13367+:
+- `| succ d ih =>`
+- Match on HasBreakInHead constructors
+- break_direct: same as zero case
+- Absurd cases (throw_arg, return_some_arg, yield_some_arg, await_arg): `exfalso` via NoNestedAbrupt
+- Compound cases: IH on sub-expression, then lift via `Steps_compound_error_lift`
 
-Make sure no new errors introduced. All new lemmas should either compile fully or have intentional sorry markers.
+**KEY**: The compound lifting works because `Steps_compound_error_lift` is generic — it takes any wrap function. The same infrastructure serves break, continue, and return.
+
+### Step 6: Write hasContinueInHead_continue_steps
+
+Same structure, replacing `HasBreakInHead` → `HasContinueInHead`, `"break:"` → `"continue:"`.
+
+### Step 7: Verify with lean_diagnostic_messages
+
+After each theorem, check for errors. Even if the body is `sorry`, the TYPE SIGNATURE must compile.
+
+## IMPORTANT: Even sorry'd helpers are valuable
+
+If the full proof of hasBreakInHead_break_steps is too complex, writing the TYPE SIGNATURE + sorry body is still valuable. It structures what L17463/L17534 need, and someone can fill the proof later when LSP allows it.
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — break/continue helper lemmas" >> agents/proof/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — hasBreakInHead_break_steps" >> agents/proof/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`

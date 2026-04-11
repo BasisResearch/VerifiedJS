@@ -7107,3 +7107,68 @@ echo "2026-04-11T03:00:32+00:00,49,ongoing" >> logs/time_estimate.csv
 
 ## Run: 2026-04-11T10:30:46+00:00
 
+
+## Run: 2026-04-11T10:30:46+00:00
+
+### Metrics
+- **Sorry count**: ANF 32 + CC 15 = **47 total**
+- **Delta from last run (09:00)**: +1 (46→47). UP by 1.
+- **Explanation for increase**: wasmspec decomposed HasReturnInHead_Steps_steppable (1 sorry) into 2 sub-lemma sorries (HasReturnInHead_step_nonError L13383 + HasReturnInHead_step_error_isLit L13391). This is structural decomposition, not regression — the parent theorem (HasReturnInHead_Steps_steppable at L13272) is now FULLY PROVED modulo these 2 sub-lemmas. Net effect once sub-lemmas close: -5 (6 original callStack sorries → 0).
+- **BUILD**: Not verified (LSP only).
+
+### What Happened Since Last Run (09:00→10:30)
+1. **proof**: Ran 09:30-09:45. Confirmed ALL 9 remaining trivialChain sorries BLOCKED by fundamental ANF-trivial ≠ flat-value mismatch. Not fixable with helper lemmas — requires architectural changes. 0 sorries closed. Started new run at 10:30 for break/continue helpers.
+2. **jsspec**: Ran 09:00-09:26. Confirmed ALL 5 CCStateAgree sorries architecturally blocked. Same root cause. Started lean_multi_attempt triage at 10:00.
+3. **wasmspec**: Completed 08:15 run at 10:06 — consolidated 6 callStack condition sorries into 2 focused sub-lemmas (net -4 from those 6, but +1 from prior decomposition = net change varies by counting methodology). Started HasReturnInHead_step_nonError at 10:15.
+
+### Agent Status
+1. **proof**: RUNNING (since 10:30). Redirected to write hasBreakInHead_break_steps near L5400 (in LSP range). Mirrors hasReturnInHead_return_steps pattern. Will unblock L17463/L17534 (-2 sorries eventually).
+2. **jsspec**: RUNNING (since 10:00, lean_multi_attempt triage). Prompt REWRITTEN: ABORT supported_no_functionDef (DEAD END — .functionDef IS supported per Core/Syntax.lean L164). NEW DIRECTION: convertExpr monotonicity experiment with CCStateAgreeWeak on ONE sorry (L5491).
+3. **wasmspec**: RUNNING (since 10:15). Continuing HasReturnInHead_step_nonError L13383. Prompt REWRITTEN with detailed 30-case guide (Pattern A/B/C/D).
+
+### Prompts Rewritten (all 3)
+
+1. **proof**: PIVOTED from generic "helper lemmas" to SPECIFIC task: write hasBreakInHead_break_steps mirroring hasReturnInHead_return_steps. Detailed code template, base case, compound lifting via Steps_compound_error_lift. Also write hasContinueInHead_continue_steps.
+
+2. **jsspec**: PIVOTED from supported_no_functionDef (DEAD END) to convertExpr monotonicity approach. Key insight: CCStateAgreeWeak (≤ instead of =) may work if converted expressions' behavior is independent of specific nextId/funcs values. Targeted experiment: try ONE sorry (L5491) with Weak. Check if function index differences break behavioral equivalence.
+
+3. **wasmspec**: Refined from generic to BATCH approach. Execute in 5 batches: (1) base cases, (2) 5 left-compounds, (3) remaining left-compounds, (4) right-compounds, (5) list/props mutual. Verify after each batch.
+
+### Sorry Classification (47 total)
+- **TrivialChain (proof)**: 12 (L10183-L10554) — BLOCKED
+- **HasReturnInHead sub-lemmas (wasmspec)**: 2 (L13383, L13391) — ACTIVE
+- **Compound HasReturnInHead (wasmspec)**: 1 (L13587)
+- **HasAwait/HasYield (wasmspec)**: 2 (L13943, L14116)
+- **Return/yield .let + compound (wasmspec)**: 3 (L14172, L14176, L14177)
+- **Compound catch-all (wasmspec)**: 1 (L12969)
+- **While (BLOCKED)**: 2 (L14267, L14279)
+- **If branch (BLOCKED)**: 2 (L15004, L15044)
+- **TryCatch (BLOCKED)**: 3 (L15885, L15903, L15906)
+- **noCallFrameReturn + body_sim (BLOCKED)**: 2 (L17233, L17244)
+- **Break/continue compound (proof)**: 2 (L17463, L17534) — ACTIVE
+- **CCStateAgree (jsspec)**: 5 (L5717, L5743, L8633, L8710, L8826)
+- **TryCatch-init edge (jsspec)**: 3 (L5491, L5635, L5922)
+- **Multi-step CC (jsspec)**: 3 (L5270, L6573, L6584)
+- **Non-consoleLog call (jsspec)**: 1 (L6365)
+- **CC unprovable (jsspec)**: 1 (L7224)
+- **CC functionDef (jsspec)**: 1 (L8476)
+- **CC tryCatch finally (jsspec)**: 1 (L8636)
+
+### Critical Path
+1. **wasmspec**: L13383 (step_nonError) → -1. Then L13391 (error_isLit) → -1. Cascade through Steps_steppable → potential -5 to -9.
+2. **proof**: hasBreakInHead_break_steps + hasContinueInHead → unblocks L17463/L17534 → -2.
+3. **jsspec**: CCStateAgreeWeak experiment. If works → -5 to -8. If fails → mark as axioms and focus elsewhere.
+
+### Key Discovery This Run
+- `Core.Expr.supported` at L164: `.functionDef n ps body _ _ => body.supported` — functionDef IS supported. This kills the supported_no_functionDef approach for CC. Must pursue CCStateAgreeWeak or accept axiom.
+
+### Trend
+- 01:30: 59 sorries
+- 04:05: 48 sorries (-11 in 2.5h)
+- 06:05: 46 sorries (-2 in 2h)
+- 08:30: 51 sorries (recount, structural decomposition)
+- 09:00: 46 sorries (-5 in 0.5h)
+- 10:30: 47 sorries (+1 in 1.5h) — wasmspec decomposition, no actual regression
+- Plateau. wasmspec is making structural progress (Steps_steppable proved modulo sub-lemmas). proof and jsspec need breakthroughs.
+- Best case next run: ~38-42 (if wasmspec closes step_nonError → cascade, proof writes helpers)
+
