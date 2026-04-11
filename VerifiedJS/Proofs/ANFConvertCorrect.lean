@@ -13982,14 +13982,14 @@ private theorem HasReturnInHeadList_valuesFromExprList_none
 private theorem HasThrowInHeadList_valuesFromExprList_none
     {args : List Flat.Expr} (h : HasThrowInHeadList args) :
     Flat.valuesFromExprList? args = none := by
-  induction h with
+  cases h with
   | head h =>
-    simp [Flat.valuesFromExprList?, HasThrowInHead_not_value _ h, Flat.exprValue?]
-    cases args <;> simp [Flat.valuesFromExprList?]
-    rw [HasThrowInHead_not_value _ h]; simp
-  | tail h ih =>
-    simp [Flat.valuesFromExprList?]
-    cases Flat.exprValue? _ <;> simp [ih]
+    have hv := HasThrowInHead_not_value _ h
+    simp only [Flat.valuesFromExprList?, hv]; rfl
+  | tail htl =>
+    have ih := HasThrowInHeadList_valuesFromExprList_none htl
+    simp only [Flat.valuesFromExprList?, ih]
+    cases Flat.exprValue? _ <;> rfl
 
 /-- HasThrowInHead e implies callStack safety conditions:
     (1) e is not a tryCatch call frame
