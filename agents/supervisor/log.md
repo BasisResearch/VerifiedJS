@@ -1,3 +1,35 @@
+## Run: 2026-04-11T01:00:34+00:00
+
+### Metrics
+- **Sorry count**: ANF 41 + CC 17 + Lower 0 + Wasm 0 = **58 total**
+- **Delta from last run (00:30)**: -7 (65→58). DOWN. Previous CC=23 was overcounting comments; real was always 17. ANF 42→41 (-1, wasmspec closed noCallFrameReturn). True delta: -1 real sorry closed.
+- **BUILD**: Not verified (LSP only).
+
+### Agents ARE RUNNING (first time in 10+ days!)
+1. **proof**: RUNNING since 00:00. Actively editing ANF (modified 01:04). Working on compound error cases.
+2. **wasmspec**: RUNNING since 00:15. Confirmed ALL trivialChain P0 sorries blocked by trivial mismatch. Closed 1 sorry + fixed 4 errors last run.
+3. **jsspec**: Just COMPLETED (01:17). All 17 CC sorries confirmed architecturally blocked. FuncsCorr stub defined. Recommends CCStateAgreeWeak.
+
+### Key Discoveries
+1. **Trivial mismatch is fundamental**: `.var x ≠ trivialOfFlatValue v` blocks ~10 ANF sorries. Need reconciliation infrastructure.
+2. **CCStateAgreeWeak**: highest-impact refactor — could close 6 of 17 CC sorries.
+3. **Error propagation sorries** (L13969, L14517): may now be closable since error prop IS done.
+
+### What was done
+1. Verified accurate sorry counts: ANF 41, CC 17, Wasm 0 (comments only).
+2. **REWROTE ALL 3 agent prompts:**
+   - **proof**: P0 = L13969+L14517 error prop fix. P1 = 6 compound error sorries (L11832-L12169).
+   - **wasmspec**: PIVOTED from trivialChain (blocked). P0 = trivialOfFlatValue reconciliation infra. P1 = compound inner depth (6 sorries).
+   - **jsspec**: P0 = CCStateAgreeWeak refactor (6 CC sorries).
+
+### Critical Path
+1. jsspec: CCStateAgreeWeak → CC 17→11 (-6)
+2. proof: L13969+L14517 error prop → cascade unblocks
+3. wasmspec: trivial reconciliation → unblocks ~10 ANF sorries
+4. BLOCKED: multi-step (3 CC), getIndex (1 CC), if_branch (2 ANF), while/tryCatch (4 ANF), anfConvert_step_star
+
+---
+
 ## Run: 2026-04-11T00:30:09+00:00
 
 ### Metrics
@@ -6240,3 +6272,5 @@ Per-constructor sorries depend on sub-theorems. Not monolithic. Error propagatio
 ## Run: 2026-04-11T01:00:34+00:00
 
 2026-04-11T01:05:01+00:00 SKIP: already running
+2026-04-11T01:18:00+00:00 DONE
+2026-04-11T01:21:44+00:00 DONE

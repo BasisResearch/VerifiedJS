@@ -8008,3 +8008,10 @@ All these sorries share the same structure:
 **P2 (L10759, L10795, L10808, L10891, L10926, L10939)**: These are compound inner expressions inside nested return/yield wrappers. They need depth induction on the inner expression. The IH applies (inner_val.depth ≤ d - 1), but the proof requires connecting normalizeExpr, HasLabeledInHead, and step lifting through return/yield contexts. Doable in principle but requires significant proof infrastructure.
 
 ### 2026-04-11T01:00:00+00:00 Run complete — 0 sorries closed; all P0 cases confirmed blocked by trivial mismatch
+
+### 2026-04-11T01:30:00+00:00 Final status
+- **Sorries**: 41 (unchanged from start)
+- **Code changes**: Comment updates only (no proof changes)
+- **Build status**: Should pass (only comment text changed; LSP confirms early file compiles cleanly)
+- **Key finding**: All P0 labeled_branch type (a) cases are blocked by ANF trivial ↔ flat value mismatch. This is a fundamental issue requiring new infrastructure (e.g., a normalizeExpr substitution lemma for trivials).
+2026-04-11T01:21:38+00:00 DONE

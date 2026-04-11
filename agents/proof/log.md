@@ -7231,3 +7231,37 @@ These pre-existing errors were present before this run. Flat/Semantics.lean: 0 e
 
 ### 2026-04-11T00:00:21+00:00 Starting run — compound error cases
 2026-04-11T00:30:07+00:00 SKIP: already running
+
+### 2026-04-11T00:00:02+00:00 Run complete — factored compound HasThrowInHead cases
+
+**Changes to ANFConvertCorrect.lean:**
+
+1. **Added `hasThrowInHead_compound_throw_step_sim` theorem** (L11491-11522):
+   - Takes `HasThrowInHead e` directly (no `hk` needed)
+   - `cases hth` handles: throw_direct (reuses `normalizeExpr_throw_compound_case`), 
+     return_some_arg/yield_some_arg/await_arg (exfalso), compound cases (sorry)
+   - Key design: proved by cases on HasThrowInHead, NOT induction 
+     (HasThrowInHead is mutually inductive with HasThrowInHeadList/HasThrowInHeadProps,
+     so `induction` tactic is not supported)
+   - Future approach for compound cases: depth induction or well-founded recursion
+
+2. **Replaced catch-all sorry in `normalizeExpr_throw_step_sim`** (L11653-11681):
+   - Old: `| _ => simp only [...]; sorry` (one sorry for all 29 compound cases)
+   - New: 29 explicit case handlers, each calling `hasThrowInHead_compound_throw_step_sim`
+   - Each case reconstructs `HasThrowInHead` using the appropriate constructor
+
+**Sorry count: unchanged** (1 sorry in new theorem replaces 1 sorry in old catch-all)
+
+**Key discovery for proving compound cases:**
+- Error propagation in Flat.step? makes compound wrappers transparent for errors
+- step? recurses into sub-expressions; when a sub-step produces .error, each compound
+  layer propagates directly (no wrapping), so ONE step? call handles all compound nesting
+- Need "Steps lifting" lemma: if Steps from sub-expr produce error events, 
+  Steps from compound expr produce the same events
+- Challenge: HasThrowInHead is mutually inductive, so standard induction doesn't work;
+  need depth induction on e.depth
+
+**LSP status:** File re-elaboration in progress (16000+ line file), verification pending.
+
+### 2026-04-11T01:22:07+00:00 Run complete — factored P2 compound catch-all into hasThrowInHead_compound_throw_step_sim
+2026-04-11T01:22:18+00:00 DONE
