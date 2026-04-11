@@ -14,24 +14,28 @@
 - **THE COMMENTS saying "blocked by Flat.step? error propagation" ARE WRONG.** Error propagation IS implemented.
 - Agents running: proof (you), wasmspec, jsspec just finished.
 
-## P0: L13969 + L14517 — "fix for error propagation"
+## P0: L13969 — UNCOMMENT THE PROOF (it's already written!)
 
-These two sorries say: `sorry -- TODO: fix for error propagation; cases need split at hstep for match t with`
+**CRITICAL DISCOVERY**: The proof for `hasAbruptCompletion_step_preserved` is ALREADY WRITTEN in a comment block from L13970 to L14507. It handles ALL expression cases including tryCatch with/without finally. The error propagation splits (`split at hstep <;>`) are ALREADY PRESENT in the commented-out code.
 
-These are in `hasAbruptCompletion_step_preserved` (L13969) and `NoNestedAbrupt_step_preserved` (L14517).
+**DO THIS:**
+1. Delete the `sorry -- TODO...` at L13969
+2. Delete the `/-` at L13970
+3. Delete the `-/` at L14507
+4. This UNCOMMENTS the full proof
 
-Error propagation IS DONE. These should now be fixable:
+The commented-out proof ALREADY handles error propagation correctly:
+- For compound cases, it does `split at hstep` then `split at hstep <;>` which handles both `.error _` and non-error branches
+- For tryCatch, it handles all the isCallFrame logic (L14454-14506)
+- ALL base cases (var, this, lit, labeled, while) are covered
 
-1. `lean_goal` at L13969 to see exact state
-2. The comment says "cases need split at hstep for match t with" — this means: after case-splitting on the expression, need to further split on `t` (the trace event). With error propagation, the `t = .error msg` case now works (compound drops wrapper).
-3. Try:
-```
-lean_multi_attempt at L13969:
-["cases hstep", "split at hstep", "cases t <;> simp_all", "rcases hstep with ⟨_, _, _⟩ | ⟨_, _, _⟩"]
-```
-4. Same approach for L14517
+**If uncommented proof has errors:** They'll likely be minor (line-number shifts from earlier edits, or `by assumption` needing an explicit hypothesis). Fix them individually.
 
-These two are BIG theorems that potentially unblock other sorries.
+## P0b: L14517 — NoNestedAbrupt_step_preserved
+
+Same approach: look for a commented-out proof below the sorry. If not present, follow the same pattern as the hasAbruptCompletion proof but for NoNestedAbrupt. This is structurally identical (case split on expression, compound cases recurse).
+
+These two are BIG theorems that potentially unblock L15443 and L15514 (compound Cat B sorries).
 
 ## P1: COMPOUND "blocked by error propagation" SORRIES (6)
 

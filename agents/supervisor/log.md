@@ -1,3 +1,40 @@
+## Run: 2026-04-11T01:30:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 42 + CC 17 + Lower 0 = **59 total**
+- **Delta from last run (01:00)**: +1 (58→59). UP by 1. Proof agent decomposed compound catch-all (L11522 → hasThrowInHead_compound_throw_step_sim at L11491), creating net +1 sorry. This is progress (structured decomposition).
+- **BUILD**: Not verified (agents running, LSP only).
+
+### Agent Status
+1. **proof**: RUNNING (started 01:30). Working on L13969/L14517 error prop sorries.
+2. **wasmspec**: Last completed 01:21. 0 sorries closed (all P0 trivialChain blocked by trivial mismatch).
+3. **jsspec**: Last completed 01:13. 0 sorries closed (all 17 CC architecturally blocked). Confirmed CCStateAgreeWeak complexity.
+
+### Key Discoveries This Run
+1. **L13969 HAS A COMMENTED-OUT PROOF** (L13970-14507): 538 lines of completed proof, already handles error propagation (match t splits). Told proof agent to UNCOMMENT it. This could close 2 sorries (L13969 + cascading L15443/L15514).
+2. **CCStateAgreeWeak is NOT a simple swap**: Proved cases at L6043, L7762, L8311 use `convertExpr_state_determined` which requires EQUALITY (CCStateAgree), not inequality. Changing invariant at L4914 to CCStateAgreeWeak would break 10+ proved cases while fixing 6 sorry sites. Net negative. Need expression equivalence up to renaming instead. Redirected jsspec to FuncsCorr definition (L1469/L1473).
+3. **Compound inner depth sorries (L10759-L10939)** are closable: IH on depth applies, `Steps_return_some_ctx_b`/`Steps_yield_some_ctx_b` exist for lifting. Wrote detailed proof sketch for wasmspec.
+
+### Prompts Rewritten
+1. **proof**: P0 = UNCOMMENT the L13970-14507 proof block. It's already written!
+2. **wasmspec**: PIVOTED to compound inner depth (6 sorries). Concrete proof sketch with 6 steps.
+3. **jsspec**: PIVOTED from CCStateAgreeWeak (blocked) to FuncsCorr definition (L1469/L1473) + document CCStateAgree architectural issue.
+
+### Critical Path (Updated)
+1. proof: UNCOMMENT L13969 → potentially -2 (hasAbruptCompletion + NoNestedAbrupt), cascading to L15443/L15514 (-2 more)
+2. wasmspec: compound inner depth → -6 (L10759, L10795, L10808, L10891, L10926, L10939)
+3. jsspec: FuncsCorr → -2 (L1469, L1473)
+4. BLOCKED: trivial mismatch (10), CCStateAgree (6), if_branch K-mismatch (2), while (2), tryCatch (3)
+
+### Sorry Classification (59 total)
+- **Closable now**: 10 (L13969/L14517 uncomment + L10759-10939 depth + L15443/L15514 cascade)
+- **Needs FuncsCorr**: 4 (L1469, L1473, L5901, L8013)
+- **CCStateAgree arch blocker**: 6 (L5298, L5324, L8170, L8173, L8247, L8363)
+- **Trivial mismatch**: ~12 (L10183-L10554)
+- **Other blocked**: ~27 (error structural mismatch, multi-step, if_branch, while, tryCatch, anfConvert_step_star)
+
+---
+
 ## Run: 2026-04-11T01:00:34+00:00
 
 ### Metrics
@@ -6277,3 +6314,4 @@ Per-constructor sorries depend on sub-theorems. Not monolithic. Error propagatio
 
 ## Run: 2026-04-11T01:30:03+00:00
 
+2026-04-11T01:42:31+00:00 DONE
