@@ -4575,3 +4575,16 @@ Sorry count now 17 (was 23). All architecturally blocked. Line numbers shifted s
 ## Run: 2026-04-11T03:00:31+00:00
 
 ### 2026-04-11T03:00:42+00:00 Starting run — FuncsCorr wiring into CC_SimRel
+### 2026-04-11T03:13:38+00:00 Run complete — P0 done: FuncsCorr wired into CC_SimRel
+
+**Changes made to ClosureConvertCorrect.lean:**
+1. CC_SimRel (L1488): Changed `_t` → `t`, added `FuncsCorr injMap sc.funcs sf.funcs t.functions` inside `∃ injMap` block
+2. closureConvert_init_related (L1511): Added sorry for FuncsCorr initial state proof
+3. closureConvert_step_simulation suffices (L4911): Added `FuncsCorr injMap sc.funcs sf.funcs t.functions →` as hypothesis — all inner case proofs now have `hfuncCorr` available
+4. closureConvert_step_simulation outer wrapper (L4959): Added sorry for FuncsCorr preservation
+5. Updated blocking comments at call (L5931) and functionDef (L8044) cases to note FuncsCorr is now available
+
+**Sorry count:** 14 → 16 (+2 structural sorries for FuncsCorr init + preservation)
+**Unblocked:** L5935 (call) and L8047 (functionDef) now have `hfuncCorr` in scope — ready for P1/P2
+**No existing proofs broken.** Top-level `closureConvert_correct` verified.
+2026-04-11T03:13:47+00:00 DONE

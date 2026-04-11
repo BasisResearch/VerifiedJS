@@ -4908,6 +4908,7 @@ private theorem closureConvert_step_simulation
       (scope : List String) (st st' : Flat.CCState),
       sc.expr.depth = n → sf.trace = sc.trace →
       HeapInj injMap sc.heap sf.heap → EnvCorrInj injMap sc.env sf.env →
+      FuncsCorr injMap sc.funcs sf.funcs t.functions →
       EnvAddrWF sc.env sc.heap.objects.size →
       HeapValuesWF sc.heap →
       sc.heap.nextAddr = sc.heap.objects.size →
@@ -4948,7 +4949,7 @@ private theorem closureConvert_step_simulation
     intro sf sc ev sf' hrel hstep
     obtain ⟨htrace, ⟨injMap, hinj, henv, hfuncCorr⟩, hncfr, hexprwf, henvwf, hheapvwf, hheapna, hsupp, hfuncs_supp, scope, envVar, envMap, st, st', hconv⟩ := hrel
     obtain ⟨injMap', sc', hcstep, htrace', hinj', henv', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', _, _⟩ :=
-      this sc.expr.depth envVar envMap injMap sf sc ev sf' scope st st' rfl htrace hinj henv henvwf hheapvwf hheapna hncfr hexprwf hsupp hconv hstep
+      this sc.expr.depth envVar envMap injMap sf sc ev sf' scope st st' rfl htrace hinj henv hfuncCorr henvwf hheapvwf hheapna hncfr hexprwf hsupp hconv hstep
     have hsupp' : sc'.expr.supported = true :=
       Core_step_preserves_supported _ _ _ hsupp hfuncs_supp (by obtain ⟨h⟩ := hcstep; exact h)
     have hfuncs_supp' : ∀ (i : Nat) (fd : Core.FuncClosure), sc'.funcs[i]? = some fd → fd.body.supported = true :=
@@ -4960,7 +4961,7 @@ private theorem closureConvert_step_simulation
   intro n
   induction n using Nat.strongRecOn with
   | _ n ih_depth =>
-  intro envVar envMap injMap sf sc ev sf' scope st st' hd htrace hinj henvCorr henvwf hheapvwf hheapna hncfr hexprwf hsupp hconv ⟨hstep⟩
+  intro envVar envMap injMap sf sc ev sf' scope st st' hd htrace hinj henvCorr hfuncCorr henvwf hheapvwf hheapna hncfr hexprwf hsupp hconv ⟨hstep⟩
   -- Case-split on sc.expr to determine sf.expr via convertExpr
   -- Then unfold Flat.step? to analyze the step, construct Core.step? result
   cases hsc : sc.expr with
@@ -5927,13 +5928,10 @@ private theorem closureConvert_step_simulation
             · simp [sc', ExprAddrWF, ValueAddrWF]
             · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩,
                 by rw [hst, hst_eq]; exact ⟨rfl, rfl⟩⟩
-          · -- Non-consoleLog function call: needs FuncsCorr invariant
-            -- BLOCKED: FuncsCorr (defined above CC_SimRel) captures the needed correspondence
-            -- between Core.FuncClosure entries and Flat.FuncDef entries, but it is not yet
-            -- wired into CC_SimRel or maintained through the simulation. Requires:
-            -- (a) Add FuncsCorr to CC_SimRel
-            -- (b) Prove FuncsCorr is preserved by each simulation case
-            -- (c) Use FuncsCorr here to extract the matching Flat function for the Core call
+          · -- Non-consoleLog function call: FuncsCorr now available (wired into CC_SimRel).
+            -- BLOCKED: Still needs multi-step simulation (Flat call is N steps vs Core's 1).
+            -- hfuncCorr : FuncsCorr injMap sc.funcs sf.funcs t.functions
+            -- Use hfuncCorr to extract matching Flat.FuncDef for the Core function call.
             sorry
         · -- Non-function callee with all-value args
           have hnc := convertValue_not_closure_of_not_function cv hnotfunc
@@ -8041,11 +8039,10 @@ private theorem closureConvert_step_simulation
           simp only [h_lhs, h_lhs2, h_rhs, h_rhs2, Flat.convertExprList]
           exact ⟨hrest_det.2.1.symm, hrest_det.2.2.symm⟩
   | functionDef fname params body isAsync isGen =>
-    -- BLOCKED: functionDef case requires FuncsCorr invariant + multi-step simulation.
-    -- Core: adds FuncClosure {name, params, body, capturedEnv} to sc.funcs, binds fname → .function idx.
-    -- Flat: convertExpr produces makeClosure/makeEnv sequence (multiple Flat steps).
-    -- Needs: (a) FuncsCorr in CC_SimRel, (b) prove FuncsCorr maintained when adding closure,
+    -- BLOCKED: functionDef case — FuncsCorr now available (wired into CC_SimRel).
+    -- Still needs: (b) prove FuncsCorr maintained when adding closure,
     -- (c) multi-step Flat simulation (makeClosure+makeEnv is N steps vs Core's 1 step).
+    -- hfuncCorr : FuncsCorr injMap sc.funcs sf.funcs t.functions
     sorry
   | throw val =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
