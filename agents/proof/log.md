@@ -7230,3 +7230,4 @@ These pre-existing errors were present before this run. Flat/Semantics.lean: 0 e
 ## Run: 2026-04-11T00:00:02+00:00
 
 ### 2026-04-11T00:00:21+00:00 Starting run — compound error cases
+2026-04-11T00:30:07+00:00 SKIP: already running
