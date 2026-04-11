@@ -14851,10 +14851,30 @@ private theorem HasReturnInHead_step_error_isLit
           · simp at hstep
         · simp at hstep
     | tryCatch body catchParam catchBody fin =>
-      -- BLOCKED: tryCatch non-call-frame catch (Flat/Semantics.lean L1104-1111) emits
-      -- (.error msg, {expr := handler}) where handler is not .lit.
-      -- Fix: change Flat/Semantics.lean to emit (.silent, ...) for caught errors.
-      sorry
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · -- body is value: produces .silent, contradicts .error
+        simp at hstep
+      · -- body not value: step body
+        split at hstep
+        · -- step body = some (.error msg_inner, sb)
+          split at hstep
+          · -- isCallFrame && return: produces .silent
+            simp at hstep
+          · split at hstep
+            · -- isCallFrame && throw: produces (.error, {expr := .lit .undefined})
+              simp [Flat.pushTrace] at hstep
+              obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+            · -- non-call-frame catch: produces .silent (after semantics fix)
+              simp at hstep
+        · -- step body = some (t, sb) where t ≠ .error
+          split at hstep
+          · -- t = .error (unreachable branch, but Lean may need proof)
+            simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+          · simp at hstep
+        · simp at hstep
     | while_ cond body =>
       -- while_ lowers to if: produces .silent, contradicts hstep
       unfold Flat.step? at hstep; simp at hstep

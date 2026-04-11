@@ -1,141 +1,118 @@
-# proof — CLOSE HasReturnInHead_step_error_isLit (L14157)
+# proof — CLOSE SECOND-POSITION HasReturnInHead CASES (L16148-L16159)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
 - **DO NOT** edit ClosureConvertCorrect.lean (jsspec owns it)
 - **DO NOT** use while/until loops, sleep loops, pgrep
-- **CRASH PREVENTION**: Keep tasks SMALL. Do ONE lemma, verify, log, move to next.
+- **CRASH PREVENTION**: Keep tasks SMALL. Do ONE case, verify, move to next.
 
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## STATUS — 2026-04-11T12:00
-- ANF: 33 sorries. CC: 15 (jsspec). Total: 48.
-- **HasReturnInHead_step_nonError WRITTEN** (wasmspec, ~600 lines) — depends on step_error_isLit
-- **HasReturnInHead_Steps_steppable (L14161) PROVED** — depends on step_error_isLit
-- Closing step_error_isLit cascades: -4 to -8 sorries
-- **YOU HAVE BEEN WORKING ON THIS FOR 30 MIN WITH NO FILE OUTPUT. WRITE CODE NOW.**
+## STATUS — 2026-04-11T15:00
+- ANF: 46 real sorries. CC: 15 (jsspec). Total: 61.
+- **step_error_isLit nearly proved** — only 1 sorry left (tryCatch L14759, wasmspec owns)
+- **hasReturnInHead_return_steps**: seq_left, call_func, newObj_func, and ALL first-position constructors FULLY PROVED
+- **12 second-position + list constructor sorries remain** at L16148-L16159 — THESE ARE YOUR TARGET
+- The first-position cases prove the pattern works. Now replicate for second-position.
 
-## ⚠️ DO NOT WORK ON:
-- L10429-L10800 (trivialChain — LSP TIMEOUT zone)
-- L12969-L14148 (wasmspec-owned HasReturnInHead_step_nonError)
-- L15033-L15810 (while/if — BLOCKED)
-- L16651-L16672 (tryCatch — BLOCKED)
-- L17999, L18010 (noCallFrameReturn/body_sim — BLOCKED)
+## DO NOT WORK ON:
+- L14759 (step_error_isLit tryCatch — wasmspec)
+- L10566-L10937 (trivialChain — LSP timeout zone)
+- L16839-L16851 (while condition — blocked)
+- L17576-L17616 (if_branch — blocked)
+- L18457-L18478 (tryCatch — blocked)
+- L19805-L19816 (noCallFrameReturn/body_sim — blocked)
+- L16091, L16147 (Case B continuation — defer)
+- L16515, L16688 (await/yield compound — defer)
+- L16744-L16749 (return/yield .let compound — defer)
 
-## P0: HasReturnInHead_step_error_isLit (L14157) — CASCADE BLOCKER
+## P0: Second-position cases (L16148-L16152) — 5 sorries → 0
+
+These follow THE EXACT SAME PATTERN as seq_left (L14988) and call_func (L16001). The only difference is:
+1. Different wrapper function (e.g., `.binary op lhs_val ·` instead of `.seq · b`)
+2. Different ctx/error lemma names
+3. The first sub-expression is already a value, so ExprWellFormed and NoNestedAbrupt project differently
+
+### ALL ctx/error lemmas exist:
+- `step?_binary_rhs_ctx` (L1833) / `step?_binary_rhs_error`
+- `step?_setProp_val_ctx` (L1924) / `step?_setProp_val_error`
+- `step?_getIndex_idx_ctx` (L2018) / `step?_getIndex_idx_error`
+- `step?_setIndex_idx_ctx` (L2037) / `step?_setIndex_idx_error`
+- `step?_setIndex_val_ctx` (L1943) / `step?_setIndex_val_error`
+
+### EXACT PROOF for binary_rhs (L16148):
 
 ```lean
-private theorem HasReturnInHead_step_error_isLit
-    {sf sf' : Flat.State} {msg : String}
-    (hret : HasReturnInHead sf.expr)
-    (hstep : Flat.step? sf = some (.error msg, sf')) :
-    ∃ v, sf'.expr = .lit v
+    | binary_rhs h_a =>
+      rename_i op lhs_val a
+      simp only [ANF.normalizeExpr] at hnorm
+      have ha_depth : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      obtain ⟨ih_none, ih_ok, ih_err⟩ :=
+        ih a ha_depth h_a env heap trace funcs cs _ n m arg
+          hnorm (fun x hfx => hewf x (VarFreeIn.binary_rhs _ _ _ _ hfx))
+          (by cases hna with | binary _ ha => exact ha)
+      refine ⟨?_, ?_, ?_⟩
+      · intro harg
+        obtain ⟨evs, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_none harg
+        have herr : ∃ msg, .error msg ∈ evs := observableTrace_return_has_error hobs_a
+        have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs1 smid →
+            evs1.length ≤ evs.length →
+            smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+          intro smid evs1 hsteps _hlen
+          exact ⟨Flat.Steps_preserves_funcs hsteps,
+            Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
+              refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
+            Flat.Steps_trace_append hsteps⟩
+        obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+          Steps_compound_error_lift (.binary op (.lit lhs_val) ·)
+            (fun s inner hv t si hs he => step?_binary_rhs_ctx s op lhs_val inner hv t si hs he)
+            (fun s inner hv msg si hs => step?_binary_rhs_error s op lhs_val inner hv msg si hs)
+            hsteps_a herr hpres
+        exact ⟨evs, sf', hsteps',
+          hexpr'.trans hexpr_a, henv'.trans henv_a, hheap'.trans hheap_a,
+          htrace'.trans htrace_a, hobs_a⟩
+      · intro t v harg heval
+        -- SAME BLOCK as none case but with ih_ok t v harg heval
+        sorry -- fill in using exact same pattern
+      · intro t msg harg heval
+        -- SAME BLOCK as none case but with ih_err t msg harg heval
+        sorry -- fill in using exact same pattern
 ```
 
-### THE PROOF — FOLLOW step_nonError PATTERN EXACTLY (L13623-13649)
+### IMPORTANT: VarFreeIn and NoNestedAbrupt projections
 
-Use EXACTLY the same strong induction skeleton as step_nonError:
+For second-position, the VarFreeIn and NoNestedAbrupt extractors are DIFFERENT:
+- `binary_rhs`: `VarFreeIn.binary_rhs` and `(by cases hna with | binary _ ha => exact ha)`
+- `setProp_val`: `VarFreeIn.setProp_val` and `(by cases hna with | setProp _ ha => exact ha)`
+- `getIndex_idx`: `VarFreeIn.getIndex_idx` and `(by cases hna with | getIndex _ ha => exact ha)`
+- `setIndex_idx`: `VarFreeIn.setIndex_idx` and check NoNestedAbrupt.setIndex destructuring
+- `setIndex_val`: `VarFreeIn.setIndex_val` and check NoNestedAbrupt.setIndex destructuring
 
-```lean
-  sorry -- REPLACE WITH:
-  suffices hmain : ∀ (n : Nat) (e : Flat.Expr) (env : Flat.Env) (heap : Core.Heap)
-      (trace : List Core.TraceEvent) (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
-      (sf' : Flat.State) (msg : String),
-      e.depth ≤ n →
-      HasReturnInHead e →
-      Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (.error msg, sf') →
-      ∃ v, sf'.expr = .lit v by
-    cases sf with | mk e env heap trace funcs cs =>
-    exact hmain e.depth e env heap trace funcs cs sf' msg (Nat.le_refl _) hret hstep
-  intro n
-  induction n with
-  | zero =>
-    intro e env heap trace funcs cs sf' msg hd hret hstep
-    cases hret
-    next => -- return_none_direct: step? produces .error "return:undefined", sf'.expr = .lit .undefined
-      unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
-      exact ⟨.undefined, hstep.2 ▸ rfl⟩
-    all_goals (simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; omega)
-  | succ n ih =>
-    intro e env heap trace funcs cs sf' msg hd hret hstep
-    cases hret with
-    | return_none_direct =>
-      unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
-      exact ⟨.undefined, hstep.2 ▸ rfl⟩
-    | return_some_direct =>
-      rename_i v
-      unfold Flat.step? at hstep; dsimp only [] at hstep; split at hstep
-      · simp [Flat.pushTrace] at hstep; exact ⟨_, hstep.2 ▸ rfl⟩  -- value → .lit v
-      · split at hstep
-        · split at hstep
-          · simp [Flat.pushTrace] at hstep; exact ⟨_, hstep.2 ▸ rfl⟩  -- error from sub → .lit
-          · -- non-error step → produces non-error event, contradicts .error msg
-            simp at hstep
-        · simp at hstep
-    | seq_left h =>
-      have hv := HasReturnInHead_not_value _ h
-      unfold Flat.step? at hstep; dsimp only [] at hstep
-      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
-      split at hstep
-      · split at hstep
-        · -- error from sub-step: sf'.expr = si.expr, by IH ∃ v, si.expr = .lit v
-          simp [Flat.pushTrace] at hstep
-          obtain ⟨rfl, rfl⟩ := hstep
-          simp only [Flat.pushTrace, Flat.State.expr]
-          exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
-        · -- non-error step produces (.error msg, sf') — contradiction
-          sorry -- split on event type, non-error branch contradicts hstep producing .error
-      · simp at hstep
-    -- CONTINUE for each HasReturnInHead constructor following this EXACT pattern
-    -- For seq_right: exprValue? a splits. If some: step? gives (.silent, {expr:=b}), contradiction.
-    --   If none: step? sub gives IH.
-    -- For EVERY compound constructor: sub-step error case gives IH, non-error gives contradiction.
-    | _ => sorry -- fill in remaining cases one by one
-```
+Use `lean_hover_info` to check the exact constructor names if unsure.
 
-### KEY FACTS FROM Flat.step? (Flat/Semantics.lean)
+### APPROACH: Do one case at a time
+1. Write binary_rhs (L16148). Verify with lean_diagnostic_messages.
+2. Write setProp_val (L16149). Verify.
+3. Continue for getIndex_idx, setIndex_idx, setIndex_val.
+4. Then do call_env (L16153) and newObj_env (L16155) — same pattern.
 
-1. **Error propagation pattern** (ALL compound constructors): When sub-step produces `.error`:
-   ```
-   let s' := pushTrace { s with expr := si.expr, env := si.env, heap := si.heap } t
-   ```
-   So `sf'.expr = si.expr`. By IH on sub-expression (depth decreases), `∃ v, si.expr = .lit v`. ✓
+## P1: call_env, newObj_env (L16153, L16155) — 2 sorries → 0
 
-2. **Non-error sub-step**: Produces a non-.error event. If hstep says event is `.error msg`, contradiction.
+Same pattern as call_func/newObj_func but for second-position:
+- `step?_call_env_ctx` / `step?_call_env_error`
+- `step?_newObj_env_ctx` / `step?_newObj_env_error`
 
-3. **Direct error producers** (all produce `.lit v`):
-   - `.return none` → `expr := .lit .undefined` ✓
-   - `.return (some v)` when v is value → `expr := .lit v` ✓
-   - `.throw arg` when arg is value → `expr := .lit .undefined` ✓
-   - `.var name` → `expr := .lit .undefined` ✓ (but HasReturnInHead has no var constructor)
-   - `.getEnv envExpr idx` → `expr := .lit .undefined` ✓
-   - `.makeClosure idx envExpr` → `expr := .lit .undefined` ✓
-   - `.break`/`.continue` → `expr := .lit .undefined` ✓ (but no HasReturnInHead constructor)
+## P2: List constructor cases (L16154, L16156-L16159) — 5 sorries
 
-4. **tryCatch catch handler**: The ONLY case where error produces non-lit expr. But **HasReturnInHead has NO tryCatch constructor**, so this case is impossible.
+These need list-stepping infrastructure:
+- `step?_call_arg_ctx` (L2168), `step?_newObj_arg_ctx` (L2197)
+- `step?_makeEnv_values_ctx` (L2225), `step?_objectLit_val_ctx` (L2143)
+- `step?_arrayLit_elem_ctx` (L2249)
 
-### APPROACH: Write it in 3 BATCHES
-
-**Batch 1**: return_none, return_some, seq_left, seq_right, let_init. Write and verify with lean_multi_attempt.
-**Batch 2**: Remaining "single sub-expr" constructors (getProp_obj, setProp_obj/val, unary_arg, typeof_arg, etc.)
-**Batch 3**: Multi-operand constructors (call_func/env/args, newObj, binary, getIndex, setIndex, objectLit, arrayLit, makeEnv)
-
-### CRITICAL: The non-error branch contradiction
-
-In compound cases, when the sub-step is non-error, step? wraps the result in the same constructor. The outer event is NOT `.error`. But `hstep` says it IS `.error msg`. This is a direct contradiction via `match t with | .error _ => ... | _ => ...` — the non-error branch produces a non-error event, contradicting `hstep`.
-
-Tactic for this contradiction:
-```lean
-· -- non-error branch: event is not .error
-  rename_i t_inner si hstep_inner
-  split at hstep  -- on match t_inner with | .error _ => ... | _ => ...
-  · sorry  -- this was the error case, handled above
-  · simp [Flat.pushTrace] at hstep; -- hstep : (non-error-event, ...) = (.error msg, sf')
-    exact absurd hstep.1.symm (by intro h; cases h)  -- or: injection hstep.1
-```
-
-## P1: After step_error_isLit, work on L4671 and L5809 (break/continue non-head cases)
+These are harder — defer to P2 and assess after P0/P1.
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — step_error_isLit BATCH WRITE" >> agents/proof/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — second-position HasReturnInHead cases" >> agents/proof/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`
