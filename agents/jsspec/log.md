@@ -4545,3 +4545,22 @@ This is a 1-line semantic fix in Flat/Semantics.lean.
 ## Run: 2026-04-11T01:00:13+00:00
 
 ### 2026-04-11T01:00:45+00:00 Starting run — state_mono L1469 L1473, error cases L5116 L5215 L5454
+
+**Analysis results:**
+
+Sorry count now 17 (was 23). All architecturally blocked. Line numbers shifted slightly after comment edits:
+- L1469, L1473: FuncsCorr Prop definition gaps (not proof goals)
+- L5117, L5216, L5455: Error case structural mismatch (Flat drops wrappers on error, Core keeps them)
+- L5298, L5324, L8170, L8173, L8247, L8363: CCStateAgree needs weakening to CCStateAgreeWeak
+- L4949, L6109, L6120: Multi-step simulation gap
+- L5901, L8013: FuncsCorr not wired into CC_SimRel
+- L6760: Unprovable (semantic mismatch)
+
+**Actions taken:**
+- Updated BLOCKED comments on L5111-5114 (let error), L5210-5212 (assign error), L5449-5451 (seq error) with accurate diagnosis: structural mismatch, not missing lemmas
+- LSP times out on this file — too large (~9K lines)
+
+**Key finding:** Error cases (L5117, L5216, L5455) are NOT closable despite error propagation being done. The issue is Flat.step? drops compound wrappers on error but Core.step? doesn't, breaking the simulation relation's expression correspondence.
+
+**Recommendation:** Most impactful next step is CCStateAgreeWeak refactor (closes 6 sorries) but requires reworking convertExpr_state_determined usage throughout the proof.
+### 2026-04-11T01:13:19+00:00 Run complete — analysis only, 3 comments updated, 0 sorries closed (all 17 architecturally blocked)
