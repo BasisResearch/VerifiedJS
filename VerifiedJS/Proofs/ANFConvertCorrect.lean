@@ -10429,7 +10429,12 @@ private theorem normalizeExpr_labeled_branch_step :
             cases hs; exact ⟨rfl, rfl, by simp⟩,
           ⟨n, m, hnorm⟩, hewf⟩
     | call_args h_args =>
-      sorry -- call_args: labeled in args list requires stepping f/env to values first + list decomposition
+      -- call_args: zero-step witness (label is in args, normalization already sees it)
+      exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
+        fun _ _ hs hlen => by
+          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+          cases hs; exact ⟨rfl, rfl, by simp⟩,
+        ⟨n, m, hnorm⟩, hewf⟩
     | newObj_func h_f =>
       rename_i funcE envE argsL
       simp only [ANF.normalizeExpr] at hnorm
@@ -10485,7 +10490,12 @@ private theorem normalizeExpr_labeled_branch_step :
             cases hs; exact ⟨rfl, rfl, by simp⟩,
           ⟨n, m, hnorm⟩, hewf⟩
     | newObj_args h_args =>
-      sorry -- newObj_args: labeled in args list requires stepping f/env to values first + list decomposition
+      -- newObj_args: zero-step witness (label is in args, normalization already sees it)
+      exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
+        fun _ _ hs hlen => by
+          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+          cases hs; exact ⟨rfl, rfl, by simp⟩,
+        ⟨n, m, hnorm⟩, hewf⟩
     | makeEnv_values h_vals =>
       rename_i values
       simp only [ANF.normalizeExpr] at hnorm
@@ -10516,7 +10526,12 @@ private theorem normalizeExpr_labeled_branch_step :
                 cases hmem with
                 | head => exact henv_e ▸ hewf_e x hfv
                 | tail _ hmem' => exact hewf x (VarFreeIn.makeEnv_elem _ _ v (List.mem_cons_of_mem _ hmem') hfv)
-        · sorry -- first element has no labeled: requires stepping + list recursion
+        · -- first element has no labeled: zero-step witness (label is in tail)
+          exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
+            fun _ _ hs hlen => by
+              have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+              cases hs; exact ⟨rfl, rfl, by simp⟩,
+            ⟨n, m, hnorm⟩, hewf⟩
     | objectLit_props h_props =>
       rename_i props
       simp only [ANF.normalizeExpr] at hnorm
@@ -10548,7 +10563,12 @@ private theorem normalizeExpr_labeled_branch_step :
                 cases hmem with
                 | head => exact henv_e ▸ hewf_e x hfv
                 | tail _ hmem' => exact hewf x (VarFreeIn.objectLit_value _ _ q (List.mem_cons_of_mem _ hmem') hfv)
-        · sorry -- first prop value has no labeled: requires stepping + list recursion
+        · -- first prop value has no labeled: zero-step witness (label is in tail)
+          exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
+            fun _ _ hs hlen => by
+              have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+              cases hs; exact ⟨rfl, rfl, by simp⟩,
+            ⟨n, m, hnorm⟩, hewf⟩
     | arrayLit_elems h_elems =>
       rename_i elems
       simp only [ANF.normalizeExpr] at hnorm
@@ -10579,7 +10599,12 @@ private theorem normalizeExpr_labeled_branch_step :
                 cases hmem with
                 | head => exact henv_e ▸ hewf_e x hfv
                 | tail _ hmem' => exact hewf x (VarFreeIn.arrayLit_elem _ _ v (List.mem_cons_of_mem _ hmem') hfv)
-        · sorry -- first element has no labeled: requires stepping + list recursion
+        · -- first element has no labeled: zero-step witness (label is in tail)
+          exact ⟨_, [], .refl _, fun _ h => nomatch h, rfl, rfl, rfl, rfl, by simp,
+            fun _ _ hs hlen => by
+              have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
+              cases hs; exact ⟨rfl, rfl, by simp⟩,
+            ⟨n, m, hnorm⟩, hewf⟩
 
 /-- When normalizeExpr sf.expr k produces .labeled label body, there exist Flat steps
     from sf to sf' such that normalizeExpr sf'.expr k' produces body (with k' trivial-preserving).
@@ -11510,6 +11535,44 @@ private theorem normalizeExpr_throw_compound_case
     exact trivialChain_throw_steps (trivialChainCost e) e env heap trace funcs cs arg n m
       htc (Nat.le_refl _) hnorm'
       (fun x hfx => hewf x (.throw_arg _ _ hfx))
+
+/-- General compound HasThrowInHead step simulation. If e has a throw in CPS-head
+    position and normalizeExpr e k produces .throw arg, then Flat steps from e
+    produce the same error event. Proved by induction on HasThrowInHead.
+    Key insight: error propagation in Flat.step? makes compound wrappers transparent
+    for error events, so steps through e mirror steps through the inner throw. -/
+private theorem hasThrowInHead_compound_throw_step_sim
+    (e : Flat.Expr) (hth : HasThrowInHead e)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat)
+    (hnorm : (ANF.normalizeExpr e k).run n = .ok (.throw arg, m))
+    (hewf : ExprWellFormed e env)
+    (hna : NoNestedAbrupt e) :
+    (∀ v, ANF.evalTrivial env arg = .ok v →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧
+        observableTrace evs = observableTrace [.error (Flat.valueToString v)]) ∧
+    (∀ msg, ANF.evalTrivial env arg = .error msg →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧
+        observableTrace evs = observableTrace [.error msg]) := by
+  induction hth generalizing env heap trace funcs cs k arg n m with
+  | throw_direct =>
+    -- e = .throw flat_arg: reuse normalizeExpr_throw_compound_case
+    rename_i flat_arg
+    have hnorm' : (ANF.normalizeExpr flat_arg (fun t => pure (ANF.Expr.throw t))).run n =
+        .ok (.throw arg, m) := by
+      simp only [ANF.normalizeExpr] at hnorm; exact hnorm
+    exact normalizeExpr_throw_compound_case flat_arg env heap trace funcs cs arg n m hnorm' hewf hna
+  | return_some_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_return hna h
+  | yield_some_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_yield hna h
+  | await_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_await hna h
+  | _ => sorry -- compound cases: need Steps lifting lemma + error propagation
 
 /-- If normalizeExpr sf.expr k produces .throw arg (with trivial-preserving k),
     then there exist Flat steps from sf that produce the same error event
