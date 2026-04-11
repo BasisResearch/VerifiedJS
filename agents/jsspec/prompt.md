@@ -1,4 +1,4 @@
-# jsspec — CLOSE CCStateAgree SORRIES (L5491 + L5517 first)
+# jsspec — TRIAGE: lean_multi_attempt ON ALL CC SORRIES, THEN DESIGN FIX
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,69 +9,71 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 15 CC sorries remain. Total: 51.
-- CC_SimRel error disjunct: DONE (3 error sites filled, 3 tryCatch-init edge cases added)
-- The 3 new tryCatch-init sorries (L5265, L5409, L5696) are BLOCKED by L8484
-- All multi-step sorries (L5044, L6139, L6347, L6358) are BLOCKED
-- L6998 is UNPROVABLE
-- L8250 (functionDef) is BLOCKED (multi-step + complex)
+## STATUS — 2026-04-11T09:00
+- CC: 15 sorries. Total: 46 (down from 51 — wasmspec closed callStack).
+- Previous analysis (March 31) concluded CCStateAgree sorries are ARCHITECTURALLY UNPROVABLE.
+- The March 31 analysis identified 3 viable paths. We're now pursuing a TRIAGE approach.
 
 ## SORRY CLASSIFICATION (15 total)
-- CCStateAgree: 5 (L5491, L5517, L8407, L8484, L8600) ← YOUR TARGET
+- CCStateAgree: 5 (L5491, L5517, L8407, L8484, L8600) — ARCHITECTURALLY BLOCKED
 - TryCatch-init edge: 3 (L5265, L5409, L5696) — blocked by L8484
-- Multi-step: 3 (L5044, L6347, L6358)
-- Non-consoleLog call: 1 (L6139) — multi-step
-- Unprovable: 1 (L6998)
-- functionDef: 1 (L8250)
-- tryCatch finally: 1 (L8410)
+- Multi-step: 3 (L5044, L6347, L6358) — BLOCKED
+- Non-consoleLog call: 1 (L6139) — BLOCKED
+- Unprovable: 1 (L6998) — CANNOT BE PROVED
+- functionDef: 1 (L8250) — BLOCKED
+- tryCatch finally: 1 (L8410) — BLOCKED
 
-## P0: CCStateAgree AT L5491 AND L5517
+## P0: lean_multi_attempt SCAN OF ALL 15 SORRIES
 
-### What CCStateAgree is
-```lean
-private abbrev CCStateAgree (st1 st2 : Flat.CCState) : Prop :=
-  st1.nextId = st2.nextId ∧ st1.funcs.size = st2.funcs.size
+Before investing in design changes, systematically scan every sorry with automated tactics. Some may be closer to provable than the March analysis suggested, especially if new helper lemmas have been added since then.
+
+**DO THIS FOR EACH SORRY** (L5044, L5265, L5409, L5491, L5517, L5696, L6139, L6347, L6358, L6998, L8250, L8407, L8410, L8484, L8600):
+
+1. Run `lean_goal` at the sorry line to see the exact proof state
+2. Run `lean_multi_attempt` with:
+   ```
+   ["simp_all", "aesop", "omega", "tauto", "contradiction", "rfl", "exact?", "decide"]
+   ```
+3. Log the result (what the goal looks like, what tactics were tried)
+4. If ANY tactic works → apply it immediately
+
+**PRIORITY ORDER**: Start with L8407 (most likely closable — it's `by rw [hst'_eq]; sorry` which may become trivial after rewrite). Then L5265, L5409, L5696 (these are `Or.inr sorry` — check what the Or.inr branch needs).
+
+## P1: L8407 DEEP DIVE
+
+L8407 is: `exact ⟨st, st, by simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, by rw [hst'_eq]; sorry⟩`
+
+After `rw [hst'_eq]`, the goal should be CCStateAgree of some specific states. Run `lean_goal` after the rewrite to see if it's just `⟨rfl, rfl⟩` or if it needs more.
+
+If the rewrite makes the goal `CCStateAgree st st` (identity), then `exact ⟨rfl, rfl⟩` closes it.
+
+## P2: IF ALL SORRIES CONFIRMED BLOCKED — START DESIGN FIX
+
+If the scan confirms all 15 are blocked, begin implementing **Path A from March 31 analysis**:
+
+### Path A: CCStateAgreeWeak (monotone invariant)
+
+The comments at L5491 and L5517 both say:
+```
+-- FIX: Change invariant to CCStateAgreeWeak; then use convertExpr_state_mono
 ```
 
-### The problem at L5491 (if_branch, else case)
-After stepping the condition sub-expression, the suffices needs `CCStateAgree st st_a` where:
-- `st` = the state BEFORE converting the full if-expression
-- `st_a` = some state that makes `(sf'.expr, st_a') = Flat.convertExpr sc'.expr ...`
+This suggests the code AUTHORS intended CCStateAgreeWeak as the fix. Check:
 
-The issue: `convertExpr (.if cond then_ else_)` converts `cond`, `then_`, `else_` sequentially. After cond steps, the remaining expression (`.if cond' then_ else_`) needs conversion starting from a state that accounts for what cond consumed. But the IH gives a state from converting only cond.
+1. Does `CCStateAgreeWeak` already exist? (It's defined at L565 as `≤` instead of `=`)
+2. Does `convertExpr_state_mono` exist? Search for it.
+3. The March 31 analysis said "≤ breaks chaining cases". But check: do the chaining cases actually NEED `=`, or can they work with `≤` + `convertExpr_state_determined`?
 
-### APPROACH: Use convertExpr_state_determined (L570)
-The theorem `convertExpr_state_determined` (L570-574) proves:
-```
-If st1.nextId = st2.nextId ∧ st1.funcs.size = st2.funcs.size, then
-convertExpr e ... st1 = convertExpr e ... st2 (same output expression and state agreement)
-```
+If `convertExpr_state_determined` can be weakened to accept `≤` inputs (using monotonicity), then CCStateAgreeWeak works everywhere.
 
-This means if you can show `CCStateAgree st st_a`, the conversion output is the same regardless of other CCState fields.
+**Key question**: Does `convertExpr_state_determined` actually NEED `=`? If the output expression only depends on `nextId` (for fresh names), and names are used as opaque identifiers (never compared for equality in the semantics), then even with different names, the semantics could be equivalent.
 
-**STEP BY STEP**:
-1. Run `lean_goal` at L5491 to see the exact proof state
-2. Identify what `st_a` needs to satisfy
-3. The key: after stepping `cond` (via IH), the IH gives back `CCStateAgree st' st_a'` for the output state. The INPUT state `st_a` should be constructible from `st` + the fact that stepping doesn't change CCState.
-4. Core.step? does NOT modify `CCState` — it's a compile-time artifact. So `st_a = st` should work!
+### Path B: Skip-branch state threading (surgical fix)
 
-**CHECK**: Does the IH destructuring at the sorry site give you `CCStateAgree` for the sub-expression? If so, you can thread it through using `convertExpr_state_determined`.
-
-## P1: L5517 (similar CCStateAgree, if_branch then case)
-
-Same approach. After understanding L5491, apply the pattern.
-
-## P2: IF P0/P1 CLOSED — TRY L8407
-
-L8407 is `by rw [hst'_eq]; sorry` in a tryCatch case. Run `lean_goal` to see what's needed after the rewrite.
-
-## SKIP (DO NOT ATTEMPT):
-- Multi-step (L5044, L6139, L6347, L6358): needs N-step simulation
-- L6998: UNPROVABLE semantic mismatch
-- L8250: functionDef, too complex
-- L8410, L8600: need deeper CCStateAgree + tryCatch/while infrastructure
-- L5265, L5409, L5696: blocked by L8484
+For the specific sorry sites:
+- L5491 (if-true): `st_a' = (convertExpr then_ ... st).snd`. Need `CCStateAgree st_a' st'` where `st' = (convertExpr else_ ... (convertExpr then_ ... st).snd).snd`. This needs `convertExpr else_` to not change state → only when `else_` has no `functionDef`.
+- Could add a `supported_no_functionDef` lemma if the `supported` predicate excludes nested function definitions. CHECK: does `supported = true` imply no `functionDef` sub-expressions?
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — CCStateAgree L5491 + L5517" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — lean_multi_attempt CC triage" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`

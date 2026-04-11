@@ -1,3 +1,66 @@
+## Run: 2026-04-11T09:00:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 31 + CC 15 + Wasm 0 = **46 total**
+- **Delta from last run (08:30)**: -5 (51→46). DOWN by 5.
+- **Explanation**: wasmspec closed 6 callStack condition sorries (L13351-L13397) using `HasReturnInHead_Steps_steppable` + `hasReturnInHead_callStackSafe`. Added 1 new sorry at L13264 (HasReturnInHead_Steps_steppable itself). Net -5. CC unchanged at 15.
+- **BUILD**: Not verified (LSP only).
+
+### What Happened Since Last Run (08:30→09:00)
+1. **wasmspec**: CLOSED 6 callStack sorries. The `hpres` callbacks in `hasReturnInHead_return_steps` (seq_left case) now use `HasReturnInHead_Steps_steppable` to prove HasReturnInHead at intermediate states, then `hasReturnInHead_callStackSafe` for both conditions. 1 new sorry introduced for the steppable lemma itself (L13264).
+2. **proof**: No change. TrivialChain sorries (12) remain at L10183-L10554.
+3. **jsspec**: No change. CC sorries (15) remain. All architecturally blocked per March 31 analysis.
+
+### Agent Status
+1. **proof**: NOT RUNNING. Prompt rewritten: systematic approach to trivialChain (step primary operand via trivialChain_eval_value, show normalizeExpr of stepped expression matches).
+2. **jsspec**: NOT RUNNING. Prompt rewritten: TRIAGE mode — lean_multi_attempt scan of all 15 CC sorries, especially L8407. If all blocked, start CCStateAgreeWeak design fix.
+3. **wasmspec**: NOT RUNNING. Prompt rewritten: P0 = close L13264 (HasReturnInHead_Steps_steppable). P1 = L13415 compound. P2 = L13771/L13944 HasAwait/Yield.
+
+### Prompts Rewritten (all 3)
+
+1. **proof**: Systematic approach to trivialChain. Step 1: lean_hover_info on normalizeExpr for .lit handling. Step 2: lean_goal at L10183. Step 3: check if ¬HasLabeledInHead → isTrivialChain. Step 4: apply trivialChain_eval_value. Step 5: connect normalizeExpr of stepped expression. Fallback: lean_multi_attempt scan.
+
+2. **jsspec**: PIVOTED from blocked CCStateAgree to triage mode. Scan all 15 sorries with lean_multi_attempt. Priority: L8407 (most likely closable after rw). Then L5265/L5409/L5696 (Or.inr branch). If all blocked, implement CCStateAgreeWeak fix (comments in code say this is the intended fix). Also check if supported=true implies no functionDef (would make CCStateAgree trivially provable for supported programs).
+
+3. **wasmspec**: PIVOTED from "close callStack" (DONE!) to "close HasReturnInHead_Steps_steppable". Detailed proof sketch: induction on Steps, base case trivial (exact h_a), step case needs HasReturnInHead preservation through single steps. Hard case: seq_left where a→value gives b which may lack HasReturnInHead. Potential fix: use NoNestedAbrupt or bound by error event.
+
+### Sorry Classification (46 total)
+- **TrivialChain (proof)**: 12 (L10183-L10554)
+- **HasReturnInHead_Steps_steppable (wasmspec)**: 1 (L13264) — NEW
+- **Compound HasReturnInHead (wasmspec)**: 1 (L13415)
+- **HasAwait/HasYield (wasmspec)**: 2 (L13771, L13944)
+- **Return/yield .let + compound (wasmspec)**: 3 (L14000, L14004, L14005)
+- **Compound catch-all (wasmspec)**: 1 (L12969)
+- **While (BLOCKED)**: 2 (L14095, L14107)
+- **If branch (BLOCKED)**: 2 (L14832, L14872)
+- **TryCatch (BLOCKED)**: 3 (L15713, L15731, L15734)
+- **noCallFrameReturn (BLOCKED)**: 1 (L17061)
+- **body_sim (BLOCKED)**: 1 (L17072)
+- **Break/continue (BLOCKED)**: 2 (L17291, L17362)
+- **CCStateAgree (jsspec)**: 5 (L5491, L5517, L8407, L8484, L8600)
+- **TryCatch-init edge (jsspec)**: 3 (L5265, L5409, L5696) — blocked by L8484
+- **Multi-step CC (jsspec)**: 3 (L5044, L6347, L6358)
+- **Non-consoleLog call (jsspec)**: 1 (L6139)
+- **CC unprovable**: 1 (L6998)
+- **CC functionDef (jsspec)**: 1 (L8250)
+- **CC tryCatch finally (jsspec)**: 1 (L8410)
+
+### Critical Path
+1. **wasmspec**: L13264 (HasReturnInHead_Steps_steppable) → -1. Then L13415 compound → -1. Then L13771+L13944 → -2. Potential: -4 to -8.
+2. **proof**: trivialChain L10183-L10554 → -12 if approach works. HIGH VALUE target.
+3. **jsspec**: lean_multi_attempt scan. If L8407 closable → -1. If supported=true → no functionDef, could unlock CCStateAgree → -5 to -8.
+
+### Trend
+- 01:30: 59 sorries
+- 04:05: 48 sorries (-11 in 2.5h)
+- 06:05: 46 sorries (-2 in 2h)
+- 08:30: 51 sorries (recount, structural decomposition)
+- 09:00: 46 sorries (-5 in 0.5h) — FIRST PROGRESS IN 3 HOURS
+- Rate improved. wasmspec making real progress. Proof and jsspec need breakthroughs.
+- Best case next run: ~34-40 (if wasmspec closes steppable+compound+await/yield, proof closes some trivialChain, jsspec finds closable sorries)
+
+---
+
 ## Run: 2026-04-11T08:30:03+00:00
 
 ### Metrics
@@ -6972,3 +7035,4 @@ echo "2026-04-11T03:00:32+00:00,49,ongoing" >> logs/time_estimate.csv
 ## Run: 2026-04-11T09:00:02+00:00
 
 2026-04-11T09:06:44+00:00 SKIP: already running
+2026-04-11T09:33:45+00:00 DONE
