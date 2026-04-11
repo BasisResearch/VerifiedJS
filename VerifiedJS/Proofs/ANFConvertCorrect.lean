@@ -9636,18 +9636,18 @@ private theorem HasNonCallFrameTryCatchInHeadList_mid_or_tail
     simp [List.cons_append] at h
     cases h with
     | head hd =>
-      obtain ⟨v, rfl⟩ := hdone d (List.mem_cons_self _ _)
+      obtain ⟨v, rfl⟩ := hdone d (by simp)
       exact nomatch hd
     | tail h =>
-      exact ih (fun x hx => hdone x (List.mem_cons_of_mem _ hx)) h
+      exact ih (fun x hx => hdone x (by simp_all)) h
 
 /-- In a split prop list from firstNonValueProp, if the modified list has
     HasNonCallFrameTryCatchInHeadProps, then either the target has it or remaining has it. -/
 private theorem HasNonCallFrameTryCatchInHeadProps_mid_or_tail
-    {done : List (Flat.PropName × Flat.Expr)} {name : Flat.PropName}
+    {done : List (Flat.PropName × Flat.Expr)} {pname : Flat.PropName}
     {e : Flat.Expr} {remaining : List (Flat.PropName × Flat.Expr)}
     (hdone : ∀ p ∈ done, ∃ v, p.snd = .lit v)
-    (h : HasNonCallFrameTryCatchInHeadProps (done ++ (name, e) :: remaining)) :
+    (h : HasNonCallFrameTryCatchInHeadProps (done ++ (pname, e) :: remaining)) :
     HasNonCallFrameTryCatchInHead e ∨ HasNonCallFrameTryCatchInHeadProps remaining := by
   induction done with
   | nil =>
@@ -9658,10 +9658,10 @@ private theorem HasNonCallFrameTryCatchInHeadProps_mid_or_tail
     simp [List.cons_append] at h
     cases h with
     | head hd =>
-      obtain ⟨v, hv⟩ := hdone d (List.mem_cons_self _ _)
-      simp [hv] at hd
+      obtain ⟨v, hv⟩ := hdone d (by simp)
+      cases d with | mk n ex => simp at hv; rw [hv] at hd; exact nomatch hd
     | tail h =>
-      exact ih (fun x hx => hdone x (List.mem_cons_of_mem _ hx)) h
+      exact ih (fun x hx => hdone x (by simp_all)) h
 
 -- DONE (2026-04-11): HasReturnInHead_Steps_steppable sorry closed.
 -- Fix: Carry ¬HasNonCallFrameTryCatchInHead as invariant through the Steps induction.
