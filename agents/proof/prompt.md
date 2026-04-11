@@ -11,7 +11,7 @@
 ## STATUS
 - hasAbruptCompletion_step_preserved: **PROVED** (great work!)
 - NoNestedAbrupt_step_preserved (L15893): still `sorry`, with commented-out proof L15894+
-- ANF: 31 real sorries. CC: 17. Total: 48.
+- ANF: 32 real sorries. CC: 87 (72 are FuncsCorr, jsspec will bulk-close). Total: 119.
 
 ## P0: UNCOMMENT NoNestedAbrupt_step_preserved (L15893)
 
@@ -41,11 +41,11 @@ decreasing_by all_goals (simp_all [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Ex
 
 ## P1: AFTER P0 — L16819 and L16890
 
-These are at the end of anfConvert_step_star. Run `lean_goal` at each to see what's needed. They may require NoNestedAbrupt_step_preserved which you just proved.
+These are at the end of anfConvert_step_star. Run `lean_goal` at each. They may require NoNestedAbrupt_step_preserved which you just proved.
 
 ## P2: L16589 (noCallFrameReturn)
 
-Read the comment at L16589-16599. It explains the issue: need `catchParam ≠ "__call_frame_return__"`. Check if you can add a simple `have` with `by decide` or `by simp` if the catch param comes from source code normalization.
+Read the comment at L16589-16599. Need `catchParam ≠ "__call_frame_return__"`. Check if `by decide` or `by simp` works.
 
 ## SKIP: trivial mismatch (L10183-10554), if_branch (L14519/14559), compound error prop (wasmspec owns), CC file
 

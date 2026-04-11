@@ -16407,7 +16407,8 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
         exact .tryCatch_some (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
           hbody hfuncs_na hfuncs_ac heq) hcatch hfin
       · exact absurd hstep (by simp)
-  -/
+  termination_by Flat.Expr.depth e
+  decreasing_by all_goals (simp_all [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth]; omega)
 
 /-- Flat multi-step preserves NoNestedAbrupt. -/
 private theorem NoNestedAbrupt_steps_preserved {sf sf' : Flat.State} {evs : List Core.TraceEvent}
