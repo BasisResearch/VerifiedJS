@@ -8080,3 +8080,24 @@ NEXT: Close preservation sorries (need step?_preserves_callStack), then 28 compo
 ### 2026-04-11T07:00:14+00:00 Starting run — Steps preservation + compound expansion
 2026-04-11T07:15:02+00:00 SKIP: already running
 ### 2026-04-11T07:53:05+00:00 P0 partial: 3 preservation sorries restructured — funcs+trace proved, callStack reduced to 6 condition sorries needing HasReturnInHead invariant through steps
+
+### 2026-04-11T07:XX Run complete — partial progress on P0
+
+**Changes made:**
+
+1. **Flat/Semantics.lean** (0 sorries, no errors):
+   - Added `step?_preserves_callStack`: single-step callStack preservation with two conditions (not tryCatch call-frame, not call with all-value args)
+   - Added `Steps_preserves_callStack`: multi-step version via induction
+
+2. **ANFConvertCorrect.lean** (no new errors):
+   - Added `HasReturnInHeadList_valuesFromExprList_none`: if HasReturnInHeadList args, then valuesFromExprList? returns none
+   - Added `hasReturnInHead_callStackSafe`: HasReturnInHead implies both callStack safety conditions (not tryCatch frame, not all-value call)
+   - **Restructured 3 preservation sorries**: funcs proved via `Steps_preserves_funcs`, trace proved via `Steps_trace_append`, callStack uses `Steps_preserves_callStack` framework but conditions at intermediate steps remain as sorries
+
+**Remaining work for P0:**
+- 6 small sorries: need to prove callStack safety conditions hold at EACH intermediate step during evaluation of HasReturnInHead expression
+- Approach: prove `HasReturnInHead` is preserved through non-error steps (by mutual induction on HasReturnInHead constructors), then use `hasReturnInHead_callStackSafe` at each step
+- Key insight: "right" constructors (seq_right, call_args/tail) preserve HasReturnInHead trivially (sub-expr unchanged). "Left/head" constructors need IH. Base cases (.return) always produce errors.
+
+**P1, P2, P3 not started** — blocked by P0 complexity.
+2026-04-11T07:55:30+00:00 DONE
