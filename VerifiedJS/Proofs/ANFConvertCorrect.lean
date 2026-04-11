@@ -13978,6 +13978,36 @@ private theorem HasReturnInHeadList_valuesFromExprList_none
     simp [Flat.valuesFromExprList?]
     cases Flat.exprValue? _ <;> simp [ih]
 
+/-- HasThrowInHeadList implies valuesFromExprList? is none (some arg is non-value). -/
+private theorem HasThrowInHeadList_valuesFromExprList_none
+    {args : List Flat.Expr} (h : HasThrowInHeadList args) :
+    Flat.valuesFromExprList? args = none := by
+  induction h with
+  | head h =>
+    simp [Flat.valuesFromExprList?, HasThrowInHead_not_value _ h, Flat.exprValue?]
+    cases args <;> simp [Flat.valuesFromExprList?]
+    rw [HasThrowInHead_not_value _ h]; simp
+  | tail h ih =>
+    simp [Flat.valuesFromExprList?]
+    cases Flat.exprValue? _ <;> simp [ih]
+
+/-- HasThrowInHead e implies callStack safety conditions:
+    (1) e is not a tryCatch call frame
+    (2) if e is a .call, not all sub-expressions are values. -/
+private theorem hasThrowInHead_callStackSafe (e : Flat.Expr) (hth : HasThrowInHead e) :
+    (∀ body catch_ fin, e ≠ .tryCatch body "__call_frame_return__" catch_ fin) ∧
+    (∀ f env args, e = .call f env args →
+      Flat.exprValue? f = none ∨ Flat.exprValue? env = none ∨
+      Flat.valuesFromExprList? args = none) := by
+  constructor
+  · intro body catch_ fin h; cases hth <;> exact Flat.Expr.noConfusion h
+  · intro f env args h
+    cases hth with
+    | call_func h => left; cases h; exact HasThrowInHead_not_value _ h
+    | call_env h => right; left; cases h; exact HasThrowInHead_not_value _ h
+    | call_args h => right; right; cases h; exact HasThrowInHeadList_valuesFromExprList_none h
+    | _ => exact absurd h (by intro h'; exact Flat.Expr.noConfusion h')
+
 /-- HasReturnInHead e implies callStack safety conditions:
     (1) e is not a tryCatch call frame
     (2) if e is a .call, not all sub-expressions are values. -/
