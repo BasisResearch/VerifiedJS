@@ -4588,3 +4588,6 @@ Sorry count now 17 (was 23). All architecturally blocked. Line numbers shifted s
 **Unblocked:** L5935 (call) and L8047 (functionDef) now have `hfuncCorr` in scope — ready for P1/P2
 **No existing proofs broken.** Top-level `closureConvert_correct` verified.
 2026-04-11T03:13:47+00:00 DONE
+
+## Run: 2026-04-11T04:00:02+00:00
+
