@@ -7481,3 +7481,74 @@ No sorries were closable in this run.
 ## Run: 2026-04-11T09:30:01+00:00
 
 ### 2026-04-11T09:30:22+00:00 Starting run — trivialChain systematic approach
+
+### 2026-04-11T09:30+00:00 Analysis — trivialChain systematic approach
+
+#### Target sorries: 9 in L10183-L10460
+
+| Line | Case | Pattern |
+|------|------|---------|
+| L10183 | binary_rhs, ¬HasLabeledInHead lhs | lhs is secondary |
+| L10231 | setProp_val, ¬HasLabeledInHead obj | obj is secondary |
+| L10279 | getIndex_idx, ¬HasLabeledInHead obj | obj is secondary |
+| L10329 | setIndex_idx, ¬HasLabeledInHead obj | obj is secondary |
+| L10356 | setIndex_val, ¬HasLabeledInHead obj | obj is secondary |
+| L10406 | call_env, ¬HasLabeledInHead funcE | funcE is secondary |
+| L10408 | call_args | labeled in args list |
+| L10458 | newObj_env, ¬HasLabeledInHead funcE | funcE is secondary |
+| L10460 | newObj_args | labeled in args list |
+
+#### Root cause analysis — ALL 9 BLOCKED
+
+**Key lemmas available:**
+- `normalizeExpr_trivialChain_passthrough` (L1438): `normalizeExpr e (fun _ => K) = K` — ignores argument
+- `normalizeExpr_trivialChain_apply` (L1466): `∃ t, ∀ k, normalizeExpr e k = k t` — extracts trivial
+- `no_labeled_head_implies_trivial_chain` (L9288): `¬HasLabeledInHead e → isTrivialChain e`
+- `trivialChain_eval_value` (L9526): trivialChain steps to `.lit v` in flat semantics
+
+**Why the seq case (L10097) works but binary/setProp/etc don't:**
+
+For seq: `normalizeExpr (.seq a b) K = normalizeExpr a (fun _ => normalizeExpr b K)`.
+When `b` is a trivialChain, the continuation `fun _ => normalizeExpr b K` IGNORES `a`'s trivial.
+So `normalizeExpr_trivialChain_passthrough` applies and `hnorm` rewrites cleanly to give
+`normalizeExpr a K` producing `.labeled label body`.
+
+For binary: `normalizeExpr (.binary op lhs rhs) K = normalizeExpr lhs (fun lhsTriv => normalizeExpr rhs (fun rhsTriv => bindComplex (.binary op lhsTriv rhsTriv) K))`.
+When `lhs` is a trivialChain, the continuation **USES** `lhsTriv` (in `bindComplex (.binary op lhsTriv ...)`).
+By `normalizeExpr_trivialChain_apply`, `∃ t_lhs, normalizeExpr lhs k = k t_lhs`.
+So `hnorm` gives: `normalizeExpr rhs (fun rhsTriv => bindComplex (.binary op t_lhs rhsTriv) K)` produces `.labeled label body`.
+
+After stepping `lhs` to `.lit v`, the new expression is `.binary op (.lit v) rhs`, and:
+`normalizeExpr (.binary op (.lit v) rhs) K = normalizeExpr rhs (fun rhsTriv => bindComplex (.binary op t_v rhsTriv) K)`
+where `t_v = trivialOfFlatValue v`.
+
+**The fundamental mismatch: `t_lhs ≠ t_v`** when `lhs` involves variables.
+- If `lhs = .var "x"`, then `t_lhs = .var "x"` but `t_v = trivialOfFlatValue (env["x"])`
+- The labeled `body` contains references to `t_lhs` (via the continuation threading)
+- After stepping, the body would reference `t_v` instead — a DIFFERENT ANF expression
+- The theorem requires the SAME `body`, so the proof cannot go through
+
+**This is not fixable with a helper lemma.** The theorem statement itself (`∃ n' m', normalizeExpr sf'.expr K = .ok (body, m')` with the SAME `body`) is too strong for these cases. The correct fix requires either:
+1. Weakening the theorem to allow an equivalent-but-different body (requires ANF semantic equivalence)
+2. Restructuring to avoid stepping the secondary operand (instead step directly to the labeled)
+3. A completely different proof architecture for the labeled case
+
+**Same issue affects all compound cases** (setProp, getIndex, setIndex, call, newObj) — any case where `normalizeExpr` normalizes a secondary operand first and the continuation captures its trivial.
+
+#### LSP status
+
+All sorry locations (L10183+) time out with 30s LSP timeout. Cannot use `lean_multi_attempt` on any of them.
+
+#### Summary
+
+- 0 sorries closed
+- 9/9 trivialChain targets BLOCKED by fundamental ANF-trivial/flat-value mismatch
+- All other sorries owned by wasmspec or BLOCKED per DO NOT WORK ON list
+- LSP unusable past L10000 in this 18K-line file
+
+**Recommendation**: These 9 sorries require architectural changes to `normalizeExpr_labeled_branch_step`:
+- Option A: Change the theorem statement to allow body equivalence rather than syntactic equality
+- Option B: Add a `normalizeExpr_continuation_irrelevant_for_labeled` lemma showing that when `HasLabeledInHead rhs label`, the labeled body produced by `normalizeExpr rhs k1` and `normalizeExpr rhs k2` are the same (this may be provable if the labeled body only depends on the body's structure, not the continuation's trivial — but this is FALSE in general because normalizeExpr threads `k` into the labeled body)
+- Option C: Split the file to enable LSP verification, then approach from a different angle
+### 2026-04-11T09:45:40+00:00 Run complete — 0 sorries closed; all 9 trivialChain targets BLOCKED (ANF trivial ≠ flat value)
+2026-04-11T09:45:49+00:00 DONE

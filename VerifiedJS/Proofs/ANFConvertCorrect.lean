@@ -13261,7 +13261,19 @@ private theorem HasReturnInHead_Steps_steppable
     {t : Core.TraceEvent} {smid' : Flat.State}
     (hstep : Flat.step? smid = some (t, smid')) :
     HasReturnInHead smid.expr := by
-  sorry
+  suffices ∀ (s0 : Flat.State) (evs : List Core.TraceEvent) (smid : Flat.State),
+      HasReturnInHead s0.expr →
+      Flat.Steps s0 evs smid →
+      ∀ (t : Core.TraceEvent) (smid' : Flat.State),
+      Flat.step? smid = some (t, smid') →
+      HasReturnInHead smid.expr from
+    this ⟨a, env, heap, trace, funcs, cs⟩ evs_pre smid hret hsteps t smid' hstep
+  intro s0 evs smid hret0 hsteps0 t0 smid0 hstep0
+  induction hsteps0 with
+  | refl => exact hret0
+  | @tail _ s2 _ t_prev _ hfirst hrest ih =>
+    have hprev_ret : HasReturnInHead s2.expr := ih hret0 hfirst.1
+    sorry
 
 /-- Main inductive theorem: if HasReturnInHead e and normalizeExpr e K produces .return arg,
     then Flat.Steps from e match the return behavior. Works with ANY continuation K
