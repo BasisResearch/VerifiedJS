@@ -1342,17 +1342,22 @@ private theorem convertExpr_state_delta (e : Core.Expr)
     simp only [Flat.convertExpr, exprFuncCount]
     exact convertExpr_state_delta arg scope envVar envMap st
   | tryCatch body catchParam catchBody finally_ =>
-    simp only [Flat.convertExpr]
-    have hb := convertExpr_state_delta body scope envVar envMap st
-    have hc := convertExpr_state_delta catchBody (catchParam :: scope) envVar envMap
-      (Flat.convertExpr body scope envVar envMap st).snd
-    have hf := convertOptExpr_state_delta finally_ scope envVar envMap
-      (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap
-        (Flat.convertExpr body scope envVar envMap st).snd).snd
-    simp only [exprFuncCount]
     cases finally_ with
-    | none => simp at hf; exact ⟨by rw [hf.1, hc.1, hb.1]; omega, by rw [hf.2, hc.2, hb.2]; omega⟩
-    | some fin => exact ⟨by rw [hf.1, hc.1, hb.1]; omega, by rw [hf.2, hc.2, hb.2]; omega⟩
+    | none =>
+      simp only [Flat.convertExpr, Flat.convertOptExpr, exprFuncCount]
+      have hb := convertExpr_state_delta body scope envVar envMap st
+      have hc := convertExpr_state_delta catchBody (catchParam :: scope) envVar envMap
+        (Flat.convertExpr body scope envVar envMap st).snd
+      exact ⟨by rw [hc.1, hb.1]; omega, by rw [hc.2, hb.2]; omega⟩
+    | some fin =>
+      simp only [Flat.convertExpr, Flat.convertOptExpr, exprFuncCount]
+      have hb := convertExpr_state_delta body scope envVar envMap st
+      have hc := convertExpr_state_delta catchBody (catchParam :: scope) envVar envMap
+        (Flat.convertExpr body scope envVar envMap st).snd
+      have hf := convertExpr_state_delta fin scope envVar envMap
+        (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap
+          (Flat.convertExpr body scope envVar envMap st).snd).snd
+      exact ⟨by rw [hf.1, hc.1, hb.1]; omega, by rw [hf.2, hc.2, hb.2]; omega⟩
   | while_ cond body =>
     simp only [Flat.convertExpr, exprFuncCount]
     have hc := convertExpr_state_delta cond scope envVar envMap st
