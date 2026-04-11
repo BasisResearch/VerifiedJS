@@ -2514,6 +2514,104 @@ private theorem step?_newObj_func_error (s : Flat.State)
   simp only [Flat.step?, hnotval, hstep]
   exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
+/-- Error propagation for binary rhs: when lhs is a value and rhs step errors. -/
+private theorem step?_binary_rhs_error (s : Flat.State) (op : Core.BinOp)
+    (lv : Flat.Value) (rhs : Flat.Expr)
+    (hnotval : Flat.exprValue? rhs = none)
+    (msg : String) (sr : Flat.State)
+    (hstep : Flat.step? { s with expr := rhs } = some (.error msg, sr)) :
+    ∃ s', Flat.step? { s with expr := .binary op (.lit lv) rhs } = some (.error msg, s') ∧
+      s'.expr = sr.expr ∧ s'.env = sr.env ∧ s'.heap = sr.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  have hlv : Flat.exprValue? (Flat.Expr.lit lv) = some lv := rfl
+  simp only [Flat.step?, hlv, hnotval, hstep, Flat.pushTrace]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for setProp val: when obj is a value and val step errors. -/
+private theorem step?_setProp_val_error (s : Flat.State)
+    (ov : Flat.Value) (prop : Flat.PropName) (value : Flat.Expr)
+    (hnotval : Flat.exprValue? value = none)
+    (msg : String) (sv : Flat.State)
+    (hstep : Flat.step? { s with expr := value } = some (.error msg, sv)) :
+    ∃ s', Flat.step? { s with expr := .setProp (.lit ov) prop value } = some (.error msg, s') ∧
+      s'.expr = sv.expr ∧ s'.env = sv.env ∧ s'.heap = sv.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  have lit_val : ∀ v, Flat.exprValue? (Flat.Expr.lit v) = some v := fun _ => rfl
+  cases ov <;> simp only [Flat.step?, lit_val, hnotval, hstep, Flat.pushTrace] <;>
+    exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for getIndex idx: when obj is a value and idx step errors. -/
+private theorem step?_getIndex_idx_error (s : Flat.State)
+    (ov : Flat.Value) (idx : Flat.Expr)
+    (hnotval : Flat.exprValue? idx = none)
+    (msg : String) (si : Flat.State)
+    (hstep : Flat.step? { s with expr := idx } = some (.error msg, si)) :
+    ∃ s', Flat.step? { s with expr := .getIndex (.lit ov) idx } = some (.error msg, s') ∧
+      s'.expr = si.expr ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  have hov : Flat.exprValue? (Flat.Expr.lit ov) = some ov := rfl
+  cases ov <;> simp only [Flat.step?, hov, hnotval, hstep, Flat.pushTrace] <;>
+    exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for setIndex idx: when obj is a value and idx step errors. -/
+private theorem step?_setIndex_idx_error (s : Flat.State)
+    (ov : Flat.Value) (idx : Flat.Expr) (val : Flat.Expr)
+    (hnotval : Flat.exprValue? idx = none)
+    (msg : String) (si : Flat.State)
+    (hstep : Flat.step? { s with expr := idx } = some (.error msg, si)) :
+    ∃ s', Flat.step? { s with expr := .setIndex (.lit ov) idx val } = some (.error msg, s') ∧
+      s'.expr = si.expr ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  have hov : Flat.exprValue? (Flat.Expr.lit ov) = some ov := rfl
+  cases ov <;> simp only [Flat.step?, hov, hnotval, hstep, Flat.pushTrace] <;>
+    exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for setIndex val: when obj and idx are values and val step errors. -/
+private theorem step?_setIndex_val_error (s : Flat.State)
+    (ov iv : Flat.Value) (value : Flat.Expr)
+    (hnotval : Flat.exprValue? value = none)
+    (msg : String) (sv : Flat.State)
+    (hstep : Flat.step? { s with expr := value } = some (.error msg, sv)) :
+    ∃ s', Flat.step? { s with expr := .setIndex (.lit ov) (.lit iv) value } = some (.error msg, s') ∧
+      s'.expr = sv.expr ∧ s'.env = sv.env ∧ s'.heap = sv.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  have lit_val : ∀ v, Flat.exprValue? (Flat.Expr.lit v) = some v := fun _ => rfl
+  cases ov <;> cases iv <;> simp only [Flat.step?, lit_val, hnotval, hstep, Flat.pushTrace] <;>
+    exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for call env: when func is a value and envExpr step errors. -/
+private theorem step?_call_env_error (s : Flat.State)
+    (fv : Flat.Value) (envExpr : Flat.Expr) (args : List Flat.Expr)
+    (hnotval : Flat.exprValue? envExpr = none)
+    (msg : String) (se : Flat.State)
+    (hstep : Flat.step? { s with expr := envExpr } = some (.error msg, se)) :
+    ∃ s', Flat.step? { s with expr := .call (.lit fv) envExpr args } = some (.error msg, s') ∧
+      s'.expr = se.expr ∧ s'.env = se.env ∧ s'.heap = se.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  have hfv : Flat.exprValue? (Flat.Expr.lit fv) = some fv := rfl
+  simp only [Flat.step?, hfv, hnotval, hstep, Flat.pushTrace]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-- Error propagation for newObj env: when func is a value and envExpr step errors. -/
+private theorem step?_newObj_env_error (s : Flat.State)
+    (fv : Flat.Value) (envExpr : Flat.Expr) (args : List Flat.Expr)
+    (hnotval : Flat.exprValue? envExpr = none)
+    (msg : String) (se : Flat.State)
+    (hstep : Flat.step? { s with expr := envExpr } = some (.error msg, se)) :
+    ∃ s', Flat.step? { s with expr := .newObj (.lit fv) envExpr args } = some (.error msg, s') ∧
+      s'.expr = se.expr ∧ s'.env = se.env ∧ s'.heap = se.heap ∧
+      s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧
+      s'.trace = s.trace ++ [.error msg] := by
+  have hfv : Flat.exprValue? (Flat.Expr.lit fv) = some fv := rfl
+  simp only [Flat.step?, hfv, hnotval, hstep, Flat.pushTrace]
+  exact ⟨_, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
 /-- Stepping .if with a literal condition branches directly. -/
 private theorem step?_if_lit_branch (s : Flat.State) (v : Flat.Value)
     (then_ else_ : Flat.Expr) :

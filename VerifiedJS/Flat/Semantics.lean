@@ -1107,8 +1107,8 @@ def step? (s : State) : Option (Core.TraceEvent × State) :=
                 | some fin => .seq catchBody fin
                 | none => catchBody
               let s' := pushTrace
-                { s with expr := handler, env := sb.env.extend catchParam (.string msg), heap := sb.heap } (.error msg)
-              some (.error msg, s')
+                { s with expr := handler, env := sb.env.extend catchParam (.string msg), heap := sb.heap } .silent
+              some (.silent, s')
           | some (t, sb) =>
               match t with
               | .error _ =>
