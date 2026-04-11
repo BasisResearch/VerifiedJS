@@ -4569,6 +4569,107 @@ private def HasBreakInHeadProps_hasAbruptCompletionProps
   | .tail h => by simp [hasAbruptCompletionProps, HasBreakInHeadProps_hasAbruptCompletionProps h]
 end
 
+/-- For any expression with HasBreakInHead, Flat.step? produces the break error event
+    in a single step. Works for head-position compound constructors (where the break
+    sub-expression is the first to be evaluated). Non-head cases are sorry'd. -/
+private def HasBreakInHead_step?_produces_error
+    {e : Flat.Expr} {label : Option Flat.LabelName}
+    (h : HasBreakInHead e label)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env) :
+    Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ =
+      some (.error ("break:" ++ (label.getD "")),
+            ⟨.lit .undefined, env, heap,
+             trace ++ [.error ("break:" ++ (label.getD ""))],
+             funcs, cs⟩) :=
+  match h with
+  | .break_direct => by simp [Flat.step?, Flat.pushTrace]
+  | .seq_left h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .let_init h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .getProp_obj h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .setProp_obj h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .binary_lhs h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .unary_arg h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .typeof_arg h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .deleteProp_obj h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .assign_val h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .call_func h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .if_cond h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .getIndex_obj h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .setIndex_obj h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .getEnv_env h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .makeClosure_env h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .newObj_func h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .throw_arg h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .return_some_arg h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .yield_some_arg h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .await_arg h => by
+      have hnv := HasBreakInHead_not_value _ _ h
+      have ih := HasBreakInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  -- Non-head-position cases: need multi-step simulation
+  | .seq_right _ | .binary_rhs _ | .setProp_val _ | .call_env _
+  | .call_args _ | .newObj_env _ | .newObj_args _
+  | .getIndex_idx _ | .setIndex_idx _ | .setIndex_val _
+  | .makeEnv_values _ | .objectLit_props _ | .arrayLit_elems _ => sorry
+
 /-- Membership in prop list implies depth bound -/
 theorem Flat.Expr.mem_propListDepth_lt {e : Flat.Expr} {name : Flat.PropName}
     {props : List (Flat.PropName × Flat.Expr)} (h : (name, e) ∈ props) :
@@ -5583,6 +5684,107 @@ private def HasContinueInHeadProps_hasAbruptCompletionProps
   | .head h => by simp [hasAbruptCompletionProps, HasContinueInHead_hasAbruptCompletion h]
   | .tail h => by simp [hasAbruptCompletionProps, HasContinueInHeadProps_hasAbruptCompletionProps h]
 end
+
+/-- For any expression with HasContinueInHead, Flat.step? produces the continue error event
+    in a single step. Works for head-position compound constructors (where the continue
+    sub-expression is the first to be evaluated). Non-head cases are sorry'd. -/
+private def HasContinueInHead_step?_produces_error
+    {e : Flat.Expr} {label : Option Flat.LabelName}
+    (h : HasContinueInHead e label)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env) :
+    Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ =
+      some (.error ("continue:" ++ (label.getD "")),
+            ⟨.lit .undefined, env, heap,
+             trace ++ [.error ("continue:" ++ (label.getD ""))],
+             funcs, cs⟩) :=
+  match h with
+  | .continue_direct => by simp [Flat.step?, Flat.pushTrace]
+  | .seq_left h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .let_init h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .getProp_obj h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .setProp_obj h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .binary_lhs h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .unary_arg h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .typeof_arg h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .deleteProp_obj h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .assign_val h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .call_func h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .if_cond h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .getIndex_obj h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .setIndex_obj h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .getEnv_env h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .makeClosure_env h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .newObj_func h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .throw_arg h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .return_some_arg h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .yield_some_arg h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  | .await_arg h => by
+      have hnv := HasContinueInHead_not_value _ _ h
+      have ih := HasContinueInHead_step?_produces_error h env heap trace funcs cs
+      simp only [Flat.step?, hnv, ih, Flat.pushTrace]
+  -- Non-head-position cases: need multi-step simulation
+  | .seq_right _ | .binary_rhs _ | .setProp_val _ | .call_env _
+  | .call_args _ | .newObj_env _ | .newObj_args _
+  | .getIndex_idx _ | .setIndex_idx _ | .setIndex_val _
+  | .makeEnv_values _ | .objectLit_props _ | .arrayLit_elems _ => sorry
 
 /-! ## List continue characterization helpers -/
 
@@ -13380,7 +13582,563 @@ private theorem HasReturnInHead_step_nonError
     (hstep : Flat.step? sf = some (t, sf'))
     (hnoerr : ∀ msg, t ≠ .error msg) :
     HasReturnInHead sf'.expr := by
-  sorry
+  -- Strong induction on expression depth
+  suffices hmain : ∀ (n : Nat) (e : Flat.Expr) (env : Flat.Env) (heap : Core.Heap)
+      (trace : List Core.TraceEvent) (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+      (sf' : Flat.State) (t : Core.TraceEvent),
+      e.depth ≤ n →
+      HasReturnInHead e →
+      Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (t, sf') →
+      (∀ msg, t ≠ .error msg) →
+      HasReturnInHead sf'.expr by
+    cases sf with | mk e env heap trace funcs cs =>
+    exact hmain e.depth e env heap trace funcs cs sf' t le_rfl hret hstep hnoerr
+  intro n
+  induction n with
+  | zero =>
+    intro e env heap trace funcs cs sf' t hd hret hstep hnoerr
+    cases hret
+    next => -- return_none_direct (depth 0, but always produces error)
+      unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
+      exact absurd hstep.1 (hnoerr _)
+    all_goals (simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; omega)
+  | succ n ih =>
+    intro e env heap trace funcs cs sf' t hd hret hstep hnoerr
+    cases hret with
+    | return_none_direct =>
+      unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
+      exact absurd hstep.1 (hnoerr _)
+    | return_some_direct =>
+      rename_i v
+      unfold Flat.step? at hstep; dsimp only [] at hstep; split at hstep
+      · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact .return_some_direct
+        · simp at hstep
+    | seq_left h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' sa _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .seq_left (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | seq_right h =>
+      rename_i a
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact h
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+          · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact .seq_right h
+        · simp at hstep
+    | let_init h =>
+      have hv := HasReturnInHead_not_value _ h
+      rename_i name body
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' si _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .let_init (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | unary_arg h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' sa _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .unary_arg (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | typeof_arg h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' sa _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .typeof_arg (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | assign_val h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' sr _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .assign_val (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | deleteProp_obj h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' so _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .deleteProp_obj (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | getProp_obj h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' so _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .getProp_obj (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | if_cond h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' sc _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .if_cond (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | throw_arg h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' sa _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .throw_arg (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | yield_some_arg h =>
+      have hv := HasReturnInHead_not_value _ h
+      rename_i d
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' se _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .yield_some_arg (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | await_arg h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' sa _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .await_arg (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | getEnv_env h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' se _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .getEnv_env (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | makeClosure_env h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' se _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .makeClosure_env (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | binary_lhs h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' sl _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .binary_lhs (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | binary_rhs h =>
+      rename_i lhs op
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+          · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact .binary_rhs h
+        · simp at hstep
+      · have hv := HasReturnInHead_not_value _ h
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+          · rename_i heq t' sr _ _
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .binary_rhs (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+        · simp at hstep
+    | setProp_obj h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' so _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .setProp_obj (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | setProp_val h =>
+      rename_i obj prop
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+          · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact .setProp_val h
+        · simp at hstep
+      · have hv := HasReturnInHead_not_value _ h
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+          · rename_i heq t' sv _ _
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .setProp_val (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+        · simp at hstep
+      · have hv := HasReturnInHead_not_value _ h
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+          · rename_i heq t' sv _ _
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .setProp_val (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+        · simp at hstep
+    | getIndex_obj h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' so _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .getIndex_obj (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | getIndex_idx h =>
+      rename_i obj
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+          · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact .getIndex_idx h
+        · simp at hstep
+      · have hv := HasReturnInHead_not_value _ h
+        split at hstep
+        · exfalso; rename_i hidx; rw [show Flat.exprValue? _ = none from hv] at hidx; simp at hidx
+        · rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+            · rename_i heq t' si _ _
+              obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .getIndex_idx (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+          · simp at hstep
+      · have hv := HasReturnInHead_not_value _ h
+        split at hstep
+        · exfalso; rename_i hidx; rw [show Flat.exprValue? _ = none from hv] at hidx; simp at hidx
+        · rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+            · rename_i heq t' si _ _
+              obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .getIndex_idx (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+          · simp at hstep
+      · have hv := HasReturnInHead_not_value _ h
+        split at hstep
+        · exfalso; rename_i hidx; rw [show Flat.exprValue? _ = none from hv] at hidx; simp at hidx
+        · rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+            · rename_i heq t' si _ _
+              obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .getIndex_idx (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+          · simp at hstep
+    | setIndex_obj h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' so _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .setIndex_obj (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | setIndex_idx h =>
+      rename_i obj val
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+          · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact .setIndex_idx h
+        · simp at hstep
+      · have hv := HasReturnInHead_not_value _ h
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+          · rename_i heq t' si _ _
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .setIndex_idx (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+        · simp at hstep
+      · have hv := HasReturnInHead_not_value _ h
+        split at hstep
+        · rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+            · rename_i heq t' si _ _
+              obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .setIndex_idx (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+          · simp at hstep
+        · rw [show Flat.exprValue? _ = none from hv] at hstep; simp at hstep
+    | setIndex_val h =>
+      rename_i obj idx
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+          · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact .setIndex_val h
+        · simp at hstep
+      · split at hstep
+        · split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+            · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact .setIndex_val h
+          · simp at hstep
+        · have hv := HasReturnInHead_not_value _ h
+          split at hstep
+          · exfalso; rename_i hvval; rw [show Flat.exprValue? _ = none from hv] at hvval; simp at hvval
+          · rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+            split at hstep
+            · split at hstep
+              · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+              · rename_i heq t' sv _ _
+                obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+                exact .setIndex_val (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+            · simp at hstep
+      · split at hstep
+        · split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+            · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact .setIndex_val h
+          · simp at hstep
+        · have hv := HasReturnInHead_not_value _ h
+          split at hstep
+          · exfalso; rename_i hvval; rw [show Flat.exprValue? _ = none from hv] at hvval; simp at hvval
+          · rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+            split at hstep
+            · split at hstep
+              · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+              · rename_i heq t' sv _ _
+                obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+                exact .setIndex_val (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+            · simp at hstep
+    | call_func h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' sf_i _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .call_func (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | call_env h =>
+      rename_i f args
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+          · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact .call_env h
+        · simp at hstep
+      · rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+          · rename_i heq t' se _ _
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .call_env (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+        · simp at hstep
+    | call_args h =>
+      rename_i f envE
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+          · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact .call_args h
+        · simp at hstep
+      · split at hstep
+        · split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+            · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact .call_args h
+          · simp at hstep
+        · split at hstep
+          · exfalso; exact absurd ‹_› (by rw [HasReturnInHeadList_valuesFromExprList_none h]; simp)
+          · split at hstep
+            · rename_i hfnv
+              split at hstep
+              · split at hstep
+                · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+                · rename_i heq t' sa _ _
+                  obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+                  exact .call_args (HasReturnInHeadList_reconstruct _ _ _
+                    ((HasReturnInHeadList_firstNonValue hfnv h).imp
+                      (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) · heq hnoerr) id))
+              · simp at hstep
+            · simp at hstep
+    | newObj_func h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+        · rename_i heq t' sf_i _ _
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .newObj_func (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+      · simp at hstep
+    | newObj_env h =>
+      rename_i f args
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+          · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact .newObj_env h
+        · simp at hstep
+      · rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+          · rename_i heq t' se _ _
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .newObj_env (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h heq hnoerr)
+        · simp at hstep
+    | newObj_args h =>
+      rename_i f envE
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+          · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact .newObj_args h
+        · simp at hstep
+      · split at hstep
+        · split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+            · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact .newObj_args h
+          · simp at hstep
+        · split at hstep
+          · exfalso; exact absurd ‹_› (by rw [HasReturnInHeadList_valuesFromExprList_none h]; simp)
+          · split at hstep
+            · rename_i hfnv
+              split at hstep
+              · split at hstep
+                · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+                · rename_i heq t' sa _ _
+                  obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+                  exact .newObj_args (HasReturnInHeadList_reconstruct _ _ _
+                    ((HasReturnInHeadList_firstNonValue hfnv h).imp
+                      (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) · heq hnoerr) id))
+              · simp at hstep
+            · simp at hstep
+    | makeEnv_values h =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · exfalso; exact absurd ‹_› (by rw [HasReturnInHeadList_valuesFromExprList_none h]; simp)
+      · split at hstep
+        · rename_i hfnv
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+            · rename_i heq t' se _ _
+              obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .makeEnv_values (HasReturnInHeadList_reconstruct _ _ _
+                ((HasReturnInHeadList_firstNonValue hfnv h).imp
+                  (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) · heq hnoerr) id))
+          · simp at hstep
+        · simp at hstep
+    | arrayLit_elems h =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · exfalso; exact absurd ‹_› (by rw [HasReturnInHeadList_valuesFromExprList_none h]; simp)
+      · split at hstep
+        · rename_i hfnv
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+            · rename_i heq t' se _ _
+              obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .arrayLit_elems (HasReturnInHeadList_reconstruct _ _ _
+                ((HasReturnInHeadList_firstNonValue hfnv h).imp
+                  (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) · heq hnoerr) id))
+          · simp at hstep
+        · simp at hstep
+    | objectLit_props h =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · exfalso; exact absurd ‹_› (by rw [HasReturnInHeadProps_valuesFromExprList_none h]; simp)
+      · split at hstep
+        · rename_i hfnv
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1 (hnoerr _)
+            · rename_i heq t' se _ _
+              obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .objectLit_props (HasReturnInHeadProps_reconstruct _ _ _ _
+                ((HasReturnInHeadProps_firstNonValue hfnv h).imp
+                  (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueProp_depth hfnv; omega) · heq hnoerr) id))
+          · simp at hstep
+        · simp at hstep
 
 /-- Error steps from HasReturnInHead expressions produce lit values (not steppable). -/
 private theorem HasReturnInHead_step_error_isLit
