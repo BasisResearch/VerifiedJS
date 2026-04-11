@@ -9,61 +9,64 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-11T15:30
-- CC: 15 real sorries. Total: 60.
-- **ALL 15 CC sorries are architecturally blocked.** You confirmed this last 4 runs.
-- No quick wins remain. The ONLY way forward is architectural fixes.
+## STATUS — 2026-04-11T16:05
+- CC: 12 real sorries. Total: 58 (ANF 46 + CC 12).
+- **YOU CLOSED 3 Or.inr SORRIES!** CC went from 15 → 12. GREAT WORK. File grew by 428 lines.
+- No quick Or.inr wins remain. The remaining 12 CC sorries are all architecturally blocked.
 
-## ROOT CAUSES (your analysis)
-1. **CCStateAgree** (5 sorries: L5496, L5522, L8407, L8484, L8600): convertExpr converts BOTH branches of if/while, but execution only takes one, leaving state gap.
-2. **Or.inr structural mismatch** (3 sorries: L5270, L5414, L5701): Flat drops outer wrapper on error, Core keeps it.
-3. **Multi-step simulation** (4 sorries: L5049, L6144, L6352, L6363): Core compound op = 1 step, Flat = N steps.
-4. **Unprovable** (1: L7003) + **HeapInj/finally** (2: L8250, L8410)
+## REMAINING CC SORRY CLASSIFICATION (12 total):
+1. **Multi-step simulation gap** (3): L5475, L6572, L6780/L6791
+   - L5475: captured var (.getEnv takes 2 Flat steps vs 1 Core step)
+   - L6572: non-consoleLog function call (Flat call is N steps vs Core's 1)
+   - L6780/L6791: same class as L5475
+2. **CCStateAgree** (5): L5923, L5949, L8835, L8912, L9028
+   - L5923: if-true — st' includes else_ conversion state
+   - L5949: if-false — needs CCStateAgree for input
+   - L8835: tryCatch with CCStateAgree gap
+   - L8912: CCStateAgree after inner conversion
+   - L9028: while_ lowers to if/seq/while pattern
+3. **CCStateAgree + tryCatch finally** (1): L8838
+4. **Axiom/semantic mismatch** (1): L7431 (getIndex string)
+5. **FuncsCorr/functionDef** (1): L8678
 
 ## YOUR MISSION: Fix CCStateAgree (5 sorries → 0)
 
 ### WARNING: Monotone approach was REJECTED on 2026-03-31
-From PROOF_BLOCKERS.md: "weakening output to ≤ breaks ~10 sub-stepping chaining cases that feed equality into `convertExpr_state_determined`."
-**DO NOT** try simple monotone weakening. It was already attempted and failed.
+"Weakening output to ≤ breaks ~10 sub-stepping chaining cases that feed equality into `convertExpr_state_determined`."
+**DO NOT** try simple monotone weakening.
 
-### Path A: Position-based naming (from PROOF_BLOCKERS.md)
-Make `convertExpr` state-independent by using **position-based naming** in `freshVar` instead of a global `nextId` counter. This eliminates `CCStateAgree` entirely.
+### Path A: Position-based naming (HIGHEST IMPACT)
+Make `convertExpr` state-independent for variable naming by using **position-based names** in `freshVar` instead of a global `nextId` counter.
 
-#### How it works:
-1. Currently `freshVar` increments `nextId` counter → different branches get different `nextId` states
-2. Change: instead of `nextId`, use a position encoding (e.g., path from root: "if_true_0", "if_false_0") to generate unique names
-3. This makes `convertExpr` a PURE function of the expression (no state threading for fresh names)
-4. `CCStateAgree` becomes trivial or unnecessary
-
-#### Investigation steps:
-1. Read `freshVar` definition in `Flat/ClosureConvert.lean` — how does it work now?
-2. Read `CCState` definition — what fields does it have?
+#### Investigation steps (DO THIS FIRST):
+1. Read `freshVar` in `Flat/ClosureConvert.lean` — current implementation
+2. Read `CCState` definition — what fields?
 3. Read `CCStateAgree` definition — what does it require?
-4. Count how many callers of `freshVar` exist — scope the change
-5. Check if `convertExpr` threads CCState only for `freshVar`, or also for other purposes (e.g., func table)
+4. Count callers of `freshVar` — scope the change
+5. Check if `convertExpr` threads CCState ONLY for `freshVar`, or also for func table
 
 #### If freshVar is the ONLY reason for state threading:
-- Change `freshVar` to take a path/position argument instead of state
-- Make `convertExpr` stateless for variable naming
+- Change `freshVar` to use position encoding instead of counter
 - `CCStateAgree` becomes trivially true
+- **This eliminates 5+ sorries at once**
 
 #### If CCState also tracks func table:
 - Keep func table threading, but make variable naming position-based
 - `CCStateAgree` only needs to track func table (simpler)
 
-### Path B (if Path A is too invasive): Change simulation relation
-Weaken the post-condition from `CCStateAgree st_after_both` to `CCStateAgree st_after_taken_branch`. Check if `convertExpr_state_determined` can tolerate this weakening.
+### Path B (fallback): Lazy conversion
+Instead of converting both branches eagerly, change `convertExpr` for if/while to only convert the taken branch. More invasive but eliminates the root cause.
 
 ### DO THIS RUN:
 1. Read `Flat/ClosureConvert.lean` — find `freshVar`, `CCState`, `convertExpr`
-2. Assess Path A feasibility: how many lines would change?
-3. If Path A looks feasible (< 200 lines changed), START implementing
-4. If not, investigate Path B
+2. Assess Path A feasibility: how many callers, how many lines change?
+3. If Path A looks feasible (< 200 lines changed in ClosureConvert.lean), START implementing
+4. Report findings even if you can't finish
 
 ## DO NOT ATTEMPT:
-- Or.inr sorries — deeper architectural issue
-- Multi-step simulation — needs framework redesign
-- L7003 — unprovable
+- Multi-step simulation sorries (L5475, L6572, L6780, L6791) — needs framework redesign
+- L7431 — semantic mismatch axiom
+- L8678 — functionDef needs multi-step + FuncsCorr
 
 ## LOG
 **FIRST**: `echo "### $(date -Iseconds) Starting run — CCStateAgree Path A investigation" >> agents/jsspec/log.md`

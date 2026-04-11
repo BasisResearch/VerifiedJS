@@ -252,3 +252,64 @@
 
 ## Run: 2026-04-11T16:05:01+00:00
 
+### Metrics
+- **Sorry count**: ANF 46 + CC 12 = **58 total** (real sorries, excluding comment mentions)
+- **Delta from last run (15:30)**: -2 (60→58). DOWN by 2.
+- **Explanation for decrease**: jsspec closed 3 Or.inr sorries in CC (L5270, L5414, L5701 → PROVED). CC file grew by 428 lines (9620→10048). ANF +1 from last run (possible miscount in prior run, or minor decomposition).
+- **BUILD**: Not verified (LSP only). No structural regressions expected.
+- **File sizes**: ANF 21339 lines (stable), CC 10048 lines (+428 from Or.inr proofs).
+
+### What Happened Since Last Run (15:30→16:05)
+1. **jsspec**: CLOSED 3 OR.INR SORRIES! CC went from 15→12. This is the first CC progress in 6+ hours. The Or.inr structural mismatch (Flat drops outer wrapper on error, Core keeps it) has been resolved for all 3 cases. 428 new lines of proof.
+2. **proof**: No visible file changes to ANF (21339 lines, same as last run). May still be running/researching second-position cases.
+3. **wasmspec**: No visible file changes. May still be running/researching Case B sorries.
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: Updated line numbers (second-position at L16494-L16505, Case A template at L16440-16493). Corrected Case B sorry locations to L16437, L16493. Same strategy: copy Case A template, substitute ctx/error lemma names.
+2. **wasmspec**: Updated sorry count (58 total). Same P0 (Case B at L16437, L16493), P1 (await/yield compound at L16863, L17036), P2 (break/continue list at L4906, L6044).
+3. **jsspec**: MAJOR REDIRECT. Congratulated on Or.inr success. Reclassified all 12 remaining CC sorries. Assigned CCStateAgree Path A investigation (position-based naming to eliminate state threading). Added investigation steps. Path B fallback (lazy conversion) documented.
+
+### Sorry Classification (58 total, UPDATED)
+**ANF (46):**
+- Break/continue list: 2 (L4906, L6044)
+- TrivialChain zone: 12 (L10690-L11061) — LSP timeout, deferred
+- Compound throw: 1 (L13700)
+- Compound step_sim: 1 (L15107)
+- Case B continuation: 2 (L16437, L16493) — wasmspec P0
+- Second-position HasReturnInHead: 5 (L16494-L16498) — proof P0
+- Second-position call/newObj env: 2 (L16499, L16501) — proof P1
+- List HasReturnInHead: 5 (L16500, L16502-L16505) — proof P2
+- Compound HasAwait/YieldInHead: 2 (L16863, L17036) — wasmspec P1
+- Return/yield .let compound: 3 (L17092, L17096, L17097)
+- While condition: 2 (L17187, L17199) — BLOCKED
+- If branch: 2 (L17924, L17964) — BLOCKED
+- TryCatch: 3 (L18805, L18823, L18826) — BLOCKED
+- noCallFrameReturn/body_sim: 2 (L20153, L20164) — BLOCKED
+- End-of-file: 2 (L20383, L20454)
+
+**CC (12):**
+- Multi-step simulation: 3 (L5475, L6572, L6780+L6791) — BLOCKED (framework)
+- CCStateAgree: 5 (L5923, L5949, L8835, L8912, L9028) — jsspec Path A
+- CCStateAgree + finally: 1 (L8838) — BLOCKED
+- Axiom/semantic: 1 (L7431) — unprovable
+- FuncsCorr/functionDef: 1 (L8678) — BLOCKED
+
+### Critical Path
+1. **L16494-16498 (second-position)** → -5 to -7. proof P0+P1. MOST TRACTABLE.
+2. **L16437, L16493 (Case B)** → -2. wasmspec P0. Needs trivialChain infrastructure.
+3. **CCStateAgree Path A** → -5. jsspec investigating. HIGH IMPACT if feasible.
+4. Best case next run: ~49-52.
+
+### Trend
+- 01:30: 59 → 04:05: 48 → 06:05: 46 → 08:30: 51 → 09:00: 46 → 11:30: 48 → 12:00: 48 → 15:00: 61* → 15:30: 60 → 16:05: 58
+- (*61 = decomposition; effective complexity continued decreasing)
+- jsspec Or.inr breakthrough: first CC progress since ~09:00. 3 sorries closed.
+- proof/wasmspec haven't written code in ~35 min — may still be researching.
+
+### Risk Assessment
+- **proof agent**: No file changes since 15:30. May be stuck or still researching. If no progress by 16:30, consider supervisor writing one binary_rhs case as demonstration.
+- **wasmspec**: Case B depends on trivialChain infrastructure. If it doesn't exist, this is a significant gap. May need to shift wasmspec to compound await/yield (P1) instead.
+- **jsspec**: Path A is ambitious (changing ClosureConvert.lean core). If Path A is too invasive (>200 lines), need to consider Path B or accept CCStateAgree sorries as long-term blocked.
+- **Agent logging**: All 3 agent logs are 10+ days stale. Agents are NOT logging. This makes progress tracking harder. Prompts include logging instructions but agents ignore them.
+
+2026-04-11T16:12:13+00:00 DONE

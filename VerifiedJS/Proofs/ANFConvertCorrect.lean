@@ -14733,7 +14733,7 @@ private theorem HasReturnInHead_step_error_isLit
             · -- t = .error _: propagate
               simp [Flat.pushTrace] at hstep
               obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.return_some_arg h)) (by assumption)
             · -- t ≠ .error _: produces (.return (some se.expr)), contradicts hstep
               simp at hstep
           · simp at hstep
@@ -14747,7 +14747,7 @@ private theorem HasReturnInHead_step_error_isLit
         · split at hstep
           · simp [Flat.pushTrace] at hstep
             obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.seq_left h)) (by assumption)
           · simp at hstep
         · simp at hstep
     | «let» name init body =>
@@ -14758,7 +14758,7 @@ private theorem HasReturnInHead_step_error_isLit
         · split at hstep
           · simp [Flat.pushTrace] at hstep
             obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.let_init h)) (by assumption)
           · simp at hstep
         · simp at hstep
     | assign name rhs =>
@@ -14769,7 +14769,7 @@ private theorem HasReturnInHead_step_error_isLit
         · split at hstep
           · simp [Flat.pushTrace] at hstep
             obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.assign_val h)) (by assumption)
           · simp at hstep
         · simp at hstep
     | «if» cond then_ else_ =>
@@ -14780,7 +14780,7 @@ private theorem HasReturnInHead_step_error_isLit
         · split at hstep
           · simp [Flat.pushTrace] at hstep
             obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.if_cond h)) (by assumption)
           · simp at hstep
         · simp at hstep
     | unary op arg =>
@@ -14791,7 +14791,7 @@ private theorem HasReturnInHead_step_error_isLit
         · split at hstep
           · simp [Flat.pushTrace] at hstep
             obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.unary_arg h)) (by assumption)
           · simp at hstep
         · simp at hstep
     | typeof arg =>
@@ -14802,7 +14802,7 @@ private theorem HasReturnInHead_step_error_isLit
         · split at hstep
           · simp [Flat.pushTrace] at hstep
             obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.typeof_arg h)) (by assumption)
           · simp at hstep
         · simp at hstep
     | throw arg =>
@@ -14814,7 +14814,7 @@ private theorem HasReturnInHead_step_error_isLit
         · split at hstep
           · simp [Flat.pushTrace] at hstep
             obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.throw_arg h)) (by assumption)
           · simp at hstep
         · simp at hstep
     | yield arg d =>
@@ -14828,7 +14828,7 @@ private theorem HasReturnInHead_step_error_isLit
           · split at hstep
             · simp [Flat.pushTrace] at hstep
               obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.yield_some_arg h)) (by assumption)
             · simp at hstep
           · simp at hstep
     | await arg =>
@@ -14839,7 +14839,7 @@ private theorem HasReturnInHead_step_error_isLit
         · split at hstep
           · simp [Flat.pushTrace] at hstep
             obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.await_arg h)) (by assumption)
           · simp at hstep
         · simp at hstep
     | getProp obj prop =>
@@ -14852,7 +14852,7 @@ private theorem HasReturnInHead_step_error_isLit
         · split at hstep
           · simp [Flat.pushTrace] at hstep
             obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.getProp_obj h)) (by assumption)
           · simp at hstep
         · simp at hstep
     | deleteProp obj prop =>
@@ -14863,7 +14863,7 @@ private theorem HasReturnInHead_step_error_isLit
         · split at hstep
           · simp [Flat.pushTrace] at hstep
             obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.deleteProp_obj h)) (by assumption)
           · simp at hstep
         · simp at hstep
     | binary op lhs rhs =>
@@ -14874,7 +14874,7 @@ private theorem HasReturnInHead_step_error_isLit
         · split at hstep
           · simp [Flat.pushTrace] at hstep
             obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.binary_lhs h)) (by assumption)
           · simp at hstep
         · simp at hstep
       · -- exprValue? lhs = some lv: match exprValue? rhs
@@ -14884,7 +14884,7 @@ private theorem HasReturnInHead_step_error_isLit
           · split at hstep
             · simp [Flat.pushTrace] at hstep
               obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.binary_rhs h)) (by assumption)
             · simp at hstep
           · simp at hstep
         · -- exprValue? rhs = some rv: produces .silent, contradicts hstep
@@ -14897,7 +14897,7 @@ private theorem HasReturnInHead_step_error_isLit
         · split at hstep
           · simp [Flat.pushTrace] at hstep
             obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.setProp_obj h)) (by assumption)
           · simp at hstep
         · simp at hstep
       · -- exprValue? obj = some (.object addr): match exprValue? val
@@ -14907,7 +14907,7 @@ private theorem HasReturnInHead_step_error_isLit
           · split at hstep
             · simp [Flat.pushTrace] at hstep
               obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.setProp_val h)) (by assumption)
             · simp at hstep
           · simp at hstep
       · -- exprValue? obj = some (non-object): match exprValue? val
@@ -14917,7 +14917,7 @@ private theorem HasReturnInHead_step_error_isLit
           · split at hstep
             · simp [Flat.pushTrace] at hstep
               obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.setProp_val h)) (by assumption)
             · simp at hstep
           · simp at hstep
     | getIndex obj idx =>
@@ -14928,7 +14928,7 @@ private theorem HasReturnInHead_step_error_isLit
         · split at hstep
           · simp [Flat.pushTrace] at hstep
             obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.getIndex_obj h)) (by assumption)
           · simp at hstep
         · simp at hstep
       · -- exprValue? obj = some (.object addr): match exprValue? idx
@@ -14938,7 +14938,7 @@ private theorem HasReturnInHead_step_error_isLit
           · split at hstep
             · simp [Flat.pushTrace] at hstep
               obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.getIndex_idx h)) (by assumption)
             · simp at hstep
           · simp at hstep
       · -- exprValue? obj = some (.string): match exprValue? idx
@@ -14948,7 +14948,7 @@ private theorem HasReturnInHead_step_error_isLit
           · split at hstep
             · simp [Flat.pushTrace] at hstep
               obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.getIndex_idx h)) (by assumption)
             · simp at hstep
           · simp at hstep
       · -- exprValue? obj = some (other): match exprValue? idx
@@ -14958,11 +14958,14 @@ private theorem HasReturnInHead_step_error_isLit
           · split at hstep
             · simp [Flat.pushTrace] at hstep
               obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.getIndex_idx h)) (by assumption)
             · simp at hstep
           · simp at hstep
     | setIndex obj idx val =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
+      have hntc_obj : ¬HasTryCatchInHead obj := fun h => hntc_e (.setIndex_obj h)
+      have hntc_idx : ¬HasTryCatchInHead idx := fun h => hntc_e (.setIndex_idx h)
+      have hntc_val : ¬HasTryCatchInHead val := fun h => hntc_e (.setIndex_val h)
       split at hstep <;>
         (try split at hstep) <;> (try split at hstep) <;>
         (try split at hstep) <;> (try split at hstep) <;>
@@ -14970,7 +14973,7 @@ private theorem HasReturnInHead_step_error_isLit
         | simp at hstep
         | (simp [Flat.pushTrace] at hstep
            obtain ⟨_, rfl⟩ := hstep
-           exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption))
+           exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption) (by assumption))
     | getEnv envE idx =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
       split at hstep
@@ -14979,7 +14982,7 @@ private theorem HasReturnInHead_step_error_isLit
         · split at hstep
           · simp [Flat.pushTrace] at hstep
             obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.getEnv_env h)) (by assumption)
           · simp at hstep
         · simp at hstep
     | makeClosure funcIdx envE =>
@@ -14990,7 +14993,7 @@ private theorem HasReturnInHead_step_error_isLit
         · split at hstep
           · simp [Flat.pushTrace] at hstep
             obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.makeClosure_env h)) (by assumption)
           · simp at hstep
         · simp at hstep
     | call f envE args =>
@@ -15001,7 +15004,7 @@ private theorem HasReturnInHead_step_error_isLit
         · split at hstep
           · simp [Flat.pushTrace] at hstep
             obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.call_func h)) (by assumption)
           · simp at hstep
         · simp at hstep
       · -- exprValue? f = some: match exprValue? envE
@@ -15011,7 +15014,7 @@ private theorem HasReturnInHead_step_error_isLit
           · split at hstep
             · simp [Flat.pushTrace] at hstep
               obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.call_env h)) (by assumption)
             · simp at hstep
           · simp at hstep
         · -- exprValue? envE = some: match valuesFromExprList? args
@@ -15025,7 +15028,7 @@ private theorem HasReturnInHead_step_error_isLit
               · split at hstep
                 · simp [Flat.pushTrace] at hstep
                   obtain ⟨_, rfl⟩ := hstep
-                  exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (by assumption)
+                  exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (fun h => hntc_e (.call_args (HasTryCatchInHeadList_of_firstNonValue hfnv h))) (by assumption)
                 · simp at hstep
               · simp at hstep
             · simp at hstep
@@ -15036,7 +15039,7 @@ private theorem HasReturnInHead_step_error_isLit
         · split at hstep
           · simp [Flat.pushTrace] at hstep
             obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.newObj_func h)) (by assumption)
           · simp at hstep
         · simp at hstep
       · split at hstep
@@ -15044,7 +15047,7 @@ private theorem HasReturnInHead_step_error_isLit
           · split at hstep
             · simp [Flat.pushTrace] at hstep
               obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.newObj_env h)) (by assumption)
             · simp at hstep
           · simp at hstep
         · split at hstep
@@ -15055,7 +15058,7 @@ private theorem HasReturnInHead_step_error_isLit
               · split at hstep
                 · simp [Flat.pushTrace] at hstep
                   obtain ⟨_, rfl⟩ := hstep
-                  exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (by assumption)
+                  exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (fun h => hntc_e (.newObj_args (HasTryCatchInHeadList_of_firstNonValue hfnv h))) (by assumption)
                 · simp at hstep
               · simp at hstep
             · simp at hstep
@@ -15069,7 +15072,7 @@ private theorem HasReturnInHead_step_error_isLit
           · split at hstep
             · simp [Flat.pushTrace] at hstep
               obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (by assumption)
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (fun h => hntc_e (.makeEnv_values (HasTryCatchInHeadList_of_firstNonValue hfnv h))) (by assumption)
             · simp at hstep
           · simp at hstep
         · simp at hstep
@@ -15083,7 +15086,7 @@ private theorem HasReturnInHead_step_error_isLit
           · split at hstep
             · simp [Flat.pushTrace] at hstep
               obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (by assumption)
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (fun h => hntc_e (.arrayLit_elems (HasTryCatchInHeadList_of_firstNonValue hfnv h))) (by assumption)
             · simp at hstep
           · simp at hstep
         · simp at hstep
@@ -15097,7 +15100,7 @@ private theorem HasReturnInHead_step_error_isLit
           · split at hstep
             · simp [Flat.pushTrace] at hstep
               obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueProp_depth hfnv; omega) (by assumption)
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueProp_depth hfnv; omega) (fun h => hntc_e (.objectLit_props (HasTryCatchInHeadProps_of_firstNonValue hfnv h))) (by assumption)
             · simp at hstep
           · simp at hstep
         · simp at hstep
@@ -15112,7 +15115,7 @@ private theorem HasReturnInHead_step_error_isLit
       · split at hstep
         · simp [Flat.pushTrace] at hstep
           obtain ⟨_, rfl⟩ := hstep
-          exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
+          exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hntc_e (.labeled_body h)) (by assumption)
         · simp at hstep
       · simp at hstep
 
@@ -15145,7 +15148,9 @@ private theorem HasReturnInHead_Steps_steppable
     by_cases ht : ∃ msg', ev = .error msg'
     · -- Error step from s1: s2.expr is lit → Steps s2 must be refl → contradiction
       obtain ⟨msg', rfl⟩ := ht
-      obtain ⟨v, hv⟩ := HasReturnInHead_step_error_isLit hret0 hstep_s1
+      obtain ⟨v, hv⟩ := HasReturnInHead_step_error_isLit hret0
+        (sorry /- ¬HasTryCatchInHead s1.expr: needs step_nonError_preserves_noTryCatchInHead -/)
+        hstep_s1
       exfalso
       have hlit : Flat.step? s2 = none := by
         cases s2 with | mk e2 env2 heap2 trace2 funcs2 cs2 =>
