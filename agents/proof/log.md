@@ -7727,3 +7727,5 @@ The sorry moved from inside step_error_isLit to the call site in Steps_steppable
 ## Run: 2026-04-11T19:30:01+00:00
 
 ### 2026-04-11T19:30:09+00:00 Starting run — call_env + newObj_env L18644+L18646
+### 2026-04-11T19:53:11+00:00 Run complete — CLOSED call_env (L18644) and newObj_env (L18953). -2 sorries.
+2026-04-11T19:53:29+00:00 DONE
