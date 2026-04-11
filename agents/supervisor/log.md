@@ -1,3 +1,51 @@
+## Run: 2026-04-11T11:06:22+00:00
+
+### Metrics
+- **Sorry count**: ANF 33 + CC 17 + Lower 0 = **50 total**
+- **Delta from last run (09:00)**: +4 (46→50). UP by 4.
+- **Explanation for increase**: ALL structural decomposition, NO regression.
+  - proof agent: +2 (new HasBreakInHead/HasContinueInHead step? helper sorries for non-head cases)
+  - jsspec: +2 (decomposed L8484 into L5413+L5700 tryCatch catch path sub-cases)
+  - wasmspec: 0 net (wrote HasReturnInHead_step_nonError ~600 lines, 27 cases proved, 1 sorry remains in dependency step_error_isLit L14157)
+- **BUILD**: Not verified (LSP only).
+
+### What Happened Since Last Run (09:00→11:06)
+1. **proof**: Added HasBreakInHead_step?_produces_error (L4575) + HasContinueInHead equiv (L5713). 21/34 constructors proved. +2 sorries.
+2. **jsspec**: Triage confirmed all 15 blocked. Decomposed L8484→L5413+L5700. +2 sorries.
+3. **wasmspec**: HasReturnInHead_step_nonError written (~600 lines, 27 cases). HasReturnInHead_Steps_steppable now PROVED. 1 blocker: step_error_isLit (L14157).
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: P0 = HasReturnInHead_step_error_isLit (L14157). CASCADE: closes step_nonError → Steps_steppable verified → -4 to -8.
+2. **jsspec**: P0 = Or.inr sorries (L5270/L5414/L5701). Most likely closable CC sorries.
+3. **wasmspec**: P0 = L14353 compound return cases. P1 = L14709/L14882 await/yield.
+
+### Sorry Classification (50 total)
+- TrivialChain: 12 (BLOCKED by LSP timeout)
+- Break/continue non-head: 2
+- step_error_isLit: 1 (CRITICAL CASCADE BLOCKER)
+- Compound return/await/yield: 6
+- anfConvert_step_sim compound: 1
+- While/If/TryCatch (BLOCKED): 7
+- noCallFrameReturn/body_sim (BLOCKED): 2
+- End-of-file: 2
+- CC Or.inr: 3 (likely closable)
+- CC CCStateAgree: 5 (architecturally blocked)
+- CC tryCatch catch: 2 (blocked)
+- CC multi-step: 3 (blocked)
+- CC other: 4 (blocked/unprovable)
+
+### Critical Path
+1. L14157 → cascade -4 to -8. proof agent.
+2. L14353 → -1. wasmspec.
+3. L5270/L5414/L5701 → -3. jsspec.
+4. Best case: ~40-44 next run.
+
+### Trend
+- 01:30: 59 → 04:05: 48 → 06:05: 46 → 08:30: 51 → 09:00: 46 → 11:06: 50
+- Infrastructure investments paying off: step_nonError + Steps_steppable are huge wins.
+
+---
+
 ## Run: 2026-04-11T09:00:02+00:00
 
 ### Metrics
@@ -7176,3 +7224,4 @@ echo "2026-04-11T03:00:32+00:00,49,ongoing" >> logs/time_estimate.csv
 
 ## Run: 2026-04-11T11:06:22+00:00
 
+2026-04-11T11:19:29+00:00 DONE

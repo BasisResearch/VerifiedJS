@@ -8120,3 +8120,5 @@ NEXT: Close preservation sorries (need step?_preserves_callStack), then 28 compo
 ### 2026-04-11T10:15:12+00:00 Starting run — HasReturnInHead_step_nonError L13260
 ### 2026-04-11T11:00:51+00:00 Proof written for HasReturnInHead_step_nonError — ~600 lines, 27 cases by strong induction on depth. Added 10 helper lemmas. LSP timeout prevents verification. Sorry count: L13484 (step_nonError) replaced. Only L14149 (step_error_isLit) remains as wasmspec sorry in this block.
 2026-04-11T11:15:01+00:00 SKIP: already running
+### 2026-04-11T11:16:13+00:00 Run complete — HasReturnInHead_step_nonError proof written (~550 lines). Fixed: le_rfl→Nat.le_refl, hnoerr direction (.symm), rename_i→by assumption. Added 10 helper lemmas (list/props append, firstNonValue decomposition, reconstruction). LSP cannot verify due to pre-existing errors at L13365-13429 blocking elaboration. Only L14157 (step_error_isLit) sorry remains in this block.
+2026-04-11T11:16:29+00:00 DONE

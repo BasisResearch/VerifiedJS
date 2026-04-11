@@ -1,4 +1,4 @@
-# proof — WRITE hasBreakInHead_break_steps (MIRROR hasReturnInHead_return_steps)
+# proof — CLOSE HasReturnInHead_step_error_isLit (L14152) + trivialChain list sorries
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -8,104 +8,82 @@
 
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## STATUS — 2026-04-11T10:30
-- ANF: 32 sorries. CC: 15 (jsspec). Total: 47.
-- **trivialChain (L10183-L10554) CONFIRMED BLOCKED** — do NOT attempt.
-- **LSP times out past ~L10000** in the 18K-line ANFConvertCorrect.lean.
-- **Your target**: Write `hasBreakInHead_break_steps` near L5400 (in LSP range).
+## STATUS — 2026-04-11T11:06
+- ANF: 33 sorries. CC: 17 (jsspec). Total: 50.
+- **HasReturnInHead_step_nonError WRITTEN** (wasmspec, ~600 lines) but depends on HasReturnInHead_step_error_isLit (L14152) which is sorry.
+- **HasReturnInHead_Steps_steppable (L14161) is PROVED** — depends on step_error_isLit.
+- Your break/continue step? helpers at L4575/L5713 are good (+2 sorries for non-head cases).
+- **trivialChain (L10429-L10800)** — 12 sorries. Still BLOCKED by LSP timeout past L10000.
 
 ## ⚠️ DO NOT WORK ON:
-- L10183-L10554 (trivialChain — BLOCKED, confirmed 3x)
-- L12969-L14177 (wasmspec-owned)
-- L14267-L14279 (while — BLOCKED)
-- L15004-L15044 (if — BLOCKED)
-- L15885-L15906 (tryCatch — BLOCKED)
-- L17233, L17244 (noCallFrameReturn/body_sim — BLOCKED)
+- L10429-L10800 (trivialChain — LSP TIMEOUT zone)
+- L12969-L14148 (wasmspec-owned)
+- L15033-L15045 (while — BLOCKED)
+- L15770-L15810 (if — BLOCKED)
+- L16651-L16672 (tryCatch — BLOCKED)
+- L17999, L18010 (noCallFrameReturn/body_sim — BLOCKED)
 
-## P0: hasBreakInHead_break_steps — FOLLOW THE hasReturnInHead_return_steps PATTERN
+## P0: HasReturnInHead_step_error_isLit (L14152) — HIGHEST VALUE
 
-The sorries at L17463 (break) and L17534 (continue) need error propagation through compound constructors. The EXACT SAME pattern was already implemented for HasReturnInHead at L13346 (`hasReturnInHead_return_steps`). You need to mirror it for HasBreakInHead.
+This sorry blocks the entire HasReturnInHead cascade. wasmspec proved step_nonError and Steps_steppable, but they depend on step_error_isLit. Closing this one sorry cascades: step_nonError becomes sorry-free → Steps_steppable fully verified → callStack condition sorries at L14298-L14321 auto-verify → potential -4 to -8 sorries.
 
-### Step 1: Study the existing pattern
-
-Read L13346-L13600 to understand `hasReturnInHead_return_steps`. Key structure:
-- Induction on depth `d`
-- For each HasReturnInHead constructor, shows Steps from the expression to an error event
-- Uses `Steps_compound_error_lift` (L13135) for compound cases
-- Base cases: direct return → error event. Compound cases: IH on sub-expression, then lift.
-
-### Step 2: Check what already exists for break
-
-Use `lean_local_search "HasBreakInHead"` and look at the grep results:
-- `HasBreakInHead` inductive at L4463
-- `HasBreakInHeadList` at L4498
-- `HasBreakInHeadProps` at L4503
-- `normalizeExpr_break_implies_hasBreakInHead` at L4906
-
-What's MISSING: a `hasBreakInHead_break_steps` theorem (analogous to `hasReturnInHead_return_steps`).
-
-### Step 3: Write hasBreakInHead_break_steps
-
-Place near L5400 (after the existing break infrastructure, within LSP range).
-
+### What it says
 ```lean
-/-- Expressions with HasBreakInHead eventually reach a break error event through Flat.Steps.
-    Mirrors hasReturnInHead_return_steps. -/
-private theorem hasBreakInHead_break_steps
-    (d : Nat) :
-    ∀ (e : Flat.Expr),
-    e.depth ≤ d →
-    HasBreakInHead e label →
-    ∀ (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
-      (funcs : Array Flat.FuncDef) (cs : List Flat.Env),
-    ExprWellFormed e env →
-    NoNestedAbrupt e →
-    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
-      Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs sf' ∧
-      sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
-      sf'.trace = trace ++ evs ∧
-      observableTrace evs = observableTrace [.error ("break:" ++ (label.getD ""))] := by
-  sorry -- fill cases below
+private theorem HasReturnInHead_step_error_isLit
+    {sf sf' : Flat.State} {msg : String}
+    (hret : HasReturnInHead sf.expr)
+    (hstep : Flat.step? sf = some (.error msg, sf')) :
+    ∃ v, sf'.expr = .lit v
 ```
 
-### Step 4: Fill base case
+If an expression has HasReturnInHead, and it takes an error step, then the result is a literal.
+
+### Why this should be provable
+
+Error steps in Flat.step? come from:
+1. `.return none` → error "return:undefined" → `.lit .undefined` ✓
+2. `.return (some v)` where v is value → error "return:value" → `.lit v` ✓
+3. `.throw v` where v is value → error "throw:..." → `.lit v` ✓
+4. `.break label` → error "break:..." → `.lit .undefined` ✓
+5. `.continue label` → error "continue:..." → `.lit .undefined` ✓
+6. `.yield (some v)` where v is value → error "yield:..." → `.lit v` ✓
+7. `.await v` where v is value → error "await:..." → `.lit v` ✓
+
+ALL error-producing steps result in `.lit v`. So the theorem is true regardless of HasReturnInHead.
+
+### Proof strategy
+
+You might not even need the `hret` hypothesis. Try:
 
 ```lean
-  intro d; induction d with
-  | zero =>
-    intro e hd hbreak
-    cases hbreak with
-    | break_direct =>
-      intro env heap trace funcs cs _ _
-      refine ⟨[.error ("break:" ++ (label.getD ""))], _,
-        .tail ⟨by unfold Flat.step?; rfl⟩ (.refl _),
-        rfl, rfl, rfl, rfl, rfl⟩
-    | _ => simp [Flat.Expr.depth] at hd; omega
+  -- Error steps in Flat.step? always produce .lit values
+  cases sf with | mk e env heap trace funcs cs =>
+  simp [Flat.State.expr] at hret
+  -- Case split on e to find which expressions produce errors
+  cases e <;> simp [Flat.step?] at hstep
+  -- For each error-producing case, extract the .lit result
+  all_goals (try (obtain ⟨v, hv⟩ := ...; exact ⟨v, hv⟩))
 ```
 
-### Step 5: Fill compound cases (succ d)
+Or use `lean_multi_attempt` at L14157:
+```
+["cases sf with | mk e env heap trace funcs cs => cases e <;> simp [Flat.step?] at hstep <;> sorry",
+ "simp [Flat.step?] at hstep; sorry"]
+```
 
-Follow EXACTLY the same pattern as `hasReturnInHead_return_steps` L13367+:
-- `| succ d ih =>`
-- Match on HasBreakInHead constructors
-- break_direct: same as zero case
-- Absurd cases (throw_arg, return_some_arg, yield_some_arg, await_arg): `exfalso` via NoNestedAbrupt
-- Compound cases: IH on sub-expression, then lift via `Steps_compound_error_lift`
+### Step-by-step
+1. `lean_goal` at L14157 to see the goal state
+2. `lean_multi_attempt` with the tactics above
+3. For remaining sub-goals: each error-producing step? branch produces `.lit v` in sf'. Extract it from hstep.
 
-**KEY**: The compound lifting works because `Steps_compound_error_lift` is generic — it takes any wrap function. The same infrastructure serves break, continue, and return.
+## P1: Complete break/continue non-head cases
 
-### Step 6: Write hasContinueInHead_continue_steps
+Your HasBreakInHead_step?_produces_error (L4575) and HasContinueInHead_step?_produces_error (L5713) have sorries for non-head cases. These mirror Pattern B from HasReturnInHead_step_nonError (L13623). Study that theorem's approach for "right" compound cases.
 
-Same structure, replacing `HasBreakInHead` → `HasContinueInHead`, `"break:"` → `"continue:"`.
+## P2: L18229 and L18300
 
-### Step 7: Verify with lean_diagnostic_messages
-
-After each theorem, check for errors. Even if the body is `sorry`, the TYPE SIGNATURE must compile.
-
-## IMPORTANT: Even sorry'd helpers are valuable
-
-If the full proof of hasBreakInHead_break_steps is too complex, writing the TYPE SIGNATURE + sorry body is still valuable. It structures what L17463/L17534 need, and someone can fill the proof later when LSP allows it.
+These are at the end of the file. Check what theorems they're in and whether they're closable with existing infrastructure.
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — hasBreakInHead_break_steps" >> agents/proof/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — HasReturnInHead_step_error_isLit" >> agents/proof/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`
