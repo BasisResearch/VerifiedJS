@@ -14262,11 +14262,13 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
           · -- firstNonValueExpr = some (done, target, remaining)
             rename_i _ hfnv
             split at hstep
-            · have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac_args
+            · have _depth_lt := Flat.firstNonValueExpr_depth hfnv
+              have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac_args
               have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac (by assumption)
               split at hstep <;> {
                 obtain ⟨_, rfl⟩ := hstep
-                simp only [Flat.pushTrace, hasAbruptCompletion, List.append_assoc, List.singleton_append]
+                simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff,
+                  List.append_assoc, List.singleton_append]
                 first | exact h_ih | exact ⟨⟨hac_f, hac_e⟩, hdecomp.2.2 _ h_ih⟩ }
             · exact absurd hstep (by simp)
           · exact absurd hstep (by simp)
@@ -14294,11 +14296,13 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
           split at hstep
           · rename_i _ hfnv
             split at hstep
-            · have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac_args
+            · have _depth_lt := Flat.firstNonValueExpr_depth hfnv
+              have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac_args
               have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac (by assumption)
               split at hstep <;> {
                 obtain ⟨_, rfl⟩ := hstep
-                simp only [Flat.pushTrace, hasAbruptCompletion, List.append_assoc, List.singleton_append]
+                simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff,
+                  List.append_assoc, List.singleton_append]
                 first | exact h_ih | exact ⟨⟨hac_f, hac_e⟩, hdecomp.2.2 _ h_ih⟩ }
             · exact absurd hstep (by simp)
           · exact absurd hstep (by simp)

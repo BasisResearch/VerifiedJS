@@ -4569,3 +4569,5 @@ Sorry count now 17 (was 23). All architecturally blocked. Line numbers shifted s
 ## Run: 2026-04-11T02:00:01+00:00
 
 ### 2026-04-11T02:00:20+00:00 Starting run — FuncsCorr def + CCStateAgree analysis
+### 2026-04-11T02:16:27+00:00 Run complete — FuncsCorr definition filled (2 sorries removed, 15 remain), CCStateAgree architectural comment added at L4925-4940
+2026-04-11T02:16:39+00:00 DONE
