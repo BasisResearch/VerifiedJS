@@ -1,4 +1,4 @@
-# jsspec — FuncsCorr DEFINITION (L1469, L1473) + TRACTABLE SORRIES
+# jsspec — WIRE FuncsCorr INTO CC_SimRel
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -10,40 +10,43 @@
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
 ## STATUS
-- CC: 15 real sorries. ANF: 40. Total: 55.
-- CCStateAgreeWeak confirmed NOT viable.
-- FuncsCorr stub defined at L1455-1473 but both properties sorry'd.
+- CC: 14 real sorries. ANF: 40. Total: 54.
+- FuncsCorr DEFINED at L1455-1483 (well done — 2 sorries closed last run).
+- ALL 14 remaining CC sorries are architecturally blocked.
+- Most impactful unblock: wire FuncsCorr into CC_SimRel → unblocks L5930 + L8042 = -2 sorries.
 
-## P0: FuncsCorr — CLOSE L1469 AND L1473
+## P0: ADD FuncsCorr TO CC_SimRel (L1488)
 
-These two sorries define what it means for Core and Flat function definitions to correspond after closure conversion.
+CC_SimRel is defined at ~L1488. It currently does NOT include FuncsCorr.
 
 **DO THIS:**
-1. Run `lean_goal` at L1469 to see the exact goal type
-2. Run `lean_hover_info` on `FuncsCorr` to see the current stub definition
-3. The body property (L1469) should state: `fc.body` equals the result of closure-converting `fd.body`
-4. The params property (L1473) should relate parameter lists via `injMap` or similar
-5. If these are DEFINITIONS (not proofs), fill in the correct predicate
+1. Run `lean_goal` or `lean_hover_info` on `CC_SimRel` at L1488 to see its current fields
+2. Add `FuncsCorr injMap sc.funcs sf.funcs ccFuncs` as a conjunct (you'll need ccFuncs from the closure conversion output — check how `t.funcs` relates to the CC state)
+3. For every existing case in `closureConvert_step_simulation` that constructs a `CC_SimRel` witness, add the FuncsCorr proof:
+   - Most cases don't change funcs, so `exact hfuncCorr` works (where `hfuncCorr` is destructured from the hypothesis)
+   - The `functionDef` case (L8036) and `call` case (L5923) are the ones that actually USE FuncsCorr
 
-## P1: HeapInj SORRY (L4898 area)
+**KEY**: Start small. First just add FuncsCorr to CC_SimRel. Then fix ONE case that breaks (pick a simple one like `lit` or `var`). Verify it compiles. Then do the rest.
 
-This was "temporarily sorry'd during HeapInj refactor" per comment at L4898. Check if the old proof structure is recoverable:
-1. Run `lean_goal` near L4898 to find the actual sorry
-2. Check if it's a simple proof that was disrupted by type changes
+**WARNING**: Adding a field to CC_SimRel will break ALL ~30 case proofs. Fix them one at a time, starting with the simplest. Use `sorry` for complex cases while you work through them. Do NOT try to fix all 30 at once.
 
-## P2: TRACTABLE SORRIES — CHECK THESE WITH lean_goal
+## P1: USE FuncsCorr TO CLOSE L5930 (call non-consoleLog)
 
-Check whether any of these are actually closable (not all are CCStateAgree-blocked):
-- L5146, L5245: sub-expression stepping sorries
-- L5484: may be error-case or CCStateAgree
-- L5930: check what blocks it
-- L8042: functionDef sorry — check if FuncsCorr (from P0) would help
+After P0, L5930 has FuncsCorr available. The proof should:
+1. Extract matching Flat.FuncDef from FuncsCorr
+2. Show the Flat call steps to the correct function
+3. Establish CC_SimRel for the post-call state
+
+## P2: USE FuncsCorr TO CLOSE L8042 (functionDef)
+
+After P0, L8042 needs to show FuncsCorr is maintained when adding a new function. This also needs multi-step simulation, so it may still be partially blocked.
 
 ## KNOWN BLOCKED (DO NOT ATTEMPT):
-- L5327, L5353, L8199, L8202, L8276, L8392: CCStateAgree architectural issue (6 total)
+- L5327, L5353, L8199, L8202, L8276, L8392: CCStateAgree (6 total)
 - L4978, L6138, L6149: multi-step simulation gap (3 total)
-- L6789: semantic mismatch (getIndex string) — UNPROVABLE
+- L5146, L5245, L5484: error structural mismatch (3 total)
+- L6789: semantic mismatch (UNPROVABLE)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — FuncsCorr L1469 L1473" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — FuncsCorr wiring into CC_SimRel" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`

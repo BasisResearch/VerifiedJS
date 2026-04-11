@@ -10755,8 +10755,53 @@ private theorem normalizeExpr_labeled_step_sim :
                       | return_some_arg _ _ h2 => exact hwf x (VarFreeIn.return_some_arg _ _ (VarFreeIn.return_some_arg _ _ (VarFreeIn.labeled_body _ _ _ h2)))
               | _ =>
                 -- inner_val (compound, not labeled) inside .return (some (.return (some inner_val)))
-                -- Blocked: inner expression depth induction needed
-                sorry
+                -- Use normalizeExpr_labeled_or_k to get HasLabeledInHead, then normalizeExpr_labeled_branch_step
+                rcases ANF.normalizeExpr_labeled_or_k _ _ label body n m hnorm with hlh_inner | ⟨t_k, n_k, m_k, body_k, hk_ret⟩
+                · -- HasLabeledInHead inner_val label → use branch_step + lift through two returns
+                  have hd_inner : Flat.Expr.depth _ ≤ d := by
+                    simp [Flat.Expr.depth] at hd; omega
+                  have hewf_inner : ExprWellFormed _ sf.env := by
+                    intro x hfx; exact hwf x (VarFreeIn.return_some_arg _ _ (VarFreeIn.return_some_arg _ _ hfx))
+                  cases sf with
+                  | mk sf_expr sf_env sf_heap sf_trace sf_funcs sf_cs =>
+                    simp only [Flat.State.expr] at hsf; subst hsf
+                    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace, Flat.State.funcs, Flat.State.callStack] at hewf_inner hwf ⊢
+                    obtain ⟨sf_v, evs_v, hsteps_v, hsil_v, henv_v, hheap_v, hfuncs_v, hcs_v,
+                      htrace_v, hpres_v, ⟨n_v, m_v, hnorm_v⟩, hewf_v⟩ :=
+                      normalizeExpr_labeled_branch_step d _ hd_inner label hlh_inner
+                        sf_env sf_heap sf_trace sf_funcs sf_cs
+                        (fun t => pure (ANF.Expr.return (some t))) n m body hnorm hewf_inner
+                    have hnoerr_v : ∀ ev ∈ evs_v, ∀ msg, ev ≠ .error msg :=
+                      fun ev hev msg => by rw [hsil_v ev hev]; exact Core.TraceEvent.noConfusion
+                    -- First lift: through inner .return (some ·)
+                    obtain ⟨ws1, hwsteps1, hwexpr1, hwenv1, hwheap1, hwfuncs1, hwcs1, hwtrace1⟩ :=
+                      Steps_return_some_ctx_b hsteps_v hnoerr_v hpres_v
+                    have hpres1 := Steps_ctx_lift_pres (fun e => .«return» (some e))
+                      (fun s inner hv t si hs he => step?_return_some_ctx s inner hv t si hs he)
+                      hsteps_v hnoerr_v hpres_v
+                    -- Second lift: through outer .return (some ·)
+                    obtain ⟨ws2, hwsteps2, hwexpr2, hwenv2, hwheap2, hwfuncs2, hwcs2, hwtrace2⟩ :=
+                      Steps_return_some_ctx_b hwsteps1 hnoerr_v hpres1
+                    have h_obs_nil := observableTrace_all_silent hsil_v
+                    refine ⟨evs_v, ws2, hwsteps2, ?_, ?_, ?_, ?_, ?_, ?_⟩
+                    · -- normalizeExpr witness with trivial continuation
+                      refine ⟨fun arg => pure (.trivial arg), n_v, m_v, ?_, ?_⟩
+                      · rw [hwexpr2, hwexpr1]
+                        simp only [ANF.normalizeExpr_return_some']
+                        exact hnorm_v
+                      · intro arg n''
+                        exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
+                    · rw [hwenv2, hwenv1, henv_v]
+                    · rw [hwheap2, hwheap1, hheap_v]
+                    · rw [hwtrace2, hwtrace1, htrace_v, observableTrace_append, h_obs_nil, List.append_nil]
+                    · exact h_obs_nil
+                    · rw [hwexpr2, hwexpr1, hwenv2, hwenv1, henv_v]
+                      intro x hfx; cases hfx with
+                      | return_some_arg _ _ h1 => cases h1 with
+                        | return_some_arg _ _ h2 => exact henv_v ▸ hewf_v x h2
+                · -- Continuation fun t => pure (.return (some t)) produced .labeled → contradiction
+                  exfalso
+                  simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hk_ret
           | yield arg delegate =>
             cases arg with
             | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1

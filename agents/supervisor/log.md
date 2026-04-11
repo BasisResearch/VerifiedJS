@@ -6407,3 +6407,37 @@ Previous runs counted `grep -c sorry` which includes comment mentions like "sorr
 
 ## Run: 2026-04-11T02:30:02+00:00
 
+### Metrics
+- **Sorry count**: ANF 39 + CC 15 = **54 total**
+- **Delta from last run (02:05)**: **-1** (55→54). Wasmspec closed 1 compound inner depth sorry.
+- **BUILD**: Not verified (LSP only).
+
+### Agent Status
+1. **proof** (RUNNING since 01:30): Successfully proved hasAbruptCompletion_step_preserved with termination hints (`termination_by Flat.Expr.depth e`). All cases complete. NoNestedAbrupt (L14468) still sorry'd. **PROMPT REWRITTEN** → P0: uncomment NoNestedAbrupt proof L14468-14986 + fix error propagation branches.
+2. **wasmspec** (RUNNING since 02:15): Working on compound inner depth. Closed 1 sorry (6→5 compound inner depth sorries at L10840, L10853, L10936, L10971, L10984). Still running.
+3. **jsspec** (IDLE since 02:16): Closed 2 FuncsCorr definition sorries last run. **PROMPT REWRITTEN** → P0: wire FuncsCorr into CC_SimRel to unblock L5930 + L8042.
+
+### Prompts Rewritten (2 of 3)
+1. **proof**: P0 = uncomment NoNestedAbrupt L14468 (same pattern as hasAbruptCompletion, add error branches). P1 = check L15394/L15465 cascade.
+2. **jsspec**: P0 = add FuncsCorr to CC_SimRel. P1 = use FuncsCorr to close L5930 (call non-consoleLog). P2 = L8042 (functionDef).
+3. **wasmspec**: Kept (still running on compound inner depth, prompt is correct for remaining 5 sorries).
+
+### Critical Path (Updated)
+1. proof: NoNestedAbrupt L14468 → -1, potential cascade to L15394/L15465 → -2 more
+2. wasmspec: remaining 4 compound inner depth → -4 (L10840, L10853, L10936, L10971, L10984 — 1 already closed)
+3. jsspec: FuncsCorr wiring → unblocks L5930 + L8042 → -2
+4. BLOCKED: trivial mismatch (12 ANF), CCStateAgree (6 CC), multi-step (3 CC), error structural mismatch (3 CC), error prop (6 ANF), while (2 ANF), if_branch (2 ANF), tryCatch (3 ANF), compound misc (3 ANF), getIndex unprovable (1 CC), anfConvert_step_star (1 ANF)
+
+### Sorry Classification (54 total)
+- **In progress (wasmspec)**: 4 compound inner depth (L10840, L10853, L10936, L10971, L10984 minus 1 closed)
+- **Closable (uncomment+fix)**: 1 NoNestedAbrupt (L14468)
+- **Closable (FuncsCorr wiring)**: 2 (L5930, L8042)
+- **Cascade potential**: 2 (L15394, L15465 — depend on NoNestedAbrupt)
+- **Error prop blocked**: 6 (L11877-L12214)
+- **Trivial mismatch blocked**: 12 (L10183-L10554)
+- **CCStateAgree blocked**: 6 (L5327, L5353, L8199, L8202, L8276, L8392)
+- **Multi-step blocked**: 3 (L4978, L6138, L6149)
+- **Error structural mismatch**: 3 (L5146, L5245, L5484)
+- **Other blocked**: 15 (if_branch, while, tryCatch, compound misc, getIndex, anfConvert_step_star)
+
+---
