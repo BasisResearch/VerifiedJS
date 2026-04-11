@@ -15917,25 +15917,75 @@ private theorem step_nonError_preserves_noNonCallFrameTryCatch
       have hncf_obj : ¬HasNonCallFrameTryCatchInHead obj := fun h => hncf (.setIndex_obj h)
       have hncf_idx : ¬HasNonCallFrameTryCatchInHead idx := fun h => hncf (.setIndex_idx h)
       have hncf_val : ¬HasNonCallFrameTryCatchInHead val := fun h => hncf (.setIndex_val h)
-      split at hstep <;> (try split at hstep) <;> (try split at hstep) <;>
-        (try split at hstep) <;> (try split at hstep) <;>
-        first
-        | simp at hstep
-        | (obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; intro h; exact nomatch h)
-        | (simp [Flat.pushTrace] at hstep; obtain ⟨rfl, _⟩ := hstep; exact absurd rfl (hnoerr _))
-        | (obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
-           intro h; cases h with
-           | setIndex_obj h' => exact hncf_obj h'
-           | setIndex_idx h' =>
-             exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) hncf_idx ‹_› hnoerr h'
-           | setIndex_val h' =>
-             exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) hncf_val ‹_› hnoerr h')
-        | (obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
-           intro h; cases h with
-           | setIndex_obj h' =>
-             exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) hncf_obj ‹_› hnoerr h'
-           | setIndex_idx h' => exact hncf_idx h'
-           | setIndex_val h' => exact hncf_val h')
+      split at hstep
+      · -- obj not value: step obj
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; obtain ⟨rfl, _⟩ := hstep; exact absurd rfl (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            intro h; cases h with
+            | setIndex_obj h' =>
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) hncf_obj ‹_› hnoerr h'
+            | setIndex_idx h' => exact hncf_idx h'
+            | setIndex_val h' => exact hncf_val h'
+        · simp at hstep
+      · -- obj = .object addr
+        split at hstep
+        · -- idx not value: step idx
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; obtain ⟨rfl, _⟩ := hstep; exact absurd rfl (hnoerr _)
+            · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              intro h; cases h with
+              | setIndex_obj h' => exact hncf_obj h'
+              | setIndex_idx h' =>
+                exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) hncf_idx ‹_› hnoerr h'
+              | setIndex_val h' => exact hncf_val h'
+          · simp at hstep
+        · -- idx value
+          split at hstep
+          · -- val value: .lit
+            split at hstep <;> (try split at hstep) <;>
+              (obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; intro h; exact nomatch h)
+          · -- val not value: step val
+            split at hstep
+            · split at hstep
+              · simp [Flat.pushTrace] at hstep; obtain ⟨rfl, _⟩ := hstep; exact absurd rfl (hnoerr _)
+              · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+                intro h; cases h with
+                | setIndex_obj h' => exact hncf_obj h'
+                | setIndex_idx h' => exact hncf_idx h'
+                | setIndex_val h' =>
+                  exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) hncf_val ‹_› hnoerr h'
+            · simp at hstep
+      · -- obj = other value
+        split at hstep
+        · -- idx not value: step idx
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; obtain ⟨rfl, _⟩ := hstep; exact absurd rfl (hnoerr _)
+            · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              intro h; cases h with
+              | setIndex_obj h' => exact hncf_obj h'
+              | setIndex_idx h' =>
+                exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) hncf_idx ‹_› hnoerr h'
+              | setIndex_val h' => exact hncf_val h'
+          · simp at hstep
+        · -- idx value
+          split at hstep
+          · -- val value: .lit
+            obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; intro h; exact nomatch h
+          · -- val not value: step val
+            split at hstep
+            · split at hstep
+              · simp [Flat.pushTrace] at hstep; obtain ⟨rfl, _⟩ := hstep; exact absurd rfl (hnoerr _)
+              · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+                intro h; cases h with
+                | setIndex_obj h' => exact hncf_obj h'
+                | setIndex_idx h' => exact hncf_idx h'
+                | setIndex_val h' =>
+                  exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) hncf_val ‹_› hnoerr h'
+            · simp at hstep
     | getEnv envE idx =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
       split at hstep
@@ -16154,8 +16204,8 @@ private theorem step_nonError_preserves_noNonCallFrameTryCatch
             rename_i msg sb
             simp only [Bool.true_and] at hstep
             split at hstep
-            · -- return prefix: .silent with .lit
-              obtain ⟨_, rfl⟩ := hstep; exact absurd rfl (hnoerr _)
+            · -- return prefix: .silent with .lit retVal
+              obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; intro h; exact nomatch h
             · -- non-return error: .error with .lit .undefined
               simp only [ite_true, Flat.pushTrace] at hstep
               obtain ⟨rfl, _⟩ := hstep; exact absurd rfl (hnoerr _)
