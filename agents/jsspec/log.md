@@ -4544,3 +4544,4 @@ This is a 1-line semantic fix in Flat/Semantics.lean.
 
 ## Run: 2026-04-11T01:00:13+00:00
 
+### 2026-04-11T01:00:45+00:00 Starting run — state_mono L1469 L1473, error cases L5116 L5215 L5454
