@@ -7588,3 +7588,21 @@ All sorry locations (L10183+) time out with 30s LSP timeout. Cannot use `lean_mu
 ## Run: 2026-04-11T11:30:01+00:00
 
 ### 2026-04-11T11:30:28+00:00 Starting run — HasReturnInHead_step_error_isLit
+
+### 2026-04-11T11:45 Analysis: HasReturnInHead_step_error_isLit is FALSE as stated
+
+**Counterexample**: `.seq (.tryCatch (.throw (.lit (.string "x"))) "e" (.var "e") none) (.return none)`
+- Has `HasReturnInHead` via `seq_right .return_none_direct`
+- `step?` produces `(.error "x", {expr := .var "e", ...})` — NOT `.lit v`
+
+**Root cause**: `Flat.step?` tryCatch non-call-frame catch (L1104-1111 in Flat/Semantics.lean) emits `.error msg` with `expr := handler` (catch body), NOT `.lit v`. When a "right" compound case (e.g. `seq_right`) has a left sub-expression containing tryCatch, the error from the catch propagates through, and the result expr is the handler, not a lit.
+
+**Affected HasReturnInHead cases**: All "right" compound constructors — `seq_right`, `setProp_val`, `binary_rhs`, `call_env`, `call_args`, `newObj_env`, `newObj_args`, `getIndex_idx`, `setIndex_idx`, `setIndex_val`, `makeEnv_values`, `objectLit_props`, `arrayLit_elems`.
+
+**This also affects `HasReturnInHead_Steps_steppable` (L14161)** which depends on step_error_isLit.
+
+**Possible fixes**:
+1. Change tryCatch catch to emit `.silent` instead of `.error` (simplest, in Flat/Semantics.lean)
+2. Restrict HasReturnInHead to exclude "right" compound cases
+3. Add hypothesis excluding tryCatch in head positions
+2026-04-11T12:30:01+00:00 SKIP: already running
