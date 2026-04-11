@@ -1,4 +1,4 @@
-# wasmspec — PIVOT: CLOSABLE ANF SORRIES (not trivialChain)
+# wasmspec — COMPOUND INNER DEPTH SORRIES (6 closable)
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,60 +9,84 @@
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
 ## STATUS
-- ANF: 41 sorries. CC: 17. Total: 58.
+- ANF: 42 sorries. CC: 17. Total: 59.
 - Error propagation done in Flat/Semantics.lean.
-- **YOU CONFIRMED**: ALL trivialChain passthrough sorries (L10183-L10408) are blocked by trivial mismatch (`.var x ≠ trivialOfFlatValue v`). DO NOT WORK ON THESE.
+- ALL trivialChain sorries confirmed blocked. DO NOT WORK ON THOSE.
+- Trivial reconciliation infrastructure is needed but NOT YET TRACTABLE.
 
-## WHAT'S BLOCKED (skip all of these):
-- L10183, L10231, L10279, L10329, L10356, L10406 — trivial mismatch (confirmed)
-- L10408, L10460 — list decomposition (same root cause)
-- L13057, L13097 — if_branch K-mismatch
-- L13938, L13956, L13959 — tryCatch callStack
-- L12320, L12332 — while transient state
+## P0: 6 COMPOUND INNER DEPTH SORRIES (L10759, L10795, L10808, L10891, L10926, L10939)
 
-## P0: INFRASTRUCTURE — trivialOfFlatValue reconciliation lemma
+These are ALL the same pattern in `normalizeExpr_labeled_branch_step`. They handle compound (non-labeled) `inner_val` inside nested return/yield wrappers. The IH on depth APPLIES. Here is the exact proof approach:
 
-The trivial mismatch blocks ~10 sorries. Instead of working on individual sorries, create the INFRASTRUCTURE to fix them all:
+### Pattern (L10759 example):
+Context: `inner_val` is compound (not `.labeled`), inside `.return (some (.return (some inner_val)))`.
 
-The problem: `normalizeExpr` produces `.var x` as the trivial for a sub-expression, but flat evaluation gives `trivialOfFlatValue v` (which is `.lit v`). We need a lemma that reconciles these.
+**What you have:**
+- `hlh : HasLabeledInHead (.return (some (.return (some inner_val)))) label`
+- `hd : (.return (some (.return (some inner_val)))).depth ≤ d + 1`
+- `hnorm : (normalizeExpr inner_val (fun t => pure (.return (some t)))).run n = .ok (.labeled label body, m)`
+  (after `simp only [ANF.normalizeExpr]` simplified through two returns)
+- `hewf : ExprWellFormed (.return (some (.return (some inner_val)))) env`
+- `ih : ∀ e, e.depth ≤ d → HasLabeledInHead e label → ... → ∃ sf' evs, Steps ...`
 
-Key insight: Under `ExprWellFormed`, if `normalizeExpr e k` succeeds and produces trivial `t`, and flat evaluation steps `e` to value `v`, then `t` and `trivialOfFlatValue v` are "equivalent" in that using either in `k` produces the same result (because the flat semantics binds `v` to the variable named by `t`).
-
-1. `lean_local_search "normalizeExpr_trivialChain"` — understand current infrastructure
-2. `lean_local_search "trivialOfFlatValue"` — see definition
-3. `lean_local_search "ExprWellFormed"` — understand well-formedness
-4. `lean_hover_info` on `normalizeExpr_trivialChain_apply` at L1466
-
-**Possible lemma:**
+**Step 1: Extract HasLabeledInHead for inner_val**
 ```lean
-theorem normalizeExpr_trivial_value_equiv
-    (e : Flat.Expr) (v : Core.Value) (t : ANF.Trivial)
-    (heval : Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs ⟨.lit (.value v), ...⟩)
-    (hnorm : normalizeExpr e k = .ok (body_t, m))
-    (hnorm_v : normalizeExpr e k' = .ok (body_v, m'))
-    -- t comes from normalizeExpr, trivialOfFlatValue v comes from evaluation
-    -- The bodies using either are equivalent
-    : ...
+have hlh_inner : HasLabeledInHead inner_val label := by
+  cases hlh with | return_some_arg h => cases h with | return_some_arg h => exact h
 ```
 
-Or alternatively, prove that for trivialChain expressions, normalizeExpr gives `.lit v` not `.var x`:
+**Step 2: Depth bound**
 ```lean
-theorem normalizeExpr_trivialChain_is_lit
-    (htc : trivialChain e)
-    (heval : Flat.Steps ... ⟨.lit (.value v), ...⟩)
-    : normalizeExpr e k = normalizeExpr_with_lit v k
+have hdepth_inner : inner_val.depth ≤ d := by
+  simp [Flat.Expr.depth] at hd; omega
 ```
 
-Check what's actually needed by reading the goal at one of the blocked sorries (e.g., L10183).
+**Step 3: Well-formedness for inner_val**
+```lean
+have hewf_inner : ExprWellFormed inner_val env := by
+  intro x hfx; exact hewf x (VarFreeIn.return_some_arg _ _ (VarFreeIn.return_some_arg _ _ hfx))
+```
 
-## P1: COMPOUND INNER DEPTH CASES (L10759-L10939, 6 sorries)
+**Step 4: Apply IH**
+```lean
+obtain ⟨sf_inner, evs_inner, hsteps, hsilent, henv_eq, hheap_eq, ...⟩ :=
+  ih d inner_val hdepth_inner label hlh_inner env heap trace funcs cs
+    (fun t => pure (.return (some t))) n m body hnorm hewf_inner
+```
 
-These are in `normalizeExpr_labeled_branch_step` — depth induction for compound inner expressions inside return/yield wrappers. The IH should apply (inner depth ≤ d-1).
+**Step 5: Lift steps through `.return (some (.return (some ·)))` using Steps_return_some_ctx_b TWICE**
+The first lift goes from `inner_val` to `.return (some inner_val)`.
+The second lift wraps with `.return (some ·)` again.
 
-1. `lean_goal` at L10759
-2. Check if IH is available and what it needs
-3. `lean_multi_attempt` with relevant tactics
+```lean
+have hsteps_inner_ret := Steps_return_some_ctx_b hsteps ...
+have hsteps_outer_ret := Steps_return_some_ctx_b hsteps_inner_ret ...
+```
+
+**Step 6: The normalizeExpr result for sf_inner matches because:**
+`normalizeExpr (.return (some (.return (some sf_inner.expr)))) K`
+= `normalizeExpr sf_inner.expr (fun t => pure (.return (some t)))` (K discarded by return)
+The IH already gives this.
+
+### Variations for L10795, L10808, L10891, L10926, L10939:
+- L10795: `.return (some (.yield (some inner_val) delegate))` — use `yield_some_arg` + `Steps_yield_some_ctx_b` inner, `Steps_return_some_ctx_b` outer
+- L10808: `.return (some inner_val)` where inner_val is compound from tryCatch/while — single return layer
+- L10891, L10926: Same as L10759/L10795 but nested under `.yield` instead of outer `.return`
+- L10939: `.yield (some inner_val)` — single yield layer
+
+### EXECUTION ORDER:
+1. Do L10759 FIRST (double return, clearest case)
+2. Verify with LSP (may time out — check `lean_diagnostic_messages` at that line)
+3. If L10759 works, adapt for L10795, L10808, L10891, L10926, L10939 (same pattern)
+
+### INFRASTRUCTURE ALREADY EXISTS:
+- `Steps_return_some_ctx_b` (L2668): lifts Steps through `.return (some ·)` context
+- `Steps_yield_some_ctx_b`: lifts through `.yield (some ·) delegate` (search for it)
+- `HasLabeledInHead.return_some_arg` (L4947): `HasLabeledInHead v → HasLabeledInHead (.return (some v))`
+- `HasLabeledInHead.yield_some_arg` (L4948): same for yield
+
+## SKIP: trivialChain (blocked), if_branch, while, tryCatch, error prop cases (proof agent)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — trivial reconciliation infrastructure" >> agents/wasmspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — compound inner depth L10759-L10939" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

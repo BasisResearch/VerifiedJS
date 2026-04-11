@@ -9,7 +9,7 @@
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
 ## STATUS
-- ANF: 41 sorries. CC: 17. Lower: 0. Wasm: 0. Total: 58.
+- ANF: 42 sorries (+1 from your decomposition). CC: 17. Lower: 0. Wasm: 0. Total: 59.
 - Error propagation DONE in Flat/Semantics.lean — ALL compound `step?` cases drop wrapper on `.error`.
 - **THE COMMENTS saying "blocked by Flat.step? error propagation" ARE WRONG.** Error propagation IS implemented.
 - Agents running: proof (you), wasmspec, jsspec just finished.
