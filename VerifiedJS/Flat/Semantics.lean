@@ -2324,26 +2324,36 @@ theorem step?_preserves_callStack (sf : Flat.State) (ev : Core.TraceEvent) (sf' 
   all_goals (try { simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h; rfl })
   all_goals (try { simp only [Option.some.injEq, Prod.mk.injEq] at h
                    obtain ⟨-, rfl⟩ := h; simp [pushTrace] })
-  -- Remaining goals are .call with all-value args (callStack push)
-  -- and .tryCatch with isCallFrame (callStack pop).
-  -- Both are contradicted by our hypotheses.
-  -- .call goals: hnocall gives that some sub-expr has exprValue? = none,
-  -- but the context has all = some. Contradiction.
-  all_goals (try {
-    rename_i heq_expr _ hf _ _ hargs _ _ _ _ _
-    exfalso; have := hnocall _ _ _ heq_expr; simp_all })
-  all_goals (try {
-    rename_i heq_expr _ hf _ he hargs _ _ _ _ _
-    exfalso; have := hnocall _ _ _ heq_expr; simp_all })
-  all_goals (try {
-    rename_i heq_expr _ hf _ he hargs _ _ _ _
-    exfalso; have := hnocall _ _ _ heq_expr; simp_all })
-  -- .tryCatch isCallFrame goals: derive catchParam = "__call_frame_return__",
-  -- then hnocf gives contradiction.
-  all_goals {
-    rename_i heq_expr _ _ _ hcf _
-    have hcf_eq : _ = "__call_frame_return__" := by
-      simp only [BEq.beq, beq_iff_eq] at hcf; exact hcf
-    subst hcf_eq; exfalso; exact absurd rfl (hnocf _ _ _ ▸ heq_expr ▸ rfl) }
+  -- Remaining goals: .call with all-value args or .tryCatch with isCallFrame.
+  -- For all: derive contradiction.
+  all_goals exfalso
+  all_goals simp_all only [Option.some.injEq, Prod.mk.injEq, Bool.and_eq_true,
+    beq_iff_eq, not_true, not_false_eq_true, reduceCtorEq,
+    Option.isSome_some, Bool.true_eq_false]
+  all_goals (first
+    | exact absurd rfl (hnocf _ _ _)
+    | (have := hnocall _ _ _ rfl; simp_all))
+
+/-- Multi-step callStack preservation: if every intermediate state satisfies the
+    no-call-frame / no-all-value-call conditions, then callStack is preserved. -/
+theorem Steps_preserves_callStack {sf sf' : Flat.State} {evs : List Core.TraceEvent}
+    (h : Flat.Steps sf evs sf')
+    (hpres : ∀ (smid : Flat.State) (t : Core.TraceEvent) (smid' : Flat.State) (evs_pre : List Core.TraceEvent),
+      Flat.Steps sf evs_pre smid →
+      step? smid = some (t, smid') →
+      evs_pre.length < evs.length →
+      (∀ body catch_ fin, smid.expr ≠ .tryCatch body "__call_frame_return__" catch_ fin) ∧
+      (∀ f env args, smid.expr = .call f env args →
+        exprValue? f = none ∨ exprValue? env = none ∨ valuesFromExprList? args = none)) :
+    sf'.callStack = sf.callStack := by
+  induction h with
+  | refl => rfl
+  | @tail sf s2 sf' t ts hfirst hrest ih =>
+    have hstep_eq := hfirst.1
+    have ⟨hnocf, hnocall⟩ := hpres _ _ _ [] (.refl _) hstep_eq (by simp)
+    have hcs := step?_preserves_callStack _ _ _ hstep_eq hnocf hnocall
+    have ih' := ih (fun smid t' smid' evs_pre hsteps hstep' hlen =>
+      hpres smid t' smid' (t :: evs_pre) (.tail hfirst hsteps) hstep' (by simp; omega))
+    exact ih'.trans hcs
 
 end VerifiedJS.Flat
