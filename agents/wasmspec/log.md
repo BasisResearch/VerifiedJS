@@ -8061,3 +8061,10 @@ All these sorries share the same structure:
    For HasReturnInHead+NoNestedAbrupt, calls never complete, so callStack preserved
 2. Remaining 28 compound cases: mechanical copy-paste of seq_left pattern
    Each case: simp normalizeExpr_FOO', get depth bound, IH, lift via Steps_compound_error_lift
+
+### 2026-04-11T05:30:36+00:00 Run complete — hasReturnInHead architecture done
+RESULT: Original sorry at L13285 REPLACED with 29 explicit constructor calls to new theorem
+NEW SORRIES: 3 preservation + 1 remaining compound = 4 new (original 1 removed)
+NET: +3 sorries (was 31 ANF, now 33 ANF code sorries)
+NEXT: Close preservation sorries (need step?_preserves_callStack), then 28 compound cases
+2026-04-11T05:31:25+00:00 DONE

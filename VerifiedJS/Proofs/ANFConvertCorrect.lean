@@ -16137,7 +16137,7 @@ private theorem hasAbruptCompletionList_mem_false (l : List Flat.Expr)
     (hac : hasAbruptCompletionList l = false) (e : Flat.Expr) (he : e ∈ l) :
     hasAbruptCompletion e = false := by
   induction l with
-  | nil => exact absurd he (List.not_mem_nil _)
+  | nil => contradiction
   | cons hd tl ih =>
     rw [hasAbruptCompletionList_cons_false] at hac
     cases he with
@@ -16148,14 +16148,14 @@ private theorem hasAbruptCompletionProps_mem_false (l : List (Flat.PropName × F
     (hac : hasAbruptCompletionProps l = false) (p : Flat.PropName × Flat.Expr) (hp : p ∈ l) :
     hasAbruptCompletion p.2 = false := by
   induction l with
-  | nil => exact absurd hp (List.not_mem_nil _)
+  | nil => contradiction
   | cons hd tl ih =>
     simp [hasAbruptCompletionProps, Bool.or_eq_false_iff] at hac
     cases hp with
     | head => exact hac.1
     | tail _ ht => exact ih hac.2 ht
 
-private theorem Flat.Expr.mem_propListDepth_lt {p : Flat.PropName × Flat.Expr}
+private theorem mem_propListDepth_lt_helper {p : Flat.PropName × Flat.Expr}
     {l : List (Flat.PropName × Flat.Expr)} (h : p ∈ l) :
     Flat.Expr.depth p.2 < Flat.Expr.propListDepth l := by
   induction l with
@@ -16263,7 +16263,7 @@ private theorem hasAbruptCompletion_false_implies_noNestedAbrupt (e : Flat.Expr)
   | .objectLit props =>
     simp [hasAbruptCompletion] at hac
     exact .objectLit (fun p hp => by
-      have := Flat.Expr.mem_propListDepth_lt hp
+      have := mem_propListDepth_lt_helper hp
       exact hasAbruptCompletion_false_implies_noNestedAbrupt p.2
         (hasAbruptCompletionProps_mem_false props hac p hp))
   | .arrayLit elems =>
