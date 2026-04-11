@@ -1,100 +1,84 @@
-# wasmspec — CLOSE 6 CALLSTACK CONDITION SORRIES (L13351-L13397)
+# wasmspec — CLOSE HasReturnInHead_Steps_steppable (L13264) + COMPOUND SORRIES
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
 - **DO NOT** run `lake build` — USE LSP ONLY.
 - **DO NOT** use while/until loops, pgrep, sleep loops
 - You CAN edit ANFConvertCorrect.lean AND Flat/Semantics.lean
+- **CRASH PREVENTION**: KEEP TASKS SMALL.
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS
-- Total: ~51 sorries (ANF 36, CC 15).
-- Steps_preserves_funcs, Steps_trace_append: PROVED
-- Steps_preserves_callStack: PROVED (condition callback)
-- step?_preserves_callStack: PROVED (two conditions)
-- hasReturnInHead_callStackSafe: PROVED (L13239)
-- hasAbruptCompletion_step_preserved: PROVED (L15729)
+## STATUS — 2026-04-11T09:00
+- Total: 46 sorries (ANF 31, CC 15). DOWN from 51.
+- **YOU just closed 6 callStack sorries (-5 net). GOOD WORK.**
+- You introduced 1 new sorry at L13264 (HasReturnInHead_Steps_steppable). Close it.
+- Remaining wasmspec-owned: L12969, L13264, L13415, L13771, L13944, L14000, L14004, L14005 = 8 sorries
 
-## P0: CLOSE 6 CALLSTACK CONDITION SORRIES (HIGHEST PRIORITY)
+## P0: HasReturnInHead_Steps_steppable (L13264) — HIGHEST PRIORITY
 
-The 6 sorries at L13351+L13353, L13374+L13375, L13396+L13397 each need:
-1. `smid'.expr ≠ .tryCatch body "__call_frame_return__" catch_ fin`
-2. `smid'.expr = .call f env args → some sub-expr is not a value`
-
-These are inside the `hpres` callback for `Steps_preserves_callStack`, within `hasReturnInHead_return_steps` (seq_left case).
-
-### THE KEY INSIGHT
-
-At each intermediate step `smid → smid'`, `smid` has `HasReturnInHead smid.expr` (from the outer invariant). `hasReturnInHead_callStackSafe` (L13239) already proves BOTH conditions for states with HasReturnInHead. So the question is: does `HasReturnInHead` hold at `smid`?
-
-**YES, if HasReturnInHead is preserved through non-terminal steps.**
-
-### APPROACH: Prove HasReturnInHead preservation for non-value steps
+This is the sorry YOU introduced to close the callStack sorries. It states:
 
 ```lean
-private theorem HasReturnInHead_step_preserved (e : Flat.Expr)
-    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
-    (funcs : Array Flat.FuncDef) (cs : List Flat.Env) (ev : Core.TraceEvent) (sf' : Flat.State)
+private theorem HasReturnInHead_Steps_steppable
+    (h_a : HasReturnInHead a)
+    (hsteps : Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs_pre smid)
+    {t : Core.TraceEvent} {smid' : Flat.State}
+    (hstep : Flat.step? smid = some (t, smid')) :
+    HasReturnInHead smid.expr
+```
+
+**What this says**: If `a` has `HasReturnInHead`, and we take some steps to `smid`, and `smid` can step further (to `smid'`), then `smid.expr` still has `HasReturnInHead`.
+
+**Proof approach**: Induction on `hsteps`:
+1. **Base case** (`Steps.refl`): `smid = ⟨a, env, heap, trace, funcs, cs⟩`, so `smid.expr = a`, and `h_a` directly gives `HasReturnInHead smid.expr`.
+2. **Step case** (`Steps.step`): We have `step? ⟨a, ...⟩ = some (ev, s')` and `Steps s' evs' smid`. By IH we need `HasReturnInHead s'.expr`. This requires **HasReturnInHead preservation through a single step when the result can still step**.
+
+So the core sub-lemma needed is:
+```lean
+private theorem HasReturnInHead_step_preserved
     (hret : HasReturnInHead e)
-    (hna : NoNestedAbrupt e)
     (hstep : Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (ev, sf'))
-    (hnv : ¬ Flat.isValue sf'.expr) :
-    HasReturnInHead sf'.expr := by
-  cases hret with
-  | return_none_direct => simp [Flat.step?] at hstep; obtain ⟨_, h⟩ := hstep; subst h; simp [Flat.isValue] at hnv
-  | return_some_direct v hv => simp [Flat.step?, Flat.exprValue?] at hstep; sorry -- v is value, step gives lit, contradiction with hnv
-  | return_some_arg inner hri =>
-    simp [Flat.step?] at hstep
-    sorry -- step inner, IH gives HasReturnInHead inner' ∨ value. hnv eliminates value.
-  | seq_left a b hret_a =>
-    simp [Flat.step?] at hstep
-    sorry -- step a. If a→a' non-value: sf'.expr = .seq a' b, HasReturnInHead a' by IH → seq_left. If a→value: sf'.expr = b, but b may not have HasReturnInHead.
-  -- similar for other constructors
+    (hsteppable : ∃ t sf'', Flat.step? sf' = some (t, sf'')) :
+    HasReturnInHead sf'.expr
 ```
 
-**THE HARD CASE**: `seq_left` when `a` steps to a value in one step (e.g., `a = .return none` → `.lit ...`). Then `sf'.expr = b` which may not have HasReturnInHead. BUT: `hnv` says `sf'.expr` is not a value. And `b` could be a non-value expression without HasReturnInHead.
+**Why this works**: HasReturnInHead tracks `.return` in head position. When `e` steps:
+- If `e = .return none`: steps to `.lit .undefined` (a value, can't step further → contradiction with hsteppable)
+- If `e = .return (some (.lit v))`: steps to `.lit v` (value → contradiction)
+- If `e = .return (some inner)` where inner steps: `sf'.expr = .return (some inner')`, still HasReturnInHead
+- If `e = .seq a b` with HasReturnInHead a: if a→a' (non-value): sf'.expr = .seq a' b, need HasReturnInHead a' (by IH). If a→value: sf'.expr = b, which may NOT have HasReturnInHead. But wait — does b step? If it does, we have hsteppable for b. But b might step without HasReturnInHead (e.g., b = .seq x y).
 
-**ALTERNATIVE**: Instead of proving HasReturnInHead preserved, prove the TWO CONDITIONS DIRECTLY preserved through steps:
+**THE HARD CASE**: `seq_left a b` where `a` steps to a value. Then `sf'.expr = b`. Need `HasReturnInHead b` but we only know `HasReturnInHead (.seq a b)` which gives `HasReturnInHead a`. The `b` part may not have HasReturnInHead.
 
-```lean
-private theorem callStackSafe_step_preserved (sf sf' : Flat.State) (ev : Core.TraceEvent)
-    (hret : HasReturnInHead sf.expr)
-    (hna : NoNestedAbrupt sf.expr)
-    (hstep : Flat.step? sf = some (ev, sf')) :
-    (∀ body catch_ fin, sf'.expr ≠ .tryCatch body "__call_frame_return__" catch_ fin) ∧
-    (∀ f' env' args', sf'.expr = .call f' env' args' →
-      Flat.exprValue? f' = none ∨ Flat.exprValue? env' = none ∨ Flat.valuesFromExprList? args' = none) := by
-  sorry
-```
-
-Then at each step in the `hpres` callback:
-- If `HasReturnInHead smid.expr`: use `hasReturnInHead_callStackSafe`
-- If not: we need the conditions to still hold (this is the hard part)
-
-**SIMPLEST PATH**: Check if the `Steps` in the hpres callback are BOUNDED by the error event. If the steps only go up to when the return fires (producing an error), then HasReturnInHead holds at ALL intermediate steps (since value states don't step further).
-
-Run `lean_goal` at L13351 to check the available hypotheses. Look for a length bound or termination condition.
+**SOLUTION**: Use `NoNestedAbrupt` or a similar invariant. Check if `hasReturnInHead_return_steps` (L13269) provides any constraint on `b`. Or: check whether in the ACTUAL callsite (L13358-13361), the steps are bounded by the error event, meaning `b` is never reached.
 
 ### STEP-BY-STEP
-1. Run `lean_goal` at L13351
-2. Check if there's a bound showing intermediate states still have HasReturnInHead
-3. If yes: apply `hasReturnInHead_callStackSafe` directly at each sorry
-4. If no: prove HasReturnInHead preservation (start with `return_none_direct` base case, which gives contradiction with non-value)
-5. Apply to all 6 sorry sites
+1. Run `lean_goal` at L13264 to see exact hypotheses
+2. Try the base case: `cases hsteps` or `induction hsteps`
+3. For the refl case: `exact h_a`
+4. For the step case: need HasReturnInHead preservation
+5. Check if `NoNestedAbrupt` or `hna` is available in the context
+6. If the seq_left value case is blocked, try a different approach: prove the two callStack conditions DIRECTLY preserved through steps, instead of going through HasReturnInHead
 
-## P1: L13407 (remaining compound HasReturnInHead cases)
-After P0, expand `| _ => sorry` into explicit constructor matches.
+## P1: L13415 (remaining compound HasReturnInHead)
 
-## P2: HasAwaitInHead + HasYieldInHead (L13763, L13936)
-Same architecture as P0-P1.
+After P0, expand `| _ => sorry` at L13415 into explicit constructor matches. Each should follow the seq_left pattern you already proved.
 
-## SKIP
+## P2: Compound cases L13771, L13944 (HasAwait/Yield)
+
+Same architecture as HasReturnInHead. If the pattern from P0 works, adapt for HasAwaitInHead and HasYieldInHead.
+
+## P3: L14000, L14004, L14005 (return/yield .let + compound)
+
+Lower priority. Attempt after P0-P2.
+
+## SKIP (BLOCKED or proof-owned)
 - L10183-L10554 (trivialChain — proof agent)
-- L14033-14864 (while/if — BLOCKED)
-- L15705-15726 (tryCatch — BLOCKED)
-- L17053-17354 (end-of-file — BLOCKED)
+- L14095-14872 (while/if — BLOCKED)
+- L15713-15734 (tryCatch — BLOCKED)
+- L17061-17362 (BLOCKED)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — callStack condition sorries L13351-L13397" >> agents/wasmspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — HasReturnInHead_Steps_steppable L13264" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

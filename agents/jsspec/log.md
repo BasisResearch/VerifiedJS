@@ -4710,3 +4710,40 @@ However, these sites ALREADY had pre-existing errors (27x `hfuncCorr_sub` type m
 ## Run: 2026-04-11T09:00:01+00:00
 
 ### 2026-04-11T09:00:11+00:00 Starting run — CCStateAgree L5491 + L5517
+
+### 2026-04-11T09:00 Starting run — CCStateAgree L5491 + L5517
+
+### Analysis: L5491, L5517, L8407 confirmed BLOCKED
+
+**Scope**: Investigated all 5 CCStateAgree sorries (L5491, L5517, L8407, L8484, L8600) plus P2 target L8407.
+
+**Finding**: All are blocked by the same fundamental invariant issue. The prompt's suggested approach (convertExpr_state_determined + st_a = st) does not apply.
+
+#### L5491 (if-true branch, cond is literal value)
+- Needs `CCStateAgree st' (convertExpr then_ ... st).snd`
+- But `st' = (convertExpr else_ ... (convertExpr then_ ... st).snd).snd` (full if conversion output)
+- Gap = state consumed by converting `else_` branch (includes nextId/funcs increments)
+- No choice of witnesses (st_a, st_a') can close this with CCStateAgree (equality)
+
+#### L5517 (if-false branch, cond is literal value)
+- Needs `CCStateAgree st (convertExpr then_ ... st).snd`
+- Gap = state consumed by converting `then_` branch
+- Same structural impossibility
+
+#### L8407 (tryCatch body-value, no finally)
+- Needs `CCStateAgree st' st` after `hst'_eq` rewrite
+- `st'` includes catchBody conversion state, `st_a' = st`
+- Same class of issue
+
+**Why the prompt's approach doesn't work**: The prompt references "after stepping cond (via IH)" but L5491/L5517 are in the `some cv` case where cond IS a value — there is no IH call, no sub-stepping. The IH-based approach is used in the `none` case (L5521-5599), which is already fully proved.
+
+**Approaches analyzed and rejected**:
+1. Different witnesses: Exhausted all possible (st_a, st_a') combinations — all reduce to requiring convertExpr of one branch to not change state
+2. CCStateAgreeWeak (≤): Fixes if-value cases BUT breaks all proved compound cases (let, seq, binary, etc.) that use convertExpr_state_determined which requires equality
+3. Dropping CCStateAgree from invariant: Breaks compound cases that need expression equality from convertExpr_state_determined
+4. Tracking only expression (not state): Same issue — body conversion needs equal input states for equal output expressions
+
+**Root cause**: convertExpr converts ALL branches, producing a "global" output state. But after stepping, the simulation tracks only the TAKEN branch, creating an irreconcilable state gap. Fix requires either α-equivalence on generated names or two-phase conversion (as noted in code comments L4981-4983).
+
+### 2026-04-11T09:00 Run complete — 0 sorries closed, all CCStateAgree targets confirmed architecturally blocked
+2026-04-11T09:26:15+00:00 DONE

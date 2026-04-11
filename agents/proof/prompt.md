@@ -1,4 +1,4 @@
-# proof — INFRASTRUCTURE: trivialChain sorries + lean_multi_attempt exploration
+# proof — CLOSE TRIVIALCHAIN SORRIES (12 remaining at L10183-L10554)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -8,47 +8,67 @@
 
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## STATUS
-- ANF: 36 sorries. CC: 15 (jsspec). Total: 51.
-- Previous 3 runs: declared ALL ANF sorries blocked. 0 closed in 6 hours.
-- Key insight from previous runs: LSP times out past ~L8500 in ANFConvertCorrect.lean (18K lines).
+## STATUS — 2026-04-11T09:00
+- ANF: 31 sorries. CC: 15 (jsspec). Total: 46.
+- wasmspec just closed 6 callStack sorries (-5 net). GOOD PROGRESS.
+- Your 12 trivialChain sorries are the LARGEST remaining block.
+- LSP may time out past ~L8500 in this 18K-line file.
 
-## ⚠️ DO NOT WORK ON:
-- L13351-L13407 (callStack — wasmspec owns)
-- L13763/L13936/L13992-L13997 (HasAwait/HasYield — wasmspec owns)
-- L12969 (compound cases — wasmspec)
-- L14033-L14864 (while/if — BLOCKED)
-- L15705-L15726 (tryCatch — BLOCKED)
-- L17053 (noCallFrameReturn — BLOCKED, needs predicate)
-- L17064 (body_sim — BLOCKED, needs anfConvert_step_star)
-- L17283/L17354 (compound break/continue — BLOCKED by error propagation)
+## ⚠️ DO NOT WORK ON (owned by wasmspec or BLOCKED):
+- L12969, L13264, L13415, L13771, L13944, L14000-L14005 (wasmspec)
+- L14095-L14872 (while/if — BLOCKED)
+- L15713-L15734 (tryCatch — BLOCKED)
+- L17061, L17072, L17291, L17362 (BLOCKED)
 
-## P0: USE lean_multi_attempt ON TRIVIALCHAIN SORRIES (L10183-L10554)
+## P0: TRIVIALCHAIN SORRIES — SYSTEMATIC APPROACH
 
-These 12 sorries share a common structure. `trivialChain_eval_value` already exists at L9526. The question is whether it can be applied.
+All 12 sorries are in `normalizeExpr_labeled_branch_step` (L9688+). They follow one pattern:
 
-**DO THIS**:
-1. Run `lean_goal` at L10183 to see the exact proof state
-2. Run `lean_multi_attempt` at L10183 with these tactics:
-   ```
-   ["simp_all", "aesop", "omega", "exact trivialChain_eval_value _ _ _ _ _ _ _ ‹_› ‹_›", "apply trivialChain_eval_value", "tauto", "contradiction"]
-   ```
-3. If any tactic works, apply it. Then try the same on L10231, L10279, etc.
-4. If `lean_goal` reveals a specific structure, adapt tactics accordingly.
+**The pattern**: `HasLabeledInHead` is in a secondary operand (e.g., rhs of binary). The primary operand does NOT have labeled. The proof needs:
+1. Step the primary operand to a value (it's a trivialChain)
+2. After stepping, the binary/setProp/etc becomes `op (.lit v) rhs`
+3. Show normalizeExpr of this stepped expression still produces `labeled label body`
+4. Apply IH on the secondary operand (which has HasLabeledInHead)
 
-**KEY CONTEXT**: These sorries are inside `normalizeExpr_step_sim`. They involve proving that a trivialChain expression evaluates to a value via Flat.Steps. The theorem `trivialChain_eval_value` (L9526) should provide exactly this.
+**The blocker (per comments)**: "ANF trivial ≠ flat value" — after the primary operand steps to `.lit v`, `normalizeExpr (.lit v) k` should immediately apply `k` to produce a trivial, but the proof can't connect this.
 
-Read the context around L10183 (±30 lines) to understand the pattern, then systematically try each sorry.
+### STEP-BY-STEP APPROACH
 
-## P1: IF P0 BLOCKED — TRY lean_multi_attempt ON ALL REMAINING SORRIES
+**Step 1**: Use `lean_hover_info` on `normalizeExpr` to understand how it handles `.lit v` — does it immediately apply the continuation?
 
-If trivialChain is truly blocked, use `lean_multi_attempt` to scan remaining ANF sorries for any that might be closable by automated tactics. Try each sorry position with:
+**Step 2**: Use `lean_goal` at L10183 to see the EXACT proof state. We need:
+- What is `lhs` / what does `hnorm` say about `normalizeExpr`?
+- Is there a hypothesis showing `lhs` is a trivialChain or NOT HasLabeledInHead?
+
+**Step 3**: Check if `isTrivialChain lhs = true` can be derived from `¬HasLabeledInHead lhs`. This might require a case analysis or a helper lemma.
+
+**Step 4**: If `isTrivialChain lhs`, then `trivialChain_eval_value` (L9526) gives `∃ v evs, Flat.Steps ⟨lhs, ...⟩ evs ⟨.lit v, ...⟩`. Use these steps.
+
+**Step 5**: After stepping, need `normalizeExpr (.binary op (.lit v) rhs) K` to match `normalizeExpr (.binary op lhs rhs) K`. Check if there's a `normalizeExpr_value_trivial` lemma, or if `normalizeExpr (.lit v) k = k (.lit v)` follows from the definition.
+
+**Step 6**: Use `lean_multi_attempt` at L10183 with:
 ```
-["simp_all", "aesop", "omega", "tauto", "contradiction", "exact?", "apply?"]
+["trivialChain_eval_value", "sorry", "simp [ANF.normalizeExpr]", "simp_all [ANF.normalizeExpr]"]
 ```
 
-Even closing 1 sorry is progress. Focus on sorries in the first 8000 lines where LSP can verify.
+### ALTERNATIVE: If trivialChain blocked, try the OTHER approach
+
+Look for helper lemmas:
+- `normalizeExpr_lit` or `normalizeExpr_value`
+- `HasLabeledInHead_not_trivialChain` or `isTrivialChain_not_hasLabeledInHead`
+- `normalizeExpr_continuation_compose`
+
+Use `lean_local_search` with keywords: "trivialChain", "normalizeExpr_lit", "normalizeExpr_value", "HasLabeledInHead_not"
+
+### LAST RESORT: If all 12 are truly blocked
+
+Use `lean_multi_attempt` on EVERY non-owned sorry in the file to find any that automated tactics can close:
+```
+["simp_all", "aesop", "omega", "tauto", "contradiction"]
+```
+
+Even closing 1 sorry is progress worth logging.
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — trivialChain lean_multi_attempt" >> agents/proof/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — trivialChain systematic approach" >> agents/proof/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`
