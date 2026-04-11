@@ -15579,7 +15579,19 @@ private theorem hasReturnInHead_return_steps :
         exact ⟨evs, sf', hsteps',
           hexpr'.trans hexpr_a, henv'.trans henv_a, hheap'.trans hheap_a,
           htrace'.trans htrace_a, hobs_a⟩
-    | _ => sorry -- remaining: seq_right, binary_rhs, setProp_val, getIndex_idx, setIndex_idx, setIndex_val, call_env, call_args, newObj_env, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems
+    | seq_right h_a => sorry -- second-position: return in b of seq a b
+    | binary_rhs h_a => sorry -- second-position: return in rhs of binary op lhs rhs
+    | setProp_val h_a => sorry -- second-position: return in val of setProp obj prop val
+    | getIndex_idx h_a => sorry -- second-position: return in idx of getIndex obj idx
+    | setIndex_idx h_a => sorry -- second-position: return in idx of setIndex obj idx val
+    | setIndex_val h_a => sorry -- second-position: return in val of setIndex obj idx val
+    | call_env h_a => sorry -- second-position: return in env of call f env args
+    | call_args h_a => sorry -- list: return in args of call f env args
+    | newObj_env h_a => sorry -- second-position: return in env of newObj f env args
+    | newObj_args h_a => sorry -- list: return in args of newObj f env args
+    | makeEnv_values h_a => sorry -- list: return in values of makeEnv values
+    | objectLit_props h_a => sorry -- list: return in props of objectLit props
+    | arrayLit_elems h_a => sorry -- list: return in elems of arrayLit elems
 
 /-- If normalizeExpr sf.expr k produces .return arg (with trivial-preserving k),
     then there exist Flat steps from sf matching the ANF return step. -/

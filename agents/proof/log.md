@@ -7665,3 +7665,4 @@ Right-position cases remain BLOCKED by tryCatch semantics issue.
 
 ## Run: 2026-04-11T13:30:02+00:00
 
+### 2026-04-11T13:30:11+00:00 Starting run — step_error_isLit BATCH WRITE

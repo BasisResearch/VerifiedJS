@@ -4897,3 +4897,24 @@ Risk: Changes convertExpr output, breaking ALL existing proofs that reference sp
 ## Run: 2026-04-11T13:00:01+00:00
 
 ### 2026-04-11T13:00:13+00:00 Starting run — Or.inr sorries L5270/L5414/L5701
+
+**Analysis of Or.inr sorries (L5270, L5414, L5701):**
+These sorries are NOT closable with the current theorem statement. Root cause:
+- In the `inl h_conv` case with non-lit `sc_sub'.expr`, `Or.inr` requires `sa.expr = .lit v`
+- But `sa.expr = (Flat.convertExpr sc_sub'.expr ...)` and `convertExpr` of non-lit always produces non-lit
+- `Or.inl` also fails: Flat drops the `.let`/`.assign`/`.seq` wrapper on error, but Core keeps it (structural mismatch described at L5211-5215)
+- The non-lit case arises when `init` contains a regular tryCatch that catches an error (L1104-1111 in Flat/Semantics.lean, L9859-9868 in Core/Semantics.lean — both produce `.error msg` trace event with non-lit handler expression)
+- Fix would require changing the simulation relation or strengthening the IH to guarantee `inr` for all error cases — both are significant architectural changes
+
+**Assessment of L6144 (non-consoleLog call):**
+Also blocked. Multi-step simulation gap: Core function call is 1 step, Flat is N steps. Same class as L5049/L6352/L6363.
+
+**Updated sorry classification:**
+- Or.inr (L5270, L5414, L5701): BLOCKED by structural mismatch (Flat drops wrappers on error)
+- CCStateAgree (L5496, L5522, L8412, L8489, L8605): BLOCKED (as before)
+- TryCatch catch path: same sorries as Or.inr (L5413=L5414, L5700=L5701)
+- Multi-step (L5049, L6144, L6352, L6363): BLOCKED
+- Unprovable (L7003): BLOCKED
+- All 15 remaining sorries are architecturally blocked. No quick wins remain.
+### 2026-04-11T13:32:52+00:00 Run complete — Or.inr sorries confirmed BLOCKED (structural mismatch); L6144 also BLOCKED (multi-step gap)
+2026-04-11T13:33:02+00:00 DONE
