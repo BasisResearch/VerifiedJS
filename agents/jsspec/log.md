@@ -4657,3 +4657,5 @@ Confirmed BLOCKED on multi-step simulation. Non-consoleLog calls involve N Flat 
 
 ## Run: 2026-04-11T07:00:05+00:00
 
+2026-04-11T07:00:08+00:00 EXIT: code 1
+2026-04-11T07:00:08+00:00 DONE
