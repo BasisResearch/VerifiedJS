@@ -4639,3 +4639,18 @@ Non-consoleLog function calls in Flat involve N steps (makeClosure, makeEnv, etc
 ## Run: 2026-04-11T06:00:02+00:00
 
 ### 2026-04-11T06:00:10+00:00 Starting run — FuncsCorr init L1519
+
+**Changes made:**
+1. Modified FuncsCorr definition (L1455): Added `i > 0` guard to conjuncts (2) and (3), excluding consoleLogIdx (index 0) from per-function correspondence. Both Core and Flat handle console.log via special-case dispatch, so FuncsCorr doesn't need to cover it. Removed `coreFuncs.size ≤ flatFuncs.size` conjunct (now implicit in the forall).
+2. Proved L1519 (funcCorr_init): With `i > 0` guard, all conditions are vacuously true since `#[logBuiltin]` only has index 0. Proof uses `cases i` + `omega` for i=0 and `simp_all` for i>0 (getElem? returns none).
+
+**Sorry count: 16 → 15** (L1519 closed)
+**Pre-existing errors: 616 → 616** (unchanged, no new errors introduced)
+
+**P1 investigation (error structural mismatch L5163, L5262, L5501):**
+Confirmed BLOCKED. Flat.step? drops the compound wrapper (.let/.assign/.seq) on error, producing `sf'.expr = error_result`. Core.step? keeps it, producing `sc'.expr = .let name error_result body`. The SimRel requires `sf'.expr = convertExpr sc'.expr ...`, but `convertExpr (.let ...)` produces `.let ...` ≠ `error_result`. Fix options: (a) relax CC_SimRel for error states, or (b) change error propagation in one of the semantics. Both are architectural changes.
+
+**P2 investigation (call case L5944):**
+Confirmed BLOCKED on multi-step simulation. Non-consoleLog calls involve N Flat steps (makeClosure, makeEnv, call dispatch) vs Core's 1 step. FuncsCorr is now available in scope (hfuncCorr) but the multi-step gap remains the blocker.
+### 2026-04-11T06:27:44+00:00 Run complete — L1519 closed, sorry count 16→15, P1/P2 confirmed blocked
+2026-04-11T06:27:50+00:00 DONE
