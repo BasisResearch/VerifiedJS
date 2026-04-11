@@ -16180,9 +16180,10 @@ private theorem hasAbruptCompletion_false_implies_noNestedAbrupt (e : Flat.Expr)
     exact .assign (hasAbruptCompletion_false_implies_noNestedAbrupt val hac)
   | .«if» cond then_ else_ =>
     simp [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
-    exact .if (hasAbruptCompletion_false_implies_noNestedAbrupt cond hac.1)
-              (hasAbruptCompletion_false_implies_noNestedAbrupt then_ hac.2.1)
-              (hasAbruptCompletion_false_implies_noNestedAbrupt else_ hac.2.2)
+    obtain ⟨⟨hc, ht⟩, he⟩ := hac
+    exact .if (hasAbruptCompletion_false_implies_noNestedAbrupt cond hc)
+              (hasAbruptCompletion_false_implies_noNestedAbrupt then_ ht)
+              (hasAbruptCompletion_false_implies_noNestedAbrupt else_ he)
   | .seq a b =>
     simp [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
     exact .seq (hasAbruptCompletion_false_implies_noNestedAbrupt a hac.1)
@@ -16210,9 +16211,10 @@ private theorem hasAbruptCompletion_false_implies_noNestedAbrupt (e : Flat.Expr)
                     (hasAbruptCompletion_false_implies_noNestedAbrupt idx hac.2)
   | .setIndex obj idx val =>
     simp [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
-    exact .setIndex (hasAbruptCompletion_false_implies_noNestedAbrupt obj hac.1)
-                    (hasAbruptCompletion_false_implies_noNestedAbrupt idx hac.2.1)
-                    (hasAbruptCompletion_false_implies_noNestedAbrupt val hac.2.2)
+    obtain ⟨⟨ho, hi⟩, hv⟩ := hac
+    exact .setIndex (hasAbruptCompletion_false_implies_noNestedAbrupt obj ho)
+                    (hasAbruptCompletion_false_implies_noNestedAbrupt idx hi)
+                    (hasAbruptCompletion_false_implies_noNestedAbrupt val hv)
   | .deleteProp obj _ =>
     simp [hasAbruptCompletion] at hac
     exact .deleteProp (hasAbruptCompletion_false_implies_noNestedAbrupt obj hac)
@@ -16231,29 +16233,32 @@ private theorem hasAbruptCompletion_false_implies_noNestedAbrupt (e : Flat.Expr)
                   (hasAbruptCompletion_false_implies_noNestedAbrupt body hac.2)
   | .tryCatch body _ catch_ (some fin) =>
     simp [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
-    exact .tryCatch_some (hasAbruptCompletion_false_implies_noNestedAbrupt body hac.1)
-                         (hasAbruptCompletion_false_implies_noNestedAbrupt catch_ hac.2.1)
-                         (hasAbruptCompletion_false_implies_noNestedAbrupt fin hac.2.2)
+    obtain ⟨⟨hb, hc⟩, hf⟩ := hac
+    exact .tryCatch_some (hasAbruptCompletion_false_implies_noNestedAbrupt body hb)
+                         (hasAbruptCompletion_false_implies_noNestedAbrupt catch_ hc)
+                         (hasAbruptCompletion_false_implies_noNestedAbrupt fin hf)
   | .tryCatch body _ catch_ none =>
     simp [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
     exact .tryCatch_none (hasAbruptCompletion_false_implies_noNestedAbrupt body hac.1)
                          (hasAbruptCompletion_false_implies_noNestedAbrupt catch_ hac.2)
   | .call f env args =>
     simp [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
-    exact .call (hasAbruptCompletion_false_implies_noNestedAbrupt f hac.1)
-               (hasAbruptCompletion_false_implies_noNestedAbrupt env hac.2.1)
-               (fun elem he => by
-                 have := Flat.Expr.mem_listDepth_lt he
+    obtain ⟨⟨hf, he⟩, ha⟩ := hac
+    exact .call (hasAbruptCompletion_false_implies_noNestedAbrupt f hf)
+               (hasAbruptCompletion_false_implies_noNestedAbrupt env he)
+               (fun elem hem => by
+                 have := Flat.Expr.mem_listDepth_lt hem
                  exact hasAbruptCompletion_false_implies_noNestedAbrupt elem
-                   (hasAbruptCompletionList_mem_false args hac.2.2 elem he))
+                   (hasAbruptCompletionList_mem_false args ha elem hem))
   | .newObj f env args =>
     simp [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
-    exact .newObj (hasAbruptCompletion_false_implies_noNestedAbrupt f hac.1)
-                 (hasAbruptCompletion_false_implies_noNestedAbrupt env hac.2.1)
-                 (fun elem he => by
-                   have := Flat.Expr.mem_listDepth_lt he
+    obtain ⟨⟨hf, he⟩, ha⟩ := hac
+    exact .newObj (hasAbruptCompletion_false_implies_noNestedAbrupt f hf)
+                 (hasAbruptCompletion_false_implies_noNestedAbrupt env he)
+                 (fun elem hem => by
+                   have := Flat.Expr.mem_listDepth_lt hem
                    exact hasAbruptCompletion_false_implies_noNestedAbrupt elem
-                     (hasAbruptCompletionList_mem_false args hac.2.2 elem he))
+                     (hasAbruptCompletionList_mem_false args ha elem hem))
   | .makeEnv vals =>
     simp [hasAbruptCompletion] at hac
     exact .makeEnv (fun elem he => by
@@ -16765,17 +16770,19 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       · split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]; exact .lit)
       · obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]; exact .lit
     · -- body not value
-      split at hstep
-      · -- error event
-        split at hstep
-        · split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]; exact .lit)
-        · split at hstep
+      split at hstep     -- step? body: some (t, sb) vs none
+      · -- some (t, sb)
+        split at hstep   -- match t: error vs non-error
+        · -- error event
+          split at hstep
           · split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]; exact .lit)
-          · obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]; exact hcatch
-      · -- non-error step
-        obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .tryCatch_none (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-          hbody hfuncs_na hfuncs_ac (by assumption)) hcatch
+          · split at hstep
+            · split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]; exact .lit)
+            · obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]; exact hcatch
+        · -- non-error step
+          obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
+          exact .tryCatch_none (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
+            hbody hfuncs_na hfuncs_ac (by assumption)) hcatch
       · exact absurd hstep (by simp)
   | tryCatch_some hbody hcatch hfin =>
     unfold Flat.step? at hstep; dsimp only [] at hstep
@@ -16786,18 +16793,20 @@ private theorem NoNestedAbrupt_step_preserved (sf sf' : Flat.State) (ev : Core.T
       · obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
         exact .seq hfin .lit
     · -- body not value
-      split at hstep
-      · -- error event
-        split at hstep
-        · split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]; exact .lit)
-        · split at hstep
+      split at hstep     -- step? body: some (t, sb) vs none
+      · -- some (t, sb)
+        split at hstep   -- match t: error vs non-error
+        · -- error event
+          split at hstep
           · split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]; exact .lit)
-          · obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-            exact .seq hcatch hfin
-      · -- non-error step
-        obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
-        exact .tryCatch_some (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
-          hbody hfuncs_na hfuncs_ac (by assumption)) hcatch hfin
+          · split at hstep
+            · split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]; exact .lit)
+            · obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
+              exact .seq hcatch hfin
+        · -- non-error step
+          obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]
+          exact .tryCatch_some (NoNestedAbrupt_step_preserved ⟨_, env, heap, trace, funcs, cs⟩ _ _
+            hbody hfuncs_na hfuncs_ac (by assumption)) hcatch hfin
       · exact absurd hstep (by simp)
   termination_by Flat.Expr.depth sf.expr
   decreasing_by all_goals (simp_all [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth]; omega)
