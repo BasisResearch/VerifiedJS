@@ -9493,6 +9493,8 @@ inductive HasNonCallFrameTryCatchInHead : Flat.Expr → Prop where
   | seq_right : HasNonCallFrameTryCatchInHead b → HasNonCallFrameTryCatchInHead (.seq a b)
   | let_init : HasNonCallFrameTryCatchInHead init →
       HasNonCallFrameTryCatchInHead (.let name init body)
+  | let_body : HasNonCallFrameTryCatchInHead body →
+      HasNonCallFrameTryCatchInHead (.let name init body)
   | getProp_obj : HasNonCallFrameTryCatchInHead obj →
       HasNonCallFrameTryCatchInHead (.getProp obj prop)
   | setProp_obj : HasNonCallFrameTryCatchInHead obj →
@@ -9525,6 +9527,14 @@ inductive HasNonCallFrameTryCatchInHead : Flat.Expr → Prop where
       HasNonCallFrameTryCatchInHead (.newObj f env args)
   | if_cond : HasNonCallFrameTryCatchInHead c →
       HasNonCallFrameTryCatchInHead (.if c t e)
+  | if_then : HasNonCallFrameTryCatchInHead t →
+      HasNonCallFrameTryCatchInHead (.if c t e)
+  | if_else : HasNonCallFrameTryCatchInHead e →
+      HasNonCallFrameTryCatchInHead (.if c t e)
+  | while_cond : HasNonCallFrameTryCatchInHead c →
+      HasNonCallFrameTryCatchInHead (.while_ c body)
+  | while_body : HasNonCallFrameTryCatchInHead body →
+      HasNonCallFrameTryCatchInHead (.while_ c body)
   | return_some_arg : HasNonCallFrameTryCatchInHead v →
       HasNonCallFrameTryCatchInHead (.return (some v))
   | yield_some_arg : HasNonCallFrameTryCatchInHead v →
@@ -19083,7 +19093,7 @@ private theorem hasReturnInHead_return_steps :
                 by rw [htrace'.trans htrace_a]; simp [List.append_assoc],
                 by rw [observableTrace_append, observableTrace_all_silent hsil_b, List.nil_append]; exact hobs_a⟩
     | call_args h_a =>
-      rename_i f_expr env_expr args_list
+      rename_i args_list f_expr env_expr
       simp only [ANF.normalizeExpr] at hnorm
       have hf_depth : f_expr.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
       have he_depth : env_expr.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
@@ -19723,7 +19733,7 @@ private theorem hasReturnInHead_return_steps :
                 by rw [htrace'.trans htrace_a]; simp [List.append_assoc],
                 by rw [observableTrace_append, observableTrace_all_silent hsil_b, List.nil_append]; exact hobs_a⟩
     | newObj_args h_a =>
-      rename_i f_expr env_expr args_list
+      rename_i args_list f_expr env_expr
       simp only [ANF.normalizeExpr] at hnorm
       have hf_depth : f_expr.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
       have he_depth : env_expr.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
