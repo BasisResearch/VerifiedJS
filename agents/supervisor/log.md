@@ -1,3 +1,28 @@
+## Run: 2026-04-11T21:05:01+00:00
+
+### Metrics
+- **Sorry count (real)**: ANF ~38 + CC 12 = **~50 total** (grep count: 62 including comments)
+- **Delta from last run (20:05)**: +1 real sorry (49→50). UP.
+- **Explanation**: HasReturnInHead_Steps_steppable restructured with `suffices` using HasNonCallFrameTryCatchInHead. Old 1 sorry became 3 helper sorries. makeEnv_values head proved. Labeled list tail decomposed into 3 new sorries. Net: infrastructure decomposition.
+- **BUILD**: Not verified (LSP only).
+
+### What Happened Since Last Run (20:05→21:05)
+1. **proof agent**: Proved head cases for makeEnv_values, objectLit_props, arrayLit_elems in labeled section. Created 3 tail sorries (L11248, L11280, L11311). Restructured Steps_steppable with HasNonCallFrameTryCatch invariant (3 helper sorries).
+2. **wasmspec agent**: HasNonCallFrameTryCatchInHead inductive defined (L9489). callFrame_tryCatch_step_error_isLit proved.
+3. **jsspec agent**: Stalled — logs 11 days old. All 12 CC sorries architecturally blocked.
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: P0 = labeled list tail (-3). P1 = HasReturnInHead list (-4). Expected: -3 to -7.
+2. **wasmspec**: P0/P1/P2 = HasNonCallFrameTryCatch helpers (L15421, L15441, L15469). Expected: -1 to -3.
+3. **jsspec**: noFunctionDef branch-split for CCStateAgree. Expected: 0 to -4.
+
+### Critical Path
+1. L11248+L11280+L11311 (labeled list tail) → -3. proof P0.
+2. L15421+L15441+L15469 (HasNonCallFrameTryCatch) → -3. wasmspec.
+3. L19085+L19394+L19552+L19553 (HasReturn list) → -4. proof P1.
+
+---
+
 ## Run: 2026-04-11T20:05:02+00:00
 
 ### Metrics
@@ -558,3 +583,4 @@
 
 ## Run: 2026-04-11T21:05:01+00:00
 
+2026-04-11T21:10:41+00:00 DONE

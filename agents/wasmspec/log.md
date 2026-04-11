@@ -8400,3 +8400,6 @@ The theorem quantifies over ALL expressions with HasReturnInHead, but is only TR
    - Prove ¬HasNonCallFrameTryCatchInHead a at outer application (from normalizeExpr .return context)
 ### 2026-04-11T20:54:18+00:00 Run complete — L15348 sorry closed, 3 building-block sorries remain
 2026-04-11T20:54:30+00:00 DONE
+
+## Run: 2026-04-11T21:15:01+00:00
+

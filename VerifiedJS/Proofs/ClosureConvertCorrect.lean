@@ -1333,9 +1333,10 @@ private theorem convertExpr_state_delta (e : Core.Expr)
           | some n => List.filter (fun x => x != n) (List.filter (fun v => !List.elem v params) (Flat.freeVars body))
           | none => List.filter (fun v => !List.elem v params) (Flat.freeVars body)) []) 0)
       { st with nextId := st.nextId + 1 }
-    refine ⟨?_, ?_⟩
-    · rw [ih.1]; dsimp only []; omega
-    · simp only [Array.size_push]; rw [ih.2]; dsimp only []; omega
+    exact ⟨ih.1.trans ((Nat.add_assoc st.nextId 1 (exprFuncCount body)).trans
+              (congrArg (st.nextId + ·) (Nat.add_comm 1 (exprFuncCount body)))),
+           by show Array.size (Array.push _ _) = _; simp only [Array.size_push]
+              exact (congrArg (· + 1) ih.2).trans (Nat.add_assoc st.funcs.size (exprFuncCount body) 1)⟩
   | throw arg =>
     simp only [Flat.convertExpr, exprFuncCount]
     exact convertExpr_state_delta arg scope envVar envMap st
