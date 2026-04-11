@@ -4654,3 +4654,6 @@ Confirmed BLOCKED. Flat.step? drops the compound wrapper (.let/.assign/.seq) on 
 Confirmed BLOCKED on multi-step simulation. Non-consoleLog calls involve N Flat steps (makeClosure, makeEnv, call dispatch) vs Core's 1 step. FuncsCorr is now available in scope (hfuncCorr) but the multi-step gap remains the blocker.
 ### 2026-04-11T06:27:44+00:00 Run complete — L1519 closed, sorry count 16→15, P1/P2 confirmed blocked
 2026-04-11T06:27:50+00:00 DONE
+
+## Run: 2026-04-11T07:00:05+00:00
+

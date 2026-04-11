@@ -10526,7 +10526,12 @@ private theorem normalizeExpr_labeled_branch_step :
                 cases hmem with
                 | head => exact henv_e ▸ hewf_e x hfv
                 | tail _ hmem' => exact hewf x (VarFreeIn.makeEnv_elem _ _ v (List.mem_cons_of_mem _ hmem') hfv)
-        · sorry -- first element has no labeled: requires stepping + list recursion
+        · -- first element has no labeled: zero-step
+          refine ⟨⟨.makeEnv (e :: rest), env, heap, trace, funcs, cs⟩, [], .refl _,
+            by simp, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, by simp only [ANF.normalizeExpr, ANF.normalizeExprList]; exact hnorm⟩, hewf⟩
+          intro smid evs1 hs hl
+          have hnil : evs1 = [] := List.length_eq_zero.mp (by omega)
+          subst hnil; cases hs; exact ⟨rfl, rfl, by simp⟩
     | objectLit_props h_props =>
       rename_i props
       simp only [ANF.normalizeExpr] at hnorm
@@ -10558,7 +10563,12 @@ private theorem normalizeExpr_labeled_branch_step :
                 cases hmem with
                 | head => exact henv_e ▸ hewf_e x hfv
                 | tail _ hmem' => exact hewf x (VarFreeIn.objectLit_value _ _ q (List.mem_cons_of_mem _ hmem') hfv)
-        · sorry -- first prop value has no labeled: requires stepping + list recursion
+        · -- first prop value has no labeled: zero-step
+          refine ⟨⟨.objectLit ((propName, e) :: rest), env, heap, trace, funcs, cs⟩, [], .refl _,
+            by simp, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, by simp only [ANF.normalizeExpr, ANF.normalizeProps]; exact hnorm⟩, hewf⟩
+          intro smid evs1 hs hl
+          have hnil : evs1 = [] := List.length_eq_zero.mp (by omega)
+          subst hnil; cases hs; exact ⟨rfl, rfl, by simp⟩
     | arrayLit_elems h_elems =>
       rename_i elems
       simp only [ANF.normalizeExpr] at hnorm
@@ -10589,7 +10599,12 @@ private theorem normalizeExpr_labeled_branch_step :
                 cases hmem with
                 | head => exact henv_e ▸ hewf_e x hfv
                 | tail _ hmem' => exact hewf x (VarFreeIn.arrayLit_elem _ _ v (List.mem_cons_of_mem _ hmem') hfv)
-        · sorry -- first element has no labeled: requires stepping + list recursion
+        · -- first element has no labeled: zero-step
+          refine ⟨⟨.arrayLit (e :: rest), env, heap, trace, funcs, cs⟩, [], .refl _,
+            by simp, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, by simp only [ANF.normalizeExpr, ANF.normalizeExprList]; exact hnorm⟩, hewf⟩
+          intro smid evs1 hs hl
+          have hnil : evs1 = [] := List.length_eq_zero.mp (by omega)
+          subst hnil; cases hs; exact ⟨rfl, rfl, by simp⟩
 
 /-- When normalizeExpr sf.expr k produces .labeled label body, there exist Flat steps
     from sf to sf' such that normalizeExpr sf'.expr k' produces body (with k' trivial-preserving).
