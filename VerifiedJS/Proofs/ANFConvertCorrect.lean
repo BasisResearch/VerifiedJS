@@ -13250,6 +13250,129 @@ private theorem hasReturnInHead_callStackSafe (e : Flat.Expr) (hret : HasReturnI
     | call_args h => right; right; cases h; exact HasReturnInHeadList_valuesFromExprList_none h
     | _ => exact absurd h (by intro h'; exact Flat.Expr.noConfusion h')
 
+/-- Prepending to a list preserves HasReturnInHeadList. -/
+private theorem HasReturnInHeadList_append_right
+    (prefix_ : List Flat.Expr) {suffix_ : List Flat.Expr}
+    (h : HasReturnInHeadList suffix_) :
+    HasReturnInHeadList (prefix_ ++ suffix_) := by
+  induction prefix_ with
+  | nil => exact h
+  | cons _ _ ih => exact HasReturnInHeadList.tail ih
+
+/-- When firstNonValueExpr splits a list with HasReturnInHeadList,
+    either the target or the remaining has it. -/
+private theorem HasReturnInHeadList_firstNonValue
+    {args done : List Flat.Expr} {target : Flat.Expr} {remaining : List Flat.Expr}
+    (hfnv : Flat.firstNonValueExpr args = some (done, target, remaining))
+    (h : HasReturnInHeadList args) :
+    HasReturnInHead target ∨ HasReturnInHeadList remaining := by
+  have hsplit := firstNonValueExpr_eq_append hfnv
+  have hdone := firstNonValueExpr_done_all_lit hfnv
+  rw [hsplit] at h
+  induction done with
+  | nil =>
+    simp at h; cases h with
+    | head h => exact Or.inl h
+    | tail h => exact Or.inr h
+  | cons d ds ih =>
+    simp [List.cons_append] at h
+    cases h with
+    | head hd =>
+      obtain ⟨v, rfl⟩ := hdone d (List.mem_cons_self _ _)
+      exact absurd (HasReturnInHead_not_value _ hd) (by simp [Flat.exprValue?])
+    | tail h =>
+      exact ih (fun e he => hdone e (List.mem_cons_of_mem _ he)) h
+
+/-- Reconstruct HasReturnInHeadList after replacing target in a split list. -/
+private theorem HasReturnInHeadList_reconstruct
+    (done : List Flat.Expr) (e : Flat.Expr) (remaining : List Flat.Expr)
+    (h : HasReturnInHead e ∨ HasReturnInHeadList remaining) :
+    HasReturnInHeadList (done ++ e :: remaining) :=
+  match h with
+  | .inl he => HasReturnInHeadList_append_right done (.head he)
+  | .inr hr => HasReturnInHeadList_append_right done (.tail hr)
+
+/-- Prepending to a prop list preserves HasReturnInHeadProps. -/
+private theorem HasReturnInHeadProps_append_right
+    (prefix_ : List (Flat.PropName × Flat.Expr))
+    {suffix_ : List (Flat.PropName × Flat.Expr)}
+    (h : HasReturnInHeadProps suffix_) :
+    HasReturnInHeadProps (prefix_ ++ suffix_) := by
+  induction prefix_ with
+  | nil => exact h
+  | cons _ _ ih => exact HasReturnInHeadProps.tail ih
+
+/-- Done elements from firstNonValueProp are all .lit. -/
+private theorem firstNonValueProp_done_all_lit
+    {props done : List (Flat.PropName × Flat.Expr)} {name : Flat.PropName}
+    {target : Flat.Expr} {remaining : List (Flat.PropName × Flat.Expr)}
+    (h : Flat.firstNonValueProp props = some (done, name, target, remaining)) :
+    ∀ p ∈ done, ∃ v, p.snd = Flat.Expr.lit v := by
+  induction props generalizing done name target remaining with
+  | nil => simp [Flat.firstNonValueProp] at h
+  | cons p tl ih =>
+    obtain ⟨pn, pe⟩ := p
+    unfold Flat.firstNonValueProp at h
+    split at h
+    · rename_i v
+      split at h
+      · next heq =>
+        simp at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
+        intro x hx; cases hx with
+        | head => exact ⟨v, rfl⟩
+        | tail _ hm => exact ih heq x hm
+      · simp at h
+    · simp at h; obtain ⟨rfl, _, _, _⟩ := h
+      intro x hx; exact absurd hx (List.not_mem_nil)
+
+/-- When firstNonValueProp splits a list with HasReturnInHeadProps,
+    either the target or the remaining has it. -/
+private theorem HasReturnInHeadProps_firstNonValue
+    {props done : List (Flat.PropName × Flat.Expr)} {name : Flat.PropName}
+    {target : Flat.Expr} {remaining : List (Flat.PropName × Flat.Expr)}
+    (hfnv : Flat.firstNonValueProp props = some (done, name, target, remaining))
+    (h : HasReturnInHeadProps props) :
+    HasReturnInHead target ∨ HasReturnInHeadProps remaining := by
+  have hsplit := firstNonValueProp_eq_append hfnv
+  have hdone := firstNonValueProp_done_all_lit hfnv
+  rw [hsplit] at h
+  induction done with
+  | nil =>
+    simp at h; cases h with
+    | head hd => exact Or.inl hd
+    | tail h => exact Or.inr h
+  | cons d ds ih =>
+    simp [List.cons_append] at h
+    cases h with
+    | head hd =>
+      obtain ⟨v, rfl⟩ := hdone d (List.mem_cons_self _ _)
+      exact absurd (HasReturnInHead_not_value _ hd) (by simp [Flat.exprValue?])
+    | tail h =>
+      exact ih (fun e he => hdone e (List.mem_cons_of_mem _ he)) h
+
+/-- Reconstruct HasReturnInHeadProps after replacing target in a split list. -/
+private theorem HasReturnInHeadProps_reconstruct
+    (done : List (Flat.PropName × Flat.Expr)) (name : Flat.PropName)
+    (e : Flat.Expr) (remaining : List (Flat.PropName × Flat.Expr))
+    (h : HasReturnInHead e ∨ HasReturnInHeadProps remaining) :
+    HasReturnInHeadProps (done ++ (name, e) :: remaining) :=
+  match h with
+  | .inl he => HasReturnInHeadProps_append_right done (.head he)
+  | .inr hr => HasReturnInHeadProps_append_right done (.tail hr)
+
+/-- HasReturnInHeadProps implies valuesFromExprList? on mapped values returns none. -/
+private theorem HasReturnInHeadProps_valuesFromExprList_none
+    {props : List (Flat.PropName × Flat.Expr)} (h : HasReturnInHeadProps props) :
+    Flat.valuesFromExprList? (props.map Prod.snd) = none := by
+  induction h with
+  | head h =>
+    simp [Flat.valuesFromExprList?, HasReturnInHead_not_value _ h]
+    cases props <;> simp [Flat.valuesFromExprList?]
+    rw [HasReturnInHead_not_value _ h]; simp
+  | tail h ih =>
+    simp [Flat.valuesFromExprList?]
+    cases Flat.exprValue? _ <;> simp [ih]
+
 /-- Non-error steps preserve HasReturnInHead. -/
 private theorem HasReturnInHead_step_nonError
     {sf sf' : Flat.State} {t : Core.TraceEvent}

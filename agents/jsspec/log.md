@@ -4751,3 +4751,110 @@ However, these sites ALREADY had pre-existing errors (27x `hfuncCorr_sub` type m
 ## Run: 2026-04-11T10:00:01+00:00
 
 ### 2026-04-11T10:00:14+00:00 Starting run — lean_multi_attempt CC triage
+
+### 2026-04-11T10:00 — CC triage: lean_multi_attempt BLOCKED by LSP timeout
+
+#### LSP Status
+- File ClosureConvertCorrect.lean (~8600 lines) too large for LSP
+- lean_goal works at L100, L500, L1000; times out at L2000+
+- **All 15 sorry lines are past L5000** → cannot run lean_multi_attempt or lean_goal
+- lean_diagnostic_messages also fails on large ranges
+
+#### Manual Analysis of All 15 Sorries
+
+**Category 1: CCStateAgree (5 sorries)** — L5491, L5517, L8407, L8484, L8600
+- Root cause: invariant requires CCStateAgree (nextId=, funcs.size=) between
+  "state after converting full expression" (st') and "state after converting
+  only the executed branch" (st_a'). For branching constructs (if/while/tryCatch),
+  st' includes state consumption of unconverted branches.
+- CCStateAgreeWeak (≤) suggested in FIX comments but BREAKS consumer cases
+  (let, seq, binary, etc.) that use convertExpr_state_determined which needs =.
+
+**Category 2: TryCatch-init edge (3 sorries)** — L5265, L5409, L5696
+- Pattern: `exact ⟨Or.inr sorry, hfuncCorr_sub⟩` in error paths where
+  sc_sub'.expr is not a literal after error event
+- Blocked by L8484: the tryCatch catch case sorry prevents establishing
+  the conversion disjunct for non-literal post-error states
+
+**Category 3: Multi-step simulation (3 sorries)** — L5044, L6347, L6358
+- Flat takes N steps for what Core does in 1 (captured var lookup = 2 steps,
+  newObj with non-value args, newObj with non-value callee)
+- Needs many-to-one or stuttering simulation; current theorem is 1-to-1
+
+**Category 4: Non-consoleLog call (1 sorry)** — L6139
+- Multi-step: Flat function call is N steps vs Core's 1
+- FuncsCorr available but insufficient without multi-step simulation
+
+**Category 5: Unprovable semantic mismatch (1 sorry)** — L6998
+- Flat.step? getIndex on .number has extra "length" check absent in Core
+- Fix is in Flat/Semantics.lean (NOT owned by jsspec agent)
+- Alternative: axiom float_toString_ne_length (not ideal)
+
+**Category 6: functionDef (1 sorry)** — L8250
+- Multi-step (makeClosure+makeEnv is N steps) + FuncsCorr maintenance
+- Needs both multi-step simulation AND closure correctness proof
+
+**Category 7: TryCatch finally (1 sorry)** — L8410
+- CCStateAgree + tryCatch body-value with finally interaction
+- Same class as Category 1, compounded by finally_ conversion
+
+#### Deep Analysis: Why CCStateAgreeWeak Fails
+
+The invariant (L4985-4988):
+```
+∃ st_a st_a', (sf'.expr, st_a') = convertExpr sc'.expr ... st_a ∧
+  CCStateAgree st st_a ∧ CCStateAgree st' st_a'
+```
+
+Consumer (let) case uses CCStateAgree as follows:
+1. IH gives hAgreeOut : CCStateAgree (convertExpr init ... st).snd st_a'
+2. convertExpr_state_determined body ... hAgreeOut.1 hAgreeOut.2
+   → proves body expression equality between canonical and witness states
+3. Expression equality is CRITICAL: different nextId → different fresh var names
+   → structurally different ASTs
+
+With CCStateAgreeWeak (≤ instead of =):
+- Step 2 fails: convertExpr_state_determined needs exact equality
+- No weaker version exists: different nextId produces different expressions
+
+#### Approaches Evaluated
+
+1. **CCStateAgreeWeak drop-in** — REJECTED (breaks consumers)
+2. **Drop CCStateAgree from invariant entirely** — REJECTED (consumers lose body expression identity)
+3. **Convert branches from same state** — REJECTED (funcs index overlap; both branches allocate at same indices)
+4. **State padding after branches** — REJECTED (doesn't change expressions; same mismatch)
+5. **Separate funcs from CCState** — Partially viable but requires signature changes
+6. **α-equivalence on Flat.Expr** — Correct but massive effort (~500 LOC new definitions + proofs)
+7. **Two-phase conversion** — Correct but architectural rewrite
+8. **Many-to-one simulation** — Helps Categories 3,4,6 but NOT Category 1
+
+#### Key Insight: Only functionDef Changes State
+
+convertExpr ONLY modifies nextId/funcs in the .functionDef case (freshVar + addFunc).
+All other cases thread state through sub-expressions unchanged.
+→ Expressions with no functionDef sub-nodes: CCStateAgree is trivially ⟨rfl, rfl⟩.
+→ Problem ONLY manifests when branches contain functionDef.
+
+#### Recommendation: Path A (Two-Phase Conversion)
+
+Most promising: change convertExpr in Flat/ClosureConvert.lean to separate
+state-counting from code generation. Pre-allocate state for all branches
+so the output state is branch-independent.
+
+Concrete plan:
+1. Add `exprStateCost : Core.Expr → (nextIdDelta : Nat) × (funcsDelta : Nat)`
+2. For if/while/tryCatch: pre-allocate state = sum of all branches' costs
+3. Convert branches with pre-allocated, non-overlapping state ranges
+4. Output state = input + total cost (deterministic, branch-independent)
+
+This makes CCStateAgree trivially provable: st' = st + totalCost regardless of branch.
+Consumer cases still work: convertExpr_state_determined still valid (expressions
+determined by starting state, which is unambiguous with pre-allocation).
+
+Estimated effort: ~200 LOC in ClosureConvert.lean + ~100 LOC in ClosureConvertCorrect.lean
+Risk: Changes convertExpr output, breaking ALL existing proofs that reference specific state values.
+
+#### Status
+- Sorry count: 15 CC / 46 total (unchanged)
+- No sorries closable by tactics (confirmed by manual analysis)
+- Next: implement Path A (two-phase conversion) if approved

@@ -7555,3 +7555,4 @@ All sorry locations (L10183+) time out with 30s LSP timeout. Cannot use `lean_mu
 
 ## Run: 2026-04-11T10:30:44+00:00
 
+### 2026-04-11T10:30:55+00:00 Starting run — break/continue helper lemmas
