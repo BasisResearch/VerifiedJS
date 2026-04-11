@@ -10181,10 +10181,10 @@ private theorem normalizeExpr_labeled_branch_step :
             | binary_rhs _ _ _ _ h => exact hewf x (VarFreeIn.binary_rhs _ _ _ _ h)
       · -- ¬HasLabeledInHead lhs: zero-step witness (label is in rhs, normalization already sees it)
         refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
-        · intro _ h; exact absurd h (List.not_mem_nil _)
-        · intro _ _ hs hlen
-          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-          cases hs; exact ⟨rfl, rfl, by simp⟩
+        · intro _ h; nomatch h
+        · intro _ evs1 hs hlen
+          have hnil : evs1 = [] := by cases evs1 with | nil => rfl | cons => simp at hlen
+          subst hnil; cases hs; exact ⟨rfl, rfl, by simp⟩
     | setProp_obj h_obj =>
       rename_i obj prop val
       simp only [ANF.normalizeExpr] at hnorm
@@ -10233,10 +10233,10 @@ private theorem normalizeExpr_labeled_branch_step :
             | setProp_value _ _ _ _ h => exact hewf x (VarFreeIn.setProp_value _ _ _ _ h)
       · -- ¬HasLabeledInHead obj: zero-step witness (label is in val, normalization already sees it)
         refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
-        · intro _ h; exact absurd h (List.not_mem_nil _)
-        · intro _ _ hs hlen
-          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-          cases hs; exact ⟨rfl, rfl, by simp⟩
+        · intro _ h; nomatch h
+        · intro _ evs1 hs hlen
+          have hnil : evs1 = [] := by cases evs1 with | nil => rfl | cons => simp at hlen
+          subst hnil; cases hs; exact ⟨rfl, rfl, by simp⟩
     | getIndex_obj h_obj =>
       rename_i obj idx
       simp only [ANF.normalizeExpr] at hnorm
@@ -10285,10 +10285,10 @@ private theorem normalizeExpr_labeled_branch_step :
             | getIndex_idx _ _ _ h => exact hewf x (VarFreeIn.getIndex_idx _ _ _ h)
       · -- ¬HasLabeledInHead obj: zero-step witness (label is in idx, normalization already sees it)
         refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
-        · intro _ h; exact absurd h (List.not_mem_nil _)
-        · intro _ _ hs hlen
-          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-          cases hs; exact ⟨rfl, rfl, by simp⟩
+        · intro _ h; nomatch h
+        · intro _ evs1 hs hlen
+          have hnil : evs1 = [] := by cases evs1 with | nil => rfl | cons => simp at hlen
+          subst hnil; cases hs; exact ⟨rfl, rfl, by simp⟩
     | setIndex_obj h_obj =>
       rename_i obj idx val
       simp only [ANF.normalizeExpr] at hnorm
@@ -10339,10 +10339,10 @@ private theorem normalizeExpr_labeled_branch_step :
             | setIndex_value _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_value _ _ _ _ h)
       · -- ¬HasLabeledInHead obj: zero-step witness (label is in idx, normalization already sees it)
         refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
-        · intro _ h; exact absurd h (List.not_mem_nil _)
-        · intro _ _ hs hlen
-          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-          cases hs; exact ⟨rfl, rfl, by simp⟩
+        · intro _ h; nomatch h
+        · intro _ evs1 hs hlen
+          have hnil : evs1 = [] := by cases evs1 with | nil => rfl | cons => simp at hlen
+          subst hnil; cases hs; exact ⟨rfl, rfl, by simp⟩
     | setIndex_val h_val =>
       rename_i val obj idx
       simp only [ANF.normalizeExpr] at hnorm
@@ -10370,10 +10370,10 @@ private theorem normalizeExpr_labeled_branch_step :
             | setIndex_value _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_value _ _ _ _ h)
       · -- ¬HasLabeledInHead obj: zero-step witness (label is in val, normalization already sees it)
         refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
-        · intro _ h; exact absurd h (List.not_mem_nil _)
-        · intro _ _ hs hlen
-          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-          cases hs; exact ⟨rfl, rfl, by simp⟩
+        · intro _ h; nomatch h
+        · intro _ evs1 hs hlen
+          have hnil : evs1 = [] := by cases evs1 with | nil => rfl | cons => simp at hlen
+          subst hnil; cases hs; exact ⟨rfl, rfl, by simp⟩
     | call_func h_f =>
       rename_i funcE envE argsL
       simp only [ANF.normalizeExpr] at hnorm
@@ -10424,17 +10424,17 @@ private theorem normalizeExpr_labeled_branch_step :
             | call_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.call_arg _ _ _ _ _ hmem h)
       · -- ¬HasLabeledInHead funcE: zero-step witness (label is in envE, normalization already sees it)
         refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
-        · intro _ h; exact absurd h (List.not_mem_nil _)
-        · intro _ _ hs hlen
-          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-          cases hs; exact ⟨rfl, rfl, by simp⟩
+        · intro _ h; nomatch h
+        · intro _ evs1 hs hlen
+          have hnil : evs1 = [] := by cases evs1 with | nil => rfl | cons => simp at hlen
+          subst hnil; cases hs; exact ⟨rfl, rfl, by simp⟩
     | call_args h_args =>
       -- call_args: zero-step witness (label is in args, normalization already sees it)
       refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
       · intro _ h; exact absurd h (List.not_mem_nil _)
-      · intro _ _ hs hlen
-        have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-        cases hs; exact ⟨rfl, rfl, by simp⟩
+      · intro _ evs1 hs hlen
+        have hnil : evs1 = [] := by cases evs1 with | nil => rfl | cons => simp at hlen
+        subst hnil; cases hs; exact ⟨rfl, rfl, by simp⟩
     | newObj_func h_f =>
       rename_i funcE envE argsL
       simp only [ANF.normalizeExpr] at hnorm
@@ -10485,17 +10485,17 @@ private theorem normalizeExpr_labeled_branch_step :
             | newObj_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.newObj_arg _ _ _ _ _ hmem h)
       · -- ¬HasLabeledInHead funcE: zero-step witness (label is in envE, normalization already sees it)
         refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
-        · intro _ h; exact absurd h (List.not_mem_nil _)
-        · intro _ _ hs hlen
-          have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-          cases hs; exact ⟨rfl, rfl, by simp⟩
+        · intro _ h; nomatch h
+        · intro _ evs1 hs hlen
+          have hnil : evs1 = [] := by cases evs1 with | nil => rfl | cons => simp at hlen
+          subst hnil; cases hs; exact ⟨rfl, rfl, by simp⟩
     | newObj_args h_args =>
       -- newObj_args: zero-step witness (label is in args, normalization already sees it)
       refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
       · intro _ h; exact absurd h (List.not_mem_nil _)
-      · intro _ _ hs hlen
-        have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-        cases hs; exact ⟨rfl, rfl, by simp⟩
+      · intro _ evs1 hs hlen
+        have hnil : evs1 = [] := by cases evs1 with | nil => rfl | cons => simp at hlen
+        subst hnil; cases hs; exact ⟨rfl, rfl, by simp⟩
     | makeEnv_values h_vals =>
       rename_i values
       simp only [ANF.normalizeExpr] at hnorm
@@ -10528,10 +10528,10 @@ private theorem normalizeExpr_labeled_branch_step :
                 | tail _ hmem' => exact hewf x (VarFreeIn.makeEnv_elem _ _ v (List.mem_cons_of_mem _ hmem') hfv)
         · -- first element has no labeled: zero-step witness (label is in tail)
           refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
-          · intro _ h; exact absurd h (List.not_mem_nil _)
-          · intro _ _ hs hlen
-            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-            cases hs; exact ⟨rfl, rfl, by simp⟩
+          · intro _ h; nomatch h
+          · intro _ evs1 hs hlen
+            have hnil : evs1 = [] := by cases evs1 with | nil => rfl | cons => simp at hlen
+            subst hnil; cases hs; exact ⟨rfl, rfl, by simp⟩
     | objectLit_props h_props =>
       rename_i props
       simp only [ANF.normalizeExpr] at hnorm
@@ -10565,10 +10565,10 @@ private theorem normalizeExpr_labeled_branch_step :
                 | tail _ hmem' => exact hewf x (VarFreeIn.objectLit_value _ _ q (List.mem_cons_of_mem _ hmem') hfv)
         · -- first prop value has no labeled: zero-step witness (label is in tail)
           refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
-          · intro _ h; exact absurd h (List.not_mem_nil _)
-          · intro _ _ hs hlen
-            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-            cases hs; exact ⟨rfl, rfl, by simp⟩
+          · intro _ h; nomatch h
+          · intro _ evs1 hs hlen
+            have hnil : evs1 = [] := by cases evs1 with | nil => rfl | cons => simp at hlen
+            subst hnil; cases hs; exact ⟨rfl, rfl, by simp⟩
     | arrayLit_elems h_elems =>
       rename_i elems
       simp only [ANF.normalizeExpr] at hnorm
@@ -10601,10 +10601,10 @@ private theorem normalizeExpr_labeled_branch_step :
                 | tail _ hmem' => exact hewf x (VarFreeIn.arrayLit_elem _ _ v (List.mem_cons_of_mem _ hmem') hfv)
         · -- first element has no labeled: zero-step witness (label is in tail)
           refine ⟨_, [], .refl _, ?_, rfl, rfl, rfl, rfl, by simp, ?_, ⟨n, m, hnorm⟩, hewf⟩
-          · intro _ h; exact absurd h (List.not_mem_nil _)
-          · intro _ _ hs hlen
-            have := List.length_eq_zero.mp (Nat.le_zero.mp hlen); subst this
-            cases hs; exact ⟨rfl, rfl, by simp⟩
+          · intro _ h; nomatch h
+          · intro _ evs1 hs hlen
+            have hnil : evs1 = [] := by cases evs1 with | nil => rfl | cons => simp at hlen
+            subst hnil; cases hs; exact ⟨rfl, rfl, by simp⟩
 
 /-- When normalizeExpr sf.expr k produces .labeled label body, there exist Flat steps
     from sf to sf' such that normalizeExpr sf'.expr k' produces body (with k' trivial-preserving).
