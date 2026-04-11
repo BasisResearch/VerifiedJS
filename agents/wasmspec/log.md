@@ -8307,3 +8307,6 @@ For list cases (`makeEnv_values`, `objectLit_props`, `arrayLit_elems`):
 **ANF sorry count: 44 (down from 46)**
 ### 2026-04-11T16:40:18+00:00 Run complete — 2 Case B sorries closed (seq_right none + some). P1/P2 blocked (documented). ANF sorry count 44 (down from 46).
 2026-04-11T16:41:45+00:00 DONE
+
+## Run: 2026-04-11T17:15:01+00:00
+

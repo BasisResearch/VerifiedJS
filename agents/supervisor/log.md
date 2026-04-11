@@ -376,3 +376,4 @@
 - **wasmspec**: P0 (noTryCatchInHead) needs investigation — may not be provable in current form (function calls introduce tryCatch). Fallback to P1 (compound throw) documented.
 
 2026-04-11T17:10:01+00:00 DONE
+2026-04-11T17:10:11+00:00 DONE

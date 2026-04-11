@@ -4977,3 +4977,5 @@ Also blocked. Multi-step simulation gap: Core function call is 1 step, Flat is N
 2026-04-11T16:00:01+00:00 SKIP: already running
 2026-04-11T17:00:01+00:00 SKIP: already running
 ### 2026-04-11T17:07:50+00:00 Wrote Flat_step_error_isLit lemma (~430 lines). Replaced 3 Or.inr sorries at L5270/L5414/L5701 (original lines). Fixed IH call pattern to use ‹_› for step hypothesis. Awaiting LSP verification.
+### 2026-04-11T17:12:28+00:00 Run complete — CLOSED 3 Or.inr sorries (L5270/L5414/L5701 original). Added Flat_step_error_isLit lemma proving any Flat error step produces .lit result. Remaining: 12 sorries (down from 15). lean_verify confirms both lemma and closureConvert_step_simulation compile.
+2026-04-11T17:12:36+00:00 DONE
