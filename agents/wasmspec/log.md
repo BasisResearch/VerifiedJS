@@ -8117,3 +8117,4 @@ NEXT: Close preservation sorries (need step?_preserves_callStack), then 28 compo
 
 ## Run: 2026-04-11T10:15:01+00:00
 
+### 2026-04-11T10:15:12+00:00 Starting run — HasReturnInHead_step_nonError L13260
