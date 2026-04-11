@@ -1,4 +1,4 @@
-# wasmspec — CLOSE compound return cases (L14353) + await/yield (L14709, L14882)
+# wasmspec — CLOSE compound return cases (L14353) + assess L13215
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,11 +9,12 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-11T11:30
+## STATUS — 2026-04-11T12:00
 - Total: 48 sorries (ANF 33, CC 15).
-- **HasReturnInHead_step_nonError (L13623)**: WRITTEN, ~600 lines. Depends on step_error_isLit (proof agent working on it).
+- **HasReturnInHead_step_nonError (L13623)**: WRITTEN, ~600 lines. Depends on step_error_isLit.
 - **HasReturnInHead_Steps_steppable (L14161)**: PROVED (modulo step_error_isLit).
 - **hasReturnInHead_return_steps (L14207)**: Sorry at L14353 (compound catch-all).
+- **proof agent is working on step_error_isLit (L14157)**. DO NOT touch it.
 
 ## P0: L14353 — compound HasReturnInHead catch-all in hasReturnInHead_return_steps
 
@@ -25,12 +26,24 @@ This is the catch-all for compound HasReturnInHead constructors in `hasReturnInH
 
 ### Strategy
 1. `lean_goal` at L14353 to see which constructors hit this catch-all
-2. Split into individual constructor cases (let_init, assign_val, getProp_obj, binary_lhs, etc.)
+2. Replace `| _ => sorry` with individual constructor matches:
+   - `| .let_init h =>` — same as seq_left but with `step?_let_ctx` / `step?_let_error`
+   - `| .assign_val h =>` — same pattern with `step?_assign_ctx` / `step?_assign_error`
+   - `| .getProp_obj h =>` — same pattern
+   - etc. for all compound constructors
+
 3. For each: follow the seq_left proof pattern at L14291-14352:
    - Get IH on sub-expression (depth decreases)
    - Use `Steps_compound_error_lift` (L13135) to lift Steps through the compound wrapper
-   - Need step?_XXX_ctx and step?_XXX_error lemmas (analogous to step?_seq_ctx and step?_seq_error)
-4. Even if some cases need sorry, splitting is progress
+   - Need step?_XXX_ctx and step?_XXX_error lemmas
+
+4. **CHECK**: Do step?_XXX_ctx and step?_XXX_error lemmas exist for each constructor? Search with:
+   ```
+   lean_local_search "step?_let_ctx" or lean_local_search "step?_assign_ctx"
+   ```
+   If they don't exist, write them first (they follow the same pattern as step?_seq_ctx).
+
+5. Even if some cases need sorry, splitting the catch-all into individual cases is progress.
 
 ### Key lemmas available
 - `Steps_compound_error_lift` at L13135
@@ -47,23 +60,17 @@ Read the seq_left case carefully. The key structure is:
 4. Apply `Steps_compound_error_lift` with appropriate ctx/error lemmas
 5. Combine all witnesses
 
-## P1: L14709 (HasAwaitInHead) and L14882 (HasYieldInHead)
+## P1: L13215 — anfConvert_step_sim compound catch-all
 
-These are await/yield analogues. Check if `HasAwaitInHead` / `HasYieldInHead` types exist. If so, follow the same error propagation pattern. If not, these may need different infrastructure.
+After P0, assess if this sorry can use the same infrastructure. Read 30 lines around it.
 
-## P2: L14938, L14942, L14943 — return/yield .let + compound catch-all
+## P2: L14709 (HasAwaitInHead) and L14882 (HasYieldInHead)
 
-```
-14938:    | some val => sorry -- return (some val): compound, can produce .let
-14942:    | some val => sorry -- yield (some val): compound, can produce .let
-14943:  | _ => sorry -- compound expressions
-```
+Check if `HasAwaitInHead` / `HasYieldInHead` types exist. If so, follow the same error propagation pattern.
+
+## P3: L14938, L14942, L14943 — return/yield .let + compound catch-all
 
 Structural induction on sub-expression.
-
-## P3: L13215 — anfConvert_step_sim compound catch-all
-
-May be closable now that HasReturnInHead infrastructure exists.
 
 ## DO NOT WORK ON:
 - L14152-L14157 (step_error_isLit — proof agent is on this)

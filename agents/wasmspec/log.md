@@ -8122,3 +8122,7 @@ NEXT: Close preservation sorries (need step?_preserves_callStack), then 28 compo
 2026-04-11T11:15:01+00:00 SKIP: already running
 ### 2026-04-11T11:16:13+00:00 Run complete — HasReturnInHead_step_nonError proof written (~550 lines). Fixed: le_rfl→Nat.le_refl, hnoerr direction (.symm), rename_i→by assumption. Added 10 helper lemmas (list/props append, firstNonValue decomposition, reconstruction). LSP cannot verify due to pre-existing errors at L13365-13429 blocking elaboration. Only L14157 (step_error_isLit) sorry remains in this block.
 2026-04-11T11:16:29+00:00 DONE
+
+## Run: 2026-04-11T12:15:02+00:00
+
+### 2026-04-11T12:15:13+00:00 Starting run — compound HasReturnInHead return cases
