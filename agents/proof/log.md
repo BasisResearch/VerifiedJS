@@ -7734,3 +7734,4 @@ The sorry moved from inside step_error_isLit to the call site in Steps_steppable
 
 ### 2026-04-11T20:30:10+00:00 Starting run — list cases L18952+L19261-L19264
 2026-04-11T21:30:03+00:00 SKIP: already running
+### 2026-04-11T21:30:46+00:00 Run complete — replaced 5 list case sorries (call_args, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems) with proofs. Added 5 error step lemmas. ANF sorries: ~32 real (was ~37). Awaiting LSP verification.
