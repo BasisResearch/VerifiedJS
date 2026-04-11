@@ -2300,4 +2300,50 @@ theorem Steps_trace_append {sf sf' : Flat.State} {evs : List Core.TraceEvent}
     obtain ⟨h⟩ := hstep
     rw [ih, step?_trace_append _ _ _ h]; simp [List.append_assoc]
 
+set_option maxHeartbeats 16000000 in
+/-- step? preserves callStack when:
+    (1) the expression is not a tryCatch call frame, and
+    (2) the expression is not a call with all sub-expressions evaluated to values. -/
+theorem step?_preserves_callStack (sf : Flat.State) (ev : Core.TraceEvent) (sf' : Flat.State)
+    (h : step? sf = some (ev, sf'))
+    (hnocf : ∀ body catch_ fin, sf.expr ≠ .tryCatch body "__call_frame_return__" catch_ fin)
+    (hnocall : ∀ f env args, sf.expr = .call f env args →
+        exprValue? f = none ∨ exprValue? env = none ∨ valuesFromExprList? args = none) :
+    sf'.callStack = sf.callStack := by
+  unfold step? at h
+  split at h
+  all_goals (try (dsimp only [] at h)); all_goals (try (split at h))
+  all_goals (try (dsimp only [] at h)); all_goals (try (split at h))
+  all_goals (try (dsimp only [] at h)); all_goals (try (split at h))
+  all_goals (try (dsimp only [] at h)); all_goals (try (split at h))
+  all_goals (try (dsimp only [] at h)); all_goals (try (split at h))
+  all_goals (try (dsimp only [] at h)); all_goals (try (split at h))
+  all_goals (try (dsimp only [] at h)); all_goals (try (split at h))
+  all_goals (try contradiction)
+  all_goals (try { obtain ⟨-, rfl⟩ := h; rfl })
+  all_goals (try { simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h; rfl })
+  all_goals (try { simp only [Option.some.injEq, Prod.mk.injEq] at h
+                   obtain ⟨-, rfl⟩ := h; simp [pushTrace] })
+  -- Remaining goals are .call with all-value args (callStack push)
+  -- and .tryCatch with isCallFrame (callStack pop).
+  -- Both are contradicted by our hypotheses.
+  -- .call goals: hnocall gives that some sub-expr has exprValue? = none,
+  -- but the context has all = some. Contradiction.
+  all_goals (try {
+    rename_i heq_expr _ hf _ _ hargs _ _ _ _ _
+    exfalso; have := hnocall _ _ _ heq_expr; simp_all })
+  all_goals (try {
+    rename_i heq_expr _ hf _ he hargs _ _ _ _ _
+    exfalso; have := hnocall _ _ _ heq_expr; simp_all })
+  all_goals (try {
+    rename_i heq_expr _ hf _ he hargs _ _ _ _
+    exfalso; have := hnocall _ _ _ heq_expr; simp_all })
+  -- .tryCatch isCallFrame goals: derive catchParam = "__call_frame_return__",
+  -- then hnocf gives contradiction.
+  all_goals {
+    rename_i heq_expr _ _ _ hcf _
+    have hcf_eq : _ = "__call_frame_return__" := by
+      simp only [BEq.beq, beq_iff_eq] at hcf; exact hcf
+    subst hcf_eq; exfalso; exact absurd rfl (hnocf _ _ _ ▸ heq_expr ▸ rfl) }
+
 end VerifiedJS.Flat
