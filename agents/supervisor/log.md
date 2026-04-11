@@ -6447,3 +6447,48 @@ Previous runs counted `grep -c sorry` which includes comment mentions like "sorr
 ## Run: 2026-04-11T03:00:32+00:00
 
 2026-04-11T03:05:04+00:00 SKIP: already running
+
+## Run: 2026-04-11T03:00:32+00:00
+
+### Metrics
+- **Sorry count**: ANF 34 + CC 15 + Lower 0 = **49 total**
+- **Delta from last run (01:30)**: -10 (59→49). **DOWN by 10.** Best single-run improvement yet.
+- **BUILD**: Not verified (LSP only).
+
+### What Happened Since Last Run
+1. **wasmspec**: **CLOSED 6 SORRIES** — compound inner depth cases (return×return, return×yield, yield×return, yield×yield, return-single, yield-single). Used normalizeExpr_labeled_or_k + Steps_ctx_lift pattern. ANF ~42→34.
+2. **jsspec**: **CLOSED 2 SORRIES** — FuncsCorr definition filled (L1469, L1473 no longer sorry). Now wiring FuncsCorr into CC_SimRel (started 03:00).
+3. **proof**: Still running (started 01:30) on error prop sorries L13969/L14517. No confirmed closures yet.
+
+### Agent Status
+1. **proof**: Running since 01:30 on error prop. Prompt updated: P0 = uncomment NoNestedAbrupt (L14639).
+2. **wasmspec**: Completed 03:01 — 6 sorries closed! Prompt updated: P0 = compound error prop (L12048/L12054).
+3. **jsspec**: Running since 03:00 on FuncsCorr wiring. Prompt updated: continue P0 = FuncsCorr into CC_SimRel.
+
+### Prompts Rewritten
+1. **proof**: P0 = uncomment NoNestedAbrupt_step_preserved (L14639). P1 = compound break/continue Cat B (L15565/L15636). P2 = noCallFrameReturn quick win (L15335).
+2. **wasmspec**: P0 = compound error prop (L12048/L12054, 2 sorries). P1 = await/yield compound (L12221/L12227/L12379/L12385, 4 sorries). P2 = throw compound catch-all (L11738). P3 = return/yield .let (L12441/L12445).
+3. **jsspec**: Continue FuncsCorr wiring into CC_SimRel. P1 = close L5930 (call). P2 = L8042 (functionDef).
+
+### Sorry Classification (49 total)
+- **Trivial mismatch (BLOCKED)**: 12 (L10183-L10554)
+- **Compound error prop**: 7 (L11738, L12048, L12054, L12221, L12227, L12379, L12385) — wasmspec P0/P1/P2
+- **Return/yield .let**: 2 (L12441, L12445) — wasmspec P3
+- **Compound catch-all**: 1 (L12446) — structural induction needed
+- **While**: 2 (L12536, L12548)
+- **If branch (K-mismatch)**: 2 (L13273, L13313)
+- **TryCatch**: 3 (L14154, L14172, L14175)
+- **NoNestedAbrupt**: 1 (L14639) — proof agent P0
+- **TryCatch catB**: 2 (L15335, L15346) — proof agent P2
+- **Break/continue compound**: 2 (L15565, L15636) — proof agent P1
+- **CC blocked**: 15 (6 CCStateAgree, 3 multi-step, 3 error-structural, 2 FuncsCorr-pending, 1 unprovable)
+
+### Critical Path (Updated)
+1. wasmspec: compound error prop → -7 possible (L12048/L12054/L12221/L12227/L12379/L12385/L11738)
+2. proof: NoNestedAbrupt uncomment → -1, cascade to break/continue → -2 more
+3. jsspec: FuncsCorr wiring → enables -2 (L5930, L8042)
+4. BLOCKED: 12 trivial mismatch, 6 CCStateAgree, 3 multi-step, 2 while, 2 if_branch, 3 tryCatch
+
+### Time Estimate
+echo "2026-04-11T03:00:32+00:00,49,ongoing" >> logs/time_estimate.csv
+2026-04-11T03:06:01+00:00 DONE

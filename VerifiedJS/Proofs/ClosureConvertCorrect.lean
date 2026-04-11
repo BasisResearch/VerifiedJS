@@ -1485,10 +1485,11 @@ private def FuncsCorr (injMap : Nat → Nat)
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, environment correspondence, and expression
     correspondence through the conversion. -/
-private def CC_SimRel (_s : Core.Program) (_t : Flat.Program)
+private def CC_SimRel (_s : Core.Program) (t : Flat.Program)
     (sf : Flat.State) (sc : Core.State) : Prop :=
   sf.trace = sc.trace ∧
-  (∃ injMap, HeapInj injMap sc.heap sf.heap ∧ EnvCorrInj injMap sc.env sf.env) ∧
+  (∃ injMap, HeapInj injMap sc.heap sf.heap ∧ EnvCorrInj injMap sc.env sf.env ∧
+    FuncsCorr injMap sc.funcs sf.funcs t.functions) ∧
   noCallFrameReturn sc.expr = true ∧
   ExprAddrWF sc.expr sc.heap.objects.size ∧
   EnvAddrWF sc.env sc.heap.objects.size ∧
@@ -1507,12 +1508,15 @@ private theorem closureConvert_init_related
     (h_supp : s.body.supported = true) :
     CC_SimRel s t (Flat.initialState t) (Core.initialState s) := by
   unfold CC_SimRel Flat.initialState Core.initialState
-  refine ⟨rfl, ⟨id, HeapInj_id _, ?_⟩, h_wf, ?_, ?_, ?_, ?_, h_supp, ?funcs_supp, ?conv⟩
+  refine ⟨rfl, ⟨id, HeapInj_id _, ?_, ?funcCorr_init⟩, h_wf, ?_, ?_, ?_, ?_, h_supp, ?funcs_supp, ?conv⟩
   · -- EnvCorrInj id: both envs have exactly one binding: "console" → .object 0
     show EnvCorr _ _
     have h_empty : EnvCorr Core.Env.empty Flat.Env.empty := by
       constructor <;> intro _ _ h <;> simp [Core.Env.empty, Core.Env.lookup, Flat.Env.empty, Flat.Env.lookup] at h
     exact EnvCorr_extend h_empty "console" (.object 0)
+  case funcCorr_init =>
+    -- FuncsCorr for initial state: Core has [logBuiltin], Flat has t.functions
+    sorry
   · -- ExprAddrWF: source programs don't contain .object addresses
     exact h_addr_wf
   · -- EnvAddrWF: initial env has "console" → .object 0, heap has 1 object
@@ -4942,14 +4946,17 @@ private theorem closureConvert_step_simulation
           (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
           CCStateAgree st st_a ∧ CCStateAgree st' st_a') by
     intro sf sc ev sf' hrel hstep
-    obtain ⟨htrace, ⟨injMap, hinj, henv⟩, hncfr, hexprwf, henvwf, hheapvwf, hheapna, hsupp, hfuncs_supp, scope, envVar, envMap, st, st', hconv⟩ := hrel
+    obtain ⟨htrace, ⟨injMap, hinj, henv, hfuncCorr⟩, hncfr, hexprwf, henvwf, hheapvwf, hheapna, hsupp, hfuncs_supp, scope, envVar, envMap, st, st', hconv⟩ := hrel
     obtain ⟨injMap', sc', hcstep, htrace', hinj', henv', henvwf', hheapvwf', hheapna', hncfr', hexprwf', st_a, st_a', hconv', _, _⟩ :=
       this sc.expr.depth envVar envMap injMap sf sc ev sf' scope st st' rfl htrace hinj henv henvwf hheapvwf hheapna hncfr hexprwf hsupp hconv hstep
     have hsupp' : sc'.expr.supported = true :=
       Core_step_preserves_supported _ _ _ hsupp hfuncs_supp (by obtain ⟨h⟩ := hcstep; exact h)
     have hfuncs_supp' : ∀ (i : Nat) (fd : Core.FuncClosure), sc'.funcs[i]? = some fd → fd.body.supported = true :=
       Core_step_preserves_funcs_supported _ _ _ hsupp hfuncs_supp (by obtain ⟨h⟩ := hcstep; exact h)
-    exact ⟨sc', hcstep, htrace', ⟨injMap', hinj', henv'⟩, hncfr', hexprwf', henvwf', hheapvwf', hheapna', hsupp', hfuncs_supp', scope, envVar, envMap, st_a, st_a', hconv'⟩
+    -- FuncsCorr preservation: injMap is unused in FuncsCorr body, so we only need
+    -- sc'.funcs/sf'.funcs correspondence. Sorry'd pending per-case proof threading.
+    have hfuncCorr' : FuncsCorr injMap' sc'.funcs sf'.funcs t.functions := sorry
+    exact ⟨sc', hcstep, htrace', ⟨injMap', hinj', henv', hfuncCorr'⟩, hncfr', hexprwf', henvwf', hheapvwf', hheapna', hsupp', hfuncs_supp', scope, envVar, envMap, st_a, st_a', hconv'⟩
   intro n
   induction n using Nat.strongRecOn with
   | _ n ih_depth =>

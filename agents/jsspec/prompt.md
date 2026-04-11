@@ -1,4 +1,4 @@
-# jsspec — WIRE FuncsCorr INTO CC_SimRel
+# jsspec — WIRE FuncsCorr INTO CC_SimRel (CONTINUING)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -10,36 +10,32 @@
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
 ## STATUS
-- CC: 14 real sorries. ANF: 40. Total: 54.
-- FuncsCorr DEFINED at L1455-1483 (well done — 2 sorries closed last run).
-- ALL 14 remaining CC sorries are architecturally blocked.
-- Most impactful unblock: wire FuncsCorr into CC_SimRel → unblocks L5930 + L8042 = -2 sorries.
+- CC: 15 real sorries. ANF: 34. Total: 49.
+- FuncsCorr DEFINED and filled at L1455-1483 (2 sorries closed last run — great work!).
+- You're currently wiring FuncsCorr into CC_SimRel. CONTINUE THIS WORK.
 
-## P0: ADD FuncsCorr TO CC_SimRel (L1488)
+## P0: ADD FuncsCorr TO CC_SimRel (CONTINUE)
 
-CC_SimRel is defined at ~L1488. It currently does NOT include FuncsCorr.
+CC_SimRel is defined at ~L1488. Add `FuncsCorr injMap sc.funcs sf.funcs ccFuncs` as a conjunct.
 
-**DO THIS:**
-1. Run `lean_goal` or `lean_hover_info` on `CC_SimRel` at L1488 to see its current fields
-2. Add `FuncsCorr injMap sc.funcs sf.funcs ccFuncs` as a conjunct (you'll need ccFuncs from the closure conversion output — check how `t.funcs` relates to the CC state)
-3. For every existing case in `closureConvert_step_simulation` that constructs a `CC_SimRel` witness, add the FuncsCorr proof:
-   - Most cases don't change funcs, so `exact hfuncCorr` works (where `hfuncCorr` is destructured from the hypothesis)
-   - The `functionDef` case (L8036) and `call` case (L5923) are the ones that actually USE FuncsCorr
+**KEY STRATEGY — DO IT INCREMENTALLY:**
+1. Add FuncsCorr to CC_SimRel definition
+2. This will break ALL ~30 case proofs in `closureConvert_step_simulation`
+3. Fix ONE simple case first (e.g., `lit` or `var`) — just carry `hfuncCorr` through
+4. For cases that don't change funcs: `exact hfuncCorr` (or destructure from hypothesis)
+5. Use `sorry` for complex cases (functionDef, call) while fixing simple ones
+6. Verify each case compiles before moving to next
 
-**KEY**: Start small. First just add FuncsCorr to CC_SimRel. Then fix ONE case that breaks (pick a simple one like `lit` or `var`). Verify it compiles. Then do the rest.
-
-**WARNING**: Adding a field to CC_SimRel will break ALL ~30 case proofs. Fix them one at a time, starting with the simplest. Use `sorry` for complex cases while you work through them. Do NOT try to fix all 30 at once.
+**DO NOT try to fix all 30 cases at once.** Fix simple ones, sorry complex ones.
 
 ## P1: USE FuncsCorr TO CLOSE L5930 (call non-consoleLog)
 
-After P0, L5930 has FuncsCorr available. The proof should:
+After P0 is done and FuncsCorr is available in the simulation relation:
 1. Extract matching Flat.FuncDef from FuncsCorr
 2. Show the Flat call steps to the correct function
 3. Establish CC_SimRel for the post-call state
 
-## P2: USE FuncsCorr TO CLOSE L8042 (functionDef)
-
-After P0, L8042 needs to show FuncsCorr is maintained when adding a new function. This also needs multi-step simulation, so it may still be partially blocked.
+## P2: L8042 (functionDef) — May need multi-step, possibly still blocked
 
 ## KNOWN BLOCKED (DO NOT ATTEMPT):
 - L5327, L5353, L8199, L8202, L8276, L8392: CCStateAgree (6 total)
