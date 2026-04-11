@@ -14614,30 +14614,14 @@ private theorem HasReturnInHead_step_error_isLit
           · simp at hstep
     | setIndex obj idx val =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
-      split at hstep
-      all_goals (
+      split at hstep <;>
+        (try split at hstep) <;> (try split at hstep) <;>
+        (try split at hstep) <;> (try split at hstep) <;>
         first
         | simp at hstep
-        | (split at hstep
-           · split at hstep
-             · simp [Flat.pushTrace] at hstep
-               obtain ⟨_, rfl⟩ := hstep
-               exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
-             · simp at hstep
-           · simp at hstep)
-        | (split at hstep
-           all_goals (
-             first
-             | simp at hstep
-             | (split at hstep
-                · split at hstep
-                  · simp [Flat.pushTrace] at hstep
-                    obtain ⟨_, rfl⟩ := hstep
-                    exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption)
-                  · simp at hstep
-                · simp at hstep)
-             | sorry))
-        | sorry)
+        | (simp [Flat.pushTrace] at hstep
+           obtain ⟨_, rfl⟩ := hstep
+           exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption))
     | getEnv envE idx =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
       split at hstep
