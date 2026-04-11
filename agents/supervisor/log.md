@@ -1,3 +1,47 @@
+## Run: 2026-04-11T11:30:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 33 + CC 15 + Lower 0 = **48 total**
+- **Delta from last run (11:06)**: -2 (50→48). DOWN by 2.
+- **Explanation**: Previous run overcounted CC (17 vs actual 15). CC was 15 at 09:00 and never changed. Real delta since 09:00 is ANF +2 (break/continue helpers), CC 0 = net +2 from 46→48.
+- **BUILD**: Not verified (LSP only).
+
+### What Happened Since Last Run (11:06→11:30)
+1. **proof**: Just started new run at 11:30 targeting step_error_isLit (L14157).
+2. **jsspec**: Idle since 11:02. All 15 CC sorries confirmed blocked or need Or.inr work.
+3. **wasmspec**: Completed step_nonError proof (~550 lines). Idle since 11:16.
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: DETAILED step_error_isLit strategy. Key insight: HasReturnInHead has NO tryCatch constructor, so the only problematic step? error case (tryCatch catch handler, Semantics.lean L1109) is impossible. Leaf errors always produce `.lit v`. Compound errors propagate by IH. Provided concrete tactic sketch and lean_multi_attempt suggestions.
+2. **jsspec**: Focused on Or.inr sorries (L5270/L5414/L5701). Updated sorry count to 15 (was miscounted as 17).
+3. **wasmspec**: Focused on L14353 compound catch-all. Detailed the seq_left pattern to replicate. Added P1 (await/yield), P2 (return/yield .let), P3 (step_sim compound).
+
+### Sorry Classification (48 total)
+- **TrivialChain (proof)**: 12 (L10429-L10800) — BLOCKED by LSP timeout
+- **Break/continue non-head**: 2 (L4671, L5809)
+- **step_error_isLit**: 1 (L14157) — CRITICAL CASCADE BLOCKER (proof agent)
+- **Compound return/await/yield/step_sim**: 7 (L14353, L14709, L14882, L14938, L14942, L14943, L13215)
+- **While/If/TryCatch (BLOCKED)**: 7 (L15033, L15045, L15770, L15810, L16651, L16669, L16672)
+- **noCallFrameReturn/body_sim (BLOCKED)**: 2 (L17999, L18010)
+- **End-of-file**: 2 (L18229, L18300)
+- **CC Or.inr**: 3 (L5270, L5414, L5701) — LIKELY CLOSABLE (jsspec)
+- **CC CCStateAgree**: 5 (L5496, L5522, L8412, L8489, L8605) — ARCHITECTURALLY BLOCKED
+- **CC multi-step**: 3 (L5049, L6352, L6363) — BLOCKED
+- **CC other**: 4 (L5413, L5700, L6144, L7003) — blocked/unprovable
+
+### Critical Path
+1. **L14157 (step_error_isLit)** → cascade -4 to -8. proof agent. THIS IS THE #1 PRIORITY.
+2. **L14353 (compound return)** → -1. wasmspec.
+3. **L5270/L5414/L5701 (Or.inr)** → -3. jsspec.
+4. Best case next run: ~37-42.
+
+### Trend
+- 01:30: 59 → 04:05: 48 → 06:05: 46 → 08:30: 51 → 09:00: 46 → 11:06: 48* → 11:30: 48
+- (*11:06 was miscounted as 50; corrected to 48)
+- Step_nonError infrastructure (550 lines) is a major investment waiting to pay off when step_error_isLit closes.
+
+---
+
 ## Run: 2026-04-11T11:06:22+00:00
 
 ### Metrics
@@ -7228,3 +7272,4 @@ echo "2026-04-11T03:00:32+00:00,49,ongoing" >> logs/time_estimate.csv
 
 ## Run: 2026-04-11T11:30:03+00:00
 
+2026-04-11T11:37:00+00:00 DONE

@@ -1,4 +1,4 @@
-# wasmspec — CLOSE HasReturnInHead_step_nonError remaining sorry + compound return cases
+# wasmspec — CLOSE compound return cases (L14353) + await/yield (L14709, L14882)
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,34 +9,47 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-11T11:06
-- Total: 50 sorries (ANF 33, CC 17).
-- **HasReturnInHead_step_nonError (L13623)**: WRITTEN, 27 cases done. 1 sorry remains inside at ~L14157 (in `HasReturnInHead_step_error_isLit`). proof agent is being directed to close L14157.
-- **HasReturnInHead_Steps_steppable (L14161)**: PROVED. Depends on step_error_isLit.
-- **hasReturnInHead_return_steps (L14207)**: Still has sorry at L14353.
+## STATUS — 2026-04-11T11:30
+- Total: 48 sorries (ANF 33, CC 15).
+- **HasReturnInHead_step_nonError (L13623)**: WRITTEN, ~600 lines. Depends on step_error_isLit (proof agent working on it).
+- **HasReturnInHead_Steps_steppable (L14161)**: PROVED (modulo step_error_isLit).
+- **hasReturnInHead_return_steps (L14207)**: Sorry at L14353 (compound catch-all).
 
-## P0: L14353 — remaining compound HasReturnInHead cases in hasReturnInHead_return_steps
+## P0: L14353 — compound HasReturnInHead catch-all in hasReturnInHead_return_steps
 
 ```
 14353:    | _ => sorry -- remaining compound HasReturnInHead cases: same pattern as seq_left
 ```
 
-This is the catch-all for compound HasReturnInHead constructors in `hasReturnInHead_return_steps`. The seq_left case is proved — use EXACTLY the same pattern for the remaining constructors.
+This is the catch-all for compound HasReturnInHead constructors in `hasReturnInHead_return_steps`. The seq_left case is proved (L14291-14352). Use EXACTLY the same pattern.
 
 ### Strategy
-1. `lean_goal` at L14353 to see which constructors are covered by this catch-all
-2. Split the catch-all into individual constructor cases
-3. For each: IH on sub-expression (depth decreases), then lift via `Steps_compound_error_lift` (L13135)
-4. Even if some cases need sorry, splitting into individual cases is progress
+1. `lean_goal` at L14353 to see which constructors hit this catch-all
+2. Split into individual constructor cases (let_init, assign_val, getProp_obj, binary_lhs, etc.)
+3. For each: follow the seq_left proof pattern at L14291-14352:
+   - Get IH on sub-expression (depth decreases)
+   - Use `Steps_compound_error_lift` (L13135) to lift Steps through the compound wrapper
+   - Need step?_XXX_ctx and step?_XXX_error lemmas (analogous to step?_seq_ctx and step?_seq_error)
+4. Even if some cases need sorry, splitting is progress
 
 ### Key lemmas available
-- `Steps_compound_error_lift` at L13135 — lifts Steps through compound wrappers
-- `HasReturnInHead_step_nonError` at L13623 — preservation through non-error steps
-- `HasReturnInHead_Steps_steppable` at L14161 — preservation through multi-step
+- `Steps_compound_error_lift` at L13135
+- `HasReturnInHead_step_nonError` at L13623
+- `HasReturnInHead_Steps_steppable` at L14161
+- `hasReturnInHead_callStackSafe` — callStack safety from HasReturnInHead
+- `step?_seq_ctx` and `step?_seq_error` — existing context/error lemmas for seq
 
-## P1: L14709 (compound HasAwaitInHead) and L14882 (compound HasYieldInHead)
+### Pattern from seq_left (L14291-14352)
+Read the seq_left case carefully. The key structure is:
+1. Get IH: `hasReturnInHead_return_steps` on sub-expression with reduced depth
+2. Extract `hsteps_a`, `herr`, `hpres` from IH
+3. Build `hpres` callback using `Steps_preserves_callStack` + `HasReturnInHead_Steps_steppable` + `hasReturnInHead_callStackSafe`
+4. Apply `Steps_compound_error_lift` with appropriate ctx/error lemmas
+5. Combine all witnesses
 
-These are the await/yield analogues. They need the same error propagation pattern. If HasReturnInHead infrastructure is done, check if similar lemmas exist for HasAwaitInHead / HasYieldInHead, or if they can reuse the return infrastructure.
+## P1: L14709 (HasAwaitInHead) and L14882 (HasYieldInHead)
+
+These are await/yield analogues. Check if `HasAwaitInHead` / `HasYieldInHead` types exist. If so, follow the same error propagation pattern. If not, these may need different infrastructure.
 
 ## P2: L14938, L14942, L14943 — return/yield .let + compound catch-all
 
@@ -46,18 +59,14 @@ These are the await/yield analogues. They need the same error propagation patter
 14943:  | _ => sorry -- compound expressions
 ```
 
-These need structural induction on the sub-expression.
+Structural induction on sub-expression.
 
-## P3: L13215 — compound cases in anfConvert_step_sim
+## P3: L13215 — anfConvert_step_sim compound catch-all
 
-```
-13215:  | _ => sorry -- compound cases: need Steps lifting lemma + error propagation
-```
-
-This is the main step_sim catch-all. May be closable now that HasReturnInHead infrastructure exists.
+May be closable now that HasReturnInHead infrastructure exists.
 
 ## DO NOT WORK ON:
-- L14152-L14157 (step_error_isLit — proof agent is doing this)
+- L14152-L14157 (step_error_isLit — proof agent is on this)
 - ClosureConvertCorrect.lean (jsspec)
 
 ## LOG
