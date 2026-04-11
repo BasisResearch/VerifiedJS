@@ -5141,3 +5141,6 @@ in branches where no function definitions appear.
 - Next: convertExpr_CCExprEquiv_offset (different states with known δ → CCExprEquiv δ).
 - Then: refactor simulation invariant CCStateAgree → CCStateAgreeWeak + CCExprEquiv.
 2026-04-11T22:28:39+00:00 DONE
+
+## Run: 2026-04-11T23:00:01+00:00
+
