@@ -5108,7 +5108,10 @@ private theorem closureConvert_step_simulation
       match hm : Flat.step? { sf with expr := (Flat.convertExpr init scope envVar envMap st).fst } with
       | some (t, sa) =>
         by_cases herr : ∃ msg, t = .error msg
-        · -- Error case: blocked on Flat_step?_let_error trace completion + simulation mismatch
+        · -- Error case: let-init evaluates to error.
+          -- BLOCKED: Need Flat_step?_let_error lemma (Flat.step? of .let name errExpr body = some (.error msg, _))
+          -- plus Core-side error propagation for let-init. Requires ANF error propagation lemmas.
+          -- Goal shape: ∃ injMap' sc', Core.Step sc ev sc' ∧ ... (with sc.expr = .let name init body, init → error)
           obtain ⟨msg, rfl⟩ := herr
           sorry
         · -- Non-error case
@@ -5204,7 +5207,10 @@ private theorem closureConvert_step_simulation
       match hm : Flat.step? { sf with expr := (Flat.convertExpr rhs scope envVar envMap st).fst } with
       | some (t, sa) =>
         by_cases herr : ∃ msg, t = .error msg
-        · -- Error case: blocked on Flat_step?_assign_error trace completion + simulation mismatch
+        · -- Error case: assign-rhs evaluates to error.
+          -- BLOCKED: Need Flat_step?_assign_error lemma (Flat.step? of .assign name errExpr = some (.error msg, _))
+          -- plus Core-side error propagation for assign-rhs. Requires ANF error propagation lemmas.
+          -- Goal shape: ∃ injMap' sc', Core.Step sc ev sc' ∧ ... (with sc.expr = .assign name rhs, rhs → error)
           obtain ⟨msg, rfl⟩ := herr
           sorry
         · -- Non-error case
@@ -5440,7 +5446,10 @@ private theorem closureConvert_step_simulation
       match hm : Flat.step? { sf with expr := (Flat.convertExpr a scope envVar envMap st).fst } with
       | some (t, sa) =>
         by_cases herr : ∃ msg, t = .error msg
-        · -- Error case: blocked on Flat_step?_seq_error trace completion + simulation mismatch
+        · -- Error case: seq-first evaluates to error.
+          -- BLOCKED: Need Flat_step?_seq_error lemma (Flat.step? of .seq errExpr b = some (.error msg, _))
+          -- plus Core-side error propagation for seq-first. Requires ANF error propagation lemmas.
+          -- Goal shape: ∃ injMap' sc', Core.Step sc ev sc' ∧ ... (with sc.expr = .seq a b, a → error)
           obtain ⟨msg, rfl⟩ := herr
           sorry
         · -- Non-error case
@@ -5882,10 +5891,13 @@ private theorem closureConvert_step_simulation
             · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨rfl, rfl⟩,
                 by rw [hst, hst_eq]; exact ⟨rfl, rfl⟩⟩
           · -- Non-consoleLog function call: needs FuncsCorr invariant
-            sorry -- BLOCKED: Missing FuncsCorr invariant. Non-consoleLog function call requires
-            -- sf.funcs[idx] ↔ sc.funcs[idx] correspondence (params, body, env mapping).
-            -- No such invariant exists in the bisimulation relation. Would need FuncsCorr
-            -- added to the relation and maintained through all cases.
+            -- BLOCKED: FuncsCorr (defined above CC_SimRel) captures the needed correspondence
+            -- between Core.FuncClosure entries and Flat.FuncDef entries, but it is not yet
+            -- wired into CC_SimRel or maintained through the simulation. Requires:
+            -- (a) Add FuncsCorr to CC_SimRel
+            -- (b) Prove FuncsCorr is preserved by each simulation case
+            -- (c) Use FuncsCorr here to extract the matching Flat function for the Core call
+            sorry
         · -- Non-function callee with all-value args
           have hnc := convertValue_not_closure_of_not_function cv hnotfunc
           have hfvals := allValues_convertExprList_valuesFromExprList args argVals scope envVar envMap st hallv
@@ -7991,9 +8003,13 @@ private theorem closureConvert_step_simulation
           have h_rhs2 := convertExprList_append_snd done_c [sc_sub'.expr] scope envVar envMap st
           simp only [h_lhs, h_lhs2, h_rhs, h_rhs2, Flat.convertExprList]
           exact ⟨hrest_det.2.1.symm, hrest_det.2.2.symm⟩
-  | functionDef fname params body isAsync isGen => sorry -- BLOCKED: Entire case needs FuncsCorr invariant +
-    -- closure conversion infrastructure. Core adds FuncClosure to funcs array and binds name;
-    -- Flat produces makeClosure/makeEnv sequence. Requires FuncsCorr + multi-step simulation.
+  | functionDef fname params body isAsync isGen =>
+    -- BLOCKED: functionDef case requires FuncsCorr invariant + multi-step simulation.
+    -- Core: adds FuncClosure {name, params, body, capturedEnv} to sc.funcs, binds fname → .function idx.
+    -- Flat: convertExpr produces makeClosure/makeEnv sequence (multiple Flat steps).
+    -- Needs: (a) FuncsCorr in CC_SimRel, (b) prove FuncsCorr maintained when adding closure,
+    -- (c) multi-step Flat simulation (makeClosure+makeEnv is N steps vs Core's 1 step).
+    sorry
   | throw val =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
