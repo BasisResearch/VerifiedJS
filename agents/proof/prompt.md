@@ -1,4 +1,4 @@
-# proof — DEPTH INDUCTION FOR COMPOUND HasThrowInHead (L11634)
+# proof — ERROR PROPAGATION SORRY CLOSURES (L13969, L14517, L11832-L12169)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,98 +9,60 @@
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
 ## STATUS
-- ANF: 42 sorries. CC: 23. Lower: 0. Wasm: 0. Total: 65.
+- ANF: 41 sorries. CC: 17. Lower: 0. Wasm: 0. Total: 58.
 - Error propagation DONE in Flat/Semantics.lean — ALL compound `step?` cases drop wrapper on `.error`.
-- **THE COMMENTS AT L11625-L11632 ARE WRONG.** Error propagation IS implemented.
-- Last proof run: 2026-04-01. 10 DAYS AGO. Focus and deliver.
+- **THE COMMENTS saying "blocked by Flat.step? error propagation" ARE WRONG.** Error propagation IS implemented.
+- Agents running: proof (you), wasmspec, jsspec just finished.
 
-## P0: L11634 — COMPOUND HasThrowInHead
+## P0: L13969 + L14517 — "fix for error propagation"
 
-### Why it's sorry'd
-`normalizeExpr_throw_step_sim` (L11491) handles `HasThrowInHead sf.expr`. Cases:
-- `throw_direct` → handled (L11517-L11613, delegates to `normalizeExpr_throw_compound_case`)
-- `return_some_arg`, `yield_some_arg`, `await_arg` → absurd via NoNestedAbrupt (L11614-L11616)
-- `| _ =>` at L11617 → **SORRY at L11634** — 29 compound constructors (seq_left, let_init, etc.)
+These two sorries say: `sorry -- TODO: fix for error propagation; cases need split at hstep for match t with`
 
-### The root problem
-For compound cases (e.g., `seq_left ha` means `e = .seq a b` where `HasThrowInHead a`):
-1. We need Steps from `{expr := e, ...}` producing the error
-2. The IH should give Steps from `{expr := a, ...}` producing error
-3. These need lifting through `.seq · b` context
-4. Error propagation drops the `.seq` wrapper on error
+These are in `hasAbruptCompletion_step_preserved` (L13969) and `NoNestedAbrupt_step_preserved` (L14517).
 
-BUT `normalizeExpr_throw_step_sim` is a flat theorem, not recursion. There is no IH available.
+Error propagation IS DONE. These should now be fixable:
 
-### FIX: Add depth induction
+1. `lean_goal` at L13969 to see exact state
+2. The comment says "cases need split at hstep for match t with" — this means: after case-splitting on the expression, need to further split on `t` (the trace event). With error propagation, the `t = .error msg` case now works (compound drops wrapper).
+3. Try:
+```
+lean_multi_attempt at L13969:
+["cases hstep", "split at hstep", "cases t <;> simp_all", "rcases hstep with ⟨_, _, _⟩ | ⟨_, _, _⟩"]
+```
+4. Same approach for L14517
 
-Create a new helper theorem that does depth induction:
+These two are BIG theorems that potentially unblock other sorries.
 
+## P1: COMPOUND "blocked by error propagation" SORRIES (6)
+
+After P0, tackle these — they are ALL marked "blocked by error propagation" but error propagation IS done:
+- L11832 — compound inner_val (return)
+- L11838 — compound HasReturnInHead
+- L12005 — compound inner_arg (await)
+- L12011 — compound HasAwaitInHead
+- L12163 — compound inner_val (yield)
+- L12169 — compound HasYieldInHead
+
+For each:
+1. `lean_goal` to see the actual state
+2. Error propagation means: when inner expr steps with `.error msg`, the compound wrapper drops
+3. You need: `Steps_ctx_lift` for non-error prefix + `step?_*_error` for the final error step
+4. `Steps_ctx_lift` requires `hnoerr` — decompose: lift non-error steps, then add final error step separately
+
+Pattern for seq case (adapt for return/await/yield):
 ```lean
-private theorem normalizeExpr_throw_compound_step_sim
-    (d : Nat) (e : Flat.Expr) (hd : e.depth ≤ d)
-    (hthrow : HasThrowInHead e)
-    -- e is NOT .throw itself (those are handled by throw_direct)
-    (hnot_throw : ∀ arg, e ≠ .throw arg)
-    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
-    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
-    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat)
-    (hnorm : (ANF.normalizeExpr e k).run n = .ok (.throw arg, m))
-    (hk : ∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m'))
-    (hewf : ExprWellFormed e env)
-    (hna : NoNestedAbrupt e) :
-    -- Produce steps from e (not from .throw e) that reach error
-    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
-      Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs sf' ∧
-      -- After stepping through e, we get the throw firing
-      ... := by
-  induction d with
-  | zero => -- e.depth = 0, compound cases impossible
-    cases e <;> (first | cases hthrow | simp [Flat.Expr.depth] at hd)
-  | succ d ih =>
-    cases hthrow with
-    | seq_left ha =>
-      -- e = .seq a b, HasThrowInHead a
-      -- normalizeExpr (.seq a b) k = normalizeExpr a (fun t => ...)
-      -- By ih on a (depth ≤ d), get Steps from {expr := a, ...}
-      -- Lift through .seq · b using Steps_seq_ctx (non-error steps)
-      -- Then use step?_seq_error for the final error step
-      sorry
-    | ...
+-- Steps from inner = [silent steps] ++ [error step]
+-- Lift [silent steps] through context using Steps_ctx_lift (hnoerr holds for silent)
+-- Final error step: use step?_return_error / step?_await_error / step?_yield_error
 ```
 
-### CONCRETE APPROACH — start with seq_left:
+## P2: L11522 — compound catch-all
 
-1. `lean_goal` at L11634 to see exact goal state with all hypotheses
-2. `lean_hover_info` on `Steps_ctx_lift` (L2394) to understand its API
-3. Note: `Steps_ctx_lift` requires `hnoerr` — it CANNOT lift error events
-4. You need a NEW lifting lemma or decompose: lift non-error prefix, then add final error step separately
-5. Error propagation lemmas exist: `step?_seq_error` (L2272), `step?_let_init_error` (L2284), `step?_unary_error` (L2296), etc.
+This is the big catch-all for compound cases in normalizeExpr_throw_step_sim.
+29 compound constructors. Even decomposing into separate sorry per constructor is progress.
 
-### Key insight about the proof structure
-The Steps from inner expression will be: [silent, silent, ..., error msg].
-- Lift [silent, ...] through compound context using `Steps_ctx_lift`
-- Then the last step in the compound context: use `step?_seq_error` etc. to show the compound drops wrapper
-
-### ALTERNATIVE simpler approach
-Instead of depth induction in `normalizeExpr_throw_step_sim`, restructure L11634:
-1. Case split on what `e` (the original expression) is
-2. For `e = .seq a b`: unfold `normalizeExpr (.seq a b) k` in `hnorm`
-3. The normalizeExpr gives `normalizeExpr a (fun t => seq_cont)` = `.throw arg`
-4. Use `normalizeExpr_throw_implies_hasThrowInHead` on `a` with the seq continuation
-5. Recurse on the depth of `a` (which is strictly smaller than `e`)
-
-Try BOTH with `lean_multi_attempt`:
-```
-["cases e <;> simp [ANF.normalizeExpr] at hnorm ⊢",
- "induction e using Flat.Expr.recOn"]
-```
-
-## P1: IF L11634 CRACKS → apply to L11785, L11791, L11958, L11964, L12116, L12122
-
-Same pattern for return/await/yield compound cases. Template identical.
-
-## SKIP: labeled_branch (wasmspec), CC (jsspec), while/tryCatch/if_branch, anfConvert_step_star
+## SKIP: labeled_branch (wasmspec confirmed ALL blocked by trivial mismatch), CC (jsspec), while/tryCatch, if_branch, anfConvert_step_star
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — compound HasThrowInHead L11634 depth induction" >> agents/proof/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — error prop sorries L13969 L14517" >> agents/proof/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`

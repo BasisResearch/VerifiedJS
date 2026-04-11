@@ -7966,3 +7966,45 @@ No sorry count change (still 2 sorries, same as before). No build risk.
 
 ### 2026-04-11T00:15:12+00:00 Starting run — labeled_branch continuation
 2026-04-11T01:15:01+00:00 SKIP: already running
+
+### 2026-04-11T00:15:01+00:00 Starting run — labeled_branch continuation
+
+### Analysis of P0 sorries (labeled_branch type (a) cases)
+
+**Target sorries examined**: L10183 (binary_rhs.inr), L10231 (setProp_val.inr), L10279 (getIndex_idx.inr), L10329 (setIndex_idx.inr), L10356 (setIndex_val.inr), L10406 (call_env.inr), L10458 (newObj_env.inr)
+
+**Root cause: TRIVIAL MISMATCH (confirmed blocked)**
+
+All these sorries share the same structure:
+1. First sub-expression (obj/lhs/funcE) does NOT have HasLabeledInHead
+2. Second sub-expression (val/rhs/idx/envE) DOES have HasLabeledInHead
+3. normalizeExpr processes the first sub-expression first, producing an ANF trivial `t` (e.g. `.var x`)
+4. Flat evaluation steps the first sub-expression to `.lit v` (actual runtime value)
+5. The `body` in `normalizeExpr ... = ok (labeled label body, m)` depends on `t`
+6. After stepping in the flat semantics, normalizeExpr would use `trivialOfFlatValue v` instead of `t`
+7. Since `.var x ≠ trivialOfFlatValue v`, the bodies don't match
+
+**What was attempted**: Zero-step proof (provide initial state as witness). This FAILS because the goal requires `normalizeExpr sf'.expr K n' = ok (body, m')` where body is UNWRAPPED (without the `.labeled` constructor), but the initial state normalizes to `(labeled label body, m)`.
+
+**Infrastructure that EXISTS and would be needed**:
+- `no_labeled_head_implies_trivial_chain` (L9288): proves first arg is trivialChain
+- `normalizeExpr_trivialChain_apply` (L1466): provides ANF trivial value
+- `trivialChain_eval_value` (L9526): steps trivialChain to `.lit v`
+- `Steps_*_obj_ctx_b`: lifts first-arg steps through compound context
+- `Steps_*_val_ctx_b`: lifts second-arg steps through (value, ·) context
+- `Steps_pres_append` (L35): combines preservation proofs
+
+**What's MISSING**: A way to reconcile `t_lhs` (ANF trivial from normalizeExpr) with `trivialOfFlatValue v_lhs` (from flat evaluation). For `.var x` and `.this`, these are fundamentally different. Potential fixes:
+1. Add a relation/lemma connecting ANF trivials to flat values under ExprWellFormed
+2. Modify the theorem to allow body transformation under trivial substitution
+3. Add normalizeExpr substitution lemma: if normalizeExpr e K1 = labeled l b1 and K1 ~ K2 (differ only in trivial), then normalizeExpr e K2 = labeled l b2 with b1 ~ b2
+
+**Existing template**: The `seq_right.h_b_nolab` case (L10097-10158) handles the analogous seq case. For seq, the first sub-expression's value is DISCARDED (seq just evaluates and moves on), so the trivial mismatch doesn't matter. For binary/setProp/etc., the first sub-expression's value is USED in the continuation, causing the mismatch.
+
+### Assessment of P1 (list decomposition) and P2 (depth induction)
+
+**P1 (call_args, newObj_args, makeEnv, objectLit, arrayLit list cases)**: Same trivial mismatch issue for the "first element has no labeled" branches. The other list cases (L10408 call_args, L10460 newObj_args) also have the same issue.
+
+**P2 (L10759, L10795, L10808, L10891, L10926, L10939)**: These are compound inner expressions inside nested return/yield wrappers. They need depth induction on the inner expression. The IH applies (inner_val.depth ≤ d - 1), but the proof requires connecting normalizeExpr, HasLabeledInHead, and step lifting through return/yield contexts. Doable in principle but requires significant proof infrastructure.
+
+### 2026-04-11T01:00:00+00:00 Run complete — 0 sorries closed; all P0 cases confirmed blocked by trivial mismatch

@@ -10179,7 +10179,7 @@ private theorem normalizeExpr_labeled_branch_step :
             cases hfx with
             | binary_lhs _ _ _ _ h => exact henv_lhs ▸ hewf_lhs x h
             | binary_rhs _ _ _ _ h => exact hewf x (VarFreeIn.binary_rhs _ _ _ _ h)
-      · -- ¬HasLabeledInHead lhs: zero-step witness (label is in rhs, normalization already sees it)
+      · -- ¬HasLabeledInHead lhs: blocked by trivial mismatch (ANF trivial ≠ flat value)
         sorry
     | setProp_obj h_obj =>
       rename_i obj prop val
@@ -10227,7 +10227,7 @@ private theorem normalizeExpr_labeled_branch_step :
             cases hfx with
             | setProp_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
             | setProp_value _ _ _ _ h => exact hewf x (VarFreeIn.setProp_value _ _ _ _ h)
-      · -- ¬HasLabeledInHead obj: zero-step witness (label is in val, normalization already sees it)
+      · -- ¬HasLabeledInHead obj: blocked by trivial mismatch (ANF trivial ≠ flat value)
         sorry
     | getIndex_obj h_obj =>
       rename_i obj idx
@@ -10275,7 +10275,7 @@ private theorem normalizeExpr_labeled_branch_step :
             cases hfx with
             | getIndex_obj _ _ _ h => exact henv_obj ▸ hewf_obj x h
             | getIndex_idx _ _ _ h => exact hewf x (VarFreeIn.getIndex_idx _ _ _ h)
-      · -- ¬HasLabeledInHead obj: zero-step witness (label is in idx, normalization already sees it)
+      · -- ¬HasLabeledInHead obj: blocked by trivial mismatch (ANF trivial ≠ flat value)
         sorry
     | setIndex_obj h_obj =>
       rename_i obj idx val
@@ -10325,7 +10325,7 @@ private theorem normalizeExpr_labeled_branch_step :
             | setIndex_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
             | setIndex_idx _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_idx _ _ _ _ h)
             | setIndex_value _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_value _ _ _ _ h)
-      · -- ¬HasLabeledInHead obj: zero-step witness (label is in idx, normalization already sees it)
+      · -- ¬HasLabeledInHead obj: blocked by trivial mismatch (ANF trivial ≠ flat value)
         sorry
     | setIndex_val h_val =>
       rename_i val obj idx
@@ -10352,7 +10352,7 @@ private theorem normalizeExpr_labeled_branch_step :
             | setIndex_obj _ _ _ _ h => exact henv_obj ▸ hewf_obj x h
             | setIndex_idx _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_idx _ _ _ _ h)
             | setIndex_value _ _ _ _ h => exact hewf x (VarFreeIn.setIndex_value _ _ _ _ h)
-      · -- ¬HasLabeledInHead obj: zero-step witness (label is in val, normalization already sees it)
+      · -- ¬HasLabeledInHead obj: blocked by trivial mismatch (ANF trivial ≠ flat value)
         sorry
     | call_func h_f =>
       rename_i funcE envE argsL
@@ -10402,7 +10402,7 @@ private theorem normalizeExpr_labeled_branch_step :
             | call_func _ _ _ _ h => exact henv_f ▸ hewf_f x h
             | call_env _ _ _ _ h => exact hewf x (VarFreeIn.call_env _ _ _ _ h)
             | call_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.call_arg _ _ _ _ _ hmem h)
-      · -- ¬HasLabeledInHead funcE: zero-step witness (label is in envE, normalization already sees it)
+      · -- ¬HasLabeledInHead funcE: blocked by trivial mismatch (ANF trivial ≠ flat value)
         sorry
     | call_args h_args =>
       sorry -- call_args: labeled in args list requires stepping f/env to values first + list decomposition
@@ -10454,7 +10454,7 @@ private theorem normalizeExpr_labeled_branch_step :
             | newObj_func _ _ _ _ h => exact henv_f ▸ hewf_f x h
             | newObj_env _ _ _ _ h => exact hewf x (VarFreeIn.newObj_env _ _ _ _ h)
             | newObj_arg _ _ _ _ _ hmem h => exact hewf x (VarFreeIn.newObj_arg _ _ _ _ _ hmem h)
-      · -- ¬HasLabeledInHead funcE: zero-step witness (label is in envE, normalization already sees it)
+      · -- ¬HasLabeledInHead funcE: blocked by trivial mismatch (ANF trivial ≠ flat value)
         sorry
     | newObj_args h_args =>
       sorry -- newObj_args: labeled in args list requires stepping f/env to values first + list decomposition
