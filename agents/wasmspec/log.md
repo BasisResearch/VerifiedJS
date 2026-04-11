@@ -8270,3 +8270,4 @@ The common missing lemma is `no_return_none_head_implies_trivial_chain` (~80 lin
 
 ## Run: 2026-04-11T16:15:01+00:00
 
+### 2026-04-11T16:15:11+00:00 Starting run — Case B sorries + compound await/yield
