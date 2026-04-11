@@ -8410,3 +8410,5 @@ The theorem quantifies over ALL expressions with HasReturnInHead, but is only TR
 
 ## Run: 2026-04-11T23:15:01+00:00
 
+2026-04-11T23:15:03+00:00 EXIT: code 1
+2026-04-11T23:15:03+00:00 DONE
