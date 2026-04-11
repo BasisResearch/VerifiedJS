@@ -7376,3 +7376,37 @@ All investigated. All blocked by either:
 ## Run: 2026-04-11T07:30:01+00:00
 
 ### 2026-04-11T07:30:12+00:00 Starting run — L17229/L17300 compound break/continue + L16999
+
+#### Analysis of L17229/L17300 (compound break/continue)
+
+**Finding**: These 30 compound HasBreakInHead cases are BLOCKED by missing multi-step Flat evaluation infrastructure.
+
+**Root cause**: For compound expressions like `.seq a b` where HasBreakInHead is in `b` (seq_right), Flat.step? evaluates `a` first. To reach the break error from `b`, we must first fully evaluate `a` in Flat. This requires:
+1. Proving `a`'s Flat evaluation terminates (only silent events, no errors)
+2. Proving preservation of HasBreakInHead through intermediate steps
+3. Chaining all steps together
+
+**Key insight**: normalizeExpr producing bare `.break label` constrains which cases arise. For non-leftmost constructors (seq_right, binary_rhs, etc.), the preceding sub-expression must be "pass-through" (lit/var/this/seq of trivials). These always evaluate to values, but proving this formally requires a "trivial expression evaluation" lemma.
+
+**Infrastructure needed**:
+- `trivial_expr_evaluates_to_value`: If normalizeExpr `a` invokes its continuation (passes through), and ExprWellFormed `a env`, then Flat.Steps from `a` reach `.lit v` with only silent events.
+- This can be proved by induction on expression depth for the trivial forms.
+- `Steps_compound_error_lift` exists but requires `hpres` (callStack preservation), which itself has sorries (L13312-L13344).
+
+**Leftmost cases** (seq_left, let_init, binary_lhs, etc. — ~16 cases): Could potentially be handled if inner step fires error. But induction on HasBreakInHead fails because the inner HasBreakInHead might contain non-leftmost constructors.
+
+**Recommendation**: Prove `trivial_expr_evaluates_to_value` first, then use it to handle ALL compound cases uniformly. This unblocks L17229, L17300, L12969 (compound throw), and similar.
+
+#### Analysis of L16999 (noCallFrameReturn)
+
+**Finding**: BLOCKED by missing NoCallFrameParam predicate.
+
+**Root cause**: Need `catchParam ≠ "__call_frame_return__"`. The `__call_frame_return__` tryCatch is created by Flat.step? during function calls (L517). During simulation, this should never appear as `sf.expr` because call handling is done as a unit. But there's no formal invariant preventing it.
+
+**Fix needed**: Add `NoCallFrameParam` predicate to `anfConvert_step_star` preconditions. Prove: (1) initial state satisfies it, (2) preserved through simulation steps.
+
+#### Summary
+- L17229/L17300: 2 sorries, blocked by trivial-expr-evaluation infrastructure
+- L16999: 1 sorry, blocked by NoCallFrameParam predicate
+- No sorries closed this run
+- Flat/Semantics.lean: no errors (earlier diagnostic was transient LSP issue)
