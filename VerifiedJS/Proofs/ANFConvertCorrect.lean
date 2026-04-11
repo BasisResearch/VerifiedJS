@@ -15568,7 +15568,13 @@ private theorem step_nonError_preserves_noNonCallFrameTryCatch
         unfold Flat.step? at hstep; dsimp only [] at hstep
         obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; intro h; exact nomatch h
       | some => simp [Flat.Expr.depth] at hd; omega
-    all_goals (simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; omega)
+    | seq _ _ | «let» _ _ _ | assign _ _ | «if» _ _ _
+    | binary _ _ _ | unary _ _ | typeof _ | call _ _ _
+    | newObj _ _ _ | getProp _ _ | setProp _ _ _ | getIndex _ _
+    | setIndex _ _ _ | deleteProp _ _ | throw _ | tryCatch _ _ _ _
+    | while_ _ _ | labeled _ _ | await _ | getEnv _ _
+    | makeClosure _ _ | makeEnv _ | objectLit _ | arrayLit _ =>
+      simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; omega
   | succ n ih =>
     intro e env heap trace funcs cs sf' t hd hncf hstep hnoerr
     cases e with
@@ -16023,7 +16029,7 @@ private theorem step_nonError_preserves_noNonCallFrameTryCatch
                   | call_func h' => exact hncf (.call_func h')
                   | call_env h' => exact hncf (.call_env h')
                   | call_args h' =>
-                    have hdone := Flat.firstNonValueExpr_done_all_lit hfnv
+                    have hdone := firstNonValueExpr_done_all_lit hfnv
                     rcases HasNonCallFrameTryCatchInHeadList_mid_or_tail hdone h' with h_tgt | h_rem
                     · exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega)
                         (fun h => hncf (.call_args (HasNonCallFrameTryCatchInHeadList_of_firstNonValue hfnv h))) ‹_› hnoerr h_tgt
@@ -16069,7 +16075,7 @@ private theorem step_nonError_preserves_noNonCallFrameTryCatch
                   | newObj_func h' => exact hncf (.newObj_func h')
                   | newObj_env h' => exact hncf (.newObj_env h')
                   | newObj_args h' =>
-                    have hdone := Flat.firstNonValueExpr_done_all_lit hfnv
+                    have hdone := firstNonValueExpr_done_all_lit hfnv
                     rcases HasNonCallFrameTryCatchInHeadList_mid_or_tail hdone h' with h_tgt | h_rem
                     · exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega)
                         (fun h => hncf (.newObj_args (HasNonCallFrameTryCatchInHeadList_of_firstNonValue hfnv h))) ‹_› hnoerr h_tgt
@@ -16088,7 +16094,7 @@ private theorem step_nonError_preserves_noNonCallFrameTryCatch
             · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
               intro h; cases h with
               | makeEnv_values h' =>
-                have hdone := Flat.firstNonValueExpr_done_all_lit hfnv
+                have hdone := firstNonValueExpr_done_all_lit hfnv
                 rcases HasNonCallFrameTryCatchInHeadList_mid_or_tail hdone h' with h_tgt | h_rem
                 · exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega)
                     (fun h => hncf (.makeEnv_values (HasNonCallFrameTryCatchInHeadList_of_firstNonValue hfnv h))) ‹_› hnoerr h_tgt
@@ -16107,7 +16113,7 @@ private theorem step_nonError_preserves_noNonCallFrameTryCatch
             · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
               intro h; cases h with
               | arrayLit_elems h' =>
-                have hdone := Flat.firstNonValueExpr_done_all_lit hfnv
+                have hdone := firstNonValueExpr_done_all_lit hfnv
                 rcases HasNonCallFrameTryCatchInHeadList_mid_or_tail hdone h' with h_tgt | h_rem
                 · exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega)
                     (fun h => hncf (.arrayLit_elems (HasNonCallFrameTryCatchInHeadList_of_firstNonValue hfnv h))) ‹_› hnoerr h_tgt
@@ -16126,7 +16132,7 @@ private theorem step_nonError_preserves_noNonCallFrameTryCatch
             · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
               intro h; cases h with
               | objectLit_props h' =>
-                have hdone := Flat.firstNonValueProp_done_all_lit hfnv
+                have hdone := firstNonValueProp_done_all_lit hfnv
                 rcases HasNonCallFrameTryCatchInHeadProps_mid_or_tail hdone h' with h_tgt | h_rem
                 · exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueProp_depth hfnv; omega)
                     (fun h => hncf (.objectLit_props (HasNonCallFrameTryCatchInHeadProps_of_firstNonValue hfnv h))) ‹_› hnoerr h_tgt
