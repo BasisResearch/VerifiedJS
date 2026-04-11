@@ -7039,4 +7039,68 @@ echo "2026-04-11T03:00:32+00:00,49,ongoing" >> logs/time_estimate.csv
 
 ## Run: 2026-04-11T10:00:02+00:00
 
+### Metrics
+- **Sorry count**: ANF 32 + CC 15 + Wasm 0 = **47 total**
+- **Delta from last run (09:00)**: +1 (46→47). UP by 1.
+- **Explanation**: wasmspec decomposed HasReturnInHead_Steps_steppable (1 sorry at L13264) into two sub-lemmas: HasReturnInHead_step_nonError (L13260) + HasReturnInHead_step_error_isLit (L13268). Intentional decomposition — now 2 small provable goals replace 1 opaque sorry. No regression.
+- **BUILD**: Not verified (LSP only).
+
+### What Happened Since Last Run (09:00→10:00)
+1. **proof**: Ran 09:30-09:45. CONFIRMED all 12 trivialChain sorries are FUNDAMENTALLY BLOCKED. Root cause: normalizeExpr threads lhs trivial into continuation K, but stepping lhs changes the trivial (var→value). Theorem requires syntactic body equality which breaks. LSP also times out past L10000.
+2. **jsspec**: Started triage scan at 10:00:14 (lean_multi_attempt on all 15 CC sorries). In progress. Previous run (09:00) confirmed ALL CCStateAgree targets architecturally blocked — convertExpr converts all branches but simulation tracks only taken branch.
+3. **wasmspec**: Last completed 07:55. Run started 08:15, was still running at 09:15 (SKIP). Decomposed the sorry into 2 sub-lemmas. The induction framework for HasReturnInHead_Steps_steppable (L13272) is in place — just needs the two sub-lemmas proved.
+
+### Agent Status
+1. **proof**: NOT RUNNING. **REDIRECTED**: trivialChain abandoned. New task: write helper lemmas for break/continue compound cases (L17340/L17411) in early file region (L4000-L7000) where LSP works. Specifically: step? delegation lemmas + HasBreakInHead_not_value.
+2. **jsspec**: RUNNING since 10:00. Doing lean_multi_attempt triage on all 15 CC sorries. New P1: check if `supported=true` implies no functionDef (would fix CCStateAgree without heavy refactor).
+3. **wasmspec**: Status unclear (last log entry 07:55). Prompt rewritten: P0 = L13260 (HasReturnInHead_step_nonError) with detailed induction-on-hret proof sketch. P1 = L13268 (error_isLit) — may need theorem modification if compound error wrapping doesn't produce .lit.
+
+### Prompts Rewritten (all 3)
+
+1. **proof**: PIVOTED from trivialChain (DEAD END) to helper lemmas for break/continue compound. Detailed step-by-step: (1) lean_local_search for existing delegation lemmas, (2) write HasBreakInHead_not_value, (3) write step?_seq_delegates_head and similar for each compound, (4) write HasBreakInHead_compound_step_exists. All placed in L4000-L7000 range where LSP works.
+
+2. **jsspec**: Added P1 (supported_no_functionDef check) — if supported excludes functionDef, convertExpr is state-preserving on supported sub-expressions, fixing CCStateAgree without heavy refactor. P2 demoted CCStateAgreeWeak to fallback. Added caution: previous analysis said it "breaks all proved compound cases" — verify on ONE case first.
+
+3. **wasmspec**: Rewrote with DETAILED induction proof sketch for HasReturnInHead_step_nonError. Base cases (return_none/some_direct) contradict hnoerr. Compound cases delegate step through IH. Special attention to seq_right (two sub-cases: value vs non-value head). FLAGGED P1: HasReturnInHead_step_error_isLit may be FALSE for compound cases (step wraps result, not .lit v). Suggested checking step? error propagation semantics before proving.
+
+### Sorry Classification (47 total)
+- **TrivialChain BLOCKED (proof)**: 12 (L10183-L10554) — needs architectural fix to normalizeExpr_labeled_branch_step
+- **HasReturnInHead_step_nonError (wasmspec)**: 1 (L13260)
+- **HasReturnInHead_step_error_isLit (wasmspec)**: 1 (L13268) — may need restatement
+- **Compound HasReturnInHead (wasmspec)**: 1 (L13464)
+- **HasAwait/HasYield (wasmspec)**: 2 (L13820, L13993)
+- **Return/yield .let + compound (wasmspec)**: 3 (L14049, L14053, L14054)
+- **Compound catch-all (wasmspec)**: 1 (L12969)
+- **While (BLOCKED)**: 2 (L14144, L14156)
+- **If branch (BLOCKED)**: 2 (L14881, L14921)
+- **TryCatch (BLOCKED)**: 3 (L15762, L15780, L15783)
+- **noCallFrameReturn (BLOCKED)**: 1 (L17110)
+- **body_sim (BLOCKED)**: 1 (L17121)
+- **Break/continue compound (proof helper WIP)**: 2 (L17340, L17411)
+- **CCStateAgree (jsspec)**: 5 (L5491, L5517, L8407, L8484, L8600)
+- **TryCatch-init edge (jsspec)**: 3 (L5265, L5409, L5696)
+- **Multi-step CC (jsspec)**: 3 (L5044, L6347, L6358)
+- **Non-consoleLog call (jsspec)**: 1 (L6139)
+- **CC unprovable (jsspec)**: 1 (L6998)
+- **CC functionDef (jsspec)**: 1 (L8250)
+- **CC tryCatch finally (jsspec)**: 1 (L8410)
+
+### Critical Path
+1. **wasmspec**: L13260 → -1 (if provable). L13268 → -1 (if theorem correct). Then L13464 compound → -1. Then L13820+L13993 → -2. Potential: -5.
+2. **jsspec**: If supported_no_functionDef works → potentially -5 (CCStateAgree) + -3 (tryCatch-init) = -8. HIGH VALUE but speculative.
+3. **proof**: Helper lemmas don't directly close sorries but enable future closure of L17340+L17411 = -2.
+4. **BLOCKED tiers**: trivialChain (12), while (2), if (2), tryCatch (3), noCallFrameReturn (1), body_sim (1), multi-step (3), call (1), functionDef (1), unprovable (1), tryCatch-finally (1) = 28 blocked
+
+### Trend
+- 01:30: 59 sorries
+- 04:05: 48 sorries (-11 in 2.5h)
+- 06:05: 46 sorries (-2 in 2h)
+- 07:05: 47 sorries (+1, decomposition)
+- 09:00: 46 sorries (-1)
+- **10:00: 47 sorries (+1, further decomposition)**
+- **28 of 47 sorries are architecturally BLOCKED**
+- Diminishing returns on tactical work. Need architectural breakthroughs: supported_no_functionDef (jsspec) or normalizeExpr body-equivalence (proof)
+
 2026-04-11T10:05:01+00:00 SKIP: already running
+2026-04-11T10:15:00+00:00 DONE
+2026-04-11T10:12:13+00:00 DONE
