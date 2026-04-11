@@ -18262,7 +18262,7 @@ private theorem hasReturnInHead_return_steps :
                       (fun s inner hv msg si hs => step?_setIndex_val_error s v_b v_c inner hv msg si hs)
                       hsteps_a herr hpres
                   exact ⟨evs_b ++ evs_c ++ evs_a, sf',
-                    Flat.Steps.append hwsteps_b (Flat.Steps.append hwsteps_c hsteps'),
+                    Flat.Steps.append (Flat.Steps.append hwsteps_b hwsteps_c) hsteps',
                     hexpr'.trans hexpr_a, henv'.trans henv_a, hheap'.trans hheap_a,
                     by rw [htrace'.trans htrace_a]; simp [List.append_assoc],
                     by rw [observableTrace_append, observableTrace_append, observableTrace_all_silent hsil_b,
@@ -18560,7 +18560,7 @@ private theorem hasReturnInHead_return_steps :
                       (fun s inner hv msg si hs => step?_setIndex_val_error s v_b v_c inner hv msg si hs)
                       hsteps_a herr hpres
                   exact ⟨evs_b ++ evs_c ++ evs_a, sf',
-                    Flat.Steps.append hwsteps_b (Flat.Steps.append hwsteps_c hsteps'),
+                    Flat.Steps.append (Flat.Steps.append hwsteps_b hwsteps_c) hsteps',
                     hexpr'.trans hexpr_a, henv'.trans henv_a, hheap'.trans hheap_a,
                     by rw [htrace'.trans htrace_a]; simp [List.append_assoc],
                     by rw [observableTrace_append, observableTrace_append, observableTrace_all_silent hsil_b,
@@ -18584,7 +18584,7 @@ private theorem hasReturnInHead_return_steps :
                       (fun s inner hv msg' si hs => step?_setIndex_val_error s v_b v_c inner hv msg' si hs)
                       hsteps_a herr hpres
                   exact ⟨evs_b ++ evs_c ++ evs_a, sf',
-                    Flat.Steps.append hwsteps_b (Flat.Steps.append hwsteps_c hsteps'),
+                    Flat.Steps.append (Flat.Steps.append hwsteps_b hwsteps_c) hsteps',
                     hexpr'.trans hexpr_a, henv'.trans henv_a, hheap'.trans hheap_a,
                     by rw [htrace'.trans htrace_a]; simp [List.append_assoc],
                     by rw [observableTrace_append, observableTrace_append, observableTrace_all_silent hsil_b,
