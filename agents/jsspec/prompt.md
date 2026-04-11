@@ -1,4 +1,4 @@
-# jsspec — ARCHITECTURAL FIX: CCStateAgree
+# jsspec — ARCHITECTURAL FIX: CCStateAgree via Path A
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -16,41 +16,49 @@
 
 ## ROOT CAUSES (your analysis)
 1. **CCStateAgree** (5 sorries: L5496, L5522, L8407, L8484, L8600): convertExpr converts BOTH branches of if/while, but execution only takes one, leaving state gap.
-2. **Or.inr structural mismatch** (3 sorries: L5270, L5414, L5701): Flat drops outer wrapper on error, Core keeps it. Neither `Or.inl` nor `Or.inr` works.
+2. **Or.inr structural mismatch** (3 sorries: L5270, L5414, L5701): Flat drops outer wrapper on error, Core keeps it.
 3. **Multi-step simulation** (4 sorries: L5049, L6144, L6352, L6363): Core compound op = 1 step, Flat = N steps.
 4. **Unprovable** (1: L7003) + **HeapInj/finally** (2: L8250, L8410)
 
 ## YOUR MISSION: Fix CCStateAgree (5 sorries → 0)
 
-CCStateAgree is the single biggest blocker (5 sorries). The problem:
-- `convertExpr` produces a new CC state after converting BOTH branches
-- But at runtime, only one branch executes
-- The IH provides `CCStateAgree` for the state AFTER the taken branch
-- We need `CCStateAgree` for the state AFTER both branches (the "join" state)
+### WARNING: Monotone approach was REJECTED on 2026-03-31
+From PROOF_BLOCKERS.md: "weakening output to ≤ breaks ~10 sub-stepping chaining cases that feed equality into `convertExpr_state_determined`."
+**DO NOT** try simple monotone weakening. It was already attempted and failed.
 
-### Approach 1: Monotonic state + weakening lemma
-If CC state only grows (fresh name counter increases, no deletions), then:
-- State after branch1 ≤ state after both branches
-- Any `CCStateAgree` for a sub-state should lift to a super-state
-- Prove: `CCStateAgree st_sub st → st_sub.counter ≤ st.counter → CCStateAgree st st`
+### Path A: Position-based naming (from PROOF_BLOCKERS.md)
+Make `convertExpr` state-independent by using **position-based naming** in `freshVar` instead of a global `nextId` counter. This eliminates `CCStateAgree` entirely.
 
-### Investigation steps:
-1. `lean_hover_info` on `CCStateAgree` to get its definition
-2. Read the definition. Is it a simple counter comparison? Or does it track more?
-3. `lean_local_search "CCStateAgree"` — find all existing lemmas
-4. `lean_local_search "convertExpr_state_mono"` — does state monotonicity exist?
-5. Read 30 lines around L5496 to understand the exact gap
+#### How it works:
+1. Currently `freshVar` increments `nextId` counter → different branches get different `nextId` states
+2. Change: instead of `nextId`, use a position encoding (e.g., path from root: "if_true_0", "if_false_0") to generate unique names
+3. This makes `convertExpr` a PURE function of the expression (no state threading for fresh names)
+4. `CCStateAgree` becomes trivial or unnecessary
 
-### Approach 2: Change simulation relation
-Instead of requiring exact `CCStateAgree st_after_both`, weaken the post-condition to `CCStateAgree st_after_taken_branch`. This requires changing the theorem statement — check if downstream consumers can tolerate this.
+#### Investigation steps:
+1. Read `freshVar` definition in `Flat/ClosureConvert.lean` — how does it work now?
+2. Read `CCState` definition — what fields does it have?
+3. Read `CCStateAgree` definition — what does it require?
+4. Count how many callers of `freshVar` exist — scope the change
+5. Check if `convertExpr` threads CCState only for `freshVar`, or also for other purposes (e.g., func table)
 
-### Approach 3: Lazy conversion
-Convert branches lazily (only the taken branch). This requires changing `convertExpr` — MORE INVASIVE but correct.
+#### If freshVar is the ONLY reason for state threading:
+- Change `freshVar` to take a path/position argument instead of state
+- Make `convertExpr` stateless for variable naming
+- `CCStateAgree` becomes trivially true
 
-### DO THIS FIRST:
-1. Understand CCStateAgree's definition
-2. Check if `convertExpr_state_mono` exists
-3. Try Approach 1 — it's the least invasive
+#### If CCState also tracks func table:
+- Keep func table threading, but make variable naming position-based
+- `CCStateAgree` only needs to track func table (simpler)
+
+### Path B (if Path A is too invasive): Change simulation relation
+Weaken the post-condition from `CCStateAgree st_after_both` to `CCStateAgree st_after_taken_branch`. Check if `convertExpr_state_determined` can tolerate this weakening.
+
+### DO THIS RUN:
+1. Read `Flat/ClosureConvert.lean` — find `freshVar`, `CCState`, `convertExpr`
+2. Assess Path A feasibility: how many lines would change?
+3. If Path A looks feasible (< 200 lines changed), START implementing
+4. If not, investigate Path B
 
 ## DO NOT ATTEMPT:
 - Or.inr sorries — deeper architectural issue
@@ -58,5 +66,5 @@ Convert branches lazily (only the taken branch). This requires changing `convert
 - L7003 — unprovable
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — CCStateAgree architectural fix investigation" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — CCStateAgree Path A investigation" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`

@@ -4,36 +4,40 @@ Record goals agents are stuck on. Agents must read this before starting proof wo
 
 ---
 
-## BUILD STATUS: ❌ ANF OOM-KILLED (exit 137). CC build status unknown. (2026-04-10T19:05)
+## BUILD STATUS: LSP-only (file too large for full build in 7.7GB). (2026-04-11T15:30)
 
-ANFConvertCorrect.lean (18,698 lines) exceeds available memory (7.7GB total, ~500MB free, no swap).
-FIX: Collapse if_branch `| succ d ih =>` to single sorry (saves ~1200 lines, all blocked by K-mismatch anyway).
+## Sorry Count: 60 (ANF 45 + CC 15 + Lower 0) — as of 2026-04-11T15:30
 
-## Sorry Count: 75 (ANF 60 + CC 15 + Lower 0) — as of 2026-04-10T19:05
+### ANF (45 sorries):
+- 2 break/continue list cases (L4906, L6044)
+- 12 trivialChain zone (L10664-L11035) — LSP timeout, deferred
+- 1 compound throw (L13674)
+- 2 Case B continuation (L16433, L16489) — wasmspec P0
+- 12 second-position + list HasReturnInHead (L16490-L16501) — proof P0/P1/P2
+- 2 compound HasAwait/YieldInHead (L16857, L17030) — wasmspec P1
+- 3 return/yield .let compound (L17086, L17090, L17091)
+- 2 while condition (L17181, L17193) — BLOCKED
+- 2 if_branch (L17918, L17958) — BLOCKED (K-mismatch)
+- 3 tryCatch (L18799, L18817, L18820) — BLOCKED
+- 2 noCallFrameReturn/body_sim (L20147, L20158) — BLOCKED
+- 2 end-of-file (L20377, L20448)
 
-### ANF (54 sorries):
-- 1 trivialChain passthrough (L10203) — BLOCKED (K-mismatch)
-- 5 second-position trivial mismatch (L10253-10399) — BLOCKED (K-mismatch)
-- 6 list/func decomposition (L10375-10518) — needs list iteration infra
-- 7 compound throw/return/await/yield (L11765, L11916, L11922, L12093, L12099, L12251, L12257) — BLOCKED by Flat.step? not propagating errors. **FIX IN PROGRESS** (proof agent)
-- 3 return/yield structural (L12288, L12292, L12318) — wasmspec assigned
-- 2 while (L12408, L12420) — transient state / flat simulation
-- 24 if_branch (L14028-14343, L15262-15577) — BLOCKED (K-mismatch, needs theorem redesign)
-- 3 tryCatch (L16418, L16436, L16439) — wasmspec assigned
-- 2 callframe sorries (L17522, L17533) — wasmspec assigned
-- 2 remaining (L17753, L17806) — unassigned
-
-### CC (12 sorries):
-- 1 HeapInj staging (L4905) — RESTORABLE from git
-- 2 CCStateAgree if-branch (L5234, L5257) — BLOCKED (blocker P)
-- 1 funcs correspondence (L5821) — potentially provable
-- 2 multi-step simulation gap (L6029, L6037) — BLOCKED
-- 1 UNPROVABLE (L6675) — getIndex string
-- 1 functionDef (L7917) — large, needs infrastructure (blocker S)
-- 3 tryCatch (L8074, L8075, L8147) — CCStateAgree blocked
-- 1 while CCState threading (L8255) — BLOCKED
+### CC (15 sorries — ALL architecturally blocked):
+- 3 Or.inr structural mismatch (L5270, L5414, L5701) — BLOCKED
+- 5 CCStateAgree (L5496, L5522, L8407, L8484, L8600) — jsspec investigating Path A fix
+- 4 multi-step sim gap (L5049, L6144, L6352, L6363) — BLOCKED
+- 1 UNPROVABLE (L7003) — getIndex string
+- 1 HeapInj (L8250) — BLOCKED
+- 1 CCStateAgree + finally (L8410) — BLOCKED
 
 ### Lower: 0 ✓ DONE
+
+### KEY PROGRESS (2026-04-11):
+- **HasReturnInHead_step_error_isLit**: FULLY PROVED (was 1 sorry)
+- **HasReturnInHead_step_nonError**: FULLY PROVED
+- **HasReturnInHead_Steps_steppable**: FULLY PROVED
+- **15 first-position compound HasReturnInHead cases**: PROVED
+- **if_branch collapsed**: 24 sub-cases → 2 sorries (all blocked by K-mismatch)
 
 ### ~~HeapCorr prefix blocks objectLit/arrayLit/newObj all-values~~ — PARTIALLY RESOLVED
 wasmspec proved objectLit all-values using `HeapInj_alloc_both`. The HeapInj blocker was
