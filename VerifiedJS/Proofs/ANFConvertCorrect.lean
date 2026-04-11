@@ -9507,14 +9507,14 @@ private theorem callFrame_tryCatch_step_error_isLit
       split at hstep
       · -- msg.startsWith "return:": produces (.silent, ...) → contradicts .error
         simp [Flat.pushTrace] at hstep
-      · -- ¬msg.startsWith "return:": if true then (.error msg, .lit .undefined)
-        simp [Flat.pushTrace] at hstep
-        obtain ⟨_, rfl⟩ := hstep
+      · -- ¬msg.startsWith "return:": else if true → (.error msg, .lit .undefined)
+        simp only [ite_true, Flat.pushTrace] at hstep
+        obtain ⟨rfl, rfl⟩ := hstep
         rfl
     · -- step? body = some (t, sb) where t ≠ .error _
-      split at hstep
-      · simp [Flat.pushTrace] at hstep
-      · simp [Flat.pushTrace] at hstep
+      rename_i _ _ _ _ t_ne_error _
+      obtain ⟨rfl, rfl⟩ := by simp [Flat.pushTrace] at hstep; exact hstep
+      exfalso; exact t_ne_error msg rfl
     · -- step? body = none
       simp at hstep
 
