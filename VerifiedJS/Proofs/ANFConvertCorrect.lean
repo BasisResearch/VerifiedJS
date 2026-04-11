@@ -13505,9 +13505,35 @@ private theorem normalizeExpr_return_step_sim
   | throw_arg h => exfalso; exact noNestedAbrupt_hasReturnInHead_absurd_throw hna h
   | yield_some_arg h => exfalso; exact noNestedAbrupt_hasReturnInHead_absurd_yield hna h
   | await_arg h => exfalso; exact noNestedAbrupt_hasReturnInHead_absurd_await hna h
-  | _ =>
-    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
-    sorry -- compound HasReturnInHead: needs error propagation through compound wrappers
+  | seq_left h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.seq_left h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | seq_right h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.seq_right h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | let_init h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.let_init h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | getProp_obj h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.getProp_obj h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | setProp_obj h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.setProp_obj h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | setProp_val h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.setProp_val h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | binary_lhs h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.binary_lhs h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | binary_rhs h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.binary_rhs h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | unary_arg h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.unary_arg h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | typeof_arg h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.typeof_arg h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | deleteProp_obj h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.deleteProp_obj h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | assign_val h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.assign_val h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | call_func h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.call_func h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | call_env h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.call_env h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | call_args h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.call_args h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | newObj_func h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.newObj_func h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | newObj_env h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.newObj_env h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | newObj_args h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.newObj_args h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | if_cond h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.if_cond h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | getIndex_obj h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.getIndex_obj h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | getIndex_idx h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.getIndex_idx h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | setIndex_obj h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.setIndex_obj h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | setIndex_idx h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.setIndex_idx h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | setIndex_val h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.setIndex_val h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | getEnv_env h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.getEnv_env h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | makeClosure_env h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.makeClosure_env h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | makeEnv_values h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.makeEnv_values h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | objectLit_props h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.objectLit_props h) env heap trace funcs cs k n m arg hnorm hewf hna
+  | arrayLit_elems h => simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]; exact hasReturnInHead_return_steps _ _ (Nat.le_refl _) (.arrayLit_elems h) env heap trace funcs cs k n m arg hnorm hewf hna
 
 /-- step? on .await (.lit v) resolves immediately to .lit v with silent event. -/
 private theorem Flat.step?_await_lit_eq (v : Flat.Value)
