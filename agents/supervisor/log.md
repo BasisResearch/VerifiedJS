@@ -6360,3 +6360,47 @@ No agent has edited any proof file since the last supervisor run at 01:30. All t
 
 ## Run: 2026-04-11T02:05:01+00:00
 
+### Metrics
+- **Sorry count**: ANF 40 + CC 15 = **55 total** (real sorries, excluding comment mentions)
+- **Delta from last run (02:00)**: **-4** from reported 59. However, previous counts included comment lines. True delta from accurate recount: hasAbruptCompletion_step_preserved UNCOMMENTED = -1 real sorry closed by proof agent.
+- **BUILD**: NOT VERIFIED. hasAbruptCompletion has 3 errors (termination + 2 Eq.refl).
+
+### Why count methodology changed
+Previous runs counted `grep -c sorry` which includes comment mentions like "sorry'd", "tryCatch sorry (L16312)". Accurate count using content inspection: ANF has 40 real sorry keywords as tactics/terms + 1 in comments = 41 grep matches. CC has 15 real + 5 in comments = 20 grep matches.
+
+### Agent Status
+1. **proof** (RUNNING since 01:30): Uncommented hasAbruptCompletion_step_preserved (P0 from last prompt). FILE MODIFIED 02:06. Has 3 errors: termination failure (42 recursive calls, only 7 proved decreasing), 2 Eq.refl constructor errors at L14270/L14302. NoNestedAbrupt (L14414) still sorry'd and commented out. **PROMPT REWRITTEN** with termination fix guidance (`termination_by sizeOf e`).
+
+2. **wasmspec** (NOT RUNNING since 01:21): Previous run found all trivialChain P0 blocked. Has not started on compound inner depth (L10759) yet. **PROMPT KEPT** (already correct for L10759, refreshed with accurate counts).
+
+3. **jsspec** (RUNNING since 02:00): Working on FuncsCorr def + CCStateAgree analysis. CC file modified at 02:05. All 15 CC sorries remain. **PROMPT REFRESHED** with accurate counts and tractable sorry assessment.
+
+### Actions Taken
+1. **Established accurate sorry baseline**: ANF 40 + CC 15 = 55 real sorries. Previous counts of 59 included comments.
+2. **REWROTE proof prompt**: P0 = fix termination in hasAbruptCompletion (3 specific errors with fix approach). P1 = uncomment NoNestedAbrupt with same termination fix.
+3. **REFRESHED wasmspec prompt**: P0 = L10759 compound inner depth (6 sorries). Accurate counts.
+4. **REFRESHED jsspec prompt**: P0 = FuncsCorr L1469/L1473. P1 = HeapInj regression. P2 = tractable sorry check.
+5. Logged 55 sorries to time_estimate.csv.
+
+### Critical Path
+1. proof: Fix termination in hasAbruptCompletion → build passes → uncomment NoNestedAbrupt → -2 more
+2. wasmspec: L10759 compound inner depth → -6 (if IH approach works)
+3. jsspec: FuncsCorr definition → -2 (L1469, L1473), potentially unblocks L5901/L8042
+4. BLOCKED: trivial mismatch (~12), CCStateAgree (6), multi-step (3), getIndex unprovable (1), if_branch K-mismatch (2), while (2), tryCatch (3)
+
+### Sorry Classification (55 total)
+- **In progress (termination fix)**: 1 (hasAbruptCompletion — uncommented but erroring)
+- **Closable (uncomment)**: 1 (NoNestedAbrupt L14414, after termination fix)
+- **Closable (depth IH)**: 6 (L10759-L10939)
+- **Closable (definition)**: 2 (L1469, L1473 FuncsCorr)
+- **Possibly closable (HeapInj regression)**: 1 (L4898 area)
+- **Error prop blocked**: 7 (L11832-L12169, L12225-L12230)
+- **CCStateAgree blocked**: 6 (L5327, L5353, L8199, L8202, L8276, L8392)
+- **Multi-step blocked**: 3 (L4978, L6138, L6149)
+- **Trivial mismatch blocked**: 12 (L10183-L10554)
+- **Other blocked**: 16 (if_branch, while, tryCatch, anfConvert_step_star, getIndex, compound misc)
+
+---
+2026-04-11T02:10:00+00:00 DONE
+
+2026-04-11T02:24:00+00:00 DONE

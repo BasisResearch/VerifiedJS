@@ -1,4 +1,4 @@
-# proof — UNCOMMENT TWO PROOFS (L13969, L14517)
+# proof — FIX TERMINATION IN hasAbruptCompletion, THEN UNCOMMENT NoNestedAbrupt
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,47 +9,60 @@
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
 ## STATUS
-- ANF: 42 sorries. CC: 17. Lower: 0. Total: 59.
-- Error propagation DONE in Flat/Semantics.lean.
-- **NO PROGRESS SINCE LAST RUN.** You must close at least 2 sorries this run.
+- ANF: 40 real sorries. CC: 15. Total: 55.
+- hasAbruptCompletion_step_preserved UNCOMMENTED (good!) but has **3 ERRORS**:
+  1. **TERMINATION FAILURE** at L13962: Lean cannot infer structural recursion. 42 recursive calls, only 7 proved decreasing.
+  2. **Eq.refl constructor** at L14270 and L14302: "Insufficient number of fields for ⟨...⟩ constructor: Constructor Eq.refl does not have explicit fields, but 2 were provided"
 
-## P0: UNCOMMENT hasAbruptCompletion_step_preserved (L13969)
+## P0: FIX TERMINATION IN hasAbruptCompletion_step_preserved (L13962)
 
-**THIS IS A 3-LINE EDIT. DO IT FIRST.**
+The proof makes recursive calls where `sf'.expr` (from `hstep`) is NOT syntactically a sub-term of `e`. Lean can't prove termination.
 
-The proof is ALREADY WRITTEN in a comment block L13970-L14507. You just need to:
+**FIX APPROACH — well-founded recursion on sizeOf:**
 
-1. Delete line 13969: `  sorry -- TODO: fix for error propagation; cases need split at hstep for match t with`
-2. Delete line 13970: `  /-cases e with` → change to `  cases e with`
-3. Delete the closing `-/` at line 14507
+Add after line 13968 (after `: hasAbruptCompletion sf'.expr = false := by`):
+```
+termination_by sizeOf e
+```
 
-That's it. The 537-line proof between L13971 and L14506 is complete and handles all cases.
+Then for each recursive call where Lean complains, add a `have` proving `sizeOf target < sizeOf e`. After `cases e with | seq lhs rhs => ...`, when you recursively call on a sub-expression extracted from `hstep`, show:
+```lean
+have hdec : sizeOf sub_expr < sizeOf (Flat.Expr.seq lhs rhs) := by
+  simp [Flat.Expr.sizeOf_eq]; omega
+```
 
-**After uncommenting**, run `lean_diagnostic_messages` on lines 13962-14507 to check for errors. If there are errors, they'll be minor (hypothesis name shifts). Fix them one by one.
+**ALTERNATIVE if sizeOf is hard**: Use `decreasing_by` with explicit proofs:
+```lean
+termination_by sizeOf e
+decreasing_by all_goals (simp_all [Flat.Expr]; omega)
+```
 
-## P1: UNCOMMENT NoNestedAbrupt_step_preserved (L14517)
+If even that fails, TEMPORARILY use:
+```lean
+termination_by sizeOf e
+decreasing_by all_goals sorry
+```
+This adds sorries but unblocks the rest. Count: note how many `decreasing_by sorry` instances.
 
-Same pattern. The proof is commented out from L14518 to L15035.
+## P0b: FIX Eq.refl ERRORS (L14270, L14302)
 
-1. Delete line 14517: `  sorry -- TODO: fix for error propagation; cases need split at hstep for match t with`
-2. Delete line 14518: `  /-obtain ⟨e, env, heap, trace, funcs, cs⟩ := sf` → change to `  obtain ⟨e, env, heap, trace, funcs, cs⟩ := sf`
-3. Delete the closing `-/` at line 15035
+These are `⟨rfl, rfl⟩` constructions where the anonymous constructor doesn't match. Replace `⟨rfl, rfl⟩` with explicit `Eq.refl` or use `exact ⟨rfl, rfl⟩` → `constructor <;> rfl` or `simp`.
 
-**These two uncomments potentially close 2 sorries immediately** and may cascade to help L15443/L15514 (compound Category B cases that use these theorems).
+Run `lean_goal` at L14270 to see what the goal type is, then fix the constructor usage.
 
-## P2: COMPOUND ERROR PROP SORRIES (L11832, L11838, L12005, L12011, L12163, L12169)
+## P1: UNCOMMENT NoNestedAbrupt_step_preserved (L14414)
 
-After P0+P1, tackle these. They're marked "blocked by Flat.step? error propagation" but error prop IS done:
-- L11832/L11838: return compound
-- L12005/L12011: await compound
-- L12163/L12169: yield compound
+After P0 is fixed, uncomment the proof at L14414-L14920 (same pattern as hasAbruptCompletion):
+1. Delete the `sorry` at L14414
+2. Change `/-obtain` at L14415 to `obtain`
+3. Delete the closing `-/` (find it with search)
 
-Pattern: when inner expr steps with `.error msg`, the compound wrapper drops. Use:
-1. `Steps_ctx_lift` for non-error prefix (hnoerr holds for silent steps)
-2. `step?_return_error` / `step?_await_error` / `step?_yield_error` for the final error step
+**WARNING**: This proof will have the SAME termination issue. Apply the same `termination_by sizeOf` fix immediately.
 
-## SKIP: labeled_branch (blocked by trivial mismatch), CC, while/tryCatch, if_branch, anfConvert_step_star
+## P2: COMPOUND ERROR PROP (L11832, L11838, L12005, L12011, L12163, L12169) — only after P0+P1
+
+## SKIP: labeled_branch (blocked), CC, while/tryCatch, if_branch, anfConvert_step_star
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — uncomment L13969 L14517" >> agents/proof/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — fix termination L13962" >> agents/proof/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`

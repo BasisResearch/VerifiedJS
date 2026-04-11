@@ -9,44 +9,39 @@
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
 ## STATUS
-- ANF: 42 sorries. CC: 17. Total: 59.
-- **NO PROGRESS SINCE LAST RUN.** You must close at least 1 sorry this run.
+- ANF: 40 sorries. CC: 15. Total: 55.
 - ALL trivialChain sorries confirmed blocked. DO NOT WORK ON THOSE.
+- hasAbruptCompletion_step_preserved being fixed by proof agent (errors at L13962).
 
-## P0: L10759 — COMPOUND INNER DEPTH (do this FIRST)
+## P0: L10759 — COMPOUND INNER DEPTH
 
-This sorry is at line 10759 in ANFConvertCorrect.lean. Context: `inner_val` is compound (not `.labeled`), inside `.return (some (.return (some inner_val)))` in `normalizeExpr_labeled_branch_step`.
+This sorry is at line 10759 in ANFConvertCorrect.lean.
 
-**You have** (from the surrounding proof context):
-- `hlh : HasLabeledInHead (.return (some (.return (some inner_val)))) label`
-- `hd : (.return (some (.return (some inner_val)))).depth ≤ d + 1`
-- IH on depth: `ih : ∀ e, e.depth ≤ d → HasLabeledInHead e label → ... → ∃ sf' evs, Steps ...`
-- `hnorm` giving normalizeExpr result
-- `hewf` giving well-formedness
+**Context**: The catch-all `| _ =>` at L10756 covers compound (non-labeled) inner_val inside `.return (some (.return (some inner_val)))`.
 
-**Write this proof:**
-```lean
--- Step 1: Extract inner HasLabeledInHead
-have hlh_inner : HasLabeledInHead inner_val label := by
-  cases hlh with | return_some_arg h => cases h with | return_some_arg h => exact h
--- Step 2: Depth bound
-have hdepth_inner : inner_val.depth ≤ d := by
-  simp [Flat.Expr.depth] at hd; omega
--- Step 3: Well-formedness
-have hewf_inner : ExprWellFormed inner_val env := by
-  intro x hfx; exact hewf x (VarFreeIn.return_some_arg _ _ (VarFreeIn.return_some_arg _ _ hfx))
--- Step 4: Apply IH (check lean_goal at L10759 for exact parameter order)
--- Step 5: Lift steps through two return layers using Steps_return_some_ctx_b twice
+**The IH `ih` is available** (check with `lean_goal` at L10759):
+```
+ih : ∀ (e : Flat.Expr), e.depth ≤ d →
+  ∀ (k n m label body), ... → normalizeExpr e k n = ok (labeled label body, m) →
+  ∀ sf, sf.expr = e → ExprWellFormed e sf.env →
+  ∃ evs sf', Steps sf evs sf' ∧ ...
 ```
 
-**CRITICAL**: Before writing the proof, run `lean_goal` at line 10759 to see the exact goal and available hypotheses. The parameter names/order above are approximate — use the ACTUAL names from the goal.
+**The goal** requires: given inner_val with HasLabeledInHead, find Steps from sf to some sf' where normalizeExpr sf'.expr produces the body.
 
-After L10759 works, adapt for L10795, L10808, L10891, L10926, L10939 (same pattern with yield variants).
+**Proof strategy:**
+1. Run `lean_goal` at L10759 to see exact hypotheses and goal
+2. Extract `HasLabeledInHead inner_val label` from the surrounding `hlh` using `cases hlh`
+3. Show `inner_val.depth ≤ d` from `hd` (the `.return (some (.return (some inner_val))).depth ≤ d + 1` bound): `simp [Flat.Expr.depth] at hd; omega`
+4. Apply `ih inner_val hdepth ...` with appropriate k, n, sf arguments
+5. Lift the resulting Steps through `.return (some (.return (some ·)))` using `Steps_return_some_ctx_b` (search: `lean_local_search "Steps_return_some_ctx_b"`)
 
-## Infrastructure that EXISTS:
-- `Steps_return_some_ctx_b` (search with `lean_local_search "Steps_return_some_ctx_b"`)
-- `Steps_yield_some_ctx_b` (search for it)
-- `HasLabeledInHead.return_some_arg`, `HasLabeledInHead.yield_some_arg`
+**IMPORTANT**: The catch-all `| _ =>` has MANY sub-goals (one per non-labeled constructor: lit, var, seq, let, etc.). The proof may need `all_goals` or separate handling per constructor. Start with `lean_goal` to see exactly what's there.
+
+After L10759, adapt for:
+- L10795: inner_val inside `.return (some (.yield (some inner_val) delegate))` — use `Steps_return_some_ctx_b` + `Steps_yield_some_ctx_b`
+- L10808: catch-all for yield variants
+- L10891, L10926, L10939: yield outer layer variants
 
 ## SKIP: trivialChain (blocked), if_branch, while, tryCatch, error prop cases (proof agent owns those)
 

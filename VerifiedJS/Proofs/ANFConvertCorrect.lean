@@ -14315,7 +14315,8 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       split at hstep
       · rename_i _ hfnv
         split at hstep
-        · have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac
+        · have _depth_lt := Flat.firstNonValueExpr_depth hfnv
+          have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac
           have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac (by assumption)
           split at hstep <;> {
             obtain ⟨_, rfl⟩ := hstep
@@ -14332,7 +14333,8 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       split at hstep
       · rename_i _ hfnv
         split at hstep
-        · have hdecomp := hasAbruptCompletionProps_firstNonValueProp_preserved hfnv hac
+        · have _depth_lt := Flat.firstNonValueProp_depth hfnv
+          have hdecomp := hasAbruptCompletionProps_firstNonValueProp_preserved hfnv hac
           have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac (by assumption)
           split at hstep <;> {
             obtain ⟨_, rfl⟩ := hstep
@@ -14349,7 +14351,8 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       split at hstep
       · rename_i _ hfnv
         split at hstep
-        · have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac
+        · have _depth_lt := Flat.firstNonValueExpr_depth hfnv
+          have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac
           have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac (by assumption)
           split at hstep <;> {
             obtain ⟨_, rfl⟩ := hstep
@@ -14406,6 +14409,8 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
           have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_body hfuncs_ac (by assumption)
           split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
         · exact absurd hstep (by simp)
+  termination_by Flat.Expr.depth e
+  decreasing_by all_goals (simp_all [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth]; omega)
 
 set_option maxHeartbeats 3200000 in
 /-- Flat single-step preserves NoNestedAbrupt. -/
