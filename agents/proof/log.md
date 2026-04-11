@@ -7268,3 +7268,4 @@ These pre-existing errors were present before this run. Flat/Semantics.lean: 0 e
 
 ## Run: 2026-04-11T01:30:01+00:00
 
+### 2026-04-11T01:30:16+00:00 Starting run — error prop sorries L13969 L14517
