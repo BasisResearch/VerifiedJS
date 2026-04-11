@@ -14139,32 +14139,23 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion]
       · -- val not value → step val
         split at hstep
-        split at hstep <;> {
-          obtain ⟨_, rfl⟩ := hstep
-          simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          exact ⟨hac.1, hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac (by assumption)⟩
-          }
+        · have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac (by assumption)
+          split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
         · exact absurd hstep (by simp)
     · -- obj is other value (non-object)
       split at hstep
       · obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion]
       · split at hstep
-        split at hstep <;> {
-          obtain ⟨_, rfl⟩ := hstep
-          simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          exact ⟨hac.1, hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac (by assumption)⟩
-          }
+        · have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac (by assumption)
+          split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
         · exact absurd hstep (by simp)
   | getIndex obj idx =>
     simp only [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
     unfold Flat.step? at hstep; dsimp only [] at hstep; split at hstep
     · -- obj not value → step obj
       split at hstep
-      split at hstep <;> {
-        obtain ⟨_, rfl⟩ := hstep
-        simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-        exact ⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.1 hfuncs_ac (by assumption), hac.2⟩
-        }
+      · have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.1 hfuncs_ac (by assumption)
+        split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
       · exact absurd hstep (by simp)
     · -- obj is .object addr
       split at hstep
@@ -14172,31 +14163,22 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
         obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion]
       · -- idx not value → step idx
         split at hstep
-        split at hstep <;> {
-          obtain ⟨_, rfl⟩ := hstep
-          simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          exact ⟨hac.1, hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac (by assumption)⟩
-          }
+        · have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac (by assumption)
+          split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
         · exact absurd hstep (by simp)
     · -- obj is .string
       split at hstep
       · obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion]
       · split at hstep
-        split at hstep <;> {
-          obtain ⟨_, rfl⟩ := hstep
-          simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          exact ⟨hac.1, hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac (by assumption)⟩
-          }
+        · have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac (by assumption)
+          split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
         · exact absurd hstep (by simp)
     · -- obj is other value
       split at hstep
       · obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion]
       · split at hstep
-        split at hstep <;> {
-          obtain ⟨_, rfl⟩ := hstep
-          simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          exact ⟨hac.1, hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac (by assumption)⟩
-          }
+        · have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.2 hfuncs_ac (by assumption)
+          split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
         · exact absurd hstep (by simp)
   | setIndex obj idx val =>
     simp only [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
@@ -14204,24 +14186,15 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
     unfold Flat.step? at hstep; dsimp only [] at hstep; split at hstep
     · -- obj not value → step obj
       split at hstep
-      split at hstep <;> {
-        obtain ⟨_, rfl⟩ := hstep
-        simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-        exact ⟨⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_obj hfuncs_ac (by assumption),
-        hac_idx⟩, hac_val⟩
-        }
+      · have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_obj hfuncs_ac (by assumption)
+        split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
       · exact absurd hstep (by simp)
     · -- obj is .object addr
       split at hstep
       · -- idx not value → step idx
         split at hstep
-        split at hstep <;> {
-          obtain ⟨_, rfl⟩ := hstep
-          simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          exact ⟨⟨hac_obj,
-          hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_idx hfuncs_ac (by assumption)⟩,
-          hac_val⟩
-          }
+        · have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_idx hfuncs_ac (by assumption)
+          split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
         · exact absurd hstep (by simp)
       · -- idx is value
         split at hstep
@@ -14229,24 +14202,15 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
           obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion]
         · -- val not value → step val
           split at hstep
-          split at hstep <;> {
-            obtain ⟨_, rfl⟩ := hstep
-            simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-            exact ⟨⟨hac_obj, hac_idx⟩,
-            hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_val hfuncs_ac (by assumption)⟩
-            }
+          · have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_val hfuncs_ac (by assumption)
+            split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
           · exact absurd hstep (by simp)
     · -- obj is other value (non-object)
       split at hstep
       · -- idx not value → step idx
         split at hstep
-        split at hstep <;> {
-          obtain ⟨_, rfl⟩ := hstep
-          simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          exact ⟨⟨hac_obj,
-          hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_idx hfuncs_ac (by assumption)⟩,
-          hac_val⟩
-          }
+        · have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_idx hfuncs_ac (by assumption)
+          split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
         · exact absurd hstep (by simp)
       · -- idx is value
         split at hstep
@@ -14254,12 +14218,8 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
           obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion]
         · -- val not value → step val
           split at hstep
-          split at hstep <;> {
-            obtain ⟨_, rfl⟩ := hstep
-            simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-            exact ⟨⟨hac_obj, hac_idx⟩,
-            hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_val hfuncs_ac (by assumption)⟩
-            }
+          · have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_val hfuncs_ac (by assumption)
+            split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
           · exact absurd hstep (by simp)
   -- List cases: call, newObj, makeEnv, objectLit, arrayLit
   | call f envE args =>
@@ -14268,24 +14228,15 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
     unfold Flat.step? at hstep; dsimp only [] at hstep; split at hstep
     · -- f not value → step f
       split at hstep
-      split at hstep <;> {
-        obtain ⟨_, rfl⟩ := hstep
-        simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-        exact ⟨⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_f hfuncs_ac (by assumption),
-        hac_e⟩, hac_args⟩
-        }
+      · have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_f hfuncs_ac (by assumption)
+        split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
       · exact absurd hstep (by simp)
     · -- f is value
       split at hstep
       · -- envE not value → step envE
         split at hstep
-        split at hstep <;> {
-          obtain ⟨_, rfl⟩ := hstep
-          simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          exact ⟨⟨hac_f,
-          hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_e hfuncs_ac (by assumption)⟩,
-          hac_args⟩
-          }
+        · have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_e hfuncs_ac (by assumption)
+          split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
         · exact absurd hstep (by simp)
       · -- envE is value
         split at hstep
@@ -14311,16 +14262,12 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
           · -- firstNonValueExpr = some (done, target, remaining)
             rename_i _ hfnv
             split at hstep
-            split at hstep <;> {
-              · rename_i _ heq; obtain ⟨_, rfl⟩ := hstep
-              simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff,
-              List.append_assoc, List.singleton_append]
-              have _depth_lt := Flat.firstNonValueExpr_depth hfnv
-              have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac_args
-              exact ⟨⟨hac_f, hac_e⟩,
-              hdecomp.2.2 _
-              (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac (by assumption))⟩
-              }
+            · have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac_args
+              have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac (by assumption)
+              split at hstep <;> {
+                obtain ⟨_, rfl⟩ := hstep
+                simp only [Flat.pushTrace, hasAbruptCompletion, List.append_assoc, List.singleton_append]
+                first | exact h_ih | exact ⟨⟨hac_f, hac_e⟩, hdecomp.2.2 _ h_ih⟩ }
             · exact absurd hstep (by simp)
           · exact absurd hstep (by simp)
   | newObj f envE args =>
@@ -14329,24 +14276,15 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
     unfold Flat.step? at hstep; dsimp only [] at hstep; split at hstep
     · -- f not value → step f
       split at hstep
-      split at hstep <;> {
-        obtain ⟨_, rfl⟩ := hstep
-        simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-        exact ⟨⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_f hfuncs_ac (by assumption),
-        hac_e⟩, hac_args⟩
-        }
+      · have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_f hfuncs_ac (by assumption)
+        split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
       · exact absurd hstep (by simp)
     · -- f is value
       split at hstep
       · -- envE not value → step envE
         split at hstep
-        split at hstep <;> {
-          obtain ⟨_, rfl⟩ := hstep
-          simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          exact ⟨⟨hac_f,
-          hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_e hfuncs_ac (by assumption)⟩,
-          hac_args⟩
-          }
+        · have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_e hfuncs_ac (by assumption)
+          split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
         · exact absurd hstep (by simp)
       · -- envE is value
         split at hstep
@@ -14356,16 +14294,12 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
           split at hstep
           · rename_i _ hfnv
             split at hstep
-            split at hstep <;> {
-              · rename_i _ heq; obtain ⟨_, rfl⟩ := hstep
-              simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff,
-              List.append_assoc, List.singleton_append]
-              have _depth_lt := Flat.firstNonValueExpr_depth hfnv
-              have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac_args
-              exact ⟨⟨hac_f, hac_e⟩,
-              hdecomp.2.2 _
-              (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac (by assumption))⟩
-              }
+            · have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac_args
+              have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac (by assumption)
+              split at hstep <;> {
+                obtain ⟨_, rfl⟩ := hstep
+                simp only [Flat.pushTrace, hasAbruptCompletion, List.append_assoc, List.singleton_append]
+                first | exact h_ih | exact ⟨⟨hac_f, hac_e⟩, hdecomp.2.2 _ h_ih⟩ }
             · exact absurd hstep (by simp)
           · exact absurd hstep (by simp)
   | makeEnv vals =>
@@ -14377,15 +14311,12 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       split at hstep
       · rename_i _ hfnv
         split at hstep
-        split at hstep <;> {
-          · rename_i _ heq; obtain ⟨_, rfl⟩ := hstep
-          simp only [Flat.pushTrace, hasAbruptCompletion,
-          List.append_assoc, List.singleton_append]
-          have _depth_lt := Flat.firstNonValueExpr_depth hfnv
-          have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac
-          exact hdecomp.2.2 _
-          (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac (by assumption))
-          }
+        · have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac
+          have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac (by assumption)
+          split at hstep <;> {
+            obtain ⟨_, rfl⟩ := hstep
+            simp only [Flat.pushTrace, hasAbruptCompletion, List.append_assoc, List.singleton_append]
+            first | exact h_ih | exact hdecomp.2.2 _ h_ih }
         · exact absurd hstep (by simp)
       · exact absurd hstep (by simp)
   | objectLit props =>
@@ -14397,15 +14328,12 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       split at hstep
       · rename_i _ hfnv
         split at hstep
-        split at hstep <;> {
-          · rename_i _ heq; obtain ⟨_, rfl⟩ := hstep
-          simp only [Flat.pushTrace, hasAbruptCompletion,
-          List.append_assoc, List.singleton_append]
-          have _depth_lt := Flat.firstNonValueProp_depth hfnv
-          have hdecomp := hasAbruptCompletionProps_firstNonValueProp_preserved hfnv hac
-          exact hdecomp.2.2 _
-          (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac (by assumption))
-          }
+        · have hdecomp := hasAbruptCompletionProps_firstNonValueProp_preserved hfnv hac
+          have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac (by assumption)
+          split at hstep <;> {
+            obtain ⟨_, rfl⟩ := hstep
+            simp only [Flat.pushTrace, hasAbruptCompletion, List.append_assoc, List.singleton_append]
+            first | exact h_ih | exact hdecomp.2.2 _ h_ih }
         · exact absurd hstep (by simp)
       · exact absurd hstep (by simp)
   | arrayLit elems =>
@@ -14417,15 +14345,12 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
       split at hstep
       · rename_i _ hfnv
         split at hstep
-        split at hstep <;> {
-          · rename_i _ heq; obtain ⟨_, rfl⟩ := hstep
-          simp only [Flat.pushTrace, hasAbruptCompletion,
-          List.append_assoc, List.singleton_append]
-          have _depth_lt := Flat.firstNonValueExpr_depth hfnv
-          have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac
-          exact hdecomp.2.2 _
-          (hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac (by assumption))
-          }
+        · have hdecomp := hasAbruptCompletionList_firstNonValue_preserved hfnv hac
+          have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hdecomp.1 hfuncs_ac (by assumption)
+          split at hstep <;> {
+            obtain ⟨_, rfl⟩ := hstep
+            simp only [Flat.pushTrace, hasAbruptCompletion, List.append_assoc, List.singleton_append]
+            first | exact h_ih | exact hdecomp.2.2 _ h_ih }
         · exact absurd hstep (by simp)
       · exact absurd hstep (by simp)
   -- tryCatch: case split on finally_ to decompose hac
@@ -14448,11 +14373,9 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
             · split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace, hasAbruptCompletion])
             · obtain ⟨_, rfl⟩ := hstep
               simp only [Flat.pushTrace, hasAbruptCompletion]; exact hac.2
-        · -- non-error: wrap in tryCatch
-          obtain ⟨_, rfl⟩ := hstep
-          simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          rename_i _ _ _ heq
-          exact ⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.1 hfuncs_ac heq, hac.2⟩
+        · -- non-error/second arm:
+          have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac.1 hfuncs_ac (by assumption)
+          split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
         · exact absurd hstep (by simp)
     | some fin =>
       simp only [hasAbruptCompletion, Bool.or_eq_false_iff] at hac
@@ -14475,12 +14398,9 @@ private theorem hasAbruptCompletion_step_preserved (e : Flat.Expr)
             · obtain ⟨_, rfl⟩ := hstep
               simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
               exact ⟨hac_catch, hac_fin⟩
-        · -- non-error: wrap in tryCatch
-          obtain ⟨_, rfl⟩ := hstep
-          simp only [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff]
-          rename_i _ _ _ heq
-          exact ⟨⟨hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_body hfuncs_ac heq,
-                 hac_catch⟩, hac_fin⟩
+        · -- non-error/second arm:
+          have h_ih := hasAbruptCompletion_step_preserved _ _ _ _ _ _ _ _ hac_body hfuncs_ac (by assumption)
+          split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp_all [Flat.pushTrace, hasAbruptCompletion, Bool.or_eq_false_iff])
         · exact absurd hstep (by simp)
 
 set_option maxHeartbeats 3200000 in

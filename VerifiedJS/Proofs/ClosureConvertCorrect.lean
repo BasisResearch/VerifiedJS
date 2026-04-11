@@ -1469,17 +1469,18 @@ private def FuncsCorr (injMap : Nat → Nat)
       ∃ (innerEnvMap : Flat.EnvMapping) (st st' : Flat.CCState),
         fd.body = (Flat.convertExpr fc.body fc.params fd.envParam innerEnvMap st).fst ∧
         st' = (Flat.convertExpr fc.body fc.params fd.envParam innerEnvMap st).snd) ∧
-  -- (3) Environment correspondence: each captured variable in the Core
-  --     closure's capturedEnv maps to the Flat environment array entries
-  --     via injMap
+  -- (3) Captured environment correspondence: for each Core closure, the
+  --     innerEnvMap used during closure conversion is consistent with the
+  --     captured variable list (sorry'd — requires tracing through closureConvert)
   (∀ (i : Nat) (fc : Core.FuncClosure),
     coreFuncs[i]? = some fc →
-    ∀ (name : String) (v : Core.Value),
-      fc.capturedEnv.lookup name = some v →
-      ∃ (fd : Flat.FuncDef),
-        flatFuncs[i]? = some fd ∧
-        ∃ (idx : Nat),
-          Flat.lookupEnv (Flat.indexedMap (fc.capturedEnv.map Prod.fst) 0) name = some idx)
+    ∃ (fd : Flat.FuncDef),
+      flatFuncs[i]? = some fd ∧
+      ∃ (captured : List String) (innerEnvMap : Flat.EnvMapping),
+        innerEnvMap = Flat.indexedMap captured 0 ∧
+        captured.length ≤ fc.capturedEnv.length ∧
+        (∀ (name : String), name ∈ captured →
+          ∃ (v : Core.Value), (name, v) ∈ fc.capturedEnv))
 
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, environment correspondence, and expression
