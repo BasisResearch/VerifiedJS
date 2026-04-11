@@ -9,12 +9,23 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 15 CC sorries remain. Total: 46.
+## ⚠️ YOUR LAST RUN CRASHED (exit code 1 at 07:00). Investigate.
+
+Before starting work, check the file is in a good state:
+```bash
+wc -l VerifiedJS/Proofs/ClosureConvertCorrect.lean
+```
+If the file was corrupted by the crash, restore from git:
+```bash
+git diff VerifiedJS/Proofs/ClosureConvertCorrect.lean | head -50
+```
+
+## STATUS — 15 CC sorries remain. Total: 47.
 - L1519: CLOSED (FuncsCorr init — nice work!)
-- All 15 remaining are architecturally blocked
+- All 15 remaining are architecturally blocked WITHOUT the CC_SimRel fix below
 - CCStateAgree: 6 (L5344, L5370, L8212, L8215, L8289, L8405)
 - Multi-step: 4 (L4995, L5944, L6152, L6163)
-- Error structural: 3 (L5163, L5262, L5501)
+- Error structural: 3 (L5163, L5262, L5501) ← YOUR TARGET
 - Unprovable: 1 (L6803)
 - functionDef: 1 (L8055)
 
@@ -35,30 +46,12 @@ After error: `convertExpr (.let name error body) = .let name (convertExpr error 
 Modify CC_SimRel (L1491-1504) to add an error alternative for the expression correspondence:
 
 ```lean
-private def CC_SimRel (_s : Core.Program) (t : Flat.Program)
-    (sf : Flat.State) (sc : Core.State) : Prop :=
-  sf.trace = sc.trace ∧
-  (∃ injMap, HeapInj injMap sc.heap sf.heap ∧ EnvCorrInj injMap sc.env sf.env ∧
-    FuncsCorr injMap sc.funcs sf.funcs t.functions) ∧
-  noCallFrameReturn sc.expr = true ∧
-  ExprAddrWF sc.expr sc.heap.objects.size ∧
-  EnvAddrWF sc.env sc.heap.objects.size ∧
-  HeapValuesWF sc.heap ∧
-  sc.heap.nextAddr = sc.heap.objects.size ∧
-  sc.expr.supported = true ∧
-  (∀ (i : Nat) (fd : Core.FuncClosure), sc.funcs[i]? = some fd → fd.body.supported = true) ∧
   ((∃ (scope : List String) (envVar : String) (envMap : Flat.EnvMapping) (st st' : Flat.CCState),
     (sf.expr, st') = Flat.convertExpr sc.expr scope envVar envMap st) ∨
    -- NEW: error disjunct — when Core expr wraps an error sub-expression,
    -- Flat may have already unwrapped to just the error
    (∃ msg, sf.expr = .lit (.string msg) ∧ Core.exprHasErrorInHead sc.expr = true))
 ```
-
-You'll need to:
-1. Define `Core.exprHasErrorInHead` — checks if the expr is `.error msg` or wraps one in `.let`/`.assign`/`.seq` head position
-2. Modify CC_SimRel to use the `∨` disjunct
-3. Fix all existing proof sites that destruct the `∃ scope envVar envMap st st'` — add `| Or.inl ⟨scope, ...⟩ =>` and `| Or.inr ⟨msg, ...⟩ =>`
-4. For the error disjunct, most cases are contradictions (error state means ANF.step? produces error too, no simulation needed)
 
 ### STEP-BY-STEP PLAN
 

@@ -8,9 +8,11 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
+## ⚠️ YOUR LAST RUN CRASHED (exit code 1 at 06:34). Check state before continuing.
+
 ## STATUS
-- Total: 46 sorries (ANF 31, CC 15).
-- Your last run CRASHED (exit code 1) on preservation sorries. Retry.
+- Total: 47 sorries (ANF 32, CC 15).
+- Your architecture from the 04:15 run is in place (Steps_compound_error_lift, hasReturnInHead_return_steps)
 - hasAbruptCompletion_step_preserved: PROVED (by proof agent)
 - NoNestedAbrupt_step_preserved: PROVED (by proof agent)
 
@@ -34,11 +36,8 @@ private theorem step?_preserves_funcs_trace
     (sf : Flat.State) (t : Flat.Event) (sf' : Flat.State)
     (hstep : Flat.step? sf = some (t, sf')) :
     sf'.funcs = sf.funcs ∧ sf'.trace = sf.trace ++ [t] := by
-  -- Case split on sf.expr. In EVERY case of step?, funcs is unchanged
-  -- and trace gets one event appended.
   cases sf with | mk e env heap trace funcs cs =>
   simp only [Flat.step?] at hstep
-  -- exhaustive match on e
   sorry -- fill by cases on e, each is rfl/rfl
 ```
 
@@ -56,7 +55,7 @@ private theorem Steps_preserves_funcs_trace
     exact ⟨hf2.trans hf1, by rw [ht2, ht1]; simp [List.append_assoc]⟩
 ```
 
-For callStack preservation, you need the NoNestedAbrupt + HasReturnInHead context. The key insight: under these conditions, no function calls COMPLETE (calls push to callStack but never pop because return is intercepted by HasReturnInHead). So step? never modifies callStack.
+For callStack preservation, you need the NoNestedAbrupt + HasReturnInHead context. Under these conditions, no function calls COMPLETE, so step? never modifies callStack.
 
 ### STEP-BY-STEP:
 1. Search: `lean_local_search "step?_preserves"` — check if helpers exist
