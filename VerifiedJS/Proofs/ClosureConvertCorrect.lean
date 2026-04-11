@@ -7000,17 +7000,12 @@ private theorem closureConvert_step_simulation
                 congr 1; congr 1
                 simp only [hfind]; exact (coreToFlatValue_eq_convertValue kv.2).symm
         · -- String case: string indexing
-          sorry /- getIndex string both-values: UNPROVABLE (semantic mismatch).
-            For .number n with invalid index:
-              Core:  returns .undefined unconditionally
-              Flat:  if valueToString (.number n) == "length" then .number (length) else .undefined
-            The extra "length" check in Flat's .number branch has no Core counterpart.
-            Proving equivalence requires: ∀ n : Float, valueToString (.number n) ≠ "length".
-            This is TRUE (no float-to-string conversion produces "length") but UNPROVABLE
-            because the fallback case uses Float.toString which is @[extern] opaque.
-            FIX (preferred): remove the extra `if propName == "length"` from Flat.step?'s
-            .string/.number branch (Flat/Semantics.lean L739), aligning with Core.
-            FIX (alternative): add `axiom float_toString_ne_length`. -/
+          sorry /- AXIOM: getIndex string semantic mismatch.
+            Float.toString is @[extern] opaque so we cannot prove
+            ∀ n : Float, valueToString (.number n) ≠ "length".
+            FIX: remove `if propName == "length"` from Flat.step?'s
+            .string/.number branch (Flat/Semantics.lean ~L739), or
+            add `axiom float_toString_ne_length`. -/
         · -- Non-object, non-string: both return .undefined
           have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr := convertValue_not_object cv hno
           have hns_flat : ∀ str, Flat.convertValue cv ≠ .string str := by

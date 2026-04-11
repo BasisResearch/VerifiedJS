@@ -7606,3 +7606,13 @@ All sorry locations (L10183+) time out with 30s LSP timeout. Cannot use `lean_mu
 2. Restrict HasReturnInHead to exclude "right" compound cases
 3. Add hypothesis excluding tryCatch in head positions
 2026-04-11T12:30:01+00:00 SKIP: already running
+
+### 2026-04-11T11:55 Analysis: break/continue "right" cases also FALSE as single-step theorems
+
+`HasBreakInHead_step?_produces_error` (L4575) claims that step? produces the break error in a SINGLE step. For "right" cases (seq_right, binary_rhs, etc.), this is FALSE:
+- `seq_right h`: if left sub-expr `a` is a value, `step?` returns `(.silent, {expr := b})` not the break error
+- `seq_right h`: if `a` is not a value, `step?` delegates to `a` which doesn't have HasBreakInHead
+
+These need multi-step simulation: evaluate `a` to value, then step to `b`, then `b` produces the break. But this requires `a` to terminate (not diverge, not error). Same issue for HasContinueInHead.
+
+Moving to P2 (L18229, L18300).
