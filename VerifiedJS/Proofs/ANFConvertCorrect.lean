@@ -13127,6 +13127,82 @@ private theorem normalizeExpr_throw_step_sim
   | objectLit_props h => exact hasThrowInHead_compound_throw_step_sim _ (.objectLit_props h) env heap trace funcs cs k arg n m hnorm hewf hna
   | arrayLit_elems h => exact hasThrowInHead_compound_throw_step_sim _ (.arrayLit_elems h) env heap trace funcs cs k arg n m hnorm hewf hna
 
+/-- Lift Steps through a compound wrapper with error propagation.
+    Non-error steps preserve the wrapper; error steps drop it.
+    After the first error, remaining steps apply directly without wrapper.
+
+    Generic over the wrapper function and its step?_ctx/step?_error lemmas. -/
+private theorem Steps_compound_error_lift
+    (wrap : Flat.Expr → Flat.Expr)
+    (single_step_ctx : ∀ (s : Flat.State) (inner : Flat.Expr),
+      Flat.exprValue? inner = none →
+      ∀ (t : Core.TraceEvent) (si : Flat.State),
+      Flat.step? { s with expr := inner } = some (t, si) →
+      (∀ msg, t ≠ .error msg) →
+      ∃ s', Flat.step? { s with expr := wrap inner } = some (t, s') ∧
+        s'.expr = wrap si.expr ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+        s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧ s'.trace = s.trace ++ [t])
+    (single_step_error : ∀ (s : Flat.State) (inner : Flat.Expr),
+      Flat.exprValue? inner = none →
+      ∀ (msg : String) (si : Flat.State),
+      Flat.step? { s with expr := inner } = some (.error msg, si) →
+      ∃ s', Flat.step? { s with expr := wrap inner } = some (.error msg, s') ∧
+        s'.expr = si.expr ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+        s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧ s'.trace = s.trace ++ [.error msg])
+    {s1 sf : Flat.State} {evs : List Core.TraceEvent}
+    (hsteps : Flat.Steps s1 evs sf)
+    (herr : ∃ msg, .error msg ∈ evs)
+    (hpres : ∀ smid evs1, Flat.Steps s1 evs1 smid →
+      evs1.length ≤ evs.length →
+      smid.funcs = s1.funcs ∧ smid.callStack = s1.callStack ∧ smid.trace = s1.trace ++ evs1) :
+    ∃ sf' : Flat.State,
+      Flat.Steps ⟨wrap s1.expr, s1.env, s1.heap, s1.trace, s1.funcs, s1.callStack⟩ evs sf' ∧
+      sf'.expr = sf.expr ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+      sf'.trace = sf.trace := by
+  induction hsteps with
+  | refl => obtain ⟨msg, hm⟩ := herr; exact absurd hm (List.not_mem_nil _)
+  | @tail s1 s2 s3 t ts hstep hrest ih =>
+    have hstep_eq := hstep.1
+    have hnotval := step?_some_implies_not_value hstep_eq
+    have hs2_pres := hpres s2 [t] (.tail hstep (.refl _)) (by simp; omega)
+    obtain ⟨hs2f, hs2c, hs2t⟩ := hs2_pres
+    by_cases ht_err : ∃ msg, t = .error msg
+    · -- Error step: lift through single_step_error, wrapper drops
+      obtain ⟨msg, rfl⟩ := ht_err
+      obtain ⟨ws2, hwstep, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        single_step_error s1 s1.expr hnotval msg s2 hstep_eq
+      -- Show ws2 = s2 (all fields match)
+      have hws2 : ws2 = s2 := by
+        have : ws2 = ⟨ws2.expr, ws2.env, ws2.heap, ws2.trace, ws2.funcs, ws2.callStack⟩ := by cases ws2; rfl
+        have : s2 = ⟨s2.expr, s2.env, s2.heap, s2.trace, s2.funcs, s2.callStack⟩ := by cases s2; rfl
+        rw [‹ws2 = _›, ‹s2 = _›]
+        congr 1 <;> [exact hwexpr; exact hwenv; exact hwheap;
+          exact hwtrace.trans hs2t.symm; exact hwfuncs.trans hs2f.symm; exact hwcs.trans hs2c.symm]
+      exact ⟨s3, .tail ⟨hwstep⟩ (hws2 ▸ hrest), rfl, rfl, rfl, rfl⟩
+    · -- Non-error step: lift through single_step_ctx, then IH on rest
+      push_neg at ht_err
+      obtain ⟨ws2, hwstep, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+        single_step_ctx s1 s1.expr hnotval t s2 hstep_eq ht_err
+      have herr_ts : ∃ msg, .error msg ∈ ts := by
+        obtain ⟨msg, hm⟩ := herr
+        cases hm with
+        | head rest => exact absurd rfl (ht_err msg)
+        | tail _ hm => exact ⟨msg, hm⟩
+      have hpres_s2 : ∀ smid evs1, Flat.Steps s2 evs1 smid →
+          evs1.length ≤ ts.length →
+          smid.funcs = s2.funcs ∧ smid.callStack = s2.callStack ∧ smid.trace = s2.trace ++ evs1 := by
+        intro smid evs1 hsteps_s2 hlen
+        have h := hpres smid (t :: evs1) (.tail hstep hsteps_s2) (by simp; omega)
+        exact ⟨h.1.trans hs2f.symm, h.2.1.trans hs2c.symm,
+               by rw [h.2.2, hs2t, List.append_assoc]⟩
+      obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+        ih herr_ts hpres_s2
+      have hws2_eq : ws2 = ⟨wrap s2.expr, s2.env, s2.heap, s2.trace, s2.funcs, s2.callStack⟩ := by
+        have : ws2 = ⟨ws2.expr, ws2.env, ws2.heap, ws2.trace, ws2.funcs, ws2.callStack⟩ := by cases ws2; rfl
+        rw [this]; congr 1 <;> [exact hwexpr; exact hwenv; exact hwheap;
+          exact hwtrace.trans hs2t.symm; exact hwfuncs.trans hs2f.symm; exact hwcs.trans hs2c.symm]
+      exact ⟨sf', .tail ⟨hwstep⟩ (hws2_eq ▸ hsteps'), hexpr', henv', hheap', htrace'⟩
+
 /-- If normalizeExpr sf.expr k produces .return arg (with trivial-preserving k),
     then there exist Flat steps from sf matching the ANF return step. -/
 private theorem normalizeExpr_return_step_sim
