@@ -7324,3 +7324,51 @@ These pre-existing errors were present before this run. Flat/Semantics.lean: 0 e
 ## Run: 2026-04-11T06:30:09+00:00
 
 ### 2026-04-11T06:30:25+00:00 Starting run — trivialChain batch L10183-L10554
+
+#### P0 investigation (trivialChain batch L10183-L10554, 12 sorries)
+**STATUS: ALL BLOCKED — confirmed trivial mismatch is fundamental**
+
+Investigated all 12 sorries in `normalizeExpr_labeled_branch_step`. The theorem requires:
+```
+(∃ n' m', (ANF.normalizeExpr sf'.expr K).run n' = .ok (body, m'))
+```
+where `body` is the inner body from `(.labeled label body, m)` in `hnorm`.
+
+**Zero-step approach (tried and failed):**
+- Edited all 12 sorries to use zero steps (`.refl _`)
+- LSP revealed type mismatch: goal needs `(body, m')` but zero steps gives `(.labeled label body, m')` 
+- The theorem requires PROGRESS to unwrap the labeled
+
+**Full evaluation approach (analyzed and blocked):**
+- Need to evaluate trivialChain prefix to flat value, then apply IH on labeled sub-expression
+- `normalizeExpr_trivialChain_apply` gives unique trivial `t` (e.g., `.var "x"`)
+- After flat evaluation, `trivialOfFlatValue v` (e.g., `.lit someVal`) differs from `t`
+- The ANF body depends on this trivial through `bindComplex`, so body ≠ body'
+- The theorem requires same K in conclusion, making this genuinely unprovable
+
+All 12 edits were reverted. No changes to file.
+
+#### P1 investigation (L16999 noCallFrameReturn)
+**STATUS: BLOCKED — needs NoCallFrameParam predicate added to preconditions**
+
+The sorry needs `catchParam ≠ "__call_frame_return__"`. This requires:
+1. Adding a NoCallFrameParam predicate
+2. Proving it for initial state
+3. Proving preservation through simulation steps
+This is a structural change, not a proof fill.
+
+#### P2 investigation (L17229, L17300)
+**STATUS: BLOCKED — needs error propagation in Flat.step?**
+
+Both sorry groups need error propagation in ALL compound Flat.step? cases.
+
+#### Other sorries (L12969, L13312-13353, L13709-13943, L14033-14810, L15651-15725)
+All investigated. All blocked by either:
+- Error propagation (needs Flat.step? changes)
+- Trivial mismatch
+- CallStack preservation (not generally true for function calls)
+- Structural induction needing missing infrastructure
+
+**CONCLUSION: 0 of 33 ANF sorries are closable without design-level changes.**
+### 2026-04-11T07:16:38+00:00 Run complete — P0 confirmed blocked (trivial mismatch), P1/P2 blocked, 0 sorries closed
+2026-04-11T07:16:51+00:00 DONE
