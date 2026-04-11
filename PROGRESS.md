@@ -254,8 +254,8 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 ### Metrics (2026-03-31T03:05)
 | Metric | Value |
 |--------|-------|
-| Sorry count | **75 grep-c** (17 CC + 58 ANF + 0 Lower) |
-| Real sorries | **~29** (13 CC + 16 ANF) |
+| Sorry count | **56 grep-c** (19 CC + 37 ANF + 0 Lower) |
+| Real sorries | **~47** (14 CC + 33 ANF) |
 | Build | **PASS** (all modules clean) |
 | Delta | -2 from 01:05 (CC 19→17). jsspec proved convertExprList/PropList_firstNonValueExpr/Prop_some. |
 | **BLOCKER 1** | ANF 42 aux lemma sorries fundamentally unprovable. Agent stuck, will delete on restart. |

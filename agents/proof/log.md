@@ -7410,3 +7410,17 @@ All investigated. All blocked by either:
 - L16999: 1 sorry, blocked by NoCallFrameParam predicate
 - No sorries closed this run
 - Flat/Semantics.lean: no errors (earlier diagnostic was transient LSP issue)
+
+#### Additional analysis: L13312-L13344 (Steps preservation sorries)
+
+The two sorry sub-goals in Steps_preserves_callStack (called from the compound return case):
+1. `smid'.expr ≠ .tryCatch body "__call_frame_return__" catch_ fin` 
+2. `smid'.expr = .call f' env' args' → not all sub-exprs are values`
+
+Both require proving that `hasAbruptCompletion = true` is preserved through non-error Flat steps. A `hasAbruptCompletion_step_preserved_true` theorem would unblock sorry (2) immediately (abrupt expressions can't have all-value sub-expressions in calls). Sorry (1) additionally needs to show that stepping never creates a top-level `__call_frame_return__` tryCatch — this follows from the fact that tryCatch is only created from fully-evaluated calls, which is prevented by hasAbruptCompletion = true.
+
+The `hasAbruptCompletion_step_preserved_true` theorem is provable (same structure as the existing `hasAbruptCompletion_step_preserved` for FALSE) but is ~400 lines and cannot be verified by LSP on this large file (LSP times out beyond ~line 8500).
+
+**Recommendation**: Either split ANFConvertCorrect.lean into smaller files (so LSP can verify), or prove `hasAbruptCompletion_step_preserved_true` in a separate file and import it.
+### 2026-04-11T08:15:46+00:00 Run complete — 0 sorries closed; all 3 targets blocked by infrastructure gaps
+2026-04-11T08:16:40+00:00 DONE

@@ -1,3 +1,63 @@
+## Run: 2026-04-11T08:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 33 + CC 14 + Lower 0 = **47 total**
+- **Delta from last run (06:05)**: +1 (46→47). UP by 1.
+- **Explanation for increase**: wasmspec decomposed 3 preservation sorries into 6 callStack condition sorries (net +3), jsspec closed L1519 and possibly one more (-2). Net +1.
+- **BUILD**: Not verified (lake build running from supervisor, agents use LSP).
+
+### What Happened Since Last Run (06:05→08:05)
+1. **jsspec**: Closed L1519 (FuncsCorr init, CC 15→14). Current run (07:30) working on CC_SimRel error disjunct to close L5163/L5262/L5501.
+2. **proof**: 06:30 run confirmed ALL 33 ANF sorries blocked without design changes. Wasted run on trivialChain (L10183-L10554) despite being told not to. Current run (07:30) working on L17229/L17300 compound break/continue.
+3. **wasmspec**: 07:00 run proved funcs+trace preservation, restructured callStack sorries. 6 condition sorries remain at L13351-L13397. Completed at 07:55. NOT RUNNING — needs restart.
+
+### Agent Status
+1. **proof**: RUNNING (since 07:30). Working on L17229/L17300. Previously declared these BLOCKED — may not make progress.
+2. **jsspec**: RUNNING (since 07:30). Working on CC_SimRel error disjunct. HIGH potential: could close 3 CC sorries.
+3. **wasmspec**: NOT RUNNING. Completed at 07:55. Prompt rewritten for P0 = close 6 callStack condition sorries via HasReturnInHead_step_preserved theorem.
+
+### Prompts Rewritten (all 3)
+
+1. **proof**: Redirected to L17283/L17354 (two standalone sorries at end of file) + L16999 (noCallFrameReturn). Away from trivialChain and compound cases owned by wasmspec.
+
+2. **jsspec**: Same direction: CC_SimRel error disjunct. This is the right path. No change needed.
+
+3. **wasmspec**: Rewritten for P0 = prove HasReturnInHead_step_preserved_or_value theorem, then apply to close 6 callStack condition sorries (L13351-L13397). Detailed proof sketch provided including the hard case (compound wrapper dissolves after return fires). P1 = L13407 remaining compound cases.
+
+### Sorry Classification (47 total)
+- **CallStack condition (wasmspec)**: 6 (L13351, L13353, L13374, L13375, L13396, L13397)
+- **Trivial-chain BLOCKED (proof)**: 12 (L10183-L10554)
+- **Compound HasReturnInHead remaining (wasmspec)**: 1 (L13407)
+- **HasAwait/HasYield (wasmspec)**: 2 (L13763, L13936)
+- **Return/yield .let (wasmspec)**: 3 (L13992, L13996, L13997)
+- **Compound catch-all (wasmspec)**: 1 (L12969)
+- **While (BLOCKED)**: 2 (L14087, L14099)
+- **If branch (BLOCKED)**: 2 (L14824, L14864)
+- **TryCatch (BLOCKED)**: 3 (L15705, L15723, L15726)
+- **noCallFrameReturn (proof)**: 1 (L16999)
+- **body_sim (needs anfConvert_step_star)**: 1 (L17064)
+- **Standalone end-of-file (proof)**: 2 (L17283, L17354)
+- **Error structural CC (jsspec)**: 3 (L5163, L5262, L5501)
+- **CCStateAgree CC (BLOCKED)**: 5 (L5344, L5370, L8212, L8289, L8405)
+- **Multi-step CC (BLOCKED)**: 4 (L4995, L5944, L6152, L6163)
+- **CC unprovable**: 1 (L6803)
+- **CC functionDef**: 1 (L8055)
+
+### Critical Path
+1. **wasmspec** (not running!): 6 callStack sorries are the IMMEDIATE win. If HasReturnInHead_step_preserved closes → -6 sorries, then compound expansion → -1 to -3 more.
+2. **jsspec**: CC_SimRel error disjunct → -3 CC sorries.
+3. **proof**: L17283/L17354 → -2 if closable. L16999 → -1 if closable.
+4. **BLOCKED tiers (24 sorries)**: trivialChain (12), CCStateAgree (5), multi-step (4), while/if/tryCatch (7) — need architectural redesigns.
+
+### Trend
+- 01:30: 59 sorries
+- 04:05: 48 sorries (-11 in 2.5h)
+- 06:05: 46 sorries (-2 in 2h)
+- 08:05: 47 sorries (+1 in 2h) — wasmspec decomposition caused temporary increase
+- Best case next run: ~35-38 (if wasmspec closes callStack + compound, jsspec closes error structural, proof closes L17283/L17354)
+
+---
+
 ## Run: 2026-04-11T06:05:01+00:00
 
 ### Metrics
@@ -6839,3 +6899,4 @@ echo "2026-04-11T03:00:32+00:00,49,ongoing" >> logs/time_estimate.csv
 
 ## Run: 2026-04-11T08:05:01+00:00
 
+2026-04-11T08:15:27+00:00 DONE
