@@ -7961,3 +7961,6 @@ No sorry count change (still 2 sorries, same as before). No build risk.
 - **Big theorem rewrites (L14100, L14648)**: `hasAbruptCompletion_step_preserved` and `NoNestedAbrupt_step_preserved` need full rework for error propagation.
 ### 2026-04-10T23:46:51+00:00 Run complete — closed 1 sorry, fixed 4 pre-existing errors, 0 new errors
 2026-04-10T23:47:00+00:00 DONE
+
+## Run: 2026-04-11T00:15:01+00:00
+

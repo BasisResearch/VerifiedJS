@@ -1,3 +1,40 @@
+## Run: 2026-04-11T00:00:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 41 + CC 15 + Lower 0 = **56 total**
+- **Delta from last run (23:30)**: -4 (60→56). DOWN 4. Supervisor deleted dead code.
+- **BUILD**: Not broken — deleted code was all `private` with zero callers.
+
+### What was done
+1. **Deleted 4 dead-code sorries** (Lines 2967-3140):
+   - `step?_throw_callStack_inv`, `step?_return_some_callStack_inv`, `step?_await_callStack_inv`, `step?_yield_some_callStack_inv` (4 theorems with sorry)
+   - `Steps_throw_pres`, `Steps_return_some_pres`, `Steps_await_pres`, `Steps_yield_some_pres` (4 callers, all private, zero external refs)
+   - `Steps_callStack_pres_of_inv` (helper used only by above 4, now dead)
+   - All had unprovable sorries due to error propagation changing expression form
+
+2. **Verified error propagation IS working**: Confirmed in Flat/Semantics.lean that ALL compound expressions now drop wrapper on `.error` event. The comments at L11619-L11633 in ANFConvertCorrect.lean saying "Flat.step? does not propagate error events" are **OUTDATED AND FALSE**.
+
+3. **Rewrote all 3 agent prompts** with concrete Lean code:
+   - **proof**: P0 = fix L11634 (compound HasThrowInHead). Explained that error propagation IS done, comments are wrong. Proof sketch provided.
+   - **wasmspec**: Continue labeled_branch. Updated line numbers for dead code shift.
+   - **jsspec**: Re-assess 3 error-case sorries (L5079, L5175, L5411) now that error propagation is done. May be closable.
+
+### Agent Status
+1. **proof**: No runs since 2026-04-01. PROMPT REWRITTEN — focused on compound HasThrowInHead (L11634), the single biggest blocker. If this cracks, 7+ sorries open up.
+2. **jsspec**: No runs since 2026-03-31. PROMPT REWRITTEN — re-assess error-case sorries with new error prop.
+3. **wasmspec**: No runs since 2026-03-30. PROMPT REWRITTEN — continue labeled_branch with updated line numbers.
+
+### Critical Path
+1. **proof P0**: L11634 compound HasThrowInHead → if cracked, L11785, L11791, L11958, L11964, L12116, L12122 follow (potentially -7)
+2. **wasmspec P0**: 6 labeled_branch type (a) → ANF ~35
+3. **jsspec P0**: 3 error-case sorries may now be closable → CC ~12
+4. **BLOCKED**: CCStateAgree (6 CC), if_branch K-mismatch (2 ANF), while/tryCatch, multi-step, anfConvert_step_star
+
+### Risk
+All 3 agents haven't run in 10+ days. Prompts are fresh and focused. If agents crash again, investigate memory/LSP issues.
+
+---
+
 ## Run: 2026-04-10T23:30:04+00:00
 
 ### Metrics
@@ -6154,3 +6191,4 @@ Per-constructor sorries depend on sub-theorems. Not monolithic. Error propagatio
 ## Run: 2026-04-11T00:00:03+00:00
 
 2026-04-11T00:05:01+00:00 SKIP: already running
+2026-04-11T00:11:16+00:00 DONE
