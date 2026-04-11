@@ -1,99 +1,98 @@
-# wasmspec — CLOSE HasReturnInHead_step_nonError (L13260) + error_isLit (L13268)
+# wasmspec — CLOSE HasReturnInHead_step_nonError (L13260) — 30-CASE MUTUAL INDUCTION
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
 - **DO NOT** run `lake build` — USE LSP ONLY.
 - **DO NOT** use while/until loops, pgrep, sleep loops
 - You CAN edit ANFConvertCorrect.lean AND Flat/Semantics.lean
-- **CRASH PREVENTION**: KEEP TASKS SMALL.
+- **CRASH PREVENTION**: KEEP TASKS SMALL. Do 5 cases at a time, verify, continue.
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-11T10:00
-- Total: 47 sorries (ANF 32, CC 15). UP by 1 from 46 due to your decomposition (1 sorry → 2).
-- The sorry at old L13264 was decomposed into L13260 (HasReturnInHead_step_nonError) + L13268 (HasReturnInHead_step_error_isLit).
-- HasReturnInHead_Steps_steppable (L13272) already has its proof structure (induction with refl/tail cases). It just needs the two sub-lemmas.
-- Remaining wasmspec-owned: L12969, L13260, L13268, L13464, L13820, L13993, L14049, L14053, L14054 = 9 sorries
+## STATUS — 2026-04-11T10:30
+- Total: 47 sorries (ANF 32, CC 15).
+- You started HasReturnInHead_step_nonError at 10:15. CONTINUE.
+- Once L13260 is closed → -1. Then L13268 → -1. Then HasReturnInHead_Steps_steppable auto-closes → potential cascade -4 more.
+- **This is the highest-value target in the entire project right now.**
 
-## P0: HasReturnInHead_step_nonError (L13260) — HIGHEST PRIORITY (-1 sorry)
+## P0: HasReturnInHead_step_nonError (L13260) — DETAILED CASE GUIDE
 
+### Structure: mutual recursion
+HasReturnInHead, HasReturnInHeadList, HasReturnInHeadProps are `mutual`. You need MUTUAL well-founded recursion or separate theorems for each.
+
+Write THREE mutually-proved theorems:
 ```lean
-private theorem HasReturnInHead_step_nonError
-    {sf sf' : Flat.State} {t : Core.TraceEvent}
-    (hret : HasReturnInHead sf.expr)
-    (hstep : Flat.step? sf = some (t, sf'))
-    (hnoerr : ∀ msg, t ≠ .error msg) :
-    HasReturnInHead sf'.expr
+private theorem HasReturnInHead_step_nonError ...
+private theorem HasReturnInHeadList_step_nonError ...  -- for call_args, newObj_args, etc.
+private theorem HasReturnInHeadProps_step_nonError ... -- for objectLit_props
 ```
 
-### PROOF APPROACH: Induction on `hret`
+Or use `match` on the HasReturnInHead constructor directly if Lean allows it without mutual.
 
-**Key insight**: HasReturnInHead e implies e is NOT a flat value (no constructor for .lit). So compound expressions always delegate step to the head sub-expression.
+### Case-by-case guide (30 constructors of HasReturnInHead)
 
-**Base cases** — produce ERROR events → contradiction with hnoerr:
-1. `return_none_direct`: sf.expr = .return none. step? produces (.error "return:undefined", ...). Contradiction with hnoerr. Use `exfalso`.
-2. `return_some_direct`: sf.expr = .return (some v).
-   - If v is a value (.lit): step? produces (.error "return:v_str", ...). Contradiction.
-   - If v is NOT a value: step? delegates to step v. Result = .return (some v'). HasReturnInHead (.return (some v')) by return_some_direct. **Done without IH**.
+**Pattern A — "Left" compound (head position steps):**
+Constructors: seq_left, let_init, getProp_obj, setProp_obj, binary_lhs, unary_arg, typeof_arg, deleteProp_obj, assign_val, call_func, call_env, newObj_func, newObj_env, if_cond, throw_arg, yield_some_arg, await_arg, getIndex_obj, setIndex_obj, getEnv_env, makeClosure_env
 
-**Compound cases** — step delegates, IH applies:
-3. `seq_left h`: sf.expr = .seq a b, HasReturnInHead a. a is not a value (HasReturnInHead → not lit). step? delegates to step a. sf'.expr = .seq a' b. Event = event from stepping a (still non-error by hnoerr). By IH: HasReturnInHead a'. Then `seq_left` gives HasReturnInHead (.seq a' b).
-
-4. `seq_right h`: sf.expr = .seq a b, HasReturnInHead b.
-   - If a not value: step? delegates to a. sf'.expr = .seq a' b. b unchanged → `seq_right h`.
-   - If a is value (.lit v): step? (.seq (.lit v) b) = (.silent, ⟨b, ...⟩). sf'.expr = b. HasReturnInHead b = h. Done.
-
-5. Same pattern for: let_init, binary_lhs, binary_rhs, unary_arg, typeof_arg, assign_val, deleteProp_obj, getProp_obj, setProp_obj, setProp_val, if_cond, call_func, call_env, call_args, newObj_*, getIndex_*, setIndex_*, getEnv_env, makeClosure_env, makeEnv_values, objectLit_props, arrayLit_elems.
-
-6. **throw_arg h**: sf.expr = .throw arg, HasReturnInHead arg.
-   - If arg is value: step? produces (.error "Uncaught:...", ...). Contradiction with hnoerr.
-   - If arg not value: step? delegates. sf'.expr = .throw arg'. By IH HasReturnInHead arg'. Then throw_arg gives result.
-
-7. **yield_some_arg h, await_arg h**: Same pattern as throw_arg.
-
-### STEP-BY-STEP
-1. `lean_goal` at L13260
-2. Start: `induction hret with` (or `cases hret` + recursive calls)
-3. Base cases: unfold step?, show contradiction with hnoerr
-4. Compound cases: unfold step?, show delegation, apply IH
-5. Use `lean_multi_attempt` on individual cases if stuck
-
-### IMPORTANT: Lean 4 mutual induction
-If HasReturnInHead is in a `mutual` block with HasReturnInHeadList/HasReturnInHeadProps, you may need `mutual` recursion. Check with lean_hover_info on HasReturnInHead to see if it's mutual.
-
-## P1: HasReturnInHead_step_error_isLit (L13268) — (-1 sorry)
+For each: the sub-expression `a` has HasReturnInHead. `a` is not a value (HasReturnInHead_not_value). So `Flat.step?` delegates to stepping `a`. After stepping, `a' = sf'.sub_expr`. By IH, `HasReturnInHead a'`. Apply the same constructor to get `HasReturnInHead sf'.expr`.
 
 ```lean
-private theorem HasReturnInHead_step_error_isLit
-    {sf sf' : Flat.State} {msg : String}
-    (hret : HasReturnInHead sf.expr)
-    (hstep : Flat.step? sf = some (.error msg, sf')) :
-    ∃ v, sf'.expr = .lit v
+| .seq_left h_a =>
+  -- sf.expr = .seq a b, HasReturnInHead a
+  -- a is not a value, so step? delegates to stepping a
+  simp [Flat.step?, HasReturnInHead_not_value _ h_a] at hstep
+  -- hstep gives us that step? on a produced (t, ⟨a', ...⟩)
+  -- sf'.expr = .seq a' b
+  -- By IH: HasReturnInHead a'
+  -- Therefore: HasReturnInHead (.seq a' b) by seq_left
+  sorry
 ```
 
-**Approach**: Similar induction on `hret`.
-- Base: return_none → sf'.expr = .lit .undefined. return_some with value arg → sf'.expr = .lit v.
-- Compound: step delegates. The error event comes from the sub-step. By IH on sub, sf_sub'.expr = .lit v. But the compound WRAPS the result: sf'.expr = .compound_constructor (.lit v) rest.
+**Pattern B — "Right" compound (non-head position, head is value):**
+Constructors: seq_right, binary_rhs, setProp_val, getIndex_idx, setIndex_idx, setIndex_val
 
-**WAIT**: This means sf'.expr = .lit v is FALSE for compound cases! If sf.expr = .seq a b and step delegates to step a producing (.error msg, ⟨.lit v, ...⟩), then sf'.expr = .seq (.lit v) b, NOT .lit v.
+For each: the sub-expression with HasReturnInHead is NOT in head position. The head is either a value (step reduces it) or not. Two sub-cases:
+- Head not value: step? delegates to head. Sub-expression UNCHANGED. Same constructor applies.
+- Head is value: step? evaluates the compound (e.g., .seq (.lit v) b → b). The stepped expression is `b` or the "right" part which has HasReturnInHead.
 
-**CHECK**: Does the actual Flat.step? for .seq propagate errors differently? Some semantics have error propagation where the entire compound becomes the error result. Use `lean_hover_info` or `lean_goal` to check what step? (.seq a b) produces when step? a produces an error.
+```lean
+| .seq_right h_b =>
+  -- sf.expr = .seq a b
+  simp [Flat.step?] at hstep
+  split at hstep  -- on whether a is a value
+  · -- a is value: step gives b directly. HasReturnInHead b = h_b
+    sorry
+  · -- a is not value: step delegates to a. b unchanged. seq_right h_b.
+    sorry
+```
 
-**If theorem is FALSE**: The theorem needs modification. Options:
-- Change to `∃ v, Flat.exprValue? sf'.expr = some v` (whole expression is a value)
-- Change to weaker: the error event still implies callStack safety
-- Or: prove the callStack conditions directly instead of going through HasReturnInHead
+**Pattern C — Base cases (return/throw/yield/await):**
+- return_none_direct: sf.expr = .return none. step? produces (.error "return:undefined", ...). This is an error → contradiction with hnoerr.
+- return_some_direct: sf.expr = .return (some v). If v is value → error → contradiction. If not → step delegates to v → HasReturnInHead v is FALSE (return_some_direct says HasReturnInHead (.return (some v)), not HasReturnInHead v). So sf'.expr = .return (some v') and return_some_direct applies.
 
-## P2: After P0+P1, L13464 compound HasReturnInHead (-1)
-## P3: L13820 HasAwaitInHead, L13993 HasYieldInHead (-2)
-## P4: L14049, L14053, L14054 return/yield .let (-3)
+**Pattern D — List/Props (mutual):**
+- call_args, newObj_args: HasReturnInHeadList args. First non-value arg gets stepped. Need HasReturnInHeadList_step_nonError.
+- objectLit_props: HasReturnInHeadProps props. Same pattern.
+- makeEnv_values, arrayLit_elems: HasReturnInHeadList values/elems. Same.
 
-## SKIP (BLOCKED or proof-owned):
-- L10183-L10554 (trivialChain — proof agent)
-- L14144-14921 (while/if — BLOCKED)
-- L15762-15783 (tryCatch — BLOCKED)
-- L17110-17411 (BLOCKED)
+### EXECUTION PLAN
+1. First batch: base cases (return_none_direct, return_some_direct) — verify with diagnostics
+2. Second batch: 5 "left" compound cases (seq_left, let_init, getProp_obj, binary_lhs, unary_arg)
+3. Third batch: remaining "left" compounds
+4. Fourth batch: "right" compounds (seq_right, binary_rhs, etc.)
+5. Fifth batch: list/props mutual cases
+
+**After EACH batch**: `lean_diagnostic_messages` on the theorem. Fix errors before continuing.
+
+### IMPORTANT: Flat.step? definition
+Use `lean_hover_info` on `Flat.step?` at L13257 to understand how it handles each expression type. The step function likely pattern-matches on the expression and checks `exprValue?` on sub-expressions.
+
+## P1: HasReturnInHead_step_error_isLit (L13268)
+After P0 is done. May need reformulation per wasmspec prompt analysis (compound cases produce .seq (.lit v) b, not .lit v).
+
+## P2-P4: L13464, L13820, L13993, L14049-L14054
+After P0+P1 cascade through HasReturnInHead_Steps_steppable.
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — HasReturnInHead_step_nonError L13260" >> agents/wasmspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — HasReturnInHead_step_nonError continued" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

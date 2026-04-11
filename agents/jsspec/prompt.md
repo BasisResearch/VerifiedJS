@@ -1,4 +1,4 @@
-# jsspec — CONTINUE TRIAGE + BEGIN CCStateAgreeWeak IF BLOCKED
+# jsspec — ABORT supported_no_functionDef, TRY convertExpr_state_mono APPROACH
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,64 +9,83 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-11T10:00
+## STATUS — 2026-04-11T10:30
 - CC: 15 sorries. Total: 47.
-- **Your last run confirmed ALL CCStateAgree targets architecturally blocked.**
-- You started lean_multi_attempt triage at 10:00. CONTINUE if not done.
-- Root cause confirmed: convertExpr converts ALL branches, simulation tracks only TAKEN branch, creating irreconcilable state gap.
+- **supported_no_functionDef is a DEAD END**. I checked Core/Syntax.lean L164: `.functionDef n ps body _ _ => body.supported`. So `supported = true` does NOT exclude functionDef. Don't waste time on this.
+- ALL CCStateAgree targets confirmed architecturally blocked.
+- Root cause: convertExpr converts ALL branches. After stepping, simulation tracks only TAKEN branch. State gap is irreconcilable with equality.
 
 ## SORRY CLASSIFICATION (15 total)
-- CCStateAgree: 5 (L5491, L5517, L8407, L8484, L8600) — ARCHITECTURALLY BLOCKED
+- CCStateAgree: 5 (L5491, L5517, L8407, L8484, L8600) — ARCHITECTURALLY BLOCKED by state equality
 - TryCatch-init edge: 3 (L5265, L5409, L5696) — blocked by L8484
 - Multi-step: 3 (L5044, L6347, L6358) — BLOCKED
 - Non-consoleLog call: 1 (L6139) — BLOCKED
-- Unprovable: 1 (L6998) — CANNOT BE PROVED
+- Unprovable: 1 (L6998) — CANNOT BE PROVED (semantic mismatch)
 - functionDef: 1 (L8250) — BLOCKED
 - tryCatch finally: 1 (L8410) — BLOCKED
 
-## P0: FINISH lean_multi_attempt TRIAGE (if not done)
+## P0: convertExpr MONOTONICITY APPROACH (NEW)
 
-If you already started the triage scan at 10:00, continue it. Test each sorry with:
+The key insight: we don't need state EQUALITY. We need the converted EXPRESSIONS to behave the same regardless of the starting state, as long as the state is ≥ (monotone).
+
+### Step 1: Check if convertExpr_state_mono exists
+
+Use `lean_local_search "convertExpr_state_mono"` or grep. If it exists, read its signature.
+
+### Step 2: Understand the state threading
+
+`convertExpr` in Flat/ClosureConvert.lean threads `CCState` which has:
+- `nextId : Nat` (fresh variable counter)
+- `funcs : Array FuncDef` (accumulated function definitions)
+
+The key property: if `st1.nextId ≤ st2.nextId` and `st1.funcs` is a prefix of `st2.funcs`, then `convertExpr e scope envVar envMap st1` and `convertExpr e scope envVar envMap st2` produce ALPHA-EQUIVALENT expressions (same structure, different fresh variable names).
+
+### Step 3: Write CCStateAgreeWeak
+
+```lean
+/-- Weak state agreement: st_a's state is ≤ st's state. -/
+def CCStateAgreeWeak (st st_a : CCState) : Prop :=
+  st.nextId ≤ st_a.nextId ∧ st.funcs.size ≤ st_a.funcs.size
 ```
-["simp_all", "aesop", "omega", "tauto", "contradiction", "rfl", "exact?", "decide"]
-```
 
-Priority: L8407, L5265, L5409, L5696, then remaining.
+### Step 4: TARGETED EXPERIMENT — ONE sorry only
 
-## P1: IF ALL BLOCKED → supported_no_functionDef CHECK
+Before committing to full refactor, try JUST L5491 (if-true branch):
+1. Read L5491 context (20 lines around it)
+2. Replace `sorry` with a proof attempt using CCStateAgreeWeak
+3. Check diagnostics — does the proof go through with ≤ instead of =?
+4. If it introduces new errors elsewhere, note EXACTLY which and why
 
-Before the heavy CCStateAgreeWeak refactor, check a simpler hypothesis:
+### Step 5: If experiment succeeds, assess blast radius
 
-**Does `supported = true` imply no `.functionDef` sub-expressions?**
+Count how many existing proofs use `CCStateAgree` vs `CCStateAgreeWeak`.
+For each usage, check if switching to Weak breaks it.
 
-If yes, then `convertExpr` on any supported sub-expression would NOT allocate new function slots, meaning `convertExpr_state_determined` would give state equality even across unconverted branches.
+### IMPORTANT: Behavioral equivalence of converted expressions
 
-Steps:
-1. Find the `supported` definition: `lean_local_search "supported"` or grep for `def supported`
-2. Check if it excludes `.functionDef`
-3. If yes: write `supported_no_functionDef : e.supported = true → ∀ sub ∈ subExprs e, ¬sub.isFunctionDef`
-4. Then check if `convertExpr` with no functionDef is state-preserving: `convertExpr e K st = (result, st)` when no functionDef
+The real question is: does `convertExpr e scope envVar envMap st1` produce an expression that BEHAVES THE SAME as `convertExpr e scope envVar envMap st2` when `st1 ≤ st2`?
 
-This would close L5491, L5517, L8407, L8484, L8600 WITHOUT the heavy CCStateAgreeWeak refactor.
+The answer is YES if:
+- Fresh variables are only used locally (not cross-referenced between branches)
+- Function indices in `makeClosure` point to the same function body (just at different array positions)
 
-## P2: IF supported_no_functionDef FAILS → CCStateAgreeWeak
+If function indices differ (because `st1.funcs.size ≠ st2.funcs.size`), the expressions are NOT equivalent in general. In that case, you need `convertExpr_idx_shift` showing that shifting all function indices by a constant preserves semantics.
 
-Begin the heavy refactor:
+CHECK THIS BEFORE committing to the refactor.
 
-1. CCStateAgreeWeak is defined at L565 as `≤` (monotone) instead of `=`
-2. Change the simulation invariant CC_SimRel to use CCStateAgreeWeak
-3. For each existing proved case that uses `convertExpr_state_determined`:
-   - Check if it still works with `≤` input (using convertExpr_state_mono)
-   - Fix any breakage
+## P1: IF convertExpr IS NOT INDEX-SHIFTABLE
 
-**WARNING**: Your last analysis said "CCStateAgreeWeak breaks all proved compound cases." Before committing to this path, verify by trying ONE compound case (e.g., .seq) with CCStateAgreeWeak to see if it actually breaks or if the breakage is fixable.
+If the monotone approach fails because function indices differ:
+1. Check if the simulation invariant can track a "function index offset"
+2. Or: check if `supported` programs in the TAKEN branch never reference functions from the UNTAKEN branch
+3. Or: mark the 5 CCStateAgree sorries as `sorry /- AXIOM: CCState monotonicity -/` and move on to close OTHER sorries
 
-## P3: L6998 (UNPROVABLE)
+## P2: Close non-CCStateAgree sorries
 
-This is marked unprovable (semantic mismatch). Check if it can be:
-1. Guarded by `supported = true` (excluding the problematic case)
-2. Rewritten as `sorry /- AXIOM: getIndex string both-values -/` to mark it as a known axiom
+Some sorries might be closable independently:
+- L6139 (non-consoleLog call): Is this truly blocked or just hard?
+- L6998 (unprovable): Mark as axiom if truly unprovable
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — CC triage + supported_no_functionDef" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — convertExpr monotonicity experiment" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`
