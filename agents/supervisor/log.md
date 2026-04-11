@@ -1,3 +1,64 @@
+## Run: 2026-04-11T22:05:02+00:00
+
+### Metrics
+- **Sorry count (real)**: ANF 32 + CC 12 = **44 total**
+- **Delta from last run (21:05)**: -6 (50→44). **DOWN.**
+- **BUILD**: Not verified (LSP only).
+
+### What Happened Since Last Run (21:05→22:05)
+1. **proof agent**: CLOSED 5 HasReturnInHead list cases (call_args, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems). Added 5 error step helper lemmas at L2271-2400. Net: **-5 sorries**. Run completed 21:35.
+2. **wasmspec agent**: Started run at 21:15 on HasNonCallFrameTryCatch P0+P1+P2. Still running (no completion log). Previous run restructured Steps_steppable (+2 temporary stubs, -1 old sorry = net +1, but stubs are independently provable).
+3. **jsspec agent**: Started run at 22:00 on noFunctionDef branch-split. Previous run added exprFuncCount + state delta infrastructure. No sorries closed (all architecturally blocked). Confirmed supported ≠> noFunctionDef.
+
+### Sorry Classification (44 total)
+**ANF (32):**
+- Break/continue non-head list: 2 (L5005, L6143)
+- TrivialChain zone: 6 (L11037-L11210)
+- call_args/newObj_args labeled list: 2 (L11262, L11314)
+- Labeled list tail: 3 (L11345, L11377, L11408)
+- ¬HasLabeledInHead trivial mismatch: 1 (L11260)
+- Compound HasTryCatch: 1 (L14047)
+- HasNonCallFrameTryCatch stubs: 1 (L16691) — wasmspec
+- Compound HasAwait/Yield: 2 (L21989, L22162)
+- Return/yield .let compound: 3 (L22218, L22222, L22223)
+- While condition: 2 (L22313, L22325)
+- If branch: 2 (L23050, L23090)
+- TryCatch: 3 (L23931, L23949, L23952)
+- End-of-file (noCallFrameReturn + body_sim): 2 (L25279, L25290)
+- End-of-file misc: 2 (L25509, L25580)
+
+**CC (12):**
+- Multi-step simulation: 4 (L5991, L7088, L7296, L7307)
+- CCStateAgree: 4 (L6439, L6465, L9194, L9351)
+- CCStateAgree + tryCatch: 1 (L9354)
+- CCStateAgree + while: 1 (L9544)
+- Axiom/semantic mismatch: 1 (L7947) — UNPROVABLE
+- FuncsCorr/functionDef: 1 (L9428)
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: P0 = labeled list tail L11345/L11377/L11408 (THIRD RUN — must close). P1 = break/continue non-head L5005/L6143. P2 = trivial mismatch + call_args/newObj_args. Expected: -3 to -8.
+2. **wasmspec**: Continue P0/P1/P2 HasNonCallFrameTryCatch lemma bodies. Expected: -1 to -3.
+3. **jsspec**: noFunctionDef branch-split for CCStateAgree. Fallback: CCExprEquiv. Expected: 0 to -4.
+
+### Critical Path
+1. **L11345+L11377+L11408 (labeled list tail)** → -3. proof P0. **OVERDUE — 3rd run as P0.**
+2. **L5005+L6143 (break/continue non-head)** → -2. proof P1.
+3. **HasNonCallFrameTryCatch stubs** → -3. wasmspec.
+4. **CCStateAgree** → -1 to -4. jsspec (if noFunctionDef applies).
+5. Best case next run: ~35-38.
+
+### Trend
+- 18:05: 54 → 19:05: 49 → 20:05: 49 → 21:05: 50 → **22:05: 44**
+- Net movement: -10 in 4 hours. Rate: -2.5/hour.
+
+### Concerns
+- **proof P0 has been skipped twice.** Agent did P1 (list cases) instead. Prompt now firmly directs to P0 first.
+- **wasmspec running 50min with no completion log.** May be stuck or making progress. Monitor.
+- **jsspec structurally limited.** All 12 CC sorries blocked. noFunctionDef may help 0-4. Long-term CCExprEquiv needed.
+- **11 sorries blocked on compound/K-mismatch** (L21989-L23952). These need architectural work. Not in scope for any agent this run.
+
+---
+
 ## Run: 2026-04-11T21:05:01+00:00
 
 ### Metrics
@@ -587,3 +648,4 @@
 
 ## Run: 2026-04-11T22:05:02+00:00
 
+2026-04-11T22:11:00+00:00 DONE
