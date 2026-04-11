@@ -9364,6 +9364,7 @@ inductive HasTryCatchInHead : Flat.Expr → Prop where
   | makeEnv_values : HasTryCatchInHeadList values → HasTryCatchInHead (.makeEnv values)
   | objectLit_props : HasTryCatchInHeadProps props → HasTryCatchInHead (.objectLit props)
   | arrayLit_elems : HasTryCatchInHeadList elems → HasTryCatchInHead (.arrayLit elems)
+  | labeled_body : HasTryCatchInHead body → HasTryCatchInHead (.labeled name body)
 
 inductive HasTryCatchInHeadList : List Flat.Expr → Prop where
   | head : HasTryCatchInHead e → HasTryCatchInHeadList (e :: rest)
@@ -9377,6 +9378,31 @@ end
 private theorem HasTryCatchInHead_not_value (e : Flat.Expr)
     (h : HasTryCatchInHead e) : Flat.exprValue? e = none := by
   cases h <;> simp [Flat.exprValue?]
+
+/-- If a firstNonValueExpr target has HasTryCatchInHead, so does the original list. -/
+private theorem HasTryCatchInHeadList_of_firstNonValue
+    {args done : List Flat.Expr} {target : Flat.Expr} {remaining : List Flat.Expr}
+    (hfnv : Flat.firstNonValueExpr args = some (done, target, remaining))
+    (h : HasTryCatchInHead target) :
+    HasTryCatchInHeadList args := by
+  have hsplit := firstNonValueExpr_eq_append hfnv
+  rw [hsplit]; clear hsplit
+  induction done with
+  | nil => exact .head h
+  | cons _ _ ih => exact .tail ih
+
+/-- If a firstNonValueProp target has HasTryCatchInHead, so does the original prop list. -/
+private theorem HasTryCatchInHeadProps_of_firstNonValue
+    {props done : List (Flat.PropName × Flat.Expr)} {name : Flat.PropName}
+    {target : Flat.Expr} {remaining : List (Flat.PropName × Flat.Expr)}
+    (hfnv : Flat.firstNonValueProp props = some (done, name, target, remaining))
+    (h : HasTryCatchInHead target) :
+    HasTryCatchInHeadProps props := by
+  have hsplit := firstNonValueProp_eq_append hfnv
+  rw [hsplit]; clear hsplit
+  induction done with
+  | nil => exact .head h
+  | cons _ _ ih => exact .tail ih
 
 /-! ## Helper lemmas: certain constructors never produce .tryCatch -/
 
@@ -14611,21 +14637,23 @@ private theorem HasReturnInHead_step_nonError
 private theorem HasReturnInHead_step_error_isLit
     {sf sf' : Flat.State} {msg : String}
     (hret : HasReturnInHead sf.expr)
+    (hntc : ¬HasTryCatchInHead sf.expr)
     (hstep : Flat.step? sf = some (.error msg, sf')) :
     ∃ v, sf'.expr = .lit v := by
-  -- General fact: any error step produces a lit result (no HasReturnInHead needed).
+  -- Error step with no tryCatch in head chain always produces .lit result.
   -- We prove by strong induction on expression depth.
   suffices hgen : ∀ (n : Nat) (e : Flat.Expr) (env : Flat.Env) (heap : Core.Heap)
       (trace : List Core.TraceEvent) (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
       (sf' : Flat.State) (msg' : String),
       e.depth ≤ n →
+      ¬HasTryCatchInHead e →
       Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (.error msg', sf') →
       ∃ v, sf'.expr = .lit v by
     cases sf with | mk e env heap trace funcs cs =>
-    exact hgen e.depth e env heap trace funcs cs sf' msg (Nat.le_refl _) hstep
+    exact hgen e.depth e env heap trace funcs cs sf' msg (Nat.le_refl _) hntc hstep
   intro n; induction n with
   | zero =>
-    intro e env heap trace funcs cs sf' msg' hd hstep
+    intro e env heap trace funcs cs sf' msg' hd hntc_e hstep
     -- All depth-0 steppable expressions that can produce errors:
     -- .var (depth 0), .break (depth 0), .continue (depth 0), .return none (depth 0)
     -- All produce .lit results on error.
@@ -14665,12 +14693,11 @@ private theorem HasReturnInHead_step_error_isLit
     | makeClosure _ _ | makeEnv _ | objectLit _ | arrayLit _ =>
       simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; omega
   | succ n ih =>
-    intro e env heap trace funcs cs sf' msg' hd hstep
+    intro e env heap trace funcs cs sf' msg' hd hntc_e hstep
     -- For compound expressions, step? unfolds to matching on sub-expressions.
     -- Error sub-steps propagate with result from recursive step (IH applies).
     -- Non-error sub-steps and direct results contradict hstep (.error).
-    -- tryCatch catch case is the exception: it produces .error with non-.lit expr.
-    -- That case is marked sorry pending a semantics fix (Flat/Semantics.lean L1109-1111).
+    -- tryCatch excluded by ¬HasTryCatchInHead.
     cases e with
     | lit => unfold Flat.step? at hstep; simp at hstep
     | var name =>
@@ -15075,9 +15102,7 @@ private theorem HasReturnInHead_step_error_isLit
           · simp at hstep
         · simp at hstep
     | tryCatch body catchParam catchBody fin =>
-      -- Non-call-frame catch (Semantics.lean L1104-1111) emits (.error msg, {expr := handler})
-      -- where handler is not .lit. Need NoTryCatchInHead hypothesis to exclude this case.
-      sorry
+      exact absurd .tryCatch_direct hntc_e
     | while_ cond body =>
       -- while_ lowers to if: produces .silent, contradicts hstep
       unfold Flat.step? at hstep; simp at hstep
