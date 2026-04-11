@@ -1,4 +1,4 @@
-# wasmspec — COMPOUND ERROR PROP: HasReturnInHead/Await/Yield (3-6 sorries)
+# wasmspec — COMPOUND HasReturn/Await/Yield + CATCH-ALL
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -8,39 +8,42 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 9 COMPOUND SORRIES CLOSED TOTAL
-- You closed 6 compound inner depth + 3 compound error prop sorries. Excellent work!
-- ANF: 32 sorries remaining. CC: 87 (72 FuncsCorr, jsspec fixing). Total: 119.
-- ALL trivialChain sorries (L10183-L10554, ~12 sorries) remain BLOCKED. DO NOT WORK ON THOSE.
+## STATUS
+- Total: 46 sorries (ANF 30, CC 16). Down from 54 last commit.
+- Your compound error prop work was excellent.
+- Remaining ANF compound sorries are YOUR territory.
 
-## P0: COMPOUND HasReturnInHead (L13285)
+## P0: COMPOUND HasReturnInHead (L13361)
 
-This sorry says "compound HasReturnInHead: needs error propagation through compound wrappers". Error propagation IS done now. The pattern is the same as what you used for inner depth:
+Same pattern as your previous compound error prop work:
 
-1. Run `lean_goal` at L13285
-2. The compound case means the inner expression of `.return (some inner)` steps — lift through return context
-3. Apply normalizeExpr_labeled_or_k on the inner expression
-4. Use normalizeExpr_labeled_branch_step for the step
-5. Lift with `Steps_return_some_ctx_b` (or similar)
+1. Run `lean_goal` at L13361
+2. The compound case: inner expression of `.return (some inner)` steps. Lift through return context.
+3. Key helpers to search for: `lean_local_search "Steps_return"`, `lean_local_search "normalizeExpr_return"`
+4. Pattern: get IH for inner step, then use Steps context lifting (Steps_return_some_ctx or similar)
 
-## P1: COMPOUND HasAwaitInHead + HasYieldInHead (L13458, L13631)
+## P1: COMPOUND HasAwaitInHead + HasYieldInHead (L13534, L13707)
 
-Same pattern but for await/yield wrappers. Use `Steps_await_ctx_b` and `Steps_yield_some_ctx_b`. Search with `lean_local_search "Steps_await"` and `lean_local_search "Steps_yield"`.
+Same pattern as P0 but for await/yield:
+- `lean_local_search "Steps_await"` and `lean_local_search "Steps_yield"`
+- The inner expression steps, lift through await/yield wrapper
 
-## P2: RETURN/YIELD COMPOUND .let (L13687, L13691, L13692)
+## P2: RETURN/YIELD .let COMPOUND (L13763, L13767, L13768)
 
-These say "compound, can produce .let" and "compound expressions: needs structural induction". The inner expression normalizes to a `.let`, requiring multi-step. Try IH + Steps_ctx_lift pattern.
+These produce `.let` from normalizeExpr. The inner expression normalizes to a `.let`, requiring multi-step.
+- Run `lean_goal` on each
+- Try IH + Steps_ctx_lift pattern
 
-## P3: COMPOUND CATCH-ALL (L12969, L15421)
+## P3: COMPOUND CATCH-ALL (L12969, L15497, L17036, L17107)
 
-These are broad catch-alls. Run `lean_goal` to see if they're closable now or still blocked.
+These are broad catch-all `| _ => sorry`. Run `lean_goal` on each to see if they're now closable or still blocked. Some may need the same compound lifting pattern.
 
-## P4: while (L13782, L13794)
+## P4: WHILE (L13858, L13870) and TRYCATCH (L15476, L15494)
 
-If other compounds are done, check these. The while condition simulation may now be unblocked.
+Lower priority. Check with `lean_goal` after P0-P3.
 
-## SKIP: trivialChain (blocked), if_branch, NoNestedAbrupt (proof agent), CC (jsspec)
+## SKIP: trivialChain (proof agent), if_branch (K-mismatch blocked), CC (jsspec)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — compound error prop L13285" >> agents/wasmspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — compound HasReturnInHead L13361" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

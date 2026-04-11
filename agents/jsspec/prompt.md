@@ -1,4 +1,4 @@
-# jsspec — BULK-CLOSE ~70 FuncsCorr sorry⟩ THEN INIT/CALL
+# jsspec — CLOSE FuncsCorr INIT (L1519) + ERROR CASES
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,43 +9,49 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — CRITICAL DISCOVERY
-- CC has **87 real sorries** (not 17!). 72 of them are `sorry⟩` at the end of `refine ⟨..., sorry⟩`.
-- These 72 `sorry⟩` are ALL the FuncsCorr field you just added to CC_SimRel.
-- **FuncsCorr does NOT use injMap** — check the definition at L1455. injMap is a parameter but UNUSED in the body.
-- For ALL cases except functionDef, `sc'.funcs = sc.funcs` (Core doesn't change funcs).
-- Therefore `sorry⟩` → `hfuncCorr⟩` should close ~70 of 72 sorries in ONE PASS.
+## STATUS — FuncsCorr BULK CLOSE DONE!
+- The 72 FuncsCorr sorry⟩ bulk close worked! Only 2 sorry⟩ remain (L5333, L8201).
+- CC now has **16 real sorries**. Total project: 46.
+- Excellent work on the bulk close.
 
-## P0: BULK-CLOSE FuncsCorr sorry⟩ (HIGHEST PRIORITY — ~70 sorries)
+## P0: CLOSE L1519 (FuncsCorr initial state)
 
-**Strategy**: Replace every `sorry⟩` at the end of refine patterns with `hfuncCorr⟩`.
+This is the FuncsCorr for the initial CC_SimRel. Run `lean_goal` at L1519.
 
-**EXACT STEPS:**
-1. For lines with `refine ⟨injMap, sc', ..., sorry⟩`: replace `sorry⟩` with `hfuncCorr⟩`
-2. For lines with `refine ⟨injMap', sc', ..., sorry⟩`: try `hfuncCorr⟩` first. If that fails (because Lean can't unify FuncsCorr injMap with FuncsCorr injMap'), use `(by unfold FuncsCorr at hfuncCorr ⊢; exact hfuncCorr)⟩`
-3. For the line at ~L5333 and similar inline sorry patterns, same approach
-4. For functionDef case (~L8044): this needs REAL work (funcs change). Leave sorry for now.
-5. VERIFY with lean_diagnostic_messages after each batch of ~10 changes
+Context (L1510-1519):
+```lean
+unfold CC_SimRel Flat.initialState Core.initialState
+refine ⟨rfl, ⟨id, HeapInj_id _, ?_, ?funcCorr_init⟩, h_wf, ...⟩
+case funcCorr_init =>
+  -- FuncsCorr for initial state: Core has [logBuiltin], Flat has t.functions
+  sorry
+```
 
-**WARNING**: Also check sf'.funcs = sf.funcs for each case. Flat.Step should not change funcs for non-functionDef. If a case fails, it means Flat changed funcs there — investigate.
+**APPROACH**:
+1. Run `lean_goal` at L1519 to see the exact goal
+2. FuncsCorr relates Core funcs and Flat funcs through injMap. Initial Core funcs = `#[logBuiltin]` (from elaborate). Initial Flat funcs = `t.functions` (from closureConvert).
+3. `closureConvert` adds the console.log builtin as the first function. Check if `t.functions` at init = `#[flatLogBuiltin]` or similar.
+4. With `injMap = id`, FuncsCorr should require that for each Core func at index i, Flat has a matching func at index id(i) = i.
+5. Try: `unfold FuncsCorr; intro i fi hfi; ...` then case split on the single function.
 
-**DO NOT** try to close all 72 in one edit. Do 10 at a time, verify, continue.
+## P1: ERROR STRUCTURAL MISMATCH (L5152, L5251, L5490)
 
-## P1: CLOSE L1519 (FuncsCorr initial state)
+These say "Flat.step? drops the .let wrapper on error but Core.step? keeps it". Run `lean_goal` at each.
 
-FuncsCorr for initial state. Initial funcs should be empty/trivially matching.
-Run `lean_goal` at L1519. If initial funcs are `#[]`, FuncsCorr is trivially true.
+**Key insight**: On error, Flat produces `sa.expr = error_result` (no .let wrapper) while Core produces `sc'.expr = .let name error_result body`. The SimRel needs `convertExpr sc'.expr = sf'.expr`. But `convertExpr (.let name err body) = .let name (convertExpr err) (convertExpr body)` ≠ `error_result`.
 
-## P2: CLOSE L5935 (call case, now unblocked)
+If this is truly a structural mismatch, it may need a SimRel adjustment (error states don't need expression matching). **Investigate first** — run lean_goal and check if there's a way around it.
 
-`hfuncCorr` is in scope. Extract matching Flat.FuncDef, step to function body.
+## P2: L5933 (call case, non-consoleLog)
+
+FuncsCorr is now available in scope. The comment says "needs multi-step simulation (Flat call is N steps vs Core's 1)". Run `lean_goal` to check if this is truly multi-step blocked or if it's now partially provable with FuncsCorr.
 
 ## KNOWN BLOCKED (DO NOT ATTEMPT):
-- L5335, L5361, L8203, L8206, L8278, L8394: CCStateAgree (6 total)
+- L5333, L5359, L8201, L8204, L8278, L8394: CCStateAgree (6 total)
 - L4984, L6141, L6152: multi-step simulation gap (3 total)
-- L5152, L5251, L5490: error structural mismatch (3 total)
 - L6792: semantic mismatch (UNPROVABLE)
+- L8044: functionDef (multi-step + FuncsCorr maintenance)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — BULK FuncsCorr close" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — FuncsCorr init L1519" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`

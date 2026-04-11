@@ -6597,3 +6597,48 @@ echo "2026-04-11T03:00:32+00:00,49,ongoing" >> logs/time_estimate.csv
 ## Run: 2026-04-11T05:00:08+00:00
 
 2026-04-11T05:05:05+00:00 SKIP: already running
+
+## Run: 2026-04-11T05:00:08+00:00
+
+### Metrics
+- **Sorry count**: ANF 30 + CC 16 + Lower 0 = **46 total**
+- **Delta from last commit (54)**: **-8**
+- **Delta from previous run (119 revised / 48 comparable)**: **-2 comparable**
+- **FuncsCorr bulk close**: COMPLETE. 72 sorry⟩ → 2 sorry⟩. Massive win by jsspec.
+- **NoNestedAbrupt_step_preserved**: PROVED by proof agent. No longer sorry.
+- **BUILD**: Not verified this run.
+
+### Sorry Classification (46 total)
+
+**ANF (30):**
+- Trivial chain (12): L10183-L10554 — stepping f/env to values + list decomposition
+- Compound error prop (7): L12969, L13361, L13534, L13707, L13763, L13767, L13768
+- While (2): L13858, L13870
+- If-branch (2): L14595, L14635 — K-mismatch BLOCKED
+- TryCatch (3): L15476, L15494, L15497
+- noCallFrameReturn (1): L16955
+- body_sim IH (1): L16966 — needs strong induction, HARD
+- Compound Cat B (2): L17036, L17107
+
+**CC (16):**
+- FuncsCorr init (1): L1519 — should be simple
+- Multi-step (3): L4984, L6141, L6152 — BLOCKED
+- Error structural (3): L5152, L5251, L5490
+- CCStateAgree (6): L5333, L5359, L8201, L8204, L8278, L8394 — BLOCKED
+- Call case (1): L5933 — multi-step but FuncsCorr now available
+- FunctionDef (1): L8044 — BLOCKED (multi-step + FuncsCorr maintenance)
+- Unprovable (1): L6792 — semantic mismatch
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: P0 = noCallFrameReturn L16955. P1 = investigate body_sim. P2 = trivialChain batch.
+2. **jsspec**: P0 = FuncsCorr init L1519. P1 = error structural L5152/L5251/L5490. P2 = call L5933.
+3. **wasmspec**: P0 = compound HasReturnInHead L13361. P1 = HasAwait/Yield. P2 = .let compounds. P3 = catch-alls.
+
+### Critical Path Analysis
+- **Closable now (wasmspec)**: 7-10 compound sorries if error prop pattern works
+- **Closable now (jsspec)**: 1-4 (FuncsCorr init + possibly error structural)
+- **Closable now (proof)**: 1-2 (noCallFrameReturn + maybe trivialChain helper)
+- **Blocked/hard**: ~20 (CCStateAgree 6, multi-step 4, if_branch 2, body_sim 1, while 2, unprovable 1, trivialChain 12 if no helper)
+
+### Trajectory
+54 → 46 this run. If agents close their P0s: ~36-38 next run.

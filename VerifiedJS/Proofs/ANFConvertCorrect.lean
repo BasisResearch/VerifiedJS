@@ -13203,6 +13203,155 @@ private theorem Steps_compound_error_lift
           exact hwtrace.trans hs2t.symm; exact hwfuncs.trans hs2f.symm; exact hwcs.trans hs2c.symm]
       exact ⟨sf', .tail ⟨hwstep⟩ (hws2_eq ▸ hsteps'), hexpr', henv', hheap', htrace'⟩
 
+/-- Helper to derive ∃ msg, .error msg ∈ evs from the return-behavior observableTrace.
+    If observableTrace evs = observableTrace [.error msg], then evs contains an error event. -/
+private theorem observableTrace_return_has_error {evs : List Core.TraceEvent} {msg : String}
+    (h : observableTrace evs = observableTrace [.error msg]) :
+    ∃ msg', Core.TraceEvent.error msg' ∈ evs := by
+  simp [observableTrace] at h
+  induction evs with
+  | nil => simp [List.filter] at h
+  | cons hd tl ih =>
+    cases hd with
+    | silent => exact (ih h).imp fun msg' hm' => List.mem_cons_of_mem _ hm'
+    | error m => exact ⟨m, List.Mem.head _⟩
+    | log _ =>
+      simp [List.filter, BEq.beq, Core.TraceEvent.beq] at h
+      exact absurd h.1 (by intro h'; exact Core.TraceEvent.noConfusion h')
+
+/-- Main inductive theorem: if HasReturnInHead e and normalizeExpr e K produces .return arg,
+    then Flat.Steps from e match the return behavior. Works with ANY continuation K
+    (does not require trivial-preserving). Proved by induction on expression depth. -/
+private theorem hasReturnInHead_return_steps :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    HasReturnInHead e →
+    ∀ (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+      (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+      (K : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
+      (arg : Option ANF.Trivial),
+    (ANF.normalizeExpr e K).run n = .ok (.return arg, m) →
+    ExprWellFormed e env →
+    NoNestedAbrupt e →
+    (arg = none →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧
+        observableTrace evs = observableTrace [.error "return:undefined"]) ∧
+    (∀ t v, arg = some t → ANF.evalTrivial env t = .ok v →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit v ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧
+        observableTrace evs = observableTrace [.error ("return:" ++ Flat.valueToString v)]) ∧
+    (∀ t msg, arg = some t → ANF.evalTrivial env t = .error msg →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧
+        observableTrace evs = observableTrace [.error msg]) := by
+  intro d; induction d with
+  | zero =>
+    intro e hd hret
+    -- At depth 0, only .return none has HasReturnInHead (depth 0)
+    cases hret with
+    | return_none_direct =>
+      intro env heap trace funcs cs K n m arg hnorm hewf hna
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
+      obtain ⟨rfl, rfl⟩ := hnorm
+      refine ⟨?_, ?_, ?_⟩
+      · intro _
+        refine ⟨[.error "return:undefined"], _,
+          .tail ⟨by unfold Flat.step?; rfl⟩ (.refl _),
+          rfl, rfl, rfl, rfl, rfl⟩
+      · intro t _ h; exact absurd h (by simp)
+      · intro t _ h; exact absurd h (by simp)
+    | return_some_direct => simp [Flat.Expr.depth] at hd
+    | throw_arg h => simp [Flat.Expr.depth] at hd
+    | yield_some_arg h => simp [Flat.Expr.depth] at hd
+    | await_arg h => simp [Flat.Expr.depth] at hd
+    | _ => simp [Flat.Expr.depth] at hd; omega
+  | succ d ih =>
+    intro e hd hret env heap trace funcs cs K n m arg hnorm hewf hna
+    cases hret with
+    | return_none_direct =>
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
+      obtain ⟨rfl, rfl⟩ := hnorm
+      refine ⟨?_, ?_, ?_⟩
+      · intro _
+        refine ⟨[.error "return:undefined"], _,
+          .tail ⟨by unfold Flat.step?; rfl⟩ (.refl _),
+          rfl, rfl, rfl, rfl, rfl⟩
+      · intro t _ h; exact absurd h (by simp)
+      · intro t _ h; exact absurd h (by simp)
+    | return_some_direct =>
+      rename_i inner
+      exact normalizeExpr_return_some_compound_case inner env heap trace funcs cs arg n m
+        (by simp only [ANF.normalizeExpr] at hnorm; exact hnorm) hewf hna
+    | throw_arg h => exfalso; exact noNestedAbrupt_hasReturnInHead_absurd_throw hna h
+    | yield_some_arg h => exfalso; exact noNestedAbrupt_hasReturnInHead_absurd_yield hna h
+    | await_arg h => exfalso; exact noNestedAbrupt_hasReturnInHead_absurd_await hna h
+    | seq_left h_a =>
+      rename_i a b
+      simp only [ANF.normalizeExpr_seq'] at hnorm
+      have ha_depth : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      -- IH on sub-expression a (with the seq continuation as K)
+      obtain ⟨ih_none, ih_ok, ih_err⟩ :=
+        ih a ha_depth h_a env heap trace funcs cs _ n m arg
+          hnorm (fun x hfx => hewf x (VarFreeIn.seq_l _ _ _ hfx))
+          (by cases hna with | seq ha _ => exact ha)
+      -- Lift through .seq · b using Steps_compound_error_lift
+      refine ⟨?_, ?_, ?_⟩
+      · -- arg = none case
+        intro harg
+        obtain ⟨evs, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_none harg
+        have herr : ∃ msg, .error msg ∈ evs := observableTrace_return_has_error hobs_a
+        have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs1 smid →
+            evs1.length ≤ evs.length →
+            smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+          sorry -- preservation: need standard Steps preservation for return steps
+        obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+          Steps_compound_error_lift (.seq · b)
+            (fun s inner hv t si hs he => step?_seq_ctx s inner b hv t si hs he)
+            (fun s inner hv msg si hs => step?_seq_error s inner b hv msg si hs)
+            hsteps_a herr hpres
+        exact ⟨evs, sf', hsteps',
+          hexpr'.trans hexpr_a, henv'.trans henv_a, hheap'.trans hheap_a,
+          htrace'.trans htrace_a, hobs_a⟩
+      · -- arg = some t, ok v case
+        intro t v harg heval
+        obtain ⟨evs, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_ok t v harg heval
+        have herr : ∃ msg, .error msg ∈ evs := observableTrace_return_has_error hobs_a
+        have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs1 smid →
+            evs1.length ≤ evs.length →
+            smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+          sorry -- preservation
+        obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+          Steps_compound_error_lift (.seq · b)
+            (fun s inner hv t si hs he => step?_seq_ctx s inner b hv t si hs he)
+            (fun s inner hv msg si hs => step?_seq_error s inner b hv msg si hs)
+            hsteps_a herr hpres
+        exact ⟨evs, sf', hsteps',
+          hexpr'.trans hexpr_a, henv'.trans henv_a, hheap'.trans hheap_a,
+          htrace'.trans htrace_a, hobs_a⟩
+      · -- arg = some t, error msg case
+        intro t msg harg heval
+        obtain ⟨evs, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_err t msg harg heval
+        have herr : ∃ msg', .error msg' ∈ evs := observableTrace_return_has_error hobs_a
+        have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs1 smid →
+            evs1.length ≤ evs.length →
+            smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+          sorry -- preservation
+        obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+          Steps_compound_error_lift (.seq · b)
+            (fun s inner hv t si hs he => step?_seq_ctx s inner b hv t si hs he)
+            (fun s inner hv msg' si hs => step?_seq_error s inner b hv msg' si hs)
+            hsteps_a herr hpres
+        exact ⟨evs, sf', hsteps',
+          hexpr'.trans hexpr_a, henv'.trans henv_a, hheap'.trans hheap_a,
+          htrace'.trans htrace_a, hobs_a⟩
+    | _ => sorry -- remaining compound HasReturnInHead cases: same pattern as seq_left
+
 /-- If normalizeExpr sf.expr k produces .return arg (with trivial-preserving k),
     then there exist Flat steps from sf matching the ANF return step. -/
 private theorem normalizeExpr_return_step_sim

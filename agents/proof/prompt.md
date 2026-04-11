@@ -1,4 +1,4 @@
-# proof — CLOSE NoNestedAbrupt_step_preserved (L15893)
+# proof — CLOSE noCallFrameReturn (L16955) + trivialChain batch
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,46 +9,45 @@
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
 ## STATUS
-- hasAbruptCompletion_step_preserved: **PROVED** (great work!)
-- NoNestedAbrupt_step_preserved (L15893): still `sorry`, with commented-out proof L15894+
-- ANF: 32 real sorries. CC: 87 (72 are FuncsCorr, jsspec will bulk-close). Total: 119.
+- NoNestedAbrupt_step_preserved: **PROVED** (nice!)
+- ANF: 30 sorries. CC: 16 (jsspec). Total: 46.
 
-## P0: UNCOMMENT NoNestedAbrupt_step_preserved (L15893)
+## P0: CLOSE L16955 (noCallFrameReturn sorry)
 
-YOU JUST DID THIS EXACT PATTERN for hasAbruptCompletion_step_preserved. Do it again.
+The sorry at L16955 needs to provide `catchParam ≠ "__call_frame_return__"`.
 
-The sorry at L15893 has a commented-out proof immediately below it (L15894+).
+`normalizeExpr_tryCatch_step_sim` takes `hncf : catchParam ≠ "__call_frame_return__"`.
 
-**EXACT STEPS:**
-1. Delete the `sorry -- TODO: fix for error propagation; cases need split at hstep for match t with` at L15893
-2. Uncomment the proof block below: change `/-obtain` to `obtain` and remove the closing `-/`
-3. The proof will have errors because step? now has THREE branches (error event, non-error step, none) instead of TWO
+The key: `hna : NoNestedAbrupt sf.expr` is in scope. And `hnorm` says normalizeExpr produces `.tryCatch body catchParam catchBody finally_`. The Flat tryCatch preserves catchParam. The `noCallFrameReturn` predicate is separate from NoNestedAbrupt.
 
-**For each `split at hstep` that breaks:**
-The error branch is NEW. You handled this in hasAbruptCompletion. For NoNestedAbrupt, the error branch is:
-```lean
-· -- error event: produces .lit .undefined, which satisfies NoNestedAbrupt.lit
-  split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]; exact .lit)
-```
+**APPROACH**: The `noCallFrameReturn` hypothesis `hncfr` should be available from anfConvert_step_star's preconditions. Check if it's already a parameter or if it needs to be added.
 
-**ALSO ADD** termination hint:
-```lean
-termination_by Flat.Expr.depth e
-decreasing_by all_goals (simp_all [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth]; omega)
-```
+1. Run `lean_goal` at L16955 to see what's in context
+2. Look for `hncfr : noCallFrameReturn sf.expr = true` in scope
+3. If available, use: `noCallFrameReturn_tryCatch_param` (defined at L4120) which proves `cp ≠ "__call_frame_return__"` from `noCallFrameReturn (.tryCatch ...) = true`
+4. If NOT in scope: we need to add `(hncfr : noCallFrameReturn sf.expr = true)` to `anfConvert_step_star` (L16798). Then:
+   - Add it as a parameter after `NoNestedAbrupt sf.expr`
+   - In the tryCatch case, `sf.expr` is known to be a tryCatch, so `noCallFrameReturn_tryCatch_param hncfr` gives the goal
+   - Need to show preservation: when SimRel reconstructs sf', noCallFrameReturn sf'.expr = true. For most cases this is `noCallFrameReturn (.lit v) = true` (trivially rfl). For compound steps, it follows from depth decrease.
 
-**EXPECTED RESULT**: -1 sorry (L15893 closed).
+**The normalizeExpr decomposition**: `normalizeExpr (.tryCatch body cp cb fin) k` produces ANF `.tryCatch ...` where the catchParam comes from the Flat tryCatch's `cp`. The Flat `.tryCatch` has `noCallFrameReturn = true` from the precondition. Use `normalizeExpr_tryCatch_decomp` or similar to extract that the ANF catchParam equals the Flat cp.
 
-## P1: AFTER P0 — L16819 and L16890
+**EXPECTED RESULT**: -1 sorry.
 
-These are at the end of anfConvert_step_star. Run `lean_goal` at each. They may require NoNestedAbrupt_step_preserved which you just proved.
+## P1: L16966 (body_sim IH) — INVESTIGATE ONLY
 
-## P2: L16589 (noCallFrameReturn)
+This needs anfConvert_step_star itself (strong induction/well-founded recursion). Run `lean_goal` to understand the shape. DO NOT attempt to close it — just document what it needs.
 
-Read the comment at L16589-16599. Need `catchParam ≠ "__call_frame_return__"`. Check if `by decide` or `by simp` works.
+## P2: TRIVIALCHAIN HELPER (L10183-L10554, ~12 sorries)
 
-## SKIP: trivial mismatch (L10183-10554), if_branch (L14519/14559), compound error prop (wasmspec owns), CC file
+These 12 sorries all need "stepping function/env to values first + list decomposition". They share a common pattern. Investigate if a single helper lemma could batch-close them:
+
+1. Run `lean_goal` at L10183, L10408, L10491 to see their shapes
+2. The pattern: labeled normalizeExpr produces `.call f e args` or `.newObj f e args` where f/e/args contain a sub-expression that steps. Need to show Flat steps correspondingly.
+3. If a helper like `Flat_step?_call_func_step` or `Flat_step?_call_arg_step` exists, use it.
+
+## SKIP: compound error prop (wasmspec), CC (jsspec), if_branch (K-mismatch blocked), while (blocked)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — NoNestedAbrupt L15893" >> agents/proof/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — noCallFrameReturn L16955" >> agents/proof/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`
