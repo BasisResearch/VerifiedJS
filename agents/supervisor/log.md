@@ -1,3 +1,52 @@
+## Run: 2026-04-11T12:00:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 33 + CC 15 + Lower 0 = **48 total**
+- **Delta from last run (11:30)**: 0 (48→48). UNCHANGED.
+- **Explanation**: No file modifications since last run. proof agent started step_error_isLit at 11:30 but has not written output yet (30 min of research/planning). jsspec just started Or.inr run at 12:00. wasmspec idle since 11:16.
+- **BUILD**: Not verified (LSP only).
+
+### What Happened Since Last Run (11:30→12:00)
+1. **proof**: Started step_error_isLit run at 11:30. No file modifications in 30 min. Rewrote prompt with EXACT proof skeleton (strong induction, batch approach, concrete tactics for every case). Told it to WRITE CODE NOW.
+2. **jsspec**: Just started Or.inr run at 12:00. Prompt unchanged (already focused on L5270/L5414/L5701).
+3. **wasmspec**: Idle since 11:16. Prompt refreshed with more detail on step?_XXX_ctx/error lemma availability.
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: COMPLETE proof skeleton for step_error_isLit. Wrote the entire `suffices hmain` block with strong induction, return_none_direct/return_some_direct/seq_left cases fully spelled out. Told it to work in 3 batches. Added KEY FACTS section listing every error propagation pattern from Flat.step?. Emphasized 30 min without output — WRITE CODE NOW.
+2. **jsspec**: Minor refresh. Emphasized focus on 3 Or.inr sorries only.
+3. **wasmspec**: Enhanced P0 with strategy for checking existence of step?_XXX_ctx/error lemmas. Added lean_local_search instructions. Clarified batch approach.
+
+### Sorry Classification (48 total) — UNCHANGED from 11:30
+- **TrivialChain (proof)**: 12 (L10429-L10800) — BLOCKED by LSP timeout
+- **Break/continue non-head**: 2 (L4671, L5809)
+- **step_error_isLit**: 1 (L14157) — CRITICAL CASCADE BLOCKER (proof agent)
+- **Compound return/await/yield/step_sim**: 7 (L14353, L14709, L14882, L14938, L14942, L14943, L13215)
+- **While/If/TryCatch (BLOCKED)**: 7 (L15033, L15045, L15770, L15810, L16651, L16669, L16672)
+- **noCallFrameReturn/body_sim (BLOCKED)**: 2 (L17999, L18010)
+- **End-of-file**: 2 (L18229, L18300)
+- **CC Or.inr**: 3 (L5270, L5414, L5701) — LIKELY CLOSABLE (jsspec)
+- **CC CCStateAgree**: 5 (L5496, L5522, L8412, L8489, L8605) — ARCHITECTURALLY BLOCKED
+- **CC multi-step**: 3 (L5049, L6352, L6363) — BLOCKED
+- **CC other**: 4 (L5413, L5700, L6144, L7003) — blocked/unprovable
+
+### Critical Path
+1. **L14157 (step_error_isLit)** → cascade -4 to -8. proof agent. THIS IS THE #1 PRIORITY.
+2. **L14353 (compound return)** → -1. wasmspec.
+3. **L5270/L5414/L5701 (Or.inr)** → -3. jsspec.
+4. Best case next run: ~37-42.
+
+### Trend
+- 01:30: 59 → 04:05: 48 → 06:05: 46 → 08:30: 51 → 09:00: 46 → 11:06: 48 → 11:30: 48 → 12:00: 48
+- Flat for 3 hours. Next run MUST show progress or agents need restructuring.
+
+### Risk Assessment
+- proof agent hasn't written code in 47 min (since 11:13). If still no output by 12:30, need to consider:
+  - Writing the step_error_isLit proof directly (supervisor intervention)
+  - Splitting into a separate file to avoid LSP timeout issues
+  - Assigning to wasmspec (which successfully wrote step_nonError ~550 lines)
+
+---
+
 ## Run: 2026-04-11T11:30:03+00:00
 
 ### Metrics
@@ -7277,3 +7326,4 @@ echo "2026-04-11T03:00:32+00:00,49,ongoing" >> logs/time_estimate.csv
 ## Run: 2026-04-11T12:00:03+00:00
 
 2026-04-11T12:05:01+00:00 SKIP: already running
+2026-04-11T12:20:59+00:00 DONE
