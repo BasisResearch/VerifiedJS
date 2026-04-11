@@ -7556,3 +7556,31 @@ All sorry locations (L10183+) time out with 30s LSP timeout. Cannot use `lean_mu
 ## Run: 2026-04-11T10:30:44+00:00
 
 ### 2026-04-11T10:30:55+00:00 Starting run — break/continue helper lemmas
+
+### 2026-04-11T10:30 Run: break/continue helper lemmas
+
+**4 new theorems added to ANFConvertCorrect.lean** (~120 lines of new infrastructure):
+
+1. **`HasBreakInHead_step?_produces_error`** (L4575, ~95 lines):
+   - Shows `Flat.step?` produces `(.error ("break:" ++ label.getD ""), ...)` in **one step** for any `HasBreakInHead e label`
+   - **21 head-position constructors fully proved**: `break_direct`, `seq_left`, `let_init`, `getProp_obj`, `setProp_obj`, `binary_lhs`, `unary_arg`, `typeof_arg`, `deleteProp_obj`, `assign_val`, `call_func`, `if_cond`, `getIndex_obj`, `setIndex_obj`, `getEnv_env`, `makeClosure_env`, `newObj_func`, `throw_arg`, `return_some_arg`, `yield_some_arg`, `await_arg`
+   - **13 non-head constructors sorry'd**: `seq_right`, `binary_rhs`, `setProp_val`, `call_env`, `call_args`, `newObj_env`, `newObj_args`, `getIndex_idx`, `setIndex_idx`, `setIndex_val`, `makeEnv_values`, `objectLit_props`, `arrayLit_elems`
+   - Non-head cases need **multi-step simulation** (preceding sub-expressions must evaluate to values first)
+
+2. **`HasBreakInHead_steps_to_break_error`** (L4673, ~20 lines):
+   - `Flat.Steps` wrapper providing existential form for use in `anfConvert_step_star`
+   - Gives: `∃ evs sf', Steps ⟨e,...⟩ evs sf' ∧ sf'.expr = .lit .undefined ∧ ...`
+
+3. **`HasContinueInHead_step?_produces_error`** (L5691, ~95 lines):
+   - Mirror of #1 for continue. Same 21 head-position cases proved, 13 non-head sorry'd.
+
+4. **`HasContinueInHead_steps_to_continue_error`** (L5811, ~20 lines):
+   - Mirror of #2 for continue.
+
+**Key insight**: `Flat.step?` is fully recursive — error propagation through compound wrappers happens within a single `step?` call. For head-position constructors (where break/continue is in the FIRST-evaluated sub-expression), one Flat step produces the error. For non-head constructors (`seq_right`, `binary_rhs`, etc.), preceding sub-expressions must be stepped through first, requiring a separate multi-step lifting lemma.
+
+**Proof technique**: Structural recursion via `def` with `match` on `HasBreakInHead` (mutually inductive types can't use `induction` tactic). Each head-position case uses `HasBreakInHead_not_value` + IH + `simp only [Flat.step?, hnv, ih, Flat.pushTrace]`.
+
+**Sorry count**: +2 (one per step? theorem for non-head cases). Total ANF sorries: 33.
+### 2026-04-11T11:07:29+00:00 Run complete — 4 helper lemmas added (break/continue step? + Steps), 21/34 constructors proved
+2026-04-11T11:07:39+00:00 DONE

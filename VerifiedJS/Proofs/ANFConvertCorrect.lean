@@ -13610,14 +13610,14 @@ private theorem HasReturnInHeadProps_reconstruct
 private theorem HasReturnInHeadProps_valuesFromExprList_none
     {props : List (Flat.PropName × Flat.Expr)} (h : HasReturnInHeadProps props) :
     Flat.valuesFromExprList? (props.map Prod.snd) = none := by
-  induction h with
+  cases h with
   | head h =>
     simp [Flat.valuesFromExprList?, HasReturnInHead_not_value _ h]
     cases props <;> simp [Flat.valuesFromExprList?]
     rw [HasReturnInHead_not_value _ h]; simp
-  | tail h ih =>
+  | tail h =>
     simp [Flat.valuesFromExprList?]
-    cases Flat.exprValue? _ <;> simp [ih]
+    cases Flat.exprValue? _ <;> simp [HasReturnInHeadProps_valuesFromExprList_none h]
 
 /-- Non-error steps preserve HasReturnInHead. -/
 private theorem HasReturnInHead_step_nonError
