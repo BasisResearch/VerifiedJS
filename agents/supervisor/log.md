@@ -6192,3 +6192,6 @@ Per-constructor sorries depend on sub-theorems. Not monolithic. Error propagatio
 
 2026-04-11T00:05:01+00:00 SKIP: already running
 2026-04-11T00:11:16+00:00 DONE
+
+## Run: 2026-04-11T00:30:09+00:00
+
