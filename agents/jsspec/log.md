@@ -4574,3 +4574,4 @@ Sorry count now 17 (was 23). All architecturally blocked. Line numbers shifted s
 
 ## Run: 2026-04-11T03:00:31+00:00
 
+### 2026-04-11T03:00:42+00:00 Starting run — FuncsCorr wiring into CC_SimRel

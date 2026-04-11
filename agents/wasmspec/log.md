@@ -8019,3 +8019,5 @@ All these sorries share the same structure:
 ## Run: 2026-04-11T02:15:01+00:00
 
 ### 2026-04-11T02:15:17+00:00 Starting run — compound inner depth L10759
+### 2026-04-11T03:01:11+00:00 Run complete — closed 6 compound inner depth sorries in normalizeExpr_labeled_step_sim (return×return, return×yield, yield×return, yield×yield, return-single, yield-single). Pattern: normalizeExpr_labeled_or_k + normalizeExpr_labeled_branch_step + Steps_ctx_lift (return_some/yield_some). ANF sorries: ~34 remaining (was ~42). No errors.
+2026-04-11T03:01:21+00:00 DONE
