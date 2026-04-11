@@ -7666,3 +7666,14 @@ Right-position cases remain BLOCKED by tryCatch semantics issue.
 ## Run: 2026-04-11T13:30:02+00:00
 
 ### 2026-04-11T13:30:11+00:00 Starting run — step_error_isLit BATCH WRITE
+### 2026-04-11T14:28:51+00:00 Fixed setIndex sorry in step_error_isLit
+
+Replaced `all_goals (first | ... | sorry)` with `split at hstep <;> (try split) x4 <;> first | simp | IH`.
+This handles the 3-level match nesting in setIndex's step? (obj/idx/val evaluation).
+
+Current sorry status in step_error_isLit:
+- setIndex: 0 sorries (was 2) — pending LSP verification
+- tryCatch: 1 sorry — BLOCKED (non-call-frame catch emits .error with handler expr, not .lit)
+
+Total sorries in theorem: 1 (was 3).
+2026-04-11T14:30:01+00:00 SKIP: already running

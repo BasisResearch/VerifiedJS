@@ -4922,3 +4922,46 @@ Also blocked. Multi-step simulation gap: Core function call is 1 step, Flat is N
 ## Run: 2026-04-11T14:00:01+00:00
 
 ### 2026-04-11T14:00:11+00:00 Starting run — Or.inr sorries L5270/L5414/L5701
+
+#### Or.inr analysis (L5270, L5414, L5701)
+- All 3 sorries have identical structure: `exact ⟨Or.inr sorry, hfuncCorr_sub⟩` in the `| _ =>` (non-lit) branch after `cases sc_sub'.expr`
+- **Root cause**: Flat.step? tryCatch catch path (Semantics.lean:1104-1111) produces `expr := catchBody` (non-literal) on `.error msg` event
+- When sub-expression contains tryCatch that catches an error, IH returns `inl` (correspondence) with non-literal `sc_sub'.expr`
+- Outer flat step drops let/assign/seq wrapper on error but core keeps it → structural mismatch
+- `Or.inr` needs `sf'.expr = .lit v` but sa.expr = convertExpr(catch_handler) ≠ .lit v
+- `Or.inl` needs `(sf'.expr, _) = convertExpr(.let name sc_sub'.expr body, ...)` but sf'.expr has no .let wrapper
+- **Verdict: BLOCKED** — same root cause as CCStateAgree sorries (structural mismatch between flat/core error handling)
+- Would need architectural change: either 3-way disjunct or different error propagation strategy
+- Moving to P1 (L6144) assessment
+
+#### L6144 (non-consoleLog call) assessment
+- BLOCKED: multi-step simulation gap. Flat function call = N steps, Core = 1 step.
+- Same architectural class as L5049, L6352, L6363.
+
+#### Full sorry audit — ALL 15 BLOCKED
+| Line | Category | Status |
+|------|----------|--------|
+| L5049 | multi-step sim | BLOCKED |
+| L5270 | Or.inr / tryCatch catch | BLOCKED (confirmed this run) |
+| L5414 | Or.inr / tryCatch catch | BLOCKED (confirmed this run) |
+| L5496 | CCStateAgree | BLOCKED |
+| L5522 | CCStateAgree | BLOCKED |
+| L5701 | Or.inr / tryCatch catch | BLOCKED (confirmed this run) |
+| L6144 | multi-step sim (call) | BLOCKED |
+| L6352 | multi-step sim | BLOCKED |
+| L6363 | multi-step sim | BLOCKED |
+| L7003 | semantic mismatch | UNPROVABLE |
+| L8250 | functionDef multi-step | BLOCKED |
+| L8407 | CCStateAgree | BLOCKED |
+| L8410 | CCStateAgree + finally | BLOCKED |
+| L8484 | CCStateAgree | BLOCKED |
+| L8600 | CCStateAgree (while) | BLOCKED |
+
+**Root causes (3 classes):**
+1. **TryCatch catch structural mismatch** (L5270, L5414, L5701): Flat.step? drops outer wrapper on error but Core keeps it. tryCatch catch produces non-literal result expr. Need 3-way disjunct or unified error propagation.
+2. **CCStateAgree unprovable for branching** (L5496, L5522, L8407, L8410, L8484, L8600): convertExpr converts both branches but execution only takes one, leaving state gap. Need α-equivalence on fresh names or two-phase conversion.
+3. **Multi-step simulation gap** (L5049, L6144, L6352, L6363, L8250): Flat decomposes compound operations into N small steps while Core does them in 1. Need multi-step simulation relation.
+
+### $(date -Iseconds) Run complete — Or.inr sorries CONFIRMED BLOCKED (tryCatch catch structural mismatch). All 15 CC sorries blocked by 3 architectural issues.
+### 2026-04-11T14:27:53+00:00 Run complete — Or.inr sorries L5270/L5414/L5701 CONFIRMED BLOCKED. All 15 CC sorries blocked by 3 architectural issues (tryCatch catch mismatch, CCStateAgree, multi-step sim). No closable sorries remain.
+2026-04-11T14:28:02+00:00 DONE
