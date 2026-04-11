@@ -15192,30 +15192,25 @@ private theorem HasReturnInHead_Steps_steppable
     by_cases ht : ∃ msg', ev = .error msg'
     · -- Error step from s1: s2.expr is lit → Steps s2 must be refl → contradiction
       obtain ⟨msg', rfl⟩ := ht
-      -- Split on whether s1.expr has tryCatch in head.
-      -- The ¬HasTryCatchInHead case is immediate; the HasTryCatchInHead case
-      -- only arises with call-frame tryCatches (from function calls) which
-      -- propagate non-return errors to .lit .undefined, giving the same result.
+      -- Split on whether s1.expr has tryCatch in head position.
+      -- When ¬HasTryCatchInHead: HasReturnInHead_step_error_isLit gives s2 is lit.
+      -- When HasTryCatchInHead: only call-frame tryCatches can appear (non-call-frame
+      -- tryCatches don't arise from normalizeExpr .return contexts), and call-frame
+      -- tryCatches propagate non-return errors to .lit .undefined.
       rcases Classical.em (HasTryCatchInHead s1.expr) with htc | hntc
-      · -- HasTryCatchInHead s1.expr: all tryCatches in head are call-frames
-        -- (non-call-frame tryCatches cannot appear in intermediate states
-        -- when the initial expression comes from normalizeExpr producing .return).
-        -- Call-frame tryCatches propagate non-return errors to .lit .undefined.
-        exact absurd htc (sorry /- BLOCKED: need ¬HasNonCallFrameTryCatchInHead invariant
-          carried through Steps. Fix: define HasNonCallFrameTryCatchInHead,
-          prove preservation through non-error steps (call frames only add
-          call-frame tryCatches), then use ¬HasNonCallFrameTryCatchInHead here
-          to derive ¬HasTryCatchInHead (no non-call-frame ∧ no call-frame that
-          matters for error propagation). -/)
-      · exact HasReturnInHead_step_error_isLit hret0 hntc hstep_s1
-      exfalso
-      have hlit : Flat.step? s2 = none := by
-        cases s2 with | mk e2 env2 heap2 trace2 funcs2 cs2 =>
-        simp [Flat.State.expr] at hv; subst hv
-        simp [Flat.step?]
-      cases hrest with
-      | refl => simp_all
-      | tail hfirst2 _ => exact absurd hfirst2.1 (by rw [hlit]; exact fun h => nomatch h)
+      · -- HasTryCatchInHead s1.expr: all tryCatches in head are call-frames.
+        -- Call-frame tryCatches on non-return errors produce .lit .undefined.
+        -- BLOCKED: need HasNonCallFrameTryCatchInHead invariant through Steps.
+        sorry
+      · obtain ⟨v, hv⟩ := HasReturnInHead_step_error_isLit hret0 hntc hstep_s1
+        exfalso
+        have hlit : Flat.step? s2 = none := by
+          cases s2 with | mk e2 env2 heap2 trace2 funcs2 cs2 =>
+          simp [Flat.State.expr] at hv; subst hv
+          simp [Flat.step?]
+        cases hrest with
+        | refl => simp_all
+        | tail hfirst2 _ => exact absurd hfirst2.1 (by rw [hlit]; exact fun h => nomatch h)
     · -- Non-error step: HasReturnInHead preserved to s2
       have hnoerr : ∀ msg, ev ≠ .error msg := by
         intro msg h; exact ht ⟨msg, h⟩
