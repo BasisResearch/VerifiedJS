@@ -1,4 +1,4 @@
-# wasmspec — FINISH HasNonCallFrameTryCatchInHead for L15343
+# wasmspec — HasNonCallFrameTryCatchInEvalHead for L15348
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,44 +9,41 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-11T19:05
-- Total: **49 real sorries** (ANF 37, CC 12). DOWN 11 from 15:30!
-- proof agent closed 6 ANF sorries. Great momentum.
-- YOUR TASK: Continue HasNonCallFrameTryCatchInHead to close L15343 (1 sorry).
+## STATUS — 2026-04-11T20:05
+- Total: **49 real sorries** (ANF 37, CC 12).
+- YOU proved `callFrame_tryCatch_step_error_isLit` at L9488. Great work.
+- The L15348 sorry is in `HasReturnInHead_Steps_steppable`: needs `¬HasTryCatchInHead s1.expr` but this is NOT preserved in general (function calls introduce call-frame tryCatch).
 
-## P0: HasTryCatchInHead branch at L15343 — 1 sorry
+## P0: Close L15348 (HasTryCatchInHead sorry in Steps_steppable)
 
-### Your plan from last run:
-Define `HasNonCallFrameTryCatchInHead` (same as HasTryCatchInHead but `tryCatch_direct` requires `cp ≠ "__call_frame_return__"`). Key insight:
-1. Non-call-frame tryCatches only come from source try/catch — never introduced by stepping
-2. Call-frame tryCatches only from function calls
-3. normalizeExpr `.return` implies no tryCatch in initial expression head
-4. So intermediate states only have call-frame tryCatches
+### YOUR PLAN from analysis (EXECUTE THIS):
 
-### Steps:
-1. Define `HasNonCallFrameTryCatchInHead` inductive type
-2. Prove `step_nonError_preserves_noNonCallFrameTryCatchInHead` — non-error steps don't introduce non-call-frame tryCatch
-3. Use this to close the sorry at L15343
+1. **Define `HasNonCallFrameTryCatchInEvalHead`** — same as `HasTryCatchInHead` but the `tryCatch_direct` constructor requires `cp ≠ "__call_frame_return__"`. Only tracks non-call-frame tryCatch in eval-first positions (seq_left, let_init, binary_lhs, etc.).
 
-### Fallback:
-If this approach is too large (>400 lines), consider:
-- Proving only for the specific constructors needed (return head position)
-- Or deferring and switching to return/yield .let compound (P2)
+2. **Prove `step_nonError_preserves_noNonCallFrameTryCatchInEvalHead`** — non-error steps don't introduce non-call-frame tryCatch. Key insight: only `call_func` introduces tryCatch (call-frame), and only source try/catch produces non-call-frame tryCatch.
 
-## P1: Compound throw (L13853) — 1 sorry
-BLOCKED by HasThrowInHead_Steps_steppable (same infrastructure as P0). Only attempt after P0.
+3. **Prove normalizeExpr .return context has ¬HasNonCallFrameTryCatchInEvalHead** — since normalizeExpr(.return) never produces tryCatch in eval head.
 
-## P2: Return/yield .let compound (L19230, L19234, L19235) — 3 sorries
-Also needs compound lifting infrastructure. Defer.
+4. **Use as invariant in Steps_steppable** — replace `¬HasTryCatchInHead` with `¬HasNonCallFrameTryCatchInEvalHead` in the hypothesis.
 
-## P3: End-of-file (L22521, L22592) — 2 sorries
-Defer.
+5. **Close L15348** using the new invariant + `callFrame_tryCatch_step_error_isLit` (already proved at L9488).
+
+### CONCRETE IMPLEMENTATION:
+Write the inductive type FIRST. Verify with LSP. Then write preservation lemma one constructor at a time. Each constructor should be independently verifiable.
+
+### SIZE BUDGET: ~400 lines total
+- Inductive definition: ~30 lines
+- Preservation lemma: ~300 lines
+- Caller fixup: ~70 lines
+
+### FALLBACK:
+If this is too large for one run, write JUST the inductive definition + 5 preservation cases, verify they compile, and leave the rest for next run.
 
 ## DO NOT WORK ON:
-- L18644-L18650 (second-position + list — proof agent)
-- L10843-L11214 (trivialChain zone — LSP timeout)
+- L18952-L19264 (list cases — proof agent)
 - ClosureConvertCorrect.lean (jsspec)
+- L10843-L11214 (trivialChain zone)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — HasNonCallFrameTryCatchInHead for P0" >> agents/wasmspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — HasNonCallFrameTryCatchInEvalHead P0" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

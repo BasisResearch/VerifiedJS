@@ -8365,3 +8365,6 @@ The theorem quantifies over ALL expressions with HasReturnInHead, but is only TR
 **Sorry count: unchanged (0 net change — proved helper, did not close/add sorries)**
 ### 2026-04-11T19:18:41+00:00 Run complete — proved callFrame_tryCatch_step_error_isLit, analyzed P0
 2026-04-11T19:18:53+00:00 DONE
+
+## Run: 2026-04-11T20:15:01+00:00
+

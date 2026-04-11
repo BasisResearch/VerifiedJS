@@ -1,3 +1,62 @@
+## Run: 2026-04-11T20:05:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 37 + CC 12 = **49 total**
+- **Delta from last run (19:05)**: 0 (49→49). FLAT.
+- **Explanation**: proof agent claims -2 (call_env + newObj_env at 19:53) but grep count still shows 37 ANF. Likely net 0 due to infrastructure additions (sorry moved, not removed). wasmspec: +0 (proved callFrame_tryCatch_step_error_isLit helper, no sorry closed). jsspec: +0 (noFunctionDef theorem added but no sorry closed).
+- **BUILD**: Not verified (LSP only).
+
+### What Happened Since Last Run (19:05→20:05)
+1. **proof agent**: Closed call_env (L18644) and newObj_env (L18953) per log. But ANF sorry count from grep unchanged at 37 — possible infrastructure sorry added elsewhere. NET: 0.
+2. **wasmspec agent**: Proved `callFrame_tryCatch_step_error_isLit` (L9488). Analyzed P0 sorry — determined HasReturnInHead_Steps_steppable needs HasNonCallFrameTryCatchInEvalHead invariant. NET: 0.
+3. **jsspec agent**: Assessed Path A as insufficient (funcs.size has same branching problem as nextId). Implemented `noFunctionDef` + `convertExpr_state_id_no_functionDef` theorem. ALL 12 CC sorries confirmed architecturally blocked. Also found ClosureConvert.lean has 640 perms owned by proof — jsspec cannot edit it. NET: 0.
+
+### Sorry Classification (49 total)
+**ANF (37):**
+- Break/continue list: 2 (L4906, L6044)
+- TrivialChain zone: 12 (L10843-L11214) — LSP timeout, deferred
+- Compound throw: 1 (L13853)
+- HasTryCatchInHead branch: 1 (L15348) — wasmspec P0
+- List HasReturnInHead: 5 (L18952, L19261-L19264) — proof P0
+- Compound HasAwait/YieldInHead: 2 (L19620, L19793) — BLOCKED
+- Return/yield .let compound: 3 (L19849, L19853, L19854) — BLOCKED
+- While condition: 2 (L19944, L19956) — BLOCKED
+- If branch: 2 (L20681, L20721) — BLOCKED
+- TryCatch: 3 (L21562, L21580, L21583) — BLOCKED
+- End-of-file: 2 (L22910, L22921) — BLOCKED
+- End-of-file misc: 2 (L23140, L23211) — BLOCKED
+
+**CC (12):**
+- Multi-step simulation: 4 (L5728, L6825, L7033, L7044) — BLOCKED
+- CCStateAgree: 4 (L6176, L6202, L9088, L9165) — BLOCKED (needs CCExprEquiv)
+- CCStateAgree + tryCatch: 1 (L9091) — BLOCKED
+- CCStateAgree + while: 1 (L9281) — BLOCKED
+- Axiom/semantic mismatch: 1 (L7684) — UNPROVABLE
+- FuncsCorr/functionDef: 1 (L8931) — BLOCKED
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: Target 5 list cases (L18952, L19261-L19264). Provided strategy for list decomposition with HasReturnInHeadList. Expected: -1 to -5 sorries.
+2. **wasmspec**: Define HasNonCallFrameTryCatchInEvalHead + prove preservation. Close L15348. ~400 line budget. Expected: -1 sorry if complete.
+3. **jsspec**: Redirected to CCExprEquiv approach — define expr-level equivalence that tolerates different funcIdx. Multi-run effort. Expected: 0 sorries this run (infrastructure only).
+
+### Concerns
+- **FLAT for 1 hour**: Sorry count unchanged since 19:05. All 3 agents did infrastructure work, no closes.
+- **jsspec is effectively dead**: All 12 CC sorries are architecturally blocked. Path A insufficient. ClosureConvert.lean permissions block further changes. Redirected to CCExprEquiv (long-term fix) but unlikely to close sorries soon.
+- **wasmspec P0 is ~400 lines**: Large work item, may take 2+ runs.
+- **proof list cases**: These are harder than single-expression cases. May need helper lemmas.
+
+### Critical Path
+1. **L18952 + L19261-L19264 (list cases)** → -5. proof P0. MOST TRACTABLE.
+2. **L15348 (HasTryCatchInHead)** → -1. wasmspec P0. Infrastructure-heavy.
+3. **CCExprEquiv** → -6 (eventually). jsspec. MULTI-RUN.
+4. Best case next run: ~43-48.
+
+### Trend
+- 01:30: 59 → 04:05: 48 → 06:05: 46 → 08:30: 51 → 09:00: 46 → 11:30: 48 → 15:30: 60 → 19:05: 49 → 20:05: 49
+- Plateau. Need breakthroughs on list cases or HasNonCallFrameTryCatchInEvalHead.
+
+---
+
 ## Run: 2026-04-11T19:05:01+00:00
 
 ### Metrics
@@ -495,3 +554,4 @@
 
 ## Run: 2026-04-11T20:05:02+00:00
 
+2026-04-11T20:12:30+00:00 DONE

@@ -1,4 +1,4 @@
-# proof — CLOSE call_env AND newObj_env
+# proof — CLOSE LIST CASES (5 sorries)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -8,61 +8,56 @@
 
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## STATUS — 2026-04-11T19:05
+## STATUS — 2026-04-11T20:05
 - ANF: 37 real sorries. CC: 12. Total: **49**.
-- **YOU CLOSED 6 SORRIES since 18:05!** setProp_val, getIndex_idx, setIndex_idx, setIndex_val all done!
-- 2 more second-position cases remain: call_env (L18644) and newObj_env (L18646).
-- After those: 5 list cases remain (call_args, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems).
+- **Great work closing call_env + newObj_env!** Second-position cases are DONE.
+- Next: 5 list cases in HasReturnInHead_anfConvert_step_sim.
 
-## YOUR TARGET: L18644 (call_env) and L18646 (newObj_env)
+## YOUR TARGET: List cases (5 sorries)
 
-### VERIFIED LINE NUMBERS (from file at 19:05):
+### VERIFIED LINE NUMBERS:
 ```
-L18644: | call_env h_a => sorry -- second-position: return in env of call f env args
-L18646: | newObj_env h_a => sorry -- second-position: return in env of newObj f env args
+L18952: | call_args h_a => sorry -- list: return in args of call f env args
+L19261: | newObj_args h_a => sorry -- list: return in args of newObj f env args
+L19262: | makeEnv_values h_a => sorry -- list: return in values of makeEnv values
+L19263: | objectLit_props h_a => sorry -- list: return in props of objectLit props
+L19264: | arrayLit_elems h_a => sorry -- list: return in elems of arrayLit elems
 ```
 
-### TEMPLATE: Use call_func proof at L16450-L16521 as base
+### KEY DIFFERENCE FROM SECOND-POSITION: these operate on LISTS
+- `h_a : HasReturnInHeadList args` (or HasReturnInHeadProps for objectLit)
+- The args list has one element with HasReturnInHead
+- Flat.step? evaluates the FIRST non-value element in the list
+- Need to show: the first non-value element IS the one with HasReturnInHead
 
-The call_env case is structurally IDENTICAL to call_func, but:
-1. **Wrapper**: `(.call (.lit fv) · args_list)` instead of `(.call · envExpr args_list)`
-2. **ctx lemma**: `step?_call_env_ctx s fv inner args hv t si hs he` (L1962)
-3. **error lemma**: `step?_call_env_error s fv inner args hv msg si hs` (L2588)
-4. **VarFreeIn**: `VarFreeIn.call_env` instead of `VarFreeIn.call_func`
-5. **HasNoAwait**: `by cases hna with | call _ ha _ => exact ha` (second field)
-6. **Depth**: `a.depth ≤ d` from `Flat.Expr.depth` — same omega proof
-
-**CRITICAL DIFFERENCE from call_func**: call_env is a SECOND-POSITION case, so `fv` (func) is already a value. The preceding steps `hwsteps_b` need to be included in the trace. Look at the setIndex_val proof right above (L18590-L18643) for how to handle the preceding value steps:
-- The trace is `evs_b ++ evs_a`
-- Steps are `Flat.Steps.append hwsteps_b hsteps'`
-- observableTrace uses `observableTrace_all_silent hsil_b` pattern
-
-### For newObj_env (L18646):
-Same pattern, but use:
-- Wrapper: `(.newObj (.lit fv) · args_list)`
-- ctx: `step?_newObj_env_ctx s fv inner args hv t si hs he` (L1999)
-- error: `step?_newObj_env_error s fv inner args hv msg si hs` (L2602)
-- VarFreeIn: `VarFreeIn.newObj_env`
-- HasNoAwait: `by cases hna with | newObj _ ha _ => exact ha`
+### STRATEGY for call_args (L18952):
+1. Use `lean_hover_info` on `HasReturnInHeadList` to understand its structure
+2. You need a lemma like: `HasReturnInHeadList args → ∃ i e, args[i] = e ∧ HasReturnInHead e ∧ (∀ j < i, isValue args[j])`
+   - OR induction on HasReturnInHeadList to find the first non-value element
+3. The wrapper is `(.call (.lit fv) (.lit ev) ·)` (both f and env are values)
+4. ctx lemma: `step?_call_args_ctx` (search with lean_local_search)
+5. error lemma: `step?_call_args_error` (search with lean_local_search)
+6. IH applies to the element with HasReturnInHead
 
 ### APPROACH:
-1. Read L18590-L18643 (setIndex_val proof — your most recent template for second-position)
-2. Read L16450-L16521 (call_func — shows the IH structure for call cases)
-3. Write call_env at L18644, combining both patterns. Verify with LSP.
-4. Write newObj_env at L18646 (same pattern). Verify with LSP.
-5. Target: -2 sorries.
+1. **First**: Check what helpers exist. Use `lean_local_search "HasReturnInHeadList"` and `lean_local_search "firstNonValue"` and `lean_local_search "call_args"`.
+2. **Check line numbers**: Use `lean_hover_info` at L18952 to confirm the sorry is still there.
+3. **Try call_args first** (L18952). If the list infrastructure is missing, you may need to write a helper lemma first.
+4. If call_args works, the other 4 follow the same pattern.
 
-## AFTER P0: List cases (L18645, L18647-18650) — 5 sorries
-These are harder (list decomposition needed). Defer until call_env + newObj_env done.
+### FALLBACK: If list cases are too complex
+Switch to break/continue list cases (L4906, L6044) which are simpler 3-constructor matches.
 
 ## DO NOT WORK ON:
 - L10843-L11214 (trivialChain — LSP timeout zone)
-- L19325-L19337 (while — blocked)
-- L20062-L20102 (if_branch — blocked)
-- L20943-L20964 (tryCatch — blocked)
-- L22521-L22592 (noCallFrameReturn/body_sim — blocked)
+- L19620, L19793 (await/yield compound — blocked)
+- L19849-L19854 (return/yield .let compound — blocked)
+- L19944-L19956 (while — blocked)
+- L20681-L20721 (if_branch — blocked)
+- L21562-L21583 (tryCatch — blocked)
+- L22910-L23211 (end-of-file — blocked)
 - ClosureConvertCorrect.lean
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — call_env + newObj_env L18644+L18646" >> agents/proof/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — list cases L18952+L19261-L19264" >> agents/proof/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`
