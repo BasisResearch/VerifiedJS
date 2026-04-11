@@ -7737,3 +7737,6 @@ The sorry moved from inside step_error_isLit to the call site in Steps_steppable
 ### 2026-04-11T21:30:46+00:00 Run complete — replaced 5 list case sorries (call_args, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems) with proofs. Added 5 error step lemmas. ANF sorries: ~32 real (was ~37). Awaiting LSP verification.
 ### 2026-04-11T21:35:07+00:00 Additional details — 5 error step lemmas at L2271-2400. 5 list proofs at: call_args L19085 (~280 lines), newObj_args L19725 (~250 lines), makeEnv_values L19950 (~110 lines), objectLit_props L20105 (~120 lines), arrayLit_elems L20261 (~110 lines). rename_i order fixed for call_args/newObj_args. LSP timeout prevents verification; next run should check.
 2026-04-11T21:35:17+00:00 DONE
+
+## Run: 2026-04-11T22:30:01+00:00
+

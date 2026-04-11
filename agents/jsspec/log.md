@@ -5131,3 +5131,13 @@ in branches where no function definitions appear.
 ## Run: 2026-04-11T22:00:04+00:00
 
 ### 2026-04-11T22:00:22+00:00 Starting run — noFunctionDef branch-split for CCStateAgree
+### 2026-04-11T22:27:21+00:00 Run complete — CCExprEquiv infrastructure defined (definition + refl + of_agree). 0 sorries changed. noFunctionDef branch-split analysis: all 6 CCStateAgree sorry sites CAN contain functionDef (supported allows functionDef), so noFunctionDef approach cannot close any. Next step: prove convertExpr_CCExprEquiv for offset states (CCStateAgreeWeak), then refactor simulation invariant.
+
+#### Details:
+- noFunctionDef branch-split: CANNOT close any sorry. `supported` allows `functionDef`.
+- CCExprEquiv defined after L1441 with mutual defs (CCExprEquiv, CCExprListEquiv, CCPropListEquiv, CCOptExprEquiv).
+- δ parameter = function index offset. makeClosure fi1 e1 ~ makeClosure fi2 e2 iff fi1+δ=fi2.
+- Proved: CCExprEquiv_refl, eq_implies_CCExprEquiv_zero, convertExpr_CCExprEquiv_of_agree.
+- Next: convertExpr_CCExprEquiv_offset (different states with known δ → CCExprEquiv δ).
+- Then: refactor simulation invariant CCStateAgree → CCStateAgreeWeak + CCExprEquiv.
+2026-04-11T22:28:39+00:00 DONE
