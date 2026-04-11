@@ -8310,3 +8310,4 @@ For list cases (`makeEnv_values`, `objectLit_props`, `arrayLit_elems`):
 
 ## Run: 2026-04-11T17:15:01+00:00
 
+### 2026-04-11T17:15:08+00:00 Starting run — noTryCatchInHead + compound throw
