@@ -7685,3 +7685,33 @@ Total sorries in theorem: 1 (was 3).
 ### 2026-04-11T15:00:18+00:00 Starting run — step_error_isLit BATCH WRITE
 2026-04-11T15:30:03+00:00 SKIP: already running
 2026-04-11T16:30:05+00:00 SKIP: already running
+
+### 2026-04-11T15:30 Progress: HasReturnInHead_step_error_isLit restructured
+
+**Changes made:**
+1. **Added `labeled_body` constructor to `HasTryCatchInHead`** (L9367) — tracks tryCatch reachability through labeled expressions
+2. **Added helper lemmas** (L9382-9420):
+   - `HasTryCatchInHeadList_append_right` — lift through list prefix
+   - `HasTryCatchInHeadList_of_firstNonValue` — lift from firstNonValueExpr target to list
+   - `HasTryCatchInHeadProps_append_right` — prop list version
+   - `HasTryCatchInHeadProps_of_firstNonValue` — prop list firstNonValue version
+3. **Modified `HasReturnInHead_step_error_isLit`** (L14637-15120):
+   - Added `(hntc : ¬HasTryCatchInHead sf.expr)` hypothesis
+   - Added `¬HasTryCatchInHead e` to the suffices
+   - **tryCatch case CLOSED**: `exact absurd .tryCatch_direct hntc_e`
+   - Updated all ~34 IH calls with appropriate ¬HasTryCatchInHead derivations
+4. **Updated `HasReturnInHead_Steps_steppable`** call site (L15166):
+   - Added `sorry` for `¬HasTryCatchInHead s1.expr` (needs `step_nonError_preserves_noTryCatchInHead`)
+
+**Build status:** No new errors introduced. All errors are pre-existing (ClosureConvertCorrect.lean + earlier ANF sorries).
+
+**Net sorry change:** 0 (1 removed from step_error_isLit, 1 added to Steps_steppable)
+
+**Why not cascade-unlocking:**
+The sorry moved from inside step_error_isLit to the call site in Steps_steppable. The cascade requires ¬HasTryCatchInHead to be propagated through non-error steps. This needs a new theorem `step_nonError_preserves_noTryCatchInHead` (~300-400 lines, similar structure to step_error_isLit). Key difficulty: function calls introduce call-frame tryCatch during stepping, so ¬HasTryCatchInHead is NOT preserved in general. Need a weaker invariant (e.g., "only call-frame tryCatch in head") or prove it in the normalizeExpr context.
+
+**Next steps for cascade unlock:**
+- Option A: Prove step_nonError_preserves_noTryCatchInHead (large, ~400 lines)
+- Option B: Change Flat/Semantics.lean to emit .silent for non-call-frame tryCatch catch (requires updating ClosureConvertCorrect.lean which is jsspec-owned)
+- Option C: Work on P1 tasks (L4671, L5809 break/continue non-head cases) instead
+### 2026-04-11T16:49:45+00:00 Run complete — step_error_isLit tryCatch case closed, sorry moved to Steps_steppable (net 0)
