@@ -1,4 +1,4 @@
-# proof — CLOSE LIST CASES + LABELED LIST TAIL CASES
+# proof — CLOSE LABELED LIST TAIL + BREAK/CONTINUE NON-HEAD
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -8,76 +8,67 @@
 
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## STATUS — 2026-04-11T21:05
-- ANF: ~38 real sorries. CC: 12. Total: ~50.
-- HasNonCallFrameTryCatchInHead defined at L9489. Good.
-- makeEnv_values head case proved (L11200-L11247). Good.
-- objectLit_props head case proved (L11249-L11279). Good.
-- arrayLit_elems head case proved (L11281-L11310). Good.
-- **3 new labeled list tail sorries** at L11248, L11280, L11311 — these need list recursion.
-- **4 HasReturnInHead list sorries**: L19085, L19394, L19552, L19553.
+## STATUS — 2026-04-11T22:05
+- ANF: 32 real sorries. CC: 12. Total: **44** (was 50 → -6 this cycle).
+- You closed 5 HasReturnInHead list cases last run. EXCELLENT.
+- **P0 labeled list tail (L11345, L11377, L11408) has been untouched for 2 runs.** DO THIS FIRST.
 
-## P0: LABELED LIST TAIL CASES (3 sorries, MOST TRACTABLE)
+## P0: LABELED LIST TAIL CASES (3 sorries, HIGHEST PRIORITY)
 
-Lines L11248, L11280, L11311 all say "first element has no labeled: requires stepping + list recursion".
+Lines L11345, L11377, L11408. These have been P0 for 2 runs without progress. **This is your #1 task.**
 
-### What these sorries need:
-When `HasLabeledInHeadList (e :: rest)` but `¬HasLabeledInHead e`, then `HasLabeledInHeadList rest`.
-The first element `e` is NOT the one with the labeled. So:
-1. `e` must be evaluated to a value (since it's first in evaluation order)
-2. After `e` becomes a value, the list shifts and the labeled element is now closer to head
-3. Need: a step that evaluates `e` in the list context, preserving the list structure
+Each sorry says "first element has no labeled: requires stepping + list recursion".
 
-### Strategy:
+Context: We have `HasLabeledInHeadList (e :: rest)` but `¬HasLabeledInHead e`. So the label is somewhere in `rest`. The element `e` needs to step to a value (multi-step), then the list evaluation proceeds to `rest`.
+
+### Approach — use the SAME pattern you used for HasReturnInHead list cases:
+1. `lean_goal` at L11345 to see the exact goal state
+2. Check: is there a `HasLabeledInHeadList` with head/tail constructors? Use `lean_local_search "HasLabeledInHeadList"`
+3. Case split on `h_list`:
+   - `head h_e => exact absurd h_e h_e_no`
+   - `tail _ h_rest =>` — now need: a step on the list that evaluates `e`
+4. If `e` is not a value: use IH on `e` (it has smaller depth), get steps, lift through list context (Steps_makeEnv_values_ctx or similar)
+5. If `e` IS a value: list evaluation skips to `rest` immediately
+
+### Helper lemmas you may need (check if they exist):
+- `Steps_makeEnv_values_ctx_b` — you already used this at L11330
+- Similar for `Steps_objectLit_props_ctx_b`, `Steps_arrayLit_elems_ctx_b`
+- A lemma that when first element is a value, list eval proceeds to rest
+
+**Expected: -3 sorries.**
+
+## P1: BREAK/CONTINUE NON-HEAD LIST CASES (2 sorries)
+
+Lines L5005, L6143. Both have the same pattern:
 ```
--- For each (makeEnv_values, objectLit_props, arrayLit_elems):
--- h_e_no : ¬HasLabeledInHead e
--- h_list : HasLabeledInHeadList (e :: rest)  or similar
--- By cases on h_list:
---   | head h_e => exact absurd h_e h_e_no
---   | tail _ h_rest => -- now HasLabeledInHeadList rest
---     -- Need to show e steps to a value, then recurse on rest
---     -- This requires: e is not a value (otherwise list would skip it)
---     -- OR: if e IS a value, the list evaluation moves to rest immediately
-```
-
-Check: does `HasLabeledInHeadList` have `head` and `tail` constructors? Use `lean_hover_info` at L11248 on the sorry to see the goal, then `lean_local_search "HasLabeledInHeadList"`.
-
-### Expected: -3 sorries if all 3 tail cases close.
-
-## P1: HasReturnInHead LIST CASES (4 sorries)
-
-Lines:
-```
-L19085: | call_args h_a => sorry -- list: return in args of call f env args
-L19394: | newObj_args h_a => sorry -- list: return in args of newObj
-L19552: | objectLit_props h_a => sorry -- list: return in props of objectLit
-L19553: | arrayLit_elems h_a => sorry -- list: return in elems of arrayLit
+| .makeEnv_values _ | .objectLit_props _ | .arrayLit_elems _ => sorry
 ```
 
-These are harder. Same pattern as P0 but in the HasReturnInHead context.
-- `h_a : HasReturnInHeadList args` (or HasReturnInHeadProps)
-- Need to find which element has HasReturnInHead
-- Need step through list context (call_args_ctx, newObj_args_ctx, etc.)
+These are non-head-position cases in `HasBreakInHead_step?_produces_error` (L5005) and `HasContinueInHead_step?_produces_error` (L6143).
 
-### Strategy:
-1. First check if P0's approach works here too
-2. Use `lean_local_search "HasReturnInHeadList"` to find helpers
-3. Try `call_args` (L19085) first since it matches the labeled list pattern
+### Approach:
+1. `lean_goal` at L5005 to see what's needed
+2. For non-head list cases: the break/continue is in a list element. When that element is in evaluation position, it steps to an error. The list context propagates the error.
+3. This follows the same "first non-value element" pattern as the labeled list cases
+4. If there's a helper lemma like `step?_list_error_propagation`, use it
+5. Otherwise, the step? function should directly compute to an error step
 
-### Expected: -1 to -4 sorries.
+**Expected: -2 sorries.**
+
+## P2: TRIVIAL MISMATCH + CALL_ARGS/NEWOBJ_ARGS LABELED (3 sorries)
+
+- L11260: `¬HasLabeledInHead funcE` — "blocked by trivial mismatch (ANF trivial ≠ flat value)". Check if this can now be closed with existing lemmas.
+- L11262: `call_args` labeled in args list — similar to P0 but for the args list in call
+- L11314: `newObj_args` labeled in args list — similar to P0 but for newObj
+
+**Expected: -1 to -3 sorries.**
 
 ## DO NOT WORK ON:
-- L10940-L11217 (trivialChain zone — LSP timeout)
-- L15421, L15441, L15469 (wasmspec owns these — HasNonCallFrameTryCatch helpers)
-- L19909, L20082 (await/yield compound — blocked)
-- L20138-L20143 (return/yield .let compound — blocked)
-- L20233-L20245 (while — blocked)
-- L20970-L21010 (if_branch — blocked by K-mismatch)
-- L21851-L21872 (tryCatch — blocked)
-- L23199-L23500 (end-of-file — blocked)
+- L11037-L11210 (trivialChain zone — LSP timeout)
+- L16691 (wasmspec owns this — HasNonCallFrameTryCatch)
+- L21989+ (compound cases — all blocked)
 - ClosureConvertCorrect.lean
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — P0 labeled list tail + P1 HasReturn list" >> agents/proof/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — P0 labeled list tail + P1 break/continue non-head" >> agents/proof/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`

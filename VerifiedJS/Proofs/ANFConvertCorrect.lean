@@ -15511,11 +15511,452 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
     (hncf : ¬HasNonCallFrameTryCatchInHead e)
     (hstep : Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (.error msg, sf')) :
     ∃ v, sf'.expr = .lit v := by
-  -- Proof by strong induction on expression depth.
-  -- For non-tryCatch expressions: error from sub-expression drops wrapper → recurse.
-  -- For tryCatch: must be call-frame (¬HasNonCallFrameTryCatchInHead) → .lit .undefined.
-  -- Subsumes HasReturnInHead_step_error_isLit (which requires ¬HasTryCatchInHead).
-  sorry
+  -- Strong induction on depth. Error sub-steps propagate .lit by IH.
+  -- TryCatch: must be call-frame (¬HNCFTCIH excludes non-call-frame) → .lit .undefined.
+  suffices hgen : ∀ (n : Nat) (e : Flat.Expr) (env : Flat.Env) (heap : Core.Heap)
+      (trace : List Core.TraceEvent) (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+      (sf' : Flat.State) (msg' : String),
+      e.depth ≤ n →
+      ¬HasNonCallFrameTryCatchInHead e →
+      Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (.error msg', sf') →
+      ∃ v, sf'.expr = .lit v by
+    exact hgen e.depth e env heap trace funcs cs sf' msg (Nat.le_refl _) hncf hstep
+  intro n; induction n with
+  | zero =>
+    intro e env heap trace funcs cs sf' msg' hd hncf hstep
+    cases e with
+    | lit => unfold Flat.step? at hstep; simp at hstep
+    | var name =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+    | this =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+    | «break» =>
+      unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
+      obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+    | «continue» =>
+      unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
+      obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+    | «return» arg =>
+      cases arg with
+      | none =>
+        unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
+        obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+      | some => simp [Flat.Expr.depth] at hd; omega
+    | yield arg d =>
+      cases arg with
+      | none => unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
+      | some => simp [Flat.Expr.depth] at hd; omega
+    | seq _ _ | «let» _ _ _ | assign _ _ | «if» _ _ _
+    | binary _ _ _ | unary _ _ | typeof _ | call _ _ _
+    | newObj _ _ _ | getProp _ _ | setProp _ _ _ | getIndex _ _
+    | setIndex _ _ _ | deleteProp _ _ | throw _ | tryCatch _ _ _ _
+    | while_ _ _ | labeled _ _ | await _ | getEnv _ _
+    | makeClosure _ _ | makeEnv _ | objectLit _ | arrayLit _ =>
+      simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; omega
+  | succ n ih =>
+    intro e env heap trace funcs cs sf' msg' hd hncf_e hstep
+    cases e with
+    | lit => unfold Flat.step? at hstep; simp at hstep
+    | var name =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+    | this =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+    | «break» =>
+      unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
+      obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+    | «continue» =>
+      unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
+      obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+    | while_ cond body =>
+      unfold Flat.step? at hstep; simp at hstep
+    | labeled _ body =>
+      unfold Flat.step? at hstep; simp at hstep
+    | «return» arg =>
+      cases arg with
+      | none =>
+        unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
+        obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+      | some v =>
+        unfold Flat.step? at hstep; dsimp only [] at hstep
+        split at hstep
+        · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+        · split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep
+              obtain ⟨_, rfl⟩ := hstep
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.return_some_arg h)) (by assumption)
+            · simp at hstep
+          · simp at hstep
+    | yield arg d =>
+      cases arg with
+      | none => unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
+      | some v =>
+        unfold Flat.step? at hstep; dsimp only [] at hstep
+        split at hstep
+        · simp [Flat.pushTrace] at hstep
+        · split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep
+              obtain ⟨_, rfl⟩ := hstep
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.yield_some_arg h)) (by assumption)
+            · simp at hstep
+          · simp at hstep
+    | seq a b =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.seq_left h)) (by assumption)
+          · simp at hstep
+        · simp at hstep
+    | «let» name init body =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.let_init h)) (by assumption)
+          · simp at hstep
+        · simp at hstep
+    | assign name rhs =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.assign_val h)) (by assumption)
+          · simp at hstep
+        · simp at hstep
+    | «if» cond then_ else_ =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.if_cond h)) (by assumption)
+          · simp at hstep
+        · simp at hstep
+    | unary op arg =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.unary_arg h)) (by assumption)
+          · simp at hstep
+        · simp at hstep
+    | typeof arg =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.typeof_arg h)) (by assumption)
+          · simp at hstep
+        · simp at hstep
+    | throw arg =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.throw_arg h)) (by assumption)
+          · simp at hstep
+        · simp at hstep
+    | await arg =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.await_arg h)) (by assumption)
+          · simp at hstep
+        · simp at hstep
+    | binary op lhs rhs =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.binary_lhs h)) (by assumption)
+          · simp at hstep
+        · simp at hstep
+      · split at hstep
+        · split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep
+              obtain ⟨_, rfl⟩ := hstep
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.binary_rhs h)) (by assumption)
+            · simp at hstep
+          · simp at hstep
+        · simp at hstep
+    | getProp obj prop =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · simp at hstep
+      · simp at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getProp_obj h)) (by assumption)
+          · simp at hstep
+        · simp at hstep
+    | deleteProp obj prop =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.deleteProp_obj h)) (by assumption)
+          · simp at hstep
+        · simp at hstep
+    | setProp obj prop val =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.setProp_obj h)) (by assumption)
+          · simp at hstep
+        · simp at hstep
+      · split at hstep
+        · simp at hstep
+        · split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep
+              obtain ⟨_, rfl⟩ := hstep
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.setProp_val h)) (by assumption)
+            · simp at hstep
+          · simp at hstep
+      · split at hstep
+        · simp at hstep
+        · split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep
+              obtain ⟨_, rfl⟩ := hstep
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.setProp_val h)) (by assumption)
+            · simp at hstep
+          · simp at hstep
+    | getIndex obj idx =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getIndex_obj h)) (by assumption)
+          · simp at hstep
+        · simp at hstep
+      · split at hstep
+        · simp at hstep
+        · split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep
+              obtain ⟨_, rfl⟩ := hstep
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getIndex_idx h)) (by assumption)
+            · simp at hstep
+          · simp at hstep
+      · split at hstep
+        · simp at hstep
+        · split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep
+              obtain ⟨_, rfl⟩ := hstep
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getIndex_idx h)) (by assumption)
+            · simp at hstep
+          · simp at hstep
+      · split at hstep
+        · simp at hstep
+        · split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep
+              obtain ⟨_, rfl⟩ := hstep
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getIndex_idx h)) (by assumption)
+            · simp at hstep
+          · simp at hstep
+    | setIndex obj idx val =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      have hncf_obj : ¬HasNonCallFrameTryCatchInHead obj := fun h => hncf_e (.setIndex_obj h)
+      have hncf_idx : ¬HasNonCallFrameTryCatchInHead idx := fun h => hncf_e (.setIndex_idx h)
+      have hncf_val : ¬HasNonCallFrameTryCatchInHead val := fun h => hncf_e (.setIndex_val h)
+      split at hstep <;>
+        (try split at hstep) <;> (try split at hstep) <;>
+        (try split at hstep) <;> (try split at hstep) <;>
+        first
+        | simp at hstep
+        | (simp [Flat.pushTrace] at hstep
+           obtain ⟨_, rfl⟩ := hstep
+           exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption) (by assumption))
+    | getEnv envE idx =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · simp at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getEnv_env h)) (by assumption)
+          · simp at hstep
+        · simp at hstep
+    | makeClosure funcIdx envE =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.makeClosure_env h)) (by assumption)
+          · simp at hstep
+        · simp at hstep
+    | call f envE args =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.call_func h)) (by assumption)
+          · simp at hstep
+        · simp at hstep
+      · split at hstep
+        · split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep
+              obtain ⟨_, rfl⟩ := hstep
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.call_env h)) (by assumption)
+            · simp at hstep
+          · simp at hstep
+        · split at hstep
+          · -- all args values: call. All branches produce .silent/.log, contradicts .error
+            simp at hstep
+          · split at hstep
+            · rename_i hfnv
+              split at hstep
+              · split at hstep
+                · simp [Flat.pushTrace] at hstep
+                  obtain ⟨_, rfl⟩ := hstep
+                  exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (fun h => hncf_e (.call_args (HasNonCallFrameTryCatchInHeadList_of_firstNonValue hfnv h))) (by assumption)
+                · simp at hstep
+              · simp at hstep
+            · simp at hstep
+    | newObj f envE args =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep
+            obtain ⟨_, rfl⟩ := hstep
+            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.newObj_func h)) (by assumption)
+          · simp at hstep
+        · simp at hstep
+      · split at hstep
+        · split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep
+              obtain ⟨_, rfl⟩ := hstep
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.newObj_env h)) (by assumption)
+            · simp at hstep
+          · simp at hstep
+        · split at hstep
+          · simp at hstep
+          · split at hstep
+            · rename_i hfnv
+              split at hstep
+              · split at hstep
+                · simp [Flat.pushTrace] at hstep
+                  obtain ⟨_, rfl⟩ := hstep
+                  exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (fun h => hncf_e (.newObj_args (HasNonCallFrameTryCatchInHeadList_of_firstNonValue hfnv h))) (by assumption)
+                · simp at hstep
+              · simp at hstep
+            · simp at hstep
+    | makeEnv values =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · split at hstep
+        · rename_i hfnv
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep
+              obtain ⟨_, rfl⟩ := hstep
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (fun h => hncf_e (.makeEnv_values (HasNonCallFrameTryCatchInHeadList_of_firstNonValue hfnv h))) (by assumption)
+            · simp at hstep
+          · simp at hstep
+        · simp at hstep
+    | arrayLit elems =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · split at hstep
+        · rename_i hfnv
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep
+              obtain ⟨_, rfl⟩ := hstep
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (fun h => hncf_e (.arrayLit_elems (HasNonCallFrameTryCatchInHeadList_of_firstNonValue hfnv h))) (by assumption)
+            · simp at hstep
+          · simp at hstep
+        · simp at hstep
+    | objectLit props =>
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · simp at hstep
+      · split at hstep
+        · rename_i hfnv
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep
+              obtain ⟨_, rfl⟩ := hstep
+              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueProp_depth hfnv; omega) (fun h => hncf_e (.objectLit_props (HasNonCallFrameTryCatchInHeadProps_of_firstNonValue hfnv h))) (by assumption)
+            · simp at hstep
+          · simp at hstep
+        · simp at hstep
+    | tryCatch body catchParam catchBody fin =>
+      -- ¬HasNonCallFrameTryCatchInHead → catchParam = "__call_frame_return__"
+      by_cases hcp : catchParam = "__call_frame_return__"
+      · -- Call-frame: use callFrame_tryCatch_step_error_isLit
+        rw [hcp] at hstep
+        exact ⟨.undefined, callFrame_tryCatch_step_error_isLit hstep⟩
+      · -- Non-call-frame: impossible
+        exfalso; exact hncf_e (.tryCatch_direct hcp)
 
 /-- Non-error steps preserve ¬HasNonCallFrameTryCatchInHead.
     Key insight: the only step that introduces .tryCatch is function call execution

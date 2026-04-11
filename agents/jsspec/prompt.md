@@ -1,4 +1,4 @@
-# jsspec — CCExprEquiv OR noFunctionDef branch-split
+# jsspec — noFunctionDef BRANCH-SPLIT FOR CCStateAgree
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,36 +9,30 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-11T21:05
-- CC: 12 real sorries. Total: ~50 (ANF ~38 + CC 12).
-- ALL 12 CC sorries are architecturally blocked by CCStateAgree or multi-step.
-- Path A (position-based naming): REJECTED.
-- `noFunctionDef` + `convertExpr_state_id_no_functionDef` theorem: done.
-- ClosureConvert.lean is owned by `proof` with 640 permissions — YOU CANNOT WRITE TO IT.
+## STATUS — 2026-04-11T22:05
+- CC: 12 real sorries. Total: **44** (ANF 32 + CC 12). Down from 50 (-6).
+- `exprFuncCount` + `convertExpr_state_delta` infrastructure done last run.
+- `noFunctionDef` + `convertExpr_state_id_no_functionDef` done.
+- You confirmed: `supported` does NOT imply `noFunctionDef`.
 
-## PRIORITY: noFunctionDef BRANCH-SPLIT (faster path to -1 to -4 sorries)
-
-### Why this before CCExprEquiv:
-CCExprEquiv is a multi-run effort with uncertain payoff. But some CCStateAgree sorries might be closable NOW if the specific expressions at those sorry sites are `noFunctionDef`.
+## PRIORITY: Try noFunctionDef branch-split on CCStateAgree sorries
 
 ### Strategy:
-1. For each CCStateAgree sorry (L6439, L6465, L9194, L9351, L9428, L9544):
-   - Read the proof context with `lean_goal` at that line
-   - Check what expression is being converted
-   - If the expression is in a branch of `if`, `while`, `tryCatch` — check if that sub-expression could contain `functionDef`
-   - If `noFunctionDef` holds for that sub-expression, apply `convertExpr_state_id_no_functionDef` to get state equality
+For each CCStateAgree sorry (L6439, L6465, L9194, L9351, L9428, L9544):
+1. `lean_goal` at the sorry line to see what expression is being converted
+2. Check: does that specific sub-expression contain `functionDef`?
+3. If `noFunctionDef` can be established for that sub-expression → use `convertExpr_state_id_no_functionDef` → CCStateAgree becomes trivial (states are equal)
+4. If it CAN contain `functionDef` → use `convertExpr_state_delta` to show the delta is exactly `exprFuncCount e`, then build CCStateAgree from that
 
-2. Specifically check:
-   - L9544 (while): `while_ cond body` — does `cond` or `body` contain functionDef?
-   - L9428 (generic CCStateAgree): what expression?
-   - L6439, L6465 (if branch): does `then_`/`else_` contain functionDef?
+### Specific targets:
+- **L9544 (while)**: `while_ cond body` — check if cond/body in this context must be noFunctionDef
+- **L9428 (generic)**: what expression? Check with lean_goal
+- **L6439, L6465 (if branches)**: then_/else_ — check with lean_goal
 
-3. If `supported` implies `noFunctionDef` for some sub-expressions, prove it and close the sorry.
-
-### FALLBACK: If all sorry sites CAN contain functionDef, continue CCExprEquiv:
+### FALLBACK: If noFunctionDef doesn't apply, try CCExprEquiv:
 1. Define `CCExprEquiv` mutual inductive on Flat.Expr
 2. Prove `convertExpr_CCExprEquiv` for simple cases
-3. This is infrastructure — 0 sorries this run is OK
+3. This is multi-run infrastructure — 0 sorries this run is OK
 
 ## DO NOT ATTEMPT:
 - Multi-step simulation sorries (L5991, L7088, L7296, L7307)
@@ -46,5 +40,5 @@ CCExprEquiv is a multi-run effort with uncertain payoff. But some CCStateAgree s
 - Editing ClosureConvert.lean (no write permission)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — noFunctionDef branch-split for CCStateAgree" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — noFunctionDef branch-split" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`
