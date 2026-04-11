@@ -5109,9 +5109,10 @@ private theorem closureConvert_step_simulation
       | some (t, sa) =>
         by_cases herr : ∃ msg, t = .error msg
         · -- Error case: let-init evaluates to error.
-          -- BLOCKED: Need Flat_step?_let_error lemma (Flat.step? of .let name errExpr body = some (.error msg, _))
-          -- plus Core-side error propagation for let-init. Requires ANF error propagation lemmas.
-          -- Goal shape: ∃ injMap' sc', Core.Step sc ev sc' ∧ ... (with sc.expr = .let name init body, init → error)
+          -- BLOCKED: Structural mismatch — Flat.step? drops the .let wrapper on error
+          -- (sf'.expr = sa.expr) but Core.step? keeps it (sc'.expr = .let name sc_sub'.expr body).
+          -- The simulation relation requires (sf'.expr, _) = convertExpr sc'.expr ..., which
+          -- fails because convertExpr of .let produces .let but sf'.expr has no .let wrapper.
           obtain ⟨msg, rfl⟩ := herr
           sorry
         · -- Non-error case
@@ -5208,9 +5209,9 @@ private theorem closureConvert_step_simulation
       | some (t, sa) =>
         by_cases herr : ∃ msg, t = .error msg
         · -- Error case: assign-rhs evaluates to error.
-          -- BLOCKED: Need Flat_step?_assign_error lemma (Flat.step? of .assign name errExpr = some (.error msg, _))
-          -- plus Core-side error propagation for assign-rhs. Requires ANF error propagation lemmas.
-          -- Goal shape: ∃ injMap' sc', Core.Step sc ev sc' ∧ ... (with sc.expr = .assign name rhs, rhs → error)
+          -- BLOCKED: Structural mismatch — Flat.step? drops the .assign wrapper on error
+          -- (sf'.expr = sa.expr) but Core.step? keeps it (sc'.expr = .assign name sc_sub'.expr).
+          -- Same class as let-init error (L5116).
           obtain ⟨msg, rfl⟩ := herr
           sorry
         · -- Non-error case
@@ -5447,9 +5448,9 @@ private theorem closureConvert_step_simulation
       | some (t, sa) =>
         by_cases herr : ∃ msg, t = .error msg
         · -- Error case: seq-first evaluates to error.
-          -- BLOCKED: Need Flat_step?_seq_error lemma (Flat.step? of .seq errExpr b = some (.error msg, _))
-          -- plus Core-side error propagation for seq-first. Requires ANF error propagation lemmas.
-          -- Goal shape: ∃ injMap' sc', Core.Step sc ev sc' ∧ ... (with sc.expr = .seq a b, a → error)
+          -- BLOCKED: Structural mismatch — Flat.step? drops the .seq wrapper on error
+          -- (sf'.expr = sa.expr) but Core.step? keeps it (sc'.expr = .seq sc_sub'.expr b).
+          -- Same class as let-init error (L5116).
           obtain ⟨msg, rfl⟩ := herr
           sorry
         · -- Non-error case
