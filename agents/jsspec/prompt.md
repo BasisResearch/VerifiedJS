@@ -1,4 +1,4 @@
-# jsspec — WIRE FuncsCorr INTO CC_SimRel (CONTINUING)
+# jsspec — CLOSE FuncsCorr INIT + PRESERVATION, THEN CALL CASE
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -10,39 +10,37 @@
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
 ## STATUS
-- CC: 15 real sorries. ANF: 34. Total: 49.
-- FuncsCorr DEFINED and filled at L1455-1483 (2 sorries closed last run — great work!).
-- You're currently wiring FuncsCorr into CC_SimRel. CONTINUE THIS WORK.
+- CC: 17 real sorries. ANF: 31. Total: 48.
+- FuncsCorr wired into CC_SimRel (great work!).
+- L1519: FuncsCorr init sorry (NEW from wiring)
+- L4959: FuncsCorr preservation sorry (NEW from wiring)
+- L5935 call case now has `hfuncCorr` in scope — READY TO CLOSE
 
-## P0: ADD FuncsCorr TO CC_SimRel (CONTINUE)
+## P0: CLOSE L1519 (FuncsCorr initial state)
 
-CC_SimRel is defined at ~L1488. Add `FuncsCorr injMap sc.funcs sf.funcs ccFuncs` as a conjunct.
+FuncsCorr needs to hold for the initial state. The initial funcs array should be empty or match trivially. Run `lean_goal` at L1519 to see what's needed. If initial funcs are `#[]`, then FuncsCorr should be trivially true (`Array.get?` returns `none` for empty arrays).
 
-**KEY STRATEGY — DO IT INCREMENTALLY:**
-1. Add FuncsCorr to CC_SimRel definition
-2. This will break ALL ~30 case proofs in `closureConvert_step_simulation`
-3. Fix ONE simple case first (e.g., `lit` or `var`) — just carry `hfuncCorr` through
-4. For cases that don't change funcs: `exact hfuncCorr` (or destructure from hypothesis)
-5. Use `sorry` for complex cases (functionDef, call) while fixing simple ones
-6. Verify each case compiles before moving to next
+## P1: CLOSE L4959 (FuncsCorr preservation)
 
-**DO NOT try to fix all 30 cases at once.** Fix simple ones, sorry complex ones.
+After a step, funcs may or may not change. For most cases (not functionDef), funcs don't change, so `hfuncCorr' = hfuncCorr`. For functionDef, you need to show the new function entry maintains FuncsCorr.
 
-## P1: USE FuncsCorr TO CLOSE L5930 (call non-consoleLog)
+**Strategy**: Case split on whether step changes funcs:
+- Most steps: `sf'.funcs = sf.funcs` → `exact hfuncCorr`
+- FunctionDef: new func added → extend FuncsCorr with the new entry
 
-After P0 is done and FuncsCorr is available in the simulation relation:
-1. Extract matching Flat.FuncDef from FuncsCorr
-2. Show the Flat call steps to the correct function
-3. Establish CC_SimRel for the post-call state
+## P2: CLOSE L5935 (call non-consoleLog)
 
-## P2: L8042 (functionDef) — May need multi-step, possibly still blocked
+Now that `hfuncCorr` is available:
+1. Extract the matching Flat.FuncDef from `hfuncCorr`
+2. Show Flat call steps to the correct function body
+3. Establish CC_SimRel for post-call state
 
 ## KNOWN BLOCKED (DO NOT ATTEMPT):
-- L5327, L5353, L8199, L8202, L8276, L8392: CCStateAgree (6 total)
-- L4978, L6138, L6149: multi-step simulation gap (3 total)
-- L5146, L5245, L5484: error structural mismatch (3 total)
-- L6789: semantic mismatch (UNPROVABLE)
+- L5335, L5361, L8203, L8206, L8280, L8396: CCStateAgree (6 total)
+- L4986, L6143, L6154: multi-step simulation gap (3 total)
+- L5154, L5253, L5492: error structural mismatch (3 total)
+- L6794: semantic mismatch (UNPROVABLE)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — FuncsCorr wiring into CC_SimRel" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — FuncsCorr init L1519" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`

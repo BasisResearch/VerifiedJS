@@ -8025,3 +8025,5 @@ All these sorries share the same structure:
 ## Run: 2026-04-11T03:15:01+00:00
 
 ### 2026-04-11T03:15:12+00:00 Starting run — compound error prop L12048
+### 2026-04-11T04:06:49+00:00 Run complete — closed 3 compound inner sorries (return L12503→normalizeExpr_return_some_compound_case, await L13105→normalizeExpr_await_compound_case, yield L13610→normalizeExpr_yield_some_compound_case). Added no_return_some_head/no_await_head/no_yield_head_implies_trivial_chain + trivialChain_return_some/await/yield_some_steps + compound case helpers. ANF: 32 sorries remaining.
+2026-04-11T04:08:51+00:00 DONE

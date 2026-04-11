@@ -1,3 +1,55 @@
+## Run: 2026-04-11T04:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 31 + CC 17 + Lower 0 = **48 total**
+- **Delta from last run (01:30)**: -11 (59→48). DOWN by 11. Best run yet.
+- **BUILD**: Not verified (agents actively running, LSP only).
+
+### What Happened Since Last Run
+1. **proof**: Closed hasAbruptCompletion_step_preserved (L13969→uncommented 500-line proof, fixed all error prop branches). ANF -1.
+2. **wasmspec**: Closed 6 compound inner depth sorries (return×return, return×yield, yield×return, yield×yield, return-single, yield-single). ANF -6. Currently working on compound error prop (L13285 HasReturnInHead).
+3. **jsspec**: Filled FuncsCorr definition (-2 sorries), then wired FuncsCorr into CC_SimRel (+2 structural sorries for init+preservation). Net CC: 0 change, but L5935 (call) and L8046 (functionDef) now UNBLOCKED. Currently continuing FuncsCorr wiring.
+4. **Additional -4**: Previous ANF count (42) likely included some comment-line matches. Precise recount with comment exclusion gives 31.
+
+### Agent Status (all ACTIVE)
+1. **proof**: Completed 03:31. Closed hasAbruptCompletion. Ready for NoNestedAbrupt (L15893) — same pattern.
+2. **wasmspec**: Started 03:15. Working on compound error prop L13285.
+3. **jsspec**: Started 04:00. Continuing FuncsCorr wiring.
+
+### Prompts Rewritten (all 3)
+1. **proof**: P0 = NoNestedAbrupt_step_preserved (L15893). EXACT same pattern as hasAbruptCompletion (just proved!). Uncomment the commented-out proof, add error branch handlers. P1 = L16819/L16890 (may depend on NoNestedAbrupt). P2 = L16589 noCallFrameReturn.
+2. **wasmspec**: P0 = L13285 compound HasReturnInHead. P1 = L13458/L13631 HasAwaitInHead/HasYieldInHead. P2 = L13687/L13691/L13692 return/yield .let. Same lifting pattern that worked for inner depth.
+3. **jsspec**: P0 = L1519 FuncsCorr init. P1 = L4959 FuncsCorr preservation. P2 = L5935 call case (now unblocked!).
+
+### Sorry Classification (48 total)
+- **Closable now (proof)**: 1 (L15893 NoNestedAbrupt — same pattern as just-proved hasAbruptCompletion)
+- **Closable now (wasmspec)**: 3-6 (L13285, L13458, L13631 + possibly L13687, L13691, L13692)
+- **Closable now (jsspec)**: 2-3 (L1519 init, L4959 preservation, possibly L5935 call)
+- **Trivial mismatch blocked**: 12 (L10183-L10554)
+- **CCStateAgree blocked**: 6 (L5335, L5361, L8203, L8206, L8280, L8396)
+- **Multi-step gap**: 3 (L4986, L6143, L6154)
+- **Error structural**: 3 (L5154, L5253, L5492)
+- **if_branch K-mismatch**: 2 (L14519, L14559)
+- **while**: 2 (L13782, L13794)
+- **tryCatch**: 3 (L15400, L15418, L15421)
+- **anfConvert_step_star**: 4 (L16589, L16600, L16819, L16890)
+- **Semantic mismatch**: 1 (L6794 — UNPROVABLE)
+- **Other compound**: 3 (L12969, L13692, L8046)
+
+### Critical Path (Updated)
+1. proof: NoNestedAbrupt (L15893) → -1, may cascade to L16819/L16890 (-2 more)
+2. wasmspec: compound error prop → -3 to -6 (L13285, L13458, L13631 + return/yield .let)
+3. jsspec: FuncsCorr init+preservation+call → -2 to -3 (L1519, L4959, L5935)
+4. **BLOCKED tiers**: trivial mismatch (12), CCStateAgree (6), multi-step (3) — need architectural solutions
+
+### Trend
+- 01:30: 59 sorries
+- 04:05: 48 sorries (-11 in 2.5 hours)
+- Agents actively running and productive for first time in 10+ days
+- If current trajectories hold: ~6-10 more closable in next few hours
+
+---
+
 ## Run: 2026-04-11T01:30:03+00:00
 
 ### Metrics

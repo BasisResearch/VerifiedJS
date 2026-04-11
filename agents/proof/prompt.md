@@ -1,4 +1,4 @@
-# proof — UNCOMMENT NoNestedAbrupt_step_preserved (L14639)
+# proof — CLOSE NoNestedAbrupt_step_preserved (L15893)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,49 +9,46 @@
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
 ## STATUS
-- hasAbruptCompletion_step_preserved: **PROVED** at L14178 (confirmed working).
-- NoNestedAbrupt_step_preserved (L14639): still `sorry`, with commented-out proof L14640-15020+.
-- ANF: 34 real sorries. CC: 15. Total: 49.
-- **wasmspec just closed 6 sorries** — compound inner depth cases all resolved.
+- hasAbruptCompletion_step_preserved: **PROVED** (great work!)
+- NoNestedAbrupt_step_preserved (L15893): still `sorry`, with commented-out proof L15894+
+- ANF: 31 real sorries. CC: 17. Total: 48.
 
-## P0: UNCOMMENT NoNestedAbrupt_step_preserved (L14639)
+## P0: UNCOMMENT NoNestedAbrupt_step_preserved (L15893)
 
-The sorry at L14639 has a commented-out proof immediately below it (L14640+). This proof was working before Flat.step? error propagation changes.
+YOU JUST DID THIS EXACT PATTERN for hasAbruptCompletion_step_preserved. Do it again.
+
+The sorry at L15893 has a commented-out proof immediately below it (L15894+).
 
 **EXACT STEPS:**
-1. Delete the `sorry -- TODO: fix for error propagation; cases need split at hstep for match t with` at L14639
+1. Delete the `sorry -- TODO: fix for error propagation; cases need split at hstep for match t with` at L15893
 2. Uncomment the proof block below: change `/-obtain` to `obtain` and remove the closing `-/`
 3. The proof will have errors because step? now has THREE branches (error event, non-error step, none) instead of TWO
 
 **For each `split at hstep` that breaks:**
-The error branch is NEW. You already handled this pattern in hasAbruptCompletion_step_preserved. For NoNestedAbrupt, the error branch should be:
+The error branch is NEW. You handled this in hasAbruptCompletion. For NoNestedAbrupt, the error branch is:
 ```lean
 · -- error event: produces .lit .undefined, which satisfies NoNestedAbrupt.lit
   split at hstep <;> (obtain ⟨_, rfl⟩ := hstep; simp [Flat.pushTrace]; exact .lit)
 ```
 
-**ALSO ADD** termination hint (same as hasAbruptCompletion):
+**ALSO ADD** termination hint:
 ```lean
 termination_by Flat.Expr.depth e
 decreasing_by all_goals (simp_all [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth]; omega)
 ```
 
-**EXPECTED RESULT**: -1 sorry (L14639 closed). May cascade to simplify L15565/L15636.
+**EXPECTED RESULT**: -1 sorry (L15893 closed).
 
-## P1: AFTER P0 — CHECK COMPOUND BREAK/CONTINUE CASES
+## P1: AFTER P0 — L16819 and L16890
 
-After NoNestedAbrupt_step_preserved is proved:
-- L15565 and L15636 are break/continue "Category B" compound cases
-- They need error propagation through compound Flat.step? — the SAME pattern wasmspec used for inner depth cases
-- Check if `normalizeExpr_labeled_or_k` + Steps_ctx_lift can close them
-- Run `lean_goal` at L15565 to see what's needed
+These are at the end of anfConvert_step_star. Run `lean_goal` at each to see what's needed. They may require NoNestedAbrupt_step_preserved which you just proved.
 
-## P2: L15335 (noCallFrameReturn) — QUICK WIN?
+## P2: L16589 (noCallFrameReturn)
 
-L15335 needs `catchParam ≠ "__call_frame_return__"`. Check if `noCallFrameReturn_tryCatch_direct_bridge` (L4137) can close it directly.
+Read the comment at L16589-16599. It explains the issue: need `catchParam ≠ "__call_frame_return__"`. Check if you can add a simple `have` with `by decide` or `by simp` if the catch param comes from source code normalization.
 
-## SKIP: trivial mismatch (L10183-10554), if_branch (L13273/13313), anfConvert_step_star, CC file
+## SKIP: trivial mismatch (L10183-10554), if_branch (L14519/14559), compound error prop (wasmspec owns), CC file
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — NoNestedAbrupt L14639" >> agents/proof/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — NoNestedAbrupt L15893" >> agents/proof/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`

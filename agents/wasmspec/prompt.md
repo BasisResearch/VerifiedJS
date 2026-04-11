@@ -1,4 +1,4 @@
-# wasmspec — COMPOUND ERROR PROPAGATION CASES (7 closable?)
+# wasmspec — COMPOUND ERROR PROP: HasReturnInHead/Await/Yield (3-6 sorries)
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -8,38 +8,35 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — GREAT WORK LAST RUN!
-- You closed 6 compound inner depth sorries (L10759-L10939 range). Pattern: normalizeExpr_labeled_or_k + normalizeExpr_labeled_branch_step + Steps_ctx_lift.
-- ANF: 34 sorries remaining. CC: 15. Total: 49.
+## STATUS — 6 COMPOUND INNER DEPTH CLOSED LAST RUN!
+- You closed 6 compound inner depth sorries. Pattern: normalizeExpr_labeled_or_k + normalizeExpr_labeled_branch_step + Steps_ctx_lift.
+- ANF: 31 sorries remaining. CC: 17. Total: 48.
 - ALL trivialChain sorries (L10183-L10554, ~12 sorries) remain BLOCKED. DO NOT WORK ON THOSE.
 
-## P0: COMPOUND HasReturnInHead ERROR PROP (L12048, L12054)
+## P0: COMPOUND HasReturnInHead (L13285)
 
-These sorries are at L12048 and L12054 in `normalizeExpr_return_step_sim`. They say "blocked by Flat.step? error propagation (see L11763)" — but error propagation IS NOW DONE. Check if the blocker was resolved.
+This sorry says "compound HasReturnInHead: needs error propagation through compound wrappers". Error propagation IS done now. The pattern is the same as what you used for inner depth:
 
-**APPROACH:**
-1. Run `lean_goal` at L12048 and L12054 to see exact goals
-2. The comment says "compound inner_val" — this is the inner expression inside `.return (some inner_val)` where inner_val is compound
-3. The pattern should be similar to what you used for inner depth: apply IH on the inner expression, then lift through the return context with `Steps_return_some_ctx_b`
-4. If the IH doesn't apply directly (depth mismatch), try `normalizeExpr_labeled_or_k` pattern
+1. Run `lean_goal` at L13285
+2. The compound case means the inner expression of `.return (some inner)` steps — lift through return context
+3. Apply normalizeExpr_labeled_or_k on the inner expression
+4. Use normalizeExpr_labeled_branch_step for the step
+5. Lift with `Steps_return_some_ctx_b` (or similar)
 
-## P1: COMPOUND HasAwaitInHead + HasYieldInHead (L12221, L12227, L12379, L12385)
+## P1: COMPOUND HasAwaitInHead + HasYieldInHead (L13458, L13631)
 
-Same pattern as P0 but for await and yield wrappers:
-- L12221, L12227: HasAwaitInHead compound cases — lift through `.await ·`
-- L12379, L12385: HasYieldInHead compound cases — lift through `.yield (some ·) delegate`
-- Use `Steps_await_ctx_b` and `Steps_yield_some_ctx_b` if they exist (search with `lean_local_search`)
+Same pattern but for await/yield wrappers. Use `Steps_await_ctx_b` and `Steps_yield_some_ctx_b`. Search with `lean_local_search "Steps_await"` and `lean_local_search "Steps_yield"`.
 
-## P2: L11738 — hasThrowInHead compound catch-all
+## P2: RETURN/YIELD COMPOUND .let (L13687, L13691, L13692)
 
-L11738 is the catch-all sorry in `hasThrowInHead_compound_throw_step_sim`. It covers compound cases where the throw is nested inside seq/let/if/call/etc. This may need the same depth-induction + Steps_ctx_lift pattern.
+These say "compound, can produce .let" and "compound expressions: needs structural induction". The inner expression normalizes to a `.let`, requiring multi-step. Try IH + Steps_ctx_lift pattern.
 
-## P3: L12441, L12445 — return/yield compound .let production
+## P3: COMPOUND CATCH-ALL (L12969, L15421)
 
-These say "compound, can produce .let". The inner expression `val` inside `.return (some val)` or `.yield (some val) d` normalizes to a `.let`, requiring multi-step simulation. Check if IH + Steps_ctx_lift handles it.
+These are broad catch-alls. Run `lean_goal` to see if they're closable now or still blocked.
 
-## SKIP: trivialChain (blocked), if_branch, while, tryCatch, NoNestedAbrupt (proof agent), CC (jsspec)
+## SKIP: trivialChain (blocked), if_branch, while, NoNestedAbrupt (proof agent), CC (jsspec)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — compound error prop L12048" >> agents/wasmspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — compound error prop L13285" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

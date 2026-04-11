@@ -12252,7 +12252,7 @@ private theorem trivialChain_await_steps
           simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval; subst heval
           exact ⟨_, _, .tail ⟨hstep1⟩
             (.tail ⟨hstep2⟩ (.refl _)),
-            rfl, rfl, rfl, by simp [List.append_assoc], by simp [observableTrace, List.filter]⟩,
+            rfl, rfl, rfl, by simp [List.append_assoc], by native_decide⟩,
         fun msg heval => by
           simp only [ANF.evalTrivial, hv_anf] at heval; exact absurd heval (by simp)⟩
     | «this» =>
@@ -12275,7 +12275,7 @@ private theorem trivialChain_await_steps
           simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval; subst heval
           exact ⟨_, _, .tail ⟨hstep1⟩
             (.tail ⟨hstep2⟩ (.refl _)),
-            rfl, rfl, rfl, by simp [List.append_assoc], by simp [observableTrace, List.filter]⟩,
+            rfl, rfl, rfl, by simp [List.append_assoc], by native_decide⟩,
         fun msg heval => by
           simp only [ANF.evalTrivial, hv_anf] at heval; exact absurd heval (by simp)⟩
     | seq a b =>
@@ -13607,7 +13607,22 @@ private theorem normalizeExpr_yield_step_sim
     | «continue» _ =>
       exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
       exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
-    | _ => sorry -- compound inner_val: blocked by Flat.step? error propagation (see L11763)
+    | _ =>
+      -- Compound inner_val: trivial chain → extract delegate equality, then use helper
+      have hab := NoNestedAbrupt.yield_some_arg_abruptFree hna
+      have hno_yield : ¬ HasYieldInHead _ :=
+        fun h => absurd (hasYieldInHead_implies_hasAbruptCompletion h) (by rw [hab]; exact Bool.false_ne_true)
+      have htc := no_yield_head_implies_trivial_chain _ _ (Nat.le_refl _)
+        (fun t => pure (.yield (some t) src_delegate)) arg delegate n m hnorm' hno_yield
+      obtain ⟨t_tc, ht_tc⟩ := normalizeExpr_trivialChain_apply _ _ (Nat.le_refl _) htc
+      have hconn := ht_tc (fun t => pure (.yield (some t) src_delegate)) n
+      rw [hconn] at hnorm'
+      simp only [pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
+      obtain ⟨⟨rfl, rfl⟩, rfl⟩ := hnorm'
+      have hnorm_tc : (ANF.normalizeExpr _ (fun t => pure (ANF.Expr.yield (some t) src_delegate))).run n =
+          .ok (.yield (some t_tc) src_delegate, n) := by
+        rw [ht_tc]; simp [pure, Pure.pure, StateT.pure]
+      exact normalizeExpr_yield_some_compound_case _ src_delegate env heap trace funcs cs (some t_tc) n n hnorm_tc hewf hna
   | throw_arg h => exfalso; exact noNestedAbrupt_hasYieldInHead_absurd_throw hna h
   | return_some_arg h => exfalso; exact noNestedAbrupt_hasYieldInHead_absurd_return hna h
   | await_arg h => exfalso; exact noNestedAbrupt_hasYieldInHead_absurd_await hna h
