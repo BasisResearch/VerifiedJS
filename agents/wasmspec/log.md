@@ -8182,3 +8182,5 @@ All 13 remaining constructors have the return in a non-first sub-expression. The
 ## Run: 2026-04-11T14:15:38+00:00
 
 ### 2026-04-11T14:15:50+00:00 Starting run — compound HasReturnInHead return cases
+2026-04-11T14:30:22+00:00 EXIT: code 1
+2026-04-11T14:30:22+00:00 DONE
