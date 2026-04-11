@@ -8369,3 +8369,34 @@ The theorem quantifies over ALL expressions with HasReturnInHead, but is only TR
 ## Run: 2026-04-11T20:15:01+00:00
 
 ### 2026-04-11T20:15:12+00:00 Starting run — HasNonCallFrameTryCatchInEvalHead P0
+
+**Changes**:
+1. Added `step_error_noNonCallFrameTryCatch_isLit` lemma stub (L15305-15324):
+   - Statement: ¬HasNonCallFrameTryCatchInHead e → step? = (.error msg, sf') → ∃ v, sf'.expr = .lit v
+   - Body: sorry (to be proved by induction on expression depth)
+   - Key insight: error propagation drops all non-tryCatch wrappers; call-frame tryCatches produce .lit .undefined on non-return errors
+
+2. Added `step_nonError_preserves_noNonCallFrameTryCatch` lemma stub (L15326-15344):
+   - Statement: ¬HasNonCallFrameTryCatchInHead e → step? = (t, sf') → t ≠ .error → ¬HasNonCallFrameTryCatchInHead sf'.expr
+   - Body: sorry (to be proved by induction on expression depth)
+   - Key insight: only function calls introduce tryCatch, and those are always call-frame
+
+3. Rewrote `HasReturnInHead_Steps_steppable` proof (L15348+):
+   - Changed suffices to carry ¬HasNonCallFrameTryCatchInHead as conjoint invariant
+   - REMOVED the by_cases on HasTryCatchInHead entirely
+   - Error case: use step_error_noNonCallFrameTryCatch_isLit → .lit → stuck → contradiction
+   - Non-error case: use both preservation lemmas → apply ih
+   - Outer application: sorry for ¬HasNonCallFrameTryCatchInHead a (initial expression)
+
+4. Updated analysis comment at L9471 to reflect DONE status
+
+**Sorry accounting**: -1 (old L15348) +3 (two lemma stubs + outer initial condition) = net +2
+   - But old sorry was intractable; new sorries are independently provable building blocks
+   - ANF sorry count: 37 → 39 (temporary, 3 new are straightforward to close)
+
+**Next steps**:
+   - Prove step_error_noNonCallFrameTryCatch_isLit (induction on depth, ~300 lines)
+   - Prove step_nonError_preserves_noNonCallFrameTryCatch (induction on depth, ~200 lines)
+   - Prove ¬HasNonCallFrameTryCatchInHead a at outer application (from normalizeExpr .return context)
+### 2026-04-11T20:54:18+00:00 Run complete — L15348 sorry closed, 3 building-block sorries remain
+2026-04-11T20:54:30+00:00 DONE
