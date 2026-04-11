@@ -6709,3 +6709,65 @@ echo "2026-04-11T03:00:32+00:00,49,ongoing" >> logs/time_estimate.csv
 
 ## Run: 2026-04-11T06:30:10+00:00
 
+
+## Run: 2026-04-11T06:30:10+00:00
+
+### Metrics
+- **Sorry count**: ANF 31 + CC 15 + Lower 0 = **46 total**
+- **Delta from last run (06:05)**: 0 (46→46). FLAT — agents between runs.
+- **BUILD**: Not verified (LSP only).
+
+### What Happened Since Last Run (06:05)
+1. **proof**: Completed 05:47 (NoNestedAbrupt closed, -1). Just started new run at 06:30 — was targeting trivialChain batch, but those are BLOCKED.
+2. **jsspec**: Completed at 06:27 — closed L1519 (FuncsCorr init, -1 sorry). All 15 remaining CC sorries confirmed architecturally blocked.
+3. **wasmspec**: Started preservation at 06:15, CRASHED at 06:34 (exit code 1). Needs retry.
+
+### Agent Status
+1. **proof**: Just started 06:30 run. REDIRECTED away from trivialChain (blocked) to L17229/L17300 (compound break/continue error propagation) + L16999 (noCallFrameReturn).
+2. **jsspec**: Idle since 06:27. REDIRECTED to CC_SimRel error disjunct architectural fix (closes 3 error structural sorries L5163/L5262/L5501).
+3. **wasmspec**: Crashed at 06:34. REDIRECTED to retry preservation sorries (L13312-L13344) with concrete Steps_preserves lemma approach.
+
+### Prompts Rewritten (all 3)
+
+1. **proof**: PIVOTED from trivialChain (ALL BLOCKED by trivial mismatch, confirmed by wasmspec analysis). New P0 = L17229+L17300 compound break/continue error propagation (2 sorries). Same pattern as hasAbruptCompletion_step_preserved (already proved). P1 = L16999 noCallFrameReturn. P2 = L13312-L13344 preservation (if wasmspec doesn't get to them).
+
+2. **jsspec**: PIVOTED to architectural fix. P0 = Relax CC_SimRel with error disjunct — add `∨ (∃ msg, sf.expr = error ∧ exprHasErrorInHead sc.expr)` to expression correspondence. This closes 3 error structural sorries (L5163, L5262, L5501). Wrote full plan: define exprHasErrorInHead, modify CC_SimRel, fix all destructuring sites.
+
+3. **wasmspec**: P0 = prove Steps_preserves_funcs_trace + Steps_preserves_callStack lemmas, then close L13312/L13328/L13344 (-3). P1 = expand L13353 compound catch-all into explicit constructors. P2 = HasAwaitInHead/HasYieldInHead (L13709/L13882).
+
+### Sorry Classification (46 total)
+- **Trivial-chain (BLOCKED)**: 12 (L10183-L10554) — ANF trivial ↔ flat value mismatch
+- **Compound break/continue (proof)**: 2 (L17229, L17300) — error propagation, same pattern as proved cases
+- **HasReturnInHead preservation (wasmspec)**: 3 (L13312, L13328, L13344)
+- **HasReturnInHead compound (wasmspec)**: 1 (L13353 catch-all, expands to ~28)
+- **Compound HasAwait/HasYield (wasmspec)**: 2 (L13709, L13882)
+- **Return/yield .let (wasmspec)**: 3 (L13938, L13942, L13943)
+- **Compound catch-all (wasmspec)**: 1 (L12969)
+- **noCallFrameReturn (proof)**: 1 (L16999)
+- **body_sim IH (proof)**: 1 (L17010) — needs anfConvert_step_star, blocked
+- **Error structural (jsspec)**: 3 (L5163, L5262, L5501) — CC_SimRel fix in progress
+- **CCStateAgree (BLOCKED)**: 6 (L5344, L5370, L8212, L8215, L8289, L8405)
+- **Multi-step (BLOCKED)**: 4 (L4995, L5944, L6152, L6163)
+- **if_branch K-mismatch (BLOCKED)**: 2 (L14770, L14810)
+- **while (BLOCKED)**: 2 (L14033, L14045)
+- **tryCatch (BLOCKED)**: 3 (L15651, L15669, L15672)
+- **functionDef**: 1 (L8055)
+- **UNPROVABLE**: 1 (L6803)
+
+### Critical Path
+1. proof: compound break/continue → -2, noCallFrameReturn → -1 (3 total)
+2. wasmspec: preservation → -3, compound expansion → -4 to -10 (7-13 total)
+3. jsspec: CC_SimRel error disjunct → -3 (3 total)
+4. **BLOCKED tiers**: trivialChain (12), CCStateAgree (6), multi-step (4), if_branch (2), while (2), tryCatch (3) = 29 blocked
+5. **Best case achievable**: 46 - 9 to 46 - 19 = **27-37** (if all P0s close + some compound expansion)
+
+### Trend
+- 01:30: 59 sorries
+- 04:05: 48 sorries (-11 in 2.5h)
+- 06:05: 46 sorries (-2 in 2h)
+- 06:30: 46 sorries (0 in 0.5h — between-run gap)
+- **29 of 46 sorries are architecturally BLOCKED** — diminishing returns on tactical work
+- Need architectural breakthroughs: CC_SimRel error disjunct (jsspec), trivial substitution lemma (nobody assigned yet)
+
+---
+2026-04-11T06:45:41+00:00 DONE
