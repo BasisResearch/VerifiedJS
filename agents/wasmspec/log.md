@@ -8189,3 +8189,50 @@ All 13 remaining constructors have the return in a non-first sub-expression. The
 
 ### 2026-04-11T15:00:14+00:00 Starting run — compound HasReturnInHead return cases
 2026-04-11T15:15:04+00:00 SKIP: already running
+
+### 2026-04-11T15:15:00+00:00 Assessment — hasReturnInHead_return_steps + P1-P3
+
+#### P0 Status: ALREADY COMPLETE
+The original `| _ => sorry` catch-all in `hasReturnInHead_return_steps` was already split into
+individual cases by prior runs. All first-position compound cases are proved:
+- seq_left (L14988), let_init (L15065), unary_arg (L15137), getProp_obj (L15209),
+  typeof_arg (L15281), deleteProp_obj (L15353), assign_val (L15425), getEnv_env (L15497),
+  makeClosure_env (L15569), binary_lhs (L15641), if_cond (L15713), setProp_obj (L15785),
+  getIndex_obj (L15857), setIndex_obj (L15929), call_func (L16001), newObj_func (L16073)
+
+**Remaining sorries in hasReturnInHead_return_steps:**
+- L16189: seq_right Case B (arg=none) — needs `no_return_none_head_implies_trivial_chain` + trivialChain_eval_value + Steps composition
+- L16245: seq_right Case B (arg=some) — same infrastructure
+- L16246-16257: 12 second-position/list cases (binary_rhs, setProp_val, getIndex_idx, etc.) — needs same Case B infrastructure for 2nd-position lifting
+
+#### Infrastructure Added: 7 error-propagation lemmas (L2517-2613)
+- step?_binary_rhs_error, step?_setProp_val_error, step?_getIndex_idx_error
+- step?_setIndex_idx_error, step?_setIndex_val_error
+- step?_call_env_error, step?_newObj_env_error
+These are required by Steps_compound_error_lift for second-position cases.
+
+#### P1 Assessment: L13352 (hasThrowInHead_compound_throw_step_sim catch-all)
+Cannot use same infrastructure directly. This theorem cases on `HasThrowInHead e` without
+depth induction. Closing compound cases requires restructuring to depth-based induction
+(same as hasReturnInHead_return_steps). Estimated effort: ~800 lines.
+
+#### P2 Assessment: L16613/L16786 (compound HasAwait/HasYield)
+Same structural issue as P1. `normalizeExpr_await_step_sim` and `normalizeExpr_yield_step_sim`
+case on HasAwaitInHead/HasYieldInHead without depth induction. Need restructuring.
+
+#### P3 Assessment: L16842/16846/16847 (normalizeExpr_let_step_sim)
+- return (some val): compound, can produce .let — needs structural induction on expression
+- yield (some val): same
+- | _ => sorry: compound expressions catch-all — needs full structural induction
+
+#### BLOCKER for all remaining cases:
+The common missing lemma is `no_return_none_head_implies_trivial_chain` (~80 lines, mirrors
+`no_return_some_head_implies_trivial_chain`). This unblocks:
+1. seq_right Case B (both arg variants)
+2. All second-position cases (binary_rhs, setProp_val, etc.)
+3. Potentially the hasThrow/hasAwait/hasYield compound cases if restructured
+
+**Priority recommendation for next run:**
+1. Write `no_return_none_head_implies_trivial_chain`
+2. Close seq_right Case B (arg=none) as proof of concept
+3. Template remaining second-position cases
