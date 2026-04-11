@@ -1,4 +1,4 @@
-# proof — ERROR PROPAGATION SORRY CLOSURES (L13969, L14517, L11832-L12169)
+# proof — UNCOMMENT TWO PROOFS (L13969, L14517)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,64 +9,47 @@
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
 ## STATUS
-- ANF: 42 sorries (+1 from your decomposition). CC: 17. Lower: 0. Wasm: 0. Total: 59.
-- Error propagation DONE in Flat/Semantics.lean — ALL compound `step?` cases drop wrapper on `.error`.
-- **THE COMMENTS saying "blocked by Flat.step? error propagation" ARE WRONG.** Error propagation IS implemented.
-- Agents running: proof (you), wasmspec, jsspec just finished.
+- ANF: 42 sorries. CC: 17. Lower: 0. Total: 59.
+- Error propagation DONE in Flat/Semantics.lean.
+- **NO PROGRESS SINCE LAST RUN.** You must close at least 2 sorries this run.
 
-## P0: L13969 — UNCOMMENT THE PROOF (it's already written!)
+## P0: UNCOMMENT hasAbruptCompletion_step_preserved (L13969)
 
-**CRITICAL DISCOVERY**: The proof for `hasAbruptCompletion_step_preserved` is ALREADY WRITTEN in a comment block from L13970 to L14507. It handles ALL expression cases including tryCatch with/without finally. The error propagation splits (`split at hstep <;>`) are ALREADY PRESENT in the commented-out code.
+**THIS IS A 3-LINE EDIT. DO IT FIRST.**
 
-**DO THIS:**
-1. Delete the `sorry -- TODO...` at L13969
-2. Delete the `/-` at L13970
-3. Delete the `-/` at L14507
-4. This UNCOMMENTS the full proof
+The proof is ALREADY WRITTEN in a comment block L13970-L14507. You just need to:
 
-The commented-out proof ALREADY handles error propagation correctly:
-- For compound cases, it does `split at hstep` then `split at hstep <;>` which handles both `.error _` and non-error branches
-- For tryCatch, it handles all the isCallFrame logic (L14454-14506)
-- ALL base cases (var, this, lit, labeled, while) are covered
+1. Delete line 13969: `  sorry -- TODO: fix for error propagation; cases need split at hstep for match t with`
+2. Delete line 13970: `  /-cases e with` → change to `  cases e with`
+3. Delete the closing `-/` at line 14507
 
-**If uncommented proof has errors:** They'll likely be minor (line-number shifts from earlier edits, or `by assumption` needing an explicit hypothesis). Fix them individually.
+That's it. The 537-line proof between L13971 and L14506 is complete and handles all cases.
 
-## P0b: L14517 — NoNestedAbrupt_step_preserved
+**After uncommenting**, run `lean_diagnostic_messages` on lines 13962-14507 to check for errors. If there are errors, they'll be minor (hypothesis name shifts). Fix them one by one.
 
-Same approach: look for a commented-out proof below the sorry. If not present, follow the same pattern as the hasAbruptCompletion proof but for NoNestedAbrupt. This is structurally identical (case split on expression, compound cases recurse).
+## P1: UNCOMMENT NoNestedAbrupt_step_preserved (L14517)
 
-These two are BIG theorems that potentially unblock L15443 and L15514 (compound Cat B sorries).
+Same pattern. The proof is commented out from L14518 to L15035.
 
-## P1: COMPOUND "blocked by error propagation" SORRIES (6)
+1. Delete line 14517: `  sorry -- TODO: fix for error propagation; cases need split at hstep for match t with`
+2. Delete line 14518: `  /-obtain ⟨e, env, heap, trace, funcs, cs⟩ := sf` → change to `  obtain ⟨e, env, heap, trace, funcs, cs⟩ := sf`
+3. Delete the closing `-/` at line 15035
 
-After P0, tackle these — they are ALL marked "blocked by error propagation" but error propagation IS done:
-- L11832 — compound inner_val (return)
-- L11838 — compound HasReturnInHead
-- L12005 — compound inner_arg (await)
-- L12011 — compound HasAwaitInHead
-- L12163 — compound inner_val (yield)
-- L12169 — compound HasYieldInHead
+**These two uncomments potentially close 2 sorries immediately** and may cascade to help L15443/L15514 (compound Category B cases that use these theorems).
 
-For each:
-1. `lean_goal` to see the actual state
-2. Error propagation means: when inner expr steps with `.error msg`, the compound wrapper drops
-3. You need: `Steps_ctx_lift` for non-error prefix + `step?_*_error` for the final error step
-4. `Steps_ctx_lift` requires `hnoerr` — decompose: lift non-error steps, then add final error step separately
+## P2: COMPOUND ERROR PROP SORRIES (L11832, L11838, L12005, L12011, L12163, L12169)
 
-Pattern for seq case (adapt for return/await/yield):
-```lean
--- Steps from inner = [silent steps] ++ [error step]
--- Lift [silent steps] through context using Steps_ctx_lift (hnoerr holds for silent)
--- Final error step: use step?_return_error / step?_await_error / step?_yield_error
-```
+After P0+P1, tackle these. They're marked "blocked by Flat.step? error propagation" but error prop IS done:
+- L11832/L11838: return compound
+- L12005/L12011: await compound
+- L12163/L12169: yield compound
 
-## P2: L11522 — compound catch-all
+Pattern: when inner expr steps with `.error msg`, the compound wrapper drops. Use:
+1. `Steps_ctx_lift` for non-error prefix (hnoerr holds for silent steps)
+2. `step?_return_error` / `step?_await_error` / `step?_yield_error` for the final error step
 
-This is the big catch-all for compound cases in normalizeExpr_throw_step_sim.
-29 compound constructors. Even decomposing into separate sorry per constructor is progress.
-
-## SKIP: labeled_branch (wasmspec confirmed ALL blocked by trivial mismatch), CC (jsspec), while/tryCatch, if_branch, anfConvert_step_star
+## SKIP: labeled_branch (blocked by trivial mismatch), CC, while/tryCatch, if_branch, anfConvert_step_star
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — error prop sorries L13969 L14517" >> agents/proof/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — uncomment L13969 L14517" >> agents/proof/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`

@@ -1,4 +1,4 @@
-# jsspec — FuncsCorr DEFINITION + CCStateAgree ANALYSIS
+# jsspec — FuncsCorr DEFINITION (L1469, L1473) + HeapInj SORRY (L4888)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -11,61 +11,40 @@
 
 ## STATUS
 - CC: 17 sorries. ANF: 42. Total: 59.
-- FuncsCorr stub defined at L1455-1473 (your run at 00:12).
-- CCStateAgreeWeak defined at L566.
-- convertExpr_state_mono proved at L767.
+- **NO PROGRESS SINCE LAST RUN.** You must close at least 1 sorry this run.
+- CCStateAgreeWeak confirmed NOT viable (breaks 10+ proved cases).
+- FuncsCorr stub defined at L1455-1473 but both properties sorry'd.
 
-## CRITICAL: CCStateAgreeWeak IS NOT A SIMPLE SWAP
+## P0: FuncsCorr — CLOSE L1469 AND L1473
 
-Previous prompts said "change CCStateAgree to CCStateAgreeWeak in the invariant." **THIS WILL BREAK PROVED CASES.**
+These two sorries define what it means for Core and Flat function definitions to correspond after closure conversion.
 
-The invariant at L4914:
-```lean
-CCStateAgree st st_a ∧ CCStateAgree st' st_a'
-```
+**DO THIS:**
+1. Run `lean_goal` at L1469 to see the exact goal type
+2. Run `lean_hover_info` on `Flat.convertExpr` to understand how functionDef is converted
+3. Run `lean_hover_info` on `FuncsCorr` to see the current stub definition
+4. The body property (L1469) should state: `fc.body` equals the result of closure-converting `fd.body`
+5. The params property (L1473) should relate parameter lists via `injMap` or similar
 
-The PROVED cases (L6043-6050, L7762-7771, L7978, L8311-8327) use CCStateAgree EQUALITY to call `convertExpr_state_determined`, which requires `st1.nextId = st2.nextId`. With CCStateAgreeWeak (≤), these break.
+If the properties are actually DEFINITIONS (not proofs), then fill in the correct predicate. If they're proofs of existing predicates, prove them.
 
-**INSTEAD**, the fix requires:
-1. Keep CCStateAgree in the invariant
-2. For the 6 sorry sites (if/while/tryCatch), find DIFFERENT `st_a/st_a'` witnesses that satisfy equality
-3. OR: prove a `convertExpr_state_determined_weak` that works with ≤ (but this seems impossible since different nextId → different variable names → different expressions)
-4. OR: define an expression equivalence up to variable renaming and show simulation preserves it
+## P1: HeapInj SORRY (L4888-L4891)
 
-Since option 3/4 are very large refactors, focus on option 1: can you find witnesses that DO satisfy equality?
+Line 4888 says "proof temporarily sorry'd during HeapInj refactor" with "Previous proof in git history." This sounds like a regression.
 
-For if-true (L5298): Currently uses `st_a = st` and `st_a' = (convertExpr then_ ... st).snd`. The issue: `st' = (convertExpr else_ ... st_a').snd ≠ st_a'`. **Can we pick a different `st_a`?**
+1. Run `lean_goal` at L4888 (or nearby sorry) to see what's needed
+2. Check git: `git log --oneline -5 -- VerifiedJS/Proofs/ClosureConvertCorrect.lean` to find the last commit that changed this
+3. If the old proof is recoverable, restore it
 
-Key question: is there a state `st_a` with `st_a.nextId = st'.nextId` such that `(convertExpr then_ ... st_a).fst` still equals the then-branch expression? This would require knowing that `convertExpr then_` is insensitive to the starting nextId for producing the same expression. But it IS sensitive (generates fresh vars from nextId).
+## P2: L5117, L5216, L5455 — if/while sub-expression sorries
 
-**Verdict: THIS IS A GENUINE ARCHITECTURAL ISSUE.** Document it precisely.
+These are NOT CCStateAgree-blocked. Check with `lean_goal` whether they're tractable.
 
-## P0: FuncsCorr DEFINITION (L1469, L1473)
-
-The FuncsCorr stub is defined but both properties are sorry'd. Fill in the actual definition:
-
-1. `lean_goal` at L1469 to see what's needed
-2. The first property should relate `fd.body` (Core function closure body) to `fc.body` (Flat function definition body) via closure conversion
-3. The second property should relate function parameter lists via `injMap`
-
-Concrete: look at how functions are closure-converted in `Flat.convertExpr`:
-```lean
-| .functionDef fname params body => ...
-```
-Check `lean_hover_info` on `Flat.convertExpr` and read the functionDef case. The FuncsCorr body property should say something like:
-```lean
-fc.body = (Flat.convertExpr fd.body params envVar envMap st).fst
-```
-
-## P1: Document CCStateAgree architectural issue
-
-Write a detailed comment (5-10 lines) above L4914 explaining:
-1. WHY CCStateAgree (equality) is needed for the proved cases
-2. WHY it's unprovable for if/while/tryCatch
-3. What a real fix would look like (expression equivalence up to fresh var renaming)
-
-This documentation is valuable for future work even if we can't fix it now.
+## KNOWN BLOCKED (DO NOT ATTEMPT):
+- L5298, L5324, L8170, L8173, L8247, L8363: CCStateAgree architectural issue
+- L4949, L6109, L6120: multi-step simulation gap
+- L6760: semantic mismatch (getIndex string)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — FuncsCorr def + CCStateAgree analysis" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — FuncsCorr L1469 L1473" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`

@@ -6315,3 +6315,48 @@ Per-constructor sorries depend on sub-theorems. Not monolithic. Error propagatio
 ## Run: 2026-04-11T01:30:03+00:00
 
 2026-04-11T01:42:31+00:00 DONE
+
+## Run: 2026-04-11T02:00:03+00:00
+
+
+## Run: 2026-04-11T02:00:03+00:00
+
+### Metrics
+- **Sorry count**: ANF 42 + CC 17 + Lower 0 = **59 total**
+- **Delta from last run (01:30)**: 0 (59→59). FLAT. No agents ran since 01:17/01:10.
+- **BUILD**: Not verified (LSP only).
+
+### Agent Status
+1. **proof**: NOT RUNNING. Last file edit 01:17. Prompt rewritten — P0 is a 3-line uncomment edit.
+2. **wasmspec**: NOT RUNNING. Last file edit before 01:10. Prompt rewritten — P0 is L10759 depth induction.
+3. **jsspec**: NOT RUNNING. Last file edit 01:10. Prompt rewritten — P0 is FuncsCorr definition.
+
+### Why count is FLAT
+No agent has edited any proof file since the last supervisor run at 01:30. All three agents appear to have stopped. Prompts rewritten with maximum specificity to restart progress.
+
+### Prompts Rewritten (all 3)
+1. **proof**: P0 = UNCOMMENT L13969 (delete sorry + open/close comment markers = 3 lines). P1 = UNCOMMENT L14517 (same pattern). These two alone = -2 sorries. Cascade potential to L15443/L15514.
+2. **wasmspec**: P0 = L10759 compound inner depth. Wrote exact 5-step proof sketch with HasLabeledInHead extraction, depth bound, well-formedness, IH application, Steps lifting. Then adapt to L10795/L10808/L10891/L10926/L10939 = -6 total.
+3. **jsspec**: P0 = FuncsCorr (L1469/L1473). P1 = HeapInj regression (L4888). P2 = check L5117/L5216/L5455 tractability.
+
+### Critical Path (Updated)
+1. proof: UNCOMMENT L13969 + L14517 → -2 immediately, cascade potential -2 more (L15443/L15514)
+2. wasmspec: compound inner depth → -6 (L10759, L10795, L10808, L10891, L10926, L10939)
+3. jsspec: FuncsCorr → -2 (L1469, L1473), HeapInj → -1 (L4888)
+4. BLOCKED: trivial mismatch (~12), CCStateAgree (6), multi-step (3), getIndex (1), if_branch (2), while (2), tryCatch (3), anfConvert_step_star (1)
+
+### Sorry Classification (59 total)
+- **Closable now (uncomment)**: 2 (L13969, L14517)
+- **Closable now (depth IH)**: 6 (L10759-L10939)
+- **Closable now (definition)**: 2-3 (L1469, L1473, possibly L4888)
+- **Cascade potential**: 2 (L15443, L15514)
+- **CCStateAgree blocked**: 6 (L5298, L5324, L8170, L8173, L8247, L8363)
+- **Multi-step blocked**: 3 (L4949, L6109, L6120)
+- **Trivial mismatch**: ~12 (L10183-L10554)
+- **Other blocked**: ~26
+
+---
+2026-04-11T02:03:46+00:00 DONE
+
+## Run: 2026-04-11T02:05:01+00:00
+
