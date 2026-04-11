@@ -8106,3 +8106,11 @@ NEXT: Close preservation sorries (need step?_preserves_callStack), then 28 compo
 
 ### 2026-04-11T08:15:08+00:00 Starting run — callStack condition sorries L13351-L13397
 2026-04-11T09:15:01+00:00 SKIP: already running
+### 2026-04-11T10:06:16+00:00 Run complete — Consolidated 6 callStack condition sorries into 2 focused sub-lemma sorries (HasReturnInHead_step_nonError + HasReturnInHead_step_error_isLit). Added HasReturnInHead_Steps_steppable (fully proved modulo sub-lemmas) that proves HasReturnInHead at every steppable intermediate state. Net -4 sorries.
+
+**Details**:
+- **HasReturnInHead_step_nonError** (L13254): Non-error steps preserve HasReturnInHead. Proof by well-founded induction on depth + case analysis on HasReturnInHead constructors (straightforward but large ~30 cases).
+- **HasReturnInHead_step_error_isLit** (L13262): Error steps from HasReturnInHead produce lit values. True when the HasReturnInHead chain has no tryCatch (which `hnorm` guarantees via normalizeExpr structure), but proving requires additional structural argument.
+- **HasReturnInHead_Steps_steppable** (L13272): Combines the above two sub-lemmas via induction on Steps. Error case produces lit → not steppable → contradiction. Non-error case uses step_nonError to maintain invariant. FULLY PROVED modulo the two sub-lemma sorries.
+- The 6 original sorry sites (in hasReturnInHead_return_steps, seq_left case, hpres callbacks) now use `hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')`.
+2026-04-11T10:06:43+00:00 DONE
