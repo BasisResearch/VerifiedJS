@@ -9468,8 +9468,55 @@ inductive HasNonCallFrameTryCatchInHeadProps : List (Flat.PropName × Flat.Expr)
       HasNonCallFrameTryCatchInHeadProps (p :: rest)
 end
 
--- TODO: Prove preservation of ¬HasNonCallFrameTryCatchInHead through non-error steps,
--- then use as invariant in HasReturnInHead_Steps_steppable to close the P0 sorry.
+-- TODO: Close HasReturnInHead_Steps_steppable sorry (L15296).
+-- ANALYSIS (2026-04-11): The theorem is stated too generally. It quantifies over ALL
+-- expressions with HasReturnInHead, but is only true for expressions where non-call-frame
+-- tryCatches don't appear in the active evaluation path. In the normalizeExpr .return context
+-- (where the theorem is used), this holds because:
+--   (1) Source expressions with tryCatch in eval-head never produce .return from normalizeExpr
+--   (2) Non-error steps only introduce call-frame tryCatches (from function calls)
+--   (3) Call-frame tryCatch on error always produces .lit .undefined
+-- FIX PLAN: Add ¬HasNonCallFrameTryCatchInHead restricted to "eval-head" positions as
+-- a hypothesis, prove preservation, and prove callers can satisfy it from normalizeExpr context.
+-- Key building block (proved below): callFrame_tryCatch_step_error_isLit.
+
+/-- Call-frame tryCatch (catchParam = "__call_frame_return__") on error step always
+    produces sf'.expr = .lit .undefined. This is the key building block for proving
+    that error steps through call-frame tryCatches always yield stuck (.lit) states. -/
+private theorem callFrame_tryCatch_step_error_isLit
+    {body cb : Flat.Expr} {fin : Option Flat.Expr}
+    {env : Flat.Env} {heap : Core.Heap} {trace : List Core.TraceEvent}
+    {funcs : Array Flat.FuncDef} {cs : List Flat.Env}
+    {sf' : Flat.State} {msg : String}
+    (hstep : Flat.step? ⟨.tryCatch body "__call_frame_return__" cb fin,
+      env, heap, trace, funcs, cs⟩ = some (.error msg, sf')) :
+    sf'.expr = .lit .undefined := by
+  unfold Flat.step? at hstep
+  dsimp only [] at hstep
+  -- isCallFrame = ("__call_frame_return__" == "__call_frame_return__") = true
+  simp only [beq_self_eq_true] at hstep
+  -- Split on exprValue? body
+  split at hstep
+  · -- body is value: if true then (.silent, ...) → contradicts .error in hstep
+    simp [Flat.pushTrace] at hstep
+  · -- body not value: split on step? {expr := body, ...}
+    split at hstep
+    · -- step? body = some (.error msg', sb)
+      -- Split on (true && msg'.startsWith "return:")
+      simp only [Bool.true_and] at hstep
+      split at hstep
+      · -- msg.startsWith "return:": produces (.silent, ...) → contradicts .error
+        simp [Flat.pushTrace] at hstep
+      · -- ¬msg.startsWith "return:": if true then (.error msg, .lit .undefined)
+        simp [Flat.pushTrace] at hstep
+        obtain ⟨_, rfl⟩ := hstep
+        rfl
+    · -- step? body = some (t, sb) where t ≠ .error _
+      split at hstep
+      · simp [Flat.pushTrace] at hstep
+      · simp [Flat.pushTrace] at hstep
+    · -- step? body = none
+      simp at hstep
 
 /-- Prepending to a list preserves HasTryCatchInHeadList (suffix version). -/
 private theorem HasTryCatchInHeadList_append_right
