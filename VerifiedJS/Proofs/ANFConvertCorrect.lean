@@ -10832,9 +10832,47 @@ private theorem normalizeExpr_labeled_step_sim :
                     | return_some_arg _ _ h1 => cases h1 with
                       | yield_some_arg _ _ _ h2 => exact hwf x (VarFreeIn.return_some_arg _ _ (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.labeled_body _ _ _ h2)))
               | _ =>
-                -- inner_val inside .return (some (.yield (some inner_val) delegate))
-                -- Blocked: placeholder inference for compound inner_val depth
-                sorry
+                -- inner_val (compound, not labeled) inside .return (some (.yield (some inner_val) delegate))
+                rcases ANF.normalizeExpr_labeled_or_k _ _ label body n m hnorm with hlh_inner | ⟨t_k, n_k, m_k, body_k, hk_ret⟩
+                · cases sf with
+                  | mk sf_expr sf_env sf_heap sf_trace sf_funcs sf_cs =>
+                    simp only [Flat.State.expr] at hsf; subst hsf
+                    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace, Flat.State.funcs, Flat.State.callStack] at hwf ⊢
+                    obtain ⟨sf_v, evs_v, hsteps_v, hsil_v, henv_v, hheap_v, hfuncs_v, hcs_v,
+                      htrace_v, hpres_v, ⟨n_v, m_v, hnorm_v⟩, hewf_v⟩ :=
+                      normalizeExpr_labeled_branch_step d _ (by simp [Flat.Expr.depth] at hd; omega) label hlh_inner
+                        sf_env sf_heap sf_trace sf_funcs sf_cs
+                        (fun t => pure (ANF.Expr.yield (some t) delegate)) n m body hnorm
+                        (fun x hfx => hwf x (VarFreeIn.return_some_arg _ _ (VarFreeIn.yield_some_arg _ _ _ hfx)))
+                    have hnoerr_v : ∀ ev ∈ evs_v, ∀ msg, ev ≠ .error msg :=
+                      fun ev hev msg => by rw [hsil_v ev hev]; exact Core.TraceEvent.noConfusion
+                    -- First lift: through .yield (some ·) delegate
+                    obtain ⟨ws1, hwsteps1, hwexpr1, hwenv1, hwheap1, hwfuncs1, hwcs1, hwtrace1⟩ :=
+                      Steps_yield_some_ctx_b delegate hsteps_v hnoerr_v hpres_v
+                    have hpres1 := Steps_ctx_lift_pres (fun e => .yield (some e) delegate)
+                      (fun s inner hv t si hs he => step?_yield_some_ctx s inner delegate hv t si hs he)
+                      hsteps_v hnoerr_v hpres_v
+                    -- Second lift: through .return (some ·)
+                    obtain ⟨ws2, hwsteps2, hwexpr2, hwenv2, hwheap2, hwfuncs2, hwcs2, hwtrace2⟩ :=
+                      Steps_return_some_ctx_b hwsteps1 hnoerr_v hpres1
+                    have h_obs_nil := observableTrace_all_silent hsil_v
+                    refine ⟨evs_v, ws2, hwsteps2, ?_, ?_, ?_, ?_, ?_, ?_⟩
+                    · refine ⟨fun arg => pure (.trivial arg), n_v, m_v, ?_, ?_⟩
+                      · rw [hwexpr2, hwexpr1]
+                        simp only [ANF.normalizeExpr_return_some', ANF.normalizeExpr_yield_some']
+                        exact hnorm_v
+                      · intro arg n''
+                        exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
+                    · rw [hwenv2, hwenv1, henv_v]
+                    · rw [hwheap2, hwheap1, hheap_v]
+                    · rw [hwtrace2, hwtrace1, htrace_v, observableTrace_append, h_obs_nil, List.append_nil]
+                    · exact h_obs_nil
+                    · rw [hwexpr2, hwexpr1, hwenv2, hwenv1, henv_v]
+                      intro x hfx; cases hfx with
+                      | return_some_arg _ _ h1 => cases h1 with
+                        | yield_some_arg _ _ _ h2 => exact henv_v ▸ hewf_v x h2
+                · exfalso
+                  simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hk_ret
           | while_ _ _ =>
             exfalso; unfold ANF.normalizeExpr at hnorm
             simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
@@ -10846,8 +10884,37 @@ private theorem normalizeExpr_labeled_step_sim :
             | none => simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
             | some _ => simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
           | _ =>
-            -- Blocked: placeholder inference for compound val depth
-            sorry
+            -- val (compound catch-all) inside .return (some val)
+            rcases ANF.normalizeExpr_labeled_or_k _ _ label body n m hnorm with hlh_val | ⟨t_k, n_k, m_k, body_k, hk_ret⟩
+            · cases sf with
+              | mk sf_expr sf_env sf_heap sf_trace sf_funcs sf_cs =>
+                simp only [Flat.State.expr] at hsf; subst hsf
+                simp only [Flat.State.env, Flat.State.heap, Flat.State.trace, Flat.State.funcs, Flat.State.callStack] at hwf ⊢
+                obtain ⟨sf_v, evs_v, hsteps_v, hsil_v, henv_v, hheap_v, hfuncs_v, hcs_v,
+                  htrace_v, hpres_v, ⟨n_v, m_v, hnorm_v⟩, hewf_v⟩ :=
+                  normalizeExpr_labeled_branch_step d _ (by simp [Flat.Expr.depth] at hd; omega) label hlh_val
+                    sf_env sf_heap sf_trace sf_funcs sf_cs
+                    (fun t => pure (ANF.Expr.return (some t))) n m body hnorm
+                    (fun x hfx => hwf x (VarFreeIn.return_some_arg _ _ hfx))
+                have hnoerr_v : ∀ ev ∈ evs_v, ∀ msg, ev ≠ .error msg :=
+                  fun ev hev msg => by rw [hsil_v ev hev]; exact Core.TraceEvent.noConfusion
+                obtain ⟨ws1, hwsteps1, hwexpr1, hwenv1, hwheap1, hwfuncs1, hwcs1, hwtrace1⟩ :=
+                  Steps_return_some_ctx_b hsteps_v hnoerr_v hpres_v
+                have h_obs_nil := observableTrace_all_silent hsil_v
+                refine ⟨evs_v, ws1, hwsteps1, ?_, ?_, ?_, ?_, ?_, ?_⟩
+                · refine ⟨fun arg => pure (.trivial arg), n_v, m_v, ?_, ?_⟩
+                  · rw [hwexpr1]; simp only [ANF.normalizeExpr_return_some']; exact hnorm_v
+                  · intro arg n''
+                    exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
+                · rw [hwenv1, henv_v]
+                · rw [hwheap1, hheap_v]
+                · rw [hwtrace1, htrace_v, observableTrace_append, h_obs_nil, List.append_nil]
+                · exact h_obs_nil
+                · rw [hwexpr1, hwenv1, henv_v]
+                  intro x hfx; cases hfx with
+                  | return_some_arg _ _ h1 => exact henv_v ▸ hewf_v x h1
+            · exfalso
+              simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hk_ret
       | yield arg delegate =>
         cases arg with
         | none =>
@@ -10929,8 +10996,47 @@ private theorem normalizeExpr_labeled_step_sim :
                     | yield_some_arg _ _ _ h1 => cases h1 with
                       | return_some_arg _ _ h2 => exact hwf x (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.return_some_arg _ _ (VarFreeIn.labeled_body _ _ _ h2)))
               | _ =>
-                -- Blocked: placeholder inference for compound inner_val depth
-                sorry
+                -- inner_val (compound, not labeled) inside .yield (some (.return (some inner_val))) delegate
+                rcases ANF.normalizeExpr_labeled_or_k _ _ label body n m hnorm with hlh_inner | ⟨t_k, n_k, m_k, body_k, hk_ret⟩
+                · cases sf with
+                  | mk sf_expr sf_env sf_heap sf_trace sf_funcs sf_cs =>
+                    simp only [Flat.State.expr] at hsf; subst hsf
+                    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace, Flat.State.funcs, Flat.State.callStack] at hwf ⊢
+                    obtain ⟨sf_v, evs_v, hsteps_v, hsil_v, henv_v, hheap_v, hfuncs_v, hcs_v,
+                      htrace_v, hpres_v, ⟨n_v, m_v, hnorm_v⟩, hewf_v⟩ :=
+                      normalizeExpr_labeled_branch_step d _ (by simp [Flat.Expr.depth] at hd; omega) label hlh_inner
+                        sf_env sf_heap sf_trace sf_funcs sf_cs
+                        (fun t => pure (ANF.Expr.return (some t))) n m body hnorm
+                        (fun x hfx => hwf x (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.return_some_arg _ _ hfx)))
+                    have hnoerr_v : ∀ ev ∈ evs_v, ∀ msg, ev ≠ .error msg :=
+                      fun ev hev msg => by rw [hsil_v ev hev]; exact Core.TraceEvent.noConfusion
+                    -- First lift: through .return (some ·)
+                    obtain ⟨ws1, hwsteps1, hwexpr1, hwenv1, hwheap1, hwfuncs1, hwcs1, hwtrace1⟩ :=
+                      Steps_return_some_ctx_b hsteps_v hnoerr_v hpres_v
+                    have hpres1 := Steps_ctx_lift_pres (fun e => .«return» (some e))
+                      (fun s inner hv t si hs he => step?_return_some_ctx s inner hv t si hs he)
+                      hsteps_v hnoerr_v hpres_v
+                    -- Second lift: through .yield (some ·) delegate
+                    obtain ⟨ws2, hwsteps2, hwexpr2, hwenv2, hwheap2, hwfuncs2, hwcs2, hwtrace2⟩ :=
+                      Steps_yield_some_ctx_b delegate hwsteps1 hnoerr_v hpres1
+                    have h_obs_nil := observableTrace_all_silent hsil_v
+                    refine ⟨evs_v, ws2, hwsteps2, ?_, ?_, ?_, ?_, ?_, ?_⟩
+                    · refine ⟨fun arg => pure (.trivial arg), n_v, m_v, ?_, ?_⟩
+                      · rw [hwexpr2, hwexpr1]
+                        simp only [ANF.normalizeExpr_yield_some', ANF.normalizeExpr_return_some']
+                        exact hnorm_v
+                      · intro arg n''
+                        exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
+                    · rw [hwenv2, hwenv1, henv_v]
+                    · rw [hwheap2, hwheap1, hheap_v]
+                    · rw [hwtrace2, hwtrace1, htrace_v, observableTrace_append, h_obs_nil, List.append_nil]
+                    · exact h_obs_nil
+                    · rw [hwexpr2, hwexpr1, hwenv2, hwenv1, henv_v]
+                      intro x hfx; cases hfx with
+                      | yield_some_arg _ _ _ h1 => cases h1 with
+                        | return_some_arg _ _ h2 => exact henv_v ▸ hewf_v x h2
+                · exfalso
+                  simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hk_ret
           | yield arg delegate' =>
             cases arg with
             | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
@@ -10964,8 +11070,47 @@ private theorem normalizeExpr_labeled_step_sim :
                     | yield_some_arg _ _ _ h1 => cases h1 with
                       | yield_some_arg _ _ _ h2 => exact hwf x (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.labeled_body _ _ _ h2)))
               | _ =>
-                -- Blocked: placeholder inference for compound inner_val depth
-                sorry
+                -- inner_val (compound, not labeled) inside .yield (some (.yield (some inner_val) delegate')) delegate
+                rcases ANF.normalizeExpr_labeled_or_k _ _ label body n m hnorm with hlh_inner | ⟨t_k, n_k, m_k, body_k, hk_ret⟩
+                · cases sf with
+                  | mk sf_expr sf_env sf_heap sf_trace sf_funcs sf_cs =>
+                    simp only [Flat.State.expr] at hsf; subst hsf
+                    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace, Flat.State.funcs, Flat.State.callStack] at hwf ⊢
+                    obtain ⟨sf_v, evs_v, hsteps_v, hsil_v, henv_v, hheap_v, hfuncs_v, hcs_v,
+                      htrace_v, hpres_v, ⟨n_v, m_v, hnorm_v⟩, hewf_v⟩ :=
+                      normalizeExpr_labeled_branch_step d _ (by simp [Flat.Expr.depth] at hd; omega) label hlh_inner
+                        sf_env sf_heap sf_trace sf_funcs sf_cs
+                        (fun t => pure (ANF.Expr.yield (some t) delegate')) n m body hnorm
+                        (fun x hfx => hwf x (VarFreeIn.yield_some_arg _ _ _ (VarFreeIn.yield_some_arg _ _ _ hfx)))
+                    have hnoerr_v : ∀ ev ∈ evs_v, ∀ msg, ev ≠ .error msg :=
+                      fun ev hev msg => by rw [hsil_v ev hev]; exact Core.TraceEvent.noConfusion
+                    -- First lift: through .yield (some ·) delegate'
+                    obtain ⟨ws1, hwsteps1, hwexpr1, hwenv1, hwheap1, hwfuncs1, hwcs1, hwtrace1⟩ :=
+                      Steps_yield_some_ctx_b delegate' hsteps_v hnoerr_v hpres_v
+                    have hpres1 := Steps_ctx_lift_pres (fun e => .yield (some e) delegate')
+                      (fun s inner hv t si hs he => step?_yield_some_ctx s inner delegate' hv t si hs he)
+                      hsteps_v hnoerr_v hpres_v
+                    -- Second lift: through .yield (some ·) delegate
+                    obtain ⟨ws2, hwsteps2, hwexpr2, hwenv2, hwheap2, hwfuncs2, hwcs2, hwtrace2⟩ :=
+                      Steps_yield_some_ctx_b delegate hwsteps1 hnoerr_v hpres1
+                    have h_obs_nil := observableTrace_all_silent hsil_v
+                    refine ⟨evs_v, ws2, hwsteps2, ?_, ?_, ?_, ?_, ?_, ?_⟩
+                    · refine ⟨fun arg => pure (.trivial arg), n_v, m_v, ?_, ?_⟩
+                      · rw [hwexpr2, hwexpr1]
+                        simp only [ANF.normalizeExpr_yield_some']
+                        exact hnorm_v
+                      · intro arg n''
+                        exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
+                    · rw [hwenv2, hwenv1, henv_v]
+                    · rw [hwheap2, hwheap1, hheap_v]
+                    · rw [hwtrace2, hwtrace1, htrace_v, observableTrace_append, h_obs_nil, List.append_nil]
+                    · exact h_obs_nil
+                    · rw [hwexpr2, hwexpr1, hwenv2, hwenv1, henv_v]
+                      intro x hfx; cases hfx with
+                      | yield_some_arg _ _ _ h1 => cases h1 with
+                        | yield_some_arg _ _ _ h2 => exact henv_v ▸ hewf_v x h2
+                · exfalso
+                  simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hk_ret
           | while_ _ _ =>
             exfalso; unfold ANF.normalizeExpr at hnorm
             simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm
@@ -10977,8 +11122,37 @@ private theorem normalizeExpr_labeled_step_sim :
             | none => simp only [StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
             | some _ => simp only [Functor.map, StateT.map, StateT.run, bind, Bind.bind, StateT.bind, Except.bind] at hnorm; repeat (first | split at hnorm | (simp [pure, Pure.pure, StateT.pure, Except.pure] at hnorm; try exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1))
           | _ =>
-            -- Blocked: placeholder inference for compound val depth
-            sorry
+            -- val (compound catch-all) inside .yield (some val) delegate
+            rcases ANF.normalizeExpr_labeled_or_k _ _ label body n m hnorm with hlh_val | ⟨t_k, n_k, m_k, body_k, hk_ret⟩
+            · cases sf with
+              | mk sf_expr sf_env sf_heap sf_trace sf_funcs sf_cs =>
+                simp only [Flat.State.expr] at hsf; subst hsf
+                simp only [Flat.State.env, Flat.State.heap, Flat.State.trace, Flat.State.funcs, Flat.State.callStack] at hwf ⊢
+                obtain ⟨sf_v, evs_v, hsteps_v, hsil_v, henv_v, hheap_v, hfuncs_v, hcs_v,
+                  htrace_v, hpres_v, ⟨n_v, m_v, hnorm_v⟩, hewf_v⟩ :=
+                  normalizeExpr_labeled_branch_step d _ (by simp [Flat.Expr.depth] at hd; omega) label hlh_val
+                    sf_env sf_heap sf_trace sf_funcs sf_cs
+                    (fun t => pure (ANF.Expr.yield (some t) delegate)) n m body hnorm
+                    (fun x hfx => hwf x (VarFreeIn.yield_some_arg _ _ _ hfx))
+                have hnoerr_v : ∀ ev ∈ evs_v, ∀ msg, ev ≠ .error msg :=
+                  fun ev hev msg => by rw [hsil_v ev hev]; exact Core.TraceEvent.noConfusion
+                obtain ⟨ws1, hwsteps1, hwexpr1, hwenv1, hwheap1, hwfuncs1, hwcs1, hwtrace1⟩ :=
+                  Steps_yield_some_ctx_b delegate hsteps_v hnoerr_v hpres_v
+                have h_obs_nil := observableTrace_all_silent hsil_v
+                refine ⟨evs_v, ws1, hwsteps1, ?_, ?_, ?_, ?_, ?_, ?_⟩
+                · refine ⟨fun arg => pure (.trivial arg), n_v, m_v, ?_, ?_⟩
+                  · rw [hwexpr1]; simp only [ANF.normalizeExpr_yield_some']; exact hnorm_v
+                  · intro arg n''
+                    exact ⟨n'', by simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run]⟩
+                · rw [hwenv1, henv_v]
+                · rw [hwheap1, hheap_v]
+                · rw [hwtrace1, htrace_v, observableTrace_append, h_obs_nil, List.append_nil]
+                · exact h_obs_nil
+                · rw [hwexpr1, hwenv1, henv_v]
+                  intro x hfx; cases hfx with
+                  | yield_some_arg _ _ _ h1 => exact henv_v ▸ hewf_v x h1
+            · exfalso
+              simp [pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hk_ret
       | while_ cond body_w =>
         -- while produces .seq (.while_ ...) rest, never .labeled
         exfalso; unfold ANF.normalizeExpr at hnorm
