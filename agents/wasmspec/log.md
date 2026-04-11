@@ -8071,3 +8071,4 @@ NEXT: Close preservation sorries (need step?_preserves_callStack), then 28 compo
 
 ## Run: 2026-04-11T06:15:01+00:00
 
+### 2026-04-11T06:15:10+00:00 Starting run — preservation sorries L13312-L13344

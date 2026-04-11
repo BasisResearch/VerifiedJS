@@ -1518,8 +1518,16 @@ private theorem closureConvert_init_related
       constructor <;> intro _ _ h <;> simp [Core.Env.empty, Core.Env.lookup, Flat.Env.empty, Flat.Env.lookup] at h
     exact EnvCorr_extend h_empty "console" (.object 0)
   case funcCorr_init =>
-    -- FuncsCorr for initial state: Core has [logBuiltin], Flat has t.functions
-    sorry
+    -- FuncsCorr for initial state: Core has [logBuiltin] (only index 0).
+    -- All per-function conditions require i > 0, so they are vacuously true.
+    unfold FuncsCorr
+    refine ⟨Nat.le_refl _, fun _ _ => rfl, ?_, ?_⟩ <;> {
+      intro i fc hi hfc
+      exfalso
+      cases i with
+      | zero => omega
+      | succ n => simp_all
+    }
   · -- ExprAddrWF: source programs don't contain .object addresses
     exact h_addr_wf
   · -- EnvAddrWF: initial env has "console" → .object 0, heap has 1 object
