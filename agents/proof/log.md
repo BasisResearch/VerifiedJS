@@ -7616,3 +7616,36 @@ All sorry locations (L10183+) time out with 30s LSP timeout. Cannot use `lean_mu
 These need multi-step simulation: evaluate `a` to value, then step to `b`, then `b` produces the break. But this requires `a` to terminate (not diverge, not error). Same issue for HasContinueInHead.
 
 Moving to P2 (L18229, L18300).
+
+### 2026-04-11T12:30 Comprehensive analysis — All 21 non-trivialChain ANF sorries share one root cause
+
+**ROOT CAUSE**: `Flat.step?` (and `ANF.step?`) tryCatch non-call-frame catch case at Flat/Semantics.lean:1104-1111 emits `(.error msg, {expr := handler})`. This should be `(.silent, {expr := handler})` because:
+1. The error was CAUGHT — it shouldn't propagate as an error
+2. This causes error propagation through ALL outer compound expressions, making `handler` (not `.lit v`) the result expr
+3. This makes `HasReturnInHead_step_error_isLit` FALSE, blocking the entire HasReturnInHead cascade
+4. This makes `HasBreakInHead_step?_produces_error` false for right compound cases
+5. This blocks ALL compound error propagation proofs
+
+**PROPOSED FIX** (2 lines each in 2 files):
+```
+# Flat/Semantics.lean L1109-1111 (can edit — group-writable)
+- some (.error msg, pushTrace { ... } (.error msg))
++ some (.silent, pushTrace { ... } .silent)
+
+# ANF/Semantics.lean L403-405 (CANNOT edit — wasmspec-owned, not group-writable)  
+- some (.error msg, pushTrace { ... } (.error msg))
++ some (.silent, pushTrace { ... } .silent)
+```
+
+**BLOCKED**: Cannot edit ANF/Semantics.lean (owned by wasmspec, `-rw-r-----`). Both files must change together for bisimulation consistency.
+
+**IMPACT IF FIXED**: Would unblock ALL 21 non-trivialChain sorries:
+- L14229: HasReturnInHead_step_error_isLit becomes provable universally
+- L14298 cascade: Steps_steppable → callStackSafe → ~40 call sites
+- L4743, L5881: break/continue head-position cases become single-step provable  
+- L13287, L13352: throw compound cases
+- L15570: return compound cases
+- L18661, L18732: break/continue compound in anfConvert_step_star
+- And cascading through all dependent sorry sites
+
+**ACTION NEEDED**: wasmspec team needs to make ANF/Semantics.lean group-writable, OR apply the 2-line fix to ANF/Semantics.lean L403-405.
