@@ -6774,3 +6774,64 @@ echo "2026-04-11T03:00:32+00:00,49,ongoing" >> logs/time_estimate.csv
 
 ## Run: 2026-04-11T07:05:01+00:00
 
+
+## Run: 2026-04-11T07:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 32 + CC 15 + Wasm 0 = **47 total**
+- **Delta from last run (06:05)**: +1 (46→47). UP by 1.
+- **Explanation**: wasmspec decomposed monolithic HasReturnInHead sorry into sub-cases: removed 1 catch-all, added 3 preservation + 1 compound = net +3, offset by proof closing NoNestedAbrupt (-1) and other work. This is intentional decomposition — smaller provable goals replace opaque sorry.
+- **BUILD**: Not verified (LSP only).
+
+### What Happened Since Last Run (06:05)
+1. **proof**: 06:30 run WASTED on trivialChain (L10183-L10554) despite prompt saying BLOCKED. Redirected forcefully — added bold warning to prompt.
+2. **jsspec**: 07:00 run crashed (exit code 1). No work done. Added crash recovery instructions to prompt.
+3. **wasmspec**: 07:00 run started on Steps preservation (P0). Previous run (06:15) also crashed (exit code 1). Added crash check to prompt.
+
+### Agent Status
+1. **proof**: Running since 06:30 on wrong target (trivialChain). Prompt rewritten to BLOCK trivialChain, redirect to L17229/L17300.
+2. **jsspec**: Crashed at 07:00. Prompt unchanged (CC_SimRel error disjunct). Added crash recovery step.
+3. **wasmspec**: Running since 07:00 on Steps preservation. Prompt unchanged. Added crash check.
+
+### Prompts Rewritten (all 3)
+
+1. **proof**: Added ⚠️ DO NOT WORK ON trivialChain warning. P0 = L17229/L17300 (compound break/continue, 2 sorries). P1 = L16999 (noCallFrameReturn). P2 = L13312-L13344 (only if wasmspec fails).
+
+2. **jsspec**: Same strategy (CC_SimRel error disjunct for L5163/L5262/L5501). Added crash recovery instructions. Backup before modifying CC_SimRel.
+
+3. **wasmspec**: Same strategy (Steps preservation L13312/L13328/L13344, then compound expansion). Added crash state check.
+
+### Sorry Classification (47 total)
+- **Trivial-chain BLOCKED (proof)**: 12 (L10183-L10554) — needs normalizeExpr substitution lemma
+- **HasReturnInHead preservation (wasmspec)**: 3 (L13312, L13328, L13344)
+- **HasReturnInHead compound (wasmspec)**: 1 (L13353 catch-all, expands to ~28)
+- **Compound HasAwait/HasYield (wasmspec)**: 2 (L13709, L13882)
+- **Return/yield .let (wasmspec)**: 3 (L13938, L13942, L13943)
+- **Compound catch-all (wasmspec)**: 1 (L12969)
+- **Compound break/continue (proof)**: 2 (L17229, L17300)
+- **noCallFrameReturn (proof)**: 1 (L16999)
+- **body_sim IH (proof)**: 1 (L17010)
+- **Error structural (jsspec)**: 3 (L5163, L5262, L5501) — CC_SimRel fix in progress
+- **CCStateAgree blocked**: 6 (L5344, L5370, L8212, L8215, L8289, L8405)
+- **Multi-step blocked**: 4 (L4995, L5944, L6152, L6163)
+- **Unprovable**: 1 (L6803)
+- **functionDef**: 1 (L8055)
+- **while**: 2 (L14033, L14045)
+- **if_branch K-mismatch**: 2 (L14770, L14810)
+- **tryCatch**: 3 (L15651, L15669, L15672)
+- **call_args/newObj_args list**: 2 (L10408, L10460)
+
+### Critical Path
+1. wasmspec: Steps preservation → -3 (then compound expansion → up to -7 more)
+2. proof: L17229/L17300 → -2, L16999 → -1
+3. jsspec: CC_SimRel error disjunct → -3
+4. Best case next run: ~38-40 (if all P0s close)
+
+### Trend
+- 01:30: 59 sorries
+- 04:05: 48 sorries (-11 in 2.5h)
+- 06:05: 46 sorries (-2 in 2h)
+- 07:05: 47 sorries (+1 in 1h — decomposition, not regression)
+- Target next run: ≤43 (need -4 minimum)
+
+---

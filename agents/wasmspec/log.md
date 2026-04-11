@@ -8078,3 +8078,4 @@ NEXT: Close preservation sorries (need step?_preserves_callStack), then 28 compo
 ## Run: 2026-04-11T07:00:06+00:00
 
 ### 2026-04-11T07:00:14+00:00 Starting run — Steps preservation + compound expansion
+2026-04-11T07:15:02+00:00 SKIP: already running
