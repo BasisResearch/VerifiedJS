@@ -13252,23 +13252,19 @@ private theorem hasReturnInHead_callStackSafe (e : Flat.Expr) (hret : HasReturnI
 
 /-- Non-error steps preserve HasReturnInHead. -/
 private theorem HasReturnInHead_step_nonError
-    {e : Flat.Expr} {env : Flat.Env} {heap : Core.Heap} {trace : List Core.TraceEvent}
-    {funcs : Array Flat.FuncDef} {cs : List Flat.Env}
-    {t : Core.TraceEvent} {s' : Flat.State}
-    (hret : HasReturnInHead e)
-    (hstep : Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (t, s'))
+    {sf sf' : Flat.State} {t : Core.TraceEvent}
+    (hret : HasReturnInHead sf.expr)
+    (hstep : Flat.step? sf = some (t, sf'))
     (hnoerr : ∀ msg, t ≠ .error msg) :
-    HasReturnInHead s'.expr := by
+    HasReturnInHead sf'.expr := by
   sorry
 
 /-- Error steps from HasReturnInHead expressions produce lit values (not steppable). -/
 private theorem HasReturnInHead_step_error_isLit
-    {e : Flat.Expr} {env : Flat.Env} {heap : Core.Heap} {trace : List Core.TraceEvent}
-    {funcs : Array Flat.FuncDef} {cs : List Flat.Env}
-    {msg : String} {s' : Flat.State}
-    (hret : HasReturnInHead e)
-    (hstep : Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (.error msg, s')) :
-    ∃ v, s'.expr = .lit v := by
+    {sf sf' : Flat.State} {msg : String}
+    (hret : HasReturnInHead sf.expr)
+    (hstep : Flat.step? sf = some (.error msg, sf')) :
+    ∃ v, sf'.expr = .lit v := by
   sorry
 
 /-- At every steppable intermediate state reachable from a HasReturnInHead expression,
@@ -13282,39 +13278,38 @@ private theorem HasReturnInHead_Steps_steppable
     {t : Core.TraceEvent} {smid' : Flat.State}
     (hstep : Flat.step? smid = some (t, smid')) :
     HasReturnInHead smid.expr := by
-  suffices ∀ (s0 : Flat.State) (evs : List Core.TraceEvent) (smid : Flat.State),
+  suffices h : ∀ (s0 sf : Flat.State) (evs : List Core.TraceEvent),
       HasReturnInHead s0.expr →
-      Flat.Steps s0 evs smid →
-      ∀ (t : Core.TraceEvent) (smid' : Flat.State),
-      Flat.step? smid = some (t, smid') →
-      HasReturnInHead smid.expr from
-    this ⟨a, env, heap, trace, funcs, cs⟩ evs_pre smid hret hsteps t smid' hstep
-  intro s0 evs smid hret0 hsteps0 t0 smid0 hstep0
+      Flat.Steps s0 evs sf →
+      ∀ (t' : Core.TraceEvent) (sf' : Flat.State),
+      Flat.step? sf = some (t', sf') →
+      HasReturnInHead sf.expr by
+    exact h ⟨a, env, heap, trace, funcs, cs⟩ smid evs_pre hret hsteps t smid' hstep
+  intro s0 sf evs hret0 hsteps0
   induction hsteps0 with
-  | refl => exact hret0
-  | @tail s0' s2 smid' t_prev ts hfirst hrest ih =>
-    -- hfirst : Step s0' t_prev s2, hrest : Steps s2 ts smid'
-    have hstep_prev := hfirst.1 -- step? s0' = some (t_prev, s2)
-    by_cases ht : ∃ msg', t_prev = .error msg'
-    · -- Error case: s2.expr is a lit value → not steppable → contradiction
+  | refl => intro _ _ _; exact hret0
+  | @tail s1 s2 s3 ev evs' hfirst hrest ih =>
+    intro t' sf' hstep_sf
+    -- hfirst : Step s1 ev s2, hrest : Steps s2 evs' s3
+    -- s3 = sf, need HasReturnInHead s3.expr given step? s3 = some (t', sf')
+    have hstep_s1 : Flat.step? s1 = some (ev, s2) := hfirst.1
+    by_cases ht : ∃ msg', ev = .error msg'
+    · -- Error step from s1: s2.expr is lit → Steps s2 must be refl → contradiction
       obtain ⟨msg', rfl⟩ := ht
-      obtain ⟨v, hv⟩ := HasReturnInHead_step_error_isLit hret0 hstep_prev
-      -- s2.expr = .lit v, so step? s2 = none
-      have : Flat.step? s2 = none := by
-        have : Flat.step? ⟨Flat.Expr.lit v, s2.env, s2.heap, s2.trace, s2.funcs, s2.callStack⟩ = none := by
-          unfold Flat.step?; simp
-        cases s2; simp_all [Flat.State.expr] at hv ⊢; subst hv; exact this
-      -- But Steps s2 ts smid' requires either refl or a step from s2
+      obtain ⟨v, hv⟩ := HasReturnInHead_step_error_isLit hret0 hstep_s1
+      exfalso
+      have hlit : Flat.step? s2 = none := by
+        cases s2 with | mk e2 env2 heap2 trace2 funcs2 cs2 =>
+        simp [Flat.State.expr] at hv; subst hv; exact Flat.step?_lit_none _ v
       cases hrest with
       | refl => simp_all
-      | tail hfirst2 _ =>
-        have := hfirst2.1
-        simp_all
-    · -- Non-error case: HasReturnInHead preserved
-      push_neg at ht
+      | tail hfirst2 _ => exact absurd hfirst2.1 (by rw [hlit]; exact fun h => nomatch h)
+    · -- Non-error step: HasReturnInHead preserved to s2
+      have hnoerr : ∀ msg, ev ≠ .error msg := by
+        intro msg h; exact ht ⟨msg, h⟩
       have hs2_ret : HasReturnInHead s2.expr :=
-        HasReturnInHead_step_nonError hret0 hstep_prev ht
-      exact ih hs2_ret hstep0
+        HasReturnInHead_step_nonError hret0 hstep_s1 hnoerr
+      exact ih hs2_ret t' sf' hstep_sf
 
 /-- Main inductive theorem: if HasReturnInHead e and normalizeExpr e K produces .return arg,
     then Flat.Steps from e match the return behavior. Works with ANY continuation K
