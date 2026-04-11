@@ -8305,3 +8305,5 @@ For list cases (`makeEnv_values`, `objectLit_props`, `arrayLit_elems`):
 - Needs: multi-step lemma or split into head/tail list cases
 
 **ANF sorry count: 44 (down from 46)**
+### 2026-04-11T16:40:18+00:00 Run complete — 2 Case B sorries closed (seq_right none + some). P1/P2 blocked (documented). ANF sorry count 44 (down from 46).
+2026-04-11T16:41:45+00:00 DONE
