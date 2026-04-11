@@ -15337,9 +15337,14 @@ private theorem HasReturnInHead_Steps_steppable
       -- tryCatches don't arise from normalizeExpr .return contexts), and call-frame
       -- tryCatches propagate non-return errors to .lit .undefined.
       rcases Classical.em (HasTryCatchInHead s1.expr) with htc | hntc
-      · -- HasTryCatchInHead s1.expr: all tryCatches in head are call-frames.
-        -- Call-frame tryCatches on non-return errors produce .lit .undefined.
-        -- BLOCKED: need HasNonCallFrameTryCatchInHead invariant through Steps.
+      · -- HasTryCatchInHead s1.expr: only call-frame tryCatches should appear here.
+        -- BLOCKED: theorem is too general — needs ¬HasNonCallFrameTryCatchInHead in
+        -- active eval-head as additional invariant. In normalizeExpr .return context
+        -- (where this theorem is used), non-call-frame tryCatches never appear in
+        -- eval-head because (1) normalizeExpr(.tryCatch ..) never produces .return,
+        -- (2) non-error steps only introduce call-frame tryCatches from function calls.
+        -- Use callFrame_tryCatch_step_error_isLit for call-frame cases once invariant
+        -- infrastructure is in place. See analysis at L9471.
         sorry
       · obtain ⟨v, hv⟩ := HasReturnInHead_step_error_isLit hret0 hntc hstep_s1
         exfalso
