@@ -16954,8 +16954,7 @@ private theorem hasReturnInHead_return_steps :
           refine ⟨?_, ?_, ?_⟩
           · intro harg; exact absurd harg (by simp)
           · intro t v harg heval
-            obtain rfl := Option.some.inj harg
-            obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_ok t v rfl heval
+            obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_ok t v harg heval
             have herr : ∃ msg, .error msg ∈ evs := observableTrace_return_has_error hobs_b
             have hpres : ∀ smid evs1, Flat.Steps ⟨b, env, heap, trace, funcs, cs⟩ evs1 smid →
                 evs1.length ≤ evs.length →
@@ -16969,15 +16968,14 @@ private theorem hasReturnInHead_return_steps :
                 Flat.Steps_trace_append hsteps⟩
             obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
               Steps_compound_error_lift (.binary op · a)
-                (fun s inner hv t si hs he => step?_binary_lhs_ctx s op inner a hv t si hs he)
+                (fun s inner hv t' si hs he => step?_binary_lhs_ctx s op inner a hv t' si hs he)
                 (fun s inner hv msg si hs => step?_binary_lhs_error s op inner a hv msg si hs)
                 hsteps_b herr hpres
             exact ⟨evs, sf', hsteps',
               hexpr'.trans hexpr_b, henv'.trans henv_b, hheap'.trans hheap_b,
               htrace'.trans htrace_b, hobs_b⟩
           · intro t msg harg heval
-            obtain rfl := Option.some.inj harg
-            obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_err t msg rfl heval
+            obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_err t msg harg heval
             have herr : ∃ msg', .error msg' ∈ evs := observableTrace_return_has_error hobs_b
             have hpres : ∀ smid evs1, Flat.Steps ⟨b, env, heap, trace, funcs, cs⟩ evs1 smid →
                 evs1.length ≤ evs.length →
@@ -17007,8 +17005,7 @@ private theorem hasReturnInHead_return_steps :
             refine ⟨?_, ?_, ?_⟩
             · intro harg; exact absurd harg (by simp)
             · intro t v harg heval
-              obtain rfl := Option.some.inj harg
-              obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_ok t v rfl heval
+              obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_ok t v harg heval
               have herr : ∃ msg, .error msg ∈ evs := observableTrace_return_has_error hobs_b
               have hpres : ∀ smid evs1, Flat.Steps ⟨b, env, heap, trace, funcs, cs⟩ evs1 smid →
                   evs1.length ≤ evs.length →
@@ -17022,15 +17019,14 @@ private theorem hasReturnInHead_return_steps :
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.binary op · a)
-                  (fun s inner hv t si hs he => step?_binary_lhs_ctx s op inner a hv t si hs he)
+                  (fun s inner hv t' si hs he => step?_binary_lhs_ctx s op inner a hv t' si hs he)
                   (fun s inner hv msg si hs => step?_binary_lhs_error s op inner a hv msg si hs)
                   hsteps_b herr hpres
               exact ⟨evs, sf', hsteps',
                 hexpr'.trans hexpr_b, henv'.trans henv_b, hheap'.trans hheap_b,
                 htrace'.trans htrace_b, hobs_b⟩
             · intro t msg harg heval
-              obtain rfl := Option.some.inj harg
-              obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_err t msg rfl heval
+              obtain ⟨evs, sf_b, hsteps_b, hexpr_b, henv_b, hheap_b, htrace_b, hobs_b⟩ := ih_err t msg harg heval
               have herr : ∃ msg', .error msg' ∈ evs := observableTrace_return_has_error hobs_b
               have hpres : ∀ smid evs1, Flat.Steps ⟨b, env, heap, trace, funcs, cs⟩ evs1 smid →
                   evs1.length ≤ evs.length →
@@ -17044,7 +17040,7 @@ private theorem hasReturnInHead_return_steps :
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.binary op · a)
-                  (fun s inner hv t si hs he => step?_binary_lhs_ctx s op inner a hv t si hs he)
+                  (fun s inner hv t' si hs he => step?_binary_lhs_ctx s op inner a hv t' si hs he)
                   (fun s inner hv msg' si hs => step?_binary_lhs_error s op inner a hv msg' si hs)
                   hsteps_b herr hpres
               exact ⟨evs, sf', hsteps',
@@ -17084,8 +17080,7 @@ private theorem hasReturnInHead_return_steps :
             refine ⟨?_, ?_, ?_⟩
             · intro harg; exact absurd harg (by simp)
             · intro t v harg heval
-              obtain rfl := Option.some.inj harg
-              obtain ⟨evs_a, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_ok_a t v rfl heval
+              obtain ⟨evs_a, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_ok_a t v harg heval
               have herr : ∃ msg, .error msg ∈ evs_a := observableTrace_return_has_error hobs_a
               have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace ++ evs_b, funcs, cs⟩ evs1 smid →
                   evs1.length ≤ evs_a.length →
@@ -17099,7 +17094,7 @@ private theorem hasReturnInHead_return_steps :
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.binary op (.lit v_b) ·)
-                  (fun s inner hv t si hs he => step?_binary_rhs_ctx s op v_b inner hv t si hs he)
+                  (fun s inner hv t' si hs he => step?_binary_rhs_ctx s op v_b inner hv t' si hs he)
                   (fun s inner hv msg si hs => step?_binary_rhs_error s op v_b inner hv msg si hs)
                   hsteps_a herr hpres
               exact ⟨evs_b ++ evs_a, sf',
@@ -17108,8 +17103,7 @@ private theorem hasReturnInHead_return_steps :
                 by rw [htrace'.trans htrace_a]; simp [List.append_assoc],
                 by rw [observableTrace_append, observableTrace_all_silent hsil_b, List.nil_append]; exact hobs_a⟩
             · intro t msg harg heval
-              obtain rfl := Option.some.inj harg
-              obtain ⟨evs_a, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_err_a t msg rfl heval
+              obtain ⟨evs_a, sf_a, hsteps_a, hexpr_a, henv_a, hheap_a, htrace_a, hobs_a⟩ := ih_err_a t msg harg heval
               have herr : ∃ msg', .error msg' ∈ evs_a := observableTrace_return_has_error hobs_a
               have hpres : ∀ smid evs1, Flat.Steps ⟨a, env, heap, trace ++ evs_b, funcs, cs⟩ evs1 smid →
                   evs1.length ≤ evs_a.length →
@@ -17123,7 +17117,7 @@ private theorem hasReturnInHead_return_steps :
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.binary op (.lit v_b) ·)
-                  (fun s inner hv t si hs he => step?_binary_rhs_ctx s op v_b inner hv t si hs he)
+                  (fun s inner hv t' si hs he => step?_binary_rhs_ctx s op v_b inner hv t' si hs he)
                   (fun s inner hv msg' si hs => step?_binary_rhs_error s op v_b inner hv msg' si hs)
                   hsteps_a herr hpres
               exact ⟨evs_b ++ evs_a, sf',
