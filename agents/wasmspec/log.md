@@ -8015,3 +8015,6 @@ All these sorries share the same structure:
 - **Build status**: Should pass (only comment text changed; LSP confirms early file compiles cleanly)
 - **Key finding**: All P0 labeled_branch type (a) cases are blocked by ANF trivial ↔ flat value mismatch. This is a fundamental issue requiring new infrastructure (e.g., a normalizeExpr substitution lemma for trivials).
 2026-04-11T01:21:38+00:00 DONE
+
+## Run: 2026-04-11T02:15:01+00:00
+
