@@ -7715,3 +7715,4 @@ The sorry moved from inside step_error_isLit to the call site in Steps_steppable
 - Option B: Change Flat/Semantics.lean to emit .silent for non-call-frame tryCatch catch (requires updating ClosureConvertCorrect.lean which is jsspec-owned)
 - Option C: Work on P1 tasks (L4671, L5809 break/continue non-head cases) instead
 ### 2026-04-11T16:49:45+00:00 Run complete — step_error_isLit tryCatch case closed, sorry moved to Steps_steppable (net 0)
+2026-04-11T16:50:04+00:00 DONE
