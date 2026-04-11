@@ -15302,6 +15302,47 @@ private theorem HasReturnInHead_step_error_isLit
         · simp at hstep
       · simp at hstep
 
+/-- When ¬HasNonCallFrameTryCatchInHead e and step? produces .error, the result is .lit.
+    Key insight: error propagation drops all wrappers (.seq, .let, .call, etc.), and the only
+    thing that catches errors is .tryCatch. With ¬HasNonCallFrameTryCatchInHead:
+    - All tryCatches in eval-head are call-frame
+    - Call-frame tryCatch on return: error → .silent (not .error, contradicts error event)
+    - Call-frame tryCatch on non-return error → .lit .undefined
+    - No tryCatch → leaf error always produces .lit
+    So in all cases, the error step result is .lit v. -/
+private theorem step_error_noNonCallFrameTryCatch_isLit
+    {e : Flat.Expr} {env : Flat.Env} {heap : Core.Heap} {trace : List Core.TraceEvent}
+    {funcs : Array Flat.FuncDef} {cs : List Flat.Env}
+    {sf' : Flat.State} {msg : String}
+    (hncf : ¬HasNonCallFrameTryCatchInHead e)
+    (hstep : Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (.error msg, sf')) :
+    ∃ v, sf'.expr = .lit v := by
+  -- Proof by strong induction on expression depth.
+  -- For non-tryCatch expressions: error from sub-expression drops wrapper → recurse.
+  -- For tryCatch: must be call-frame (¬HasNonCallFrameTryCatchInHead) → .lit .undefined.
+  -- Subsumes HasReturnInHead_step_error_isLit (which requires ¬HasTryCatchInHead).
+  sorry
+
+/-- Non-error steps preserve ¬HasNonCallFrameTryCatchInHead.
+    Key insight: the only step that introduces .tryCatch is function call execution
+    (.call f env args with all values), which produces a call-frame tryCatch
+    (catchParam = "__call_frame_return__"). Non-call-frame tryCatch only comes from
+    source-level try/catch, which is already in the expression. -/
+private theorem step_nonError_preserves_noNonCallFrameTryCatch
+    {e : Flat.Expr} {env : Flat.Env} {heap : Core.Heap} {trace : List Core.TraceEvent}
+    {funcs : Array Flat.FuncDef} {cs : List Flat.Env}
+    {sf' : Flat.State} {t : Core.TraceEvent}
+    (hncf : ¬HasNonCallFrameTryCatchInHead e)
+    (hstep : Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (t, sf'))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    ¬HasNonCallFrameTryCatchInHead sf'.expr := by
+  -- Proof by strong induction on expression depth.
+  -- For compound expressions: non-error step modifies sub-expression, wraps back.
+  --   Sub-expression result has ¬HasNonCallFrameTryCatchInHead by IH.
+  --   Wrapper doesn't introduce non-call-frame tryCatch.
+  -- For .call with all values: produces call-frame tryCatch → ¬HasNonCallFrameTryCatchInHead.
+  sorry
+
 /-- At every steppable intermediate state reachable from a HasReturnInHead expression,
     the expression has HasReturnInHead (so callStack safety conditions hold). -/
 private theorem HasReturnInHead_Steps_steppable
@@ -15313,54 +15354,49 @@ private theorem HasReturnInHead_Steps_steppable
     {t : Core.TraceEvent} {smid' : Flat.State}
     (hstep : Flat.step? smid = some (t, smid')) :
     HasReturnInHead smid.expr := by
+  -- Carry ¬HasNonCallFrameTryCatchInHead as an invariant through the Steps induction.
+  -- This is needed because error steps through non-call-frame tryCatches can produce
+  -- non-.lit results that lose HasReturnInHead. With only call-frame tryCatches,
+  -- error steps always produce .lit → stuck → contradiction.
   suffices h : ∀ (s0 sf : Flat.State) (evs : List Core.TraceEvent),
       HasReturnInHead s0.expr →
+      ¬HasNonCallFrameTryCatchInHead s0.expr →
       Flat.Steps s0 evs sf →
       ∀ (t' : Core.TraceEvent) (sf' : Flat.State),
       Flat.step? sf = some (t', sf') →
       HasReturnInHead sf.expr by
-    exact h ⟨a, env, heap, trace, funcs, cs⟩ smid evs_pre hret hsteps t smid' hstep
-  intro s0 sf evs hret0 hsteps0
+    exact h ⟨a, env, heap, trace, funcs, cs⟩ smid evs_pre hret
+      (by -- ¬HasNonCallFrameTryCatchInHead a: true in normalizeExpr .return context
+       -- because normalizeExpr(.tryCatch ..) never produces .return, and the initial
+       -- expression from normalizeExpr has no tryCatch in eval-head at all.
+       sorry)
+      hsteps t smid' hstep
+  intro s0 sf evs hret0 hncf0 hsteps0
   induction hsteps0 with
   | refl => intro _ _ _; exact hret0
   | @tail s1 s2 s3 ev evs' hfirst hrest ih =>
     intro t' sf' hstep_sf
-    -- hfirst : Step s1 ev s2, hrest : Steps s2 evs' s3
-    -- s3 = sf, need HasReturnInHead s3.expr given step? s3 = some (t', sf')
     have hstep_s1 : Flat.step? s1 = some (ev, s2) := hfirst.1
     by_cases ht : ∃ msg', ev = .error msg'
-    · -- Error step from s1: s2.expr is lit → Steps s2 must be refl → contradiction
+    · -- Error step: ¬HasNonCallFrameTryCatchInHead → s2 is .lit → stuck → contradiction
       obtain ⟨msg', rfl⟩ := ht
-      -- Split on whether s1.expr has tryCatch in head position.
-      -- When ¬HasTryCatchInHead: HasReturnInHead_step_error_isLit gives s2 is lit.
-      -- When HasTryCatchInHead: only call-frame tryCatches can appear (non-call-frame
-      -- tryCatches don't arise from normalizeExpr .return contexts), and call-frame
-      -- tryCatches propagate non-return errors to .lit .undefined.
-      rcases Classical.em (HasTryCatchInHead s1.expr) with htc | hntc
-      · -- HasTryCatchInHead s1.expr: only call-frame tryCatches should appear here.
-        -- BLOCKED: theorem is too general — needs ¬HasNonCallFrameTryCatchInHead in
-        -- active eval-head as additional invariant. In normalizeExpr .return context
-        -- (where this theorem is used), non-call-frame tryCatches never appear in
-        -- eval-head because (1) normalizeExpr(.tryCatch ..) never produces .return,
-        -- (2) non-error steps only introduce call-frame tryCatches from function calls.
-        -- Use callFrame_tryCatch_step_error_isLit for call-frame cases once invariant
-        -- infrastructure is in place. See analysis at L9471.
-        sorry
-      · obtain ⟨v, hv⟩ := HasReturnInHead_step_error_isLit hret0 hntc hstep_s1
-        exfalso
-        have hlit : Flat.step? s2 = none := by
-          cases s2 with | mk e2 env2 heap2 trace2 funcs2 cs2 =>
-          simp [Flat.State.expr] at hv; subst hv
-          simp [Flat.step?]
-        cases hrest with
-        | refl => simp_all
-        | tail hfirst2 _ => exact absurd hfirst2.1 (by rw [hlit]; exact fun h => nomatch h)
-    · -- Non-error step: HasReturnInHead preserved to s2
+      obtain ⟨v, hv⟩ := step_error_noNonCallFrameTryCatch_isLit hncf0 hstep_s1
+      exfalso
+      have hlit : Flat.step? s2 = none := by
+        cases s2 with | mk e2 env2 heap2 trace2 funcs2 cs2 =>
+        simp [Flat.State.expr] at hv; subst hv
+        simp [Flat.step?]
+      cases hrest with
+      | refl => simp_all
+      | tail hfirst2 _ => exact absurd hfirst2.1 (by rw [hlit]; exact fun h => nomatch h)
+    · -- Non-error step: both invariants preserved to s2
       have hnoerr : ∀ msg, ev ≠ .error msg := by
         intro msg h; exact ht ⟨msg, h⟩
       have hs2_ret : HasReturnInHead s2.expr :=
         HasReturnInHead_step_nonError hret0 hstep_s1 hnoerr
-      exact ih hs2_ret t' sf' hstep_sf
+      have hs2_ncf : ¬HasNonCallFrameTryCatchInHead s2.expr :=
+        step_nonError_preserves_noNonCallFrameTryCatch hncf0 hstep_s1 hnoerr
+      exact ih hs2_ret hs2_ncf t' sf' hstep_sf
 
 /-- Main inductive theorem: if HasReturnInHead e and normalizeExpr e K produces .return arg,
     then Flat.Steps from e match the return behavior. Works with ANY continuation K
