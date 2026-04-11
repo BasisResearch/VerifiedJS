@@ -14359,6 +14359,181 @@ private theorem HasReturnInHead_step_error_isLit
           obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
         · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
       · simp at hstep
+    | unary_arg h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep
+          obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
+      · simp at hstep
+    | typeof_arg h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep
+          obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
+      · simp at hstep
+    | assign_val h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep
+          obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
+      · simp at hstep
+    | deleteProp_obj h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep
+          obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
+      · simp at hstep
+    | getProp_obj h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep
+          obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
+      · simp at hstep
+    | setProp_obj h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep
+          obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
+      · simp at hstep
+    | binary_lhs h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep
+          obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
+      · simp at hstep
+    | call_func h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep
+          obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
+      · simp at hstep
+    | newObj_func h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep
+          obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
+      · simp at hstep
+    | if_cond h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep
+          obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
+      · simp at hstep
+    | throw_arg h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep
+          obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
+      · simp at hstep
+    | yield_some_arg h =>
+      have hv := HasReturnInHead_not_value _ h
+      rename_i d
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep
+          obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
+      · simp at hstep
+    | await_arg h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep
+          obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
+      · simp at hstep
+    | getIndex_obj h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep
+          obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
+      · simp at hstep
+    | setIndex_obj h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep
+          obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
+      · simp at hstep
+    | getEnv_env h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep
+          obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
+      · simp at hstep
+    | makeClosure_env h =>
+      have hv := HasReturnInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep
+          obtain ⟨_, rfl⟩ := hstep; exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; nofun
+      · simp at hstep
+    -- Right-position cases: error comes from sub-expression without HasReturnInHead
+    -- BLOCKED: tryCatch non-call-frame catch in Flat.step? emits .error with non-lit expr
+    -- FIX: Change Flat/Semantics.lean L1109-1111 and ANF/Semantics.lean L403-405
+    --       tryCatch catch from (.error msg) to (.silent) — see agents/proof/log.md
     | all_goals sorry
 
 /-- At every steppable intermediate state reachable from a HasReturnInHead expression,
