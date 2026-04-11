@@ -8030,3 +8030,4 @@ All these sorries share the same structure:
 
 ## Run: 2026-04-11T04:15:01+00:00
 
+### 2026-04-11T04:15:08+00:00 Starting run — compound error prop L13285
