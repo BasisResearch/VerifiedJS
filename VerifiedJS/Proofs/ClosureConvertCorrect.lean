@@ -1335,23 +1335,24 @@ private theorem convertExpr_state_delta (e : Core.Expr)
       { st with nextId := st.nextId + 1 }
     constructor
     · -- nextId: addFunc doesn't change nextId, so result = body's output nextId
-      show (Flat.convertExpr body _ _ _ _).snd.nextId = st.nextId + (exprFuncCount body + 1)
-      rw [ih.1]; omega
+      have := ih.1; simp only [Flat.CCState.nextId] at this; omega
     · -- funcs.size: addFunc pushes one entry
-      show Array.size (Array.push _ _) = st.funcs.size + (exprFuncCount body + 1)
-      simp only [Array.size_push]; rw [ih.2]; omega
+      simp only [Array.size_push]; have := ih.2; simp only [Flat.CCState.funcs] at this; omega
   | throw arg =>
     simp only [Flat.convertExpr, exprFuncCount]
     exact convertExpr_state_delta arg scope envVar envMap st
   | tryCatch body catchParam catchBody finally_ =>
-    simp only [Flat.convertExpr, exprFuncCount]
+    simp only [Flat.convertExpr]
     have hb := convertExpr_state_delta body scope envVar envMap st
     have hc := convertExpr_state_delta catchBody (catchParam :: scope) envVar envMap
       (Flat.convertExpr body scope envVar envMap st).snd
     have hf := convertOptExpr_state_delta finally_ scope envVar envMap
       (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap
         (Flat.convertExpr body scope envVar envMap st).snd).snd
-    exact ⟨by rw [hf.1, hc.1, hb.1]; omega, by rw [hf.2, hc.2, hb.2]; omega⟩
+    simp only [exprFuncCount]
+    cases finally_ with
+    | none => simp at hf; exact ⟨by rw [hf.1, hc.1, hb.1]; omega, by rw [hf.2, hc.2, hb.2]; omega⟩
+    | some fin => exact ⟨by rw [hf.1, hc.1, hb.1]; omega, by rw [hf.2, hc.2, hb.2]; omega⟩
   | while_ cond body =>
     simp only [Flat.convertExpr, exprFuncCount]
     have hc := convertExpr_state_delta cond scope envVar envMap st
@@ -1359,21 +1360,21 @@ private theorem convertExpr_state_delta (e : Core.Expr)
       (Flat.convertExpr cond scope envVar envMap st).snd
     exact ⟨by rw [hb.1, hc.1]; omega, by rw [hb.2, hc.2]; omega⟩
   | «return» arg =>
-    simp only [Flat.convertExpr, exprFuncCount]
+    simp only [Flat.convertExpr]
     cases arg with
-    | none => simp [Flat.convertOptExpr]
+    | none => simp [Flat.convertOptExpr, exprFuncCount]
     | some e =>
-      simp only [Flat.convertOptExpr]
+      simp only [Flat.convertOptExpr, exprFuncCount]
       exact convertExpr_state_delta e scope envVar envMap st
   | labeled _ body =>
     simp only [Flat.convertExpr, exprFuncCount]
     exact convertExpr_state_delta body scope envVar envMap st
   | yield arg delegate =>
-    simp only [Flat.convertExpr, exprFuncCount]
+    simp only [Flat.convertExpr]
     cases arg with
-    | none => simp [Flat.convertOptExpr]
+    | none => simp [Flat.convertOptExpr, exprFuncCount]
     | some e =>
-      simp only [Flat.convertOptExpr]
+      simp only [Flat.convertOptExpr, exprFuncCount]
       exact convertExpr_state_delta e scope envVar envMap st
   | await arg =>
     simp only [Flat.convertExpr, exprFuncCount]
