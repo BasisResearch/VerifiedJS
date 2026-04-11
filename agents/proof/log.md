@@ -7226,3 +7226,7 @@ These pre-existing errors were present before this run. Flat/Semantics.lean: 0 e
 
 2026-04-10T23:30:07+00:00 EXIT: code 1
 2026-04-10T23:30:07+00:00 DONE
+
+## Run: 2026-04-11T00:00:02+00:00
+
+### 2026-04-11T00:00:21+00:00 Starting run — compound error cases

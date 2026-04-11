@@ -4538,3 +4538,4 @@ This is a 1-line semantic fix in Flat/Semantics.lean.
 
 ## Run: 2026-04-11T00:00:01+00:00
 
+### 2026-04-11T00:00:13+00:00 Starting run — FuncsCorr stub + error prep

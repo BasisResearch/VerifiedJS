@@ -1444,6 +1444,34 @@ private theorem evalBinary_valueAddrWF (op : Core.BinOp) (a b : Core.Value) (n :
   all_goals (apply ValueAddrWF_ite <;> first | assumption | simp [ValueAddrWF])
   all_goals exact hb
 
+/-- Correspondence between Core function closures and Flat lifted function
+    definitions. For each Core closure at index `i`, the Flat function table
+    at the same index has:
+    • matching parameter names
+    • a body that is the closure-converted form of the Core body
+    • an environment parameter that correctly maps the captured environment
+    This is sorry'd — establishing the properties requires induction over
+    the closure-conversion pass and is future work. -/
+private def FuncsCorr (injMap : Nat → Nat)
+    (coreFuncs : Array Core.FuncClosure) (flatFuncs : Array Flat.FuncDef)
+    (ccFuncs : Array Flat.FuncDef) : Prop :=
+  -- (1) Flat runtime funcs extend the CC-produced function table
+  ccFuncs.size ≤ flatFuncs.size ∧
+  (∀ i, i < ccFuncs.size → flatFuncs[i]? = ccFuncs[i]?) ∧
+  -- (2) Each Core closure corresponds to a Flat function definition
+  coreFuncs.size ≤ flatFuncs.size ∧
+  (∀ (i : Nat) (fc : Core.FuncClosure),
+    coreFuncs[i]? = some fc →
+    ∃ (fd : Flat.FuncDef),
+      flatFuncs[i]? = some fd ∧
+      fd.params = fc.params ∧
+      -- fd.body is the closure-converted form of fc.body (sorry'd)
+      sorry) ∧
+  -- (3) Environment correspondence: each captured variable in the Core
+  --     closure's capturedEnv maps to the Flat environment array entries
+  --     via injMap (sorry'd)
+  sorry
+
 /-- Simulation relation for closure conversion: Flat and Core states
     have matching traces, environment correspondence, and expression
     correspondence through the conversion. -/
