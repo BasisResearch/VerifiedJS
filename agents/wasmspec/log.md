@@ -8043,3 +8043,21 @@ All these sorries share the same structure:
 - Replaced original sorry at L13285 with 29 explicit calls to hasReturnInHead_return_steps
 - Net sorry change: +3 (was 31, now 34 grep matches, 33 code sorries)
 - Preservation sorries need step?_preserves_callStack (not yet proved)
+
+### 2026-04-11T05:29:50+00:00 Architecture details
+- Steps_compound_error_lift (L13130-13204): generic lifting for Steps through compound wrappers with error propagation
+  - Takes wrap function + step_ctx + step_error lemma instances
+  - Requires hpres (funcs/callStack/trace preservation for intermediate states)
+  - hpres is the BLOCKER: needs step?_preserves_callStack (not yet in Flat.Semantics)
+- hasReturnInHead_return_steps (L13225-13353): main theorem by induction on depth
+  - Base: return_none_direct + return_some_direct (via normalizeExpr_return_some_compound_case)
+  - Absurd: throw_arg, yield_some_arg, await_arg
+  - Compound: seq_left complete except preservation. Remaining 28 cases: same pattern.
+- normalizeExpr_return_step_sim (L13357+): original sorry replaced with 29 explicit constructor calls
+
+### BLOCKERS:
+1. step?_preserves_callStack: need to prove in Flat/Semantics.lean or inline
+   step? preserves callStack for all cases EXCEPT call entry/completion
+   For HasReturnInHead+NoNestedAbrupt, calls never complete, so callStack preserved
+2. Remaining 28 compound cases: mechanical copy-paste of seq_left pattern
+   Each case: simp normalizeExpr_FOO', get depth bound, IH, lift via Steps_compound_error_lift

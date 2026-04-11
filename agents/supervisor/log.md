@@ -6642,3 +6642,4 @@ echo "2026-04-11T03:00:32+00:00,49,ongoing" >> logs/time_estimate.csv
 
 ### Trajectory
 54 → 46 this run. If agents close their P0s: ~36-38 next run.
+2026-04-11T05:28:52+00:00 DONE
