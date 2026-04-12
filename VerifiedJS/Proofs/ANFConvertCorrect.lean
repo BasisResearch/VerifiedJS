@@ -16005,7 +16005,41 @@ private theorem hasThrowInHead_compound_throw_step_sim
           (ih lhs _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) hlhs hnorm'
             (fun x hfx => hewf' x (VarFreeIn.binary_lhs _ _ _ _ hfx))
             (by cases hna' with | binary ha _ => exact ha) trace')
-      · sorry -- second-operand: lhs evaluates to value, then rhs steps
+      · -- lhs has no throw: lhs is trivial chain, throw from rhs via continuation
+        rcases ANF.normalizeExpr_throw_or_k lhs _ arg' n' m' hnorm' with hlhs' | ⟨_, n₁, m₁, hcont⟩
+        · exact absurd hlhs' hlhs
+        · -- hcont : continuation (normalizeExpr rhs ...) produces .throw arg'
+          have htc := no_throw_head_implies_trivial_chain lhs.depth lhs (Nat.le_refl _) _ arg' n' m' hnorm' hlhs
+          obtain ⟨vlhs, evs_lhs, hsteps_lhs, hnoerr_lhs, hobs_lhs, hpres_lhs⟩ :=
+            trivialChain_eval_value (trivialChainCost lhs) lhs env heap trace' funcs cs htc
+              (Nat.le_refl _) (fun x hfx => hewf' x (VarFreeIn.binary_lhs _ _ _ _ hfx))
+          -- Lift lhs steps through .binary op [·] rhs context
+          obtain ⟨ws_lhs, hwsteps_lhs, hwexpr_lhs, hwenv_lhs, hwheap_lhs, hwfuncs_lhs, hwcs_lhs, hwtrace_lhs⟩ :=
+            Steps_binary_lhs_ctx_b op rhs hsteps_lhs hnoerr_lhs hpres_lhs
+          -- Now at .binary op (.lit vlhs) rhs — throw from rhs through binary_rhs context
+          have hws_lhs_eq : ws_lhs = ⟨.binary op (.lit vlhs) rhs, env, heap, trace' ++ evs_lhs, funcs, cs⟩ := by
+            cases ws_lhs; simp_all
+          -- Get throw compound lift for rhs
+          obtain ⟨ih_ok, ih_err⟩ :=
+            throwInHead_compound_lift h_sub
+              (fun s inner hv t si hs he => step?_binary_rhs_ctx s op vlhs inner hv t si hs he)
+              (fun s inner hv msg si hs => step?_binary_rhs_error s op vlhs inner hv msg si hs)
+              (ih rhs _ arg' n₁ m₁ (by simp [Flat.Expr.depth] at hd; omega) h_sub hcont
+                (fun x hfx => hewf' x (VarFreeIn.binary_rhs _ _ _ _ hfx))
+                (by cases hna' with | binary _ ha => exact ha) (trace' ++ evs_lhs))
+          refine ⟨fun v heval => ?_, fun msg heval => ?_⟩
+          · obtain ⟨evs_rhs, sf_rhs, hsteps_rhs, hexpr_rhs, henv_rhs, hheap_rhs, htrace_rhs, hobs_rhs⟩ := ih_ok v heval
+            refine ⟨evs_lhs ++ evs_rhs, sf_rhs,
+              Flat.Steps_trans (hws_lhs_eq ▸ hwsteps_lhs) hsteps_rhs,
+              hexpr_rhs, henv_rhs, hheap_rhs, ?_, ?_⟩
+            · rw [htrace_rhs]; simp [List.append_assoc]
+            · rw [observableTrace_append, hobs_lhs, hobs_rhs]; simp
+          · obtain ⟨evs_rhs, sf_rhs, hsteps_rhs, hexpr_rhs, henv_rhs, hheap_rhs, htrace_rhs, hobs_rhs⟩ := ih_err msg heval
+            refine ⟨evs_lhs ++ evs_rhs, sf_rhs,
+              Flat.Steps_trans (hws_lhs_eq ▸ hwsteps_lhs) hsteps_rhs,
+              hexpr_rhs, henv_rhs, hheap_rhs, ?_, ?_⟩
+            · rw [htrace_rhs]; simp [List.append_assoc]
+            · rw [observableTrace_append, hobs_lhs, hobs_rhs]; simp
     | setProp_val h_sub =>
       rename_i obj prop val
       simp only [ANF.normalizeExpr] at hnorm'
