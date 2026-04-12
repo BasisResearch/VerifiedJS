@@ -27304,7 +27304,8 @@ theorem anfConvert_correct (s : Flat.Program) (t : ANF.Program)
     (hwf_prog : ExprWellFormed s.main (Flat.initialState s).env)
     (hna_prog : NoNestedAbrupt s.main)
     (hfuncs_na_prog : ∀ (i : Nat) (fd : Flat.FuncDef), s.functions[i]? = some fd → NoNestedAbrupt fd.body)
-    (hfuncs_ac_prog : ∀ (i : Nat) (fd : Flat.FuncDef), s.functions[i]? = some fd → hasAbruptCompletion fd.body = false) :
+    (hfuncs_ac_prog : ∀ (i : Nat) (fd : Flat.FuncDef), s.functions[i]? = some fd → hasAbruptCompletion fd.body = false)
+    (hncfr_prog : noCallFrameReturn s.main = true) :
     ∀ b, ANF.Behaves t b →
       ∃ b', Flat.Behaves s b' ∧ observableTrace b = observableTrace b' := by
   intro b ⟨sa, hsteps, hhalt⟩
@@ -27313,10 +27314,7 @@ theorem anfConvert_correct (s : Flat.Program) (t : ANF.Program)
     hwf_prog
   have hna_init : NoNestedAbrupt (Flat.initialState s).expr := hna_prog
   have hncfr_init : noCallFrameReturn (Flat.initialState s).expr = true :=
-    sorry /- Source programs never use "__call_frame_return__" as a tryCatch catchParam.
-       This is a well-formedness property of the Flat program produced by closureConvert.
-       Prove by showing closureConvert preserves noCallFrameReturn from Core, or add
-       noCallFrameReturn as a precondition to the end-to-end theorem. -/
+    hncfr_prog
   -- Multi-step simulation (now threads WF)
   obtain ⟨sf, tr', hfsteps, hobstr, hrel, hwf_sf⟩ :=
     anfConvert_steps_star s t h _ _ _ _ hinit hwf_init hna_init hncfr_init hfuncs_na_prog hfuncs_ac_prog hsteps

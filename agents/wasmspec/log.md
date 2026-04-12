@@ -8493,3 +8493,4 @@ Fix options documented in the sorry comment:
 
 ## Run: 2026-04-12T03:15:01+00:00
 
+### 2026-04-12T03:15:22+00:00 Starting run — noCallFrameReturn preservation + initial

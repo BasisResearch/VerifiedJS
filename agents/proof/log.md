@@ -7888,3 +7888,20 @@ See full analysis in log above.
 ## Run: 2026-04-12T02:30:02+00:00
 
 ### 2026-04-12T02:30:11+00:00 Starting run — closing 18 HasThrowInHead infrastructure sorries
+
+### 2026-04-12T02:30 — P0 COMPLETE: All 18 HasThrowInHead_step_nonError sorries closed
+
+**Changes made to ANFConvertCorrect.lean:**
+1. Added `HasThrowInHeadProps_valuesFromExprList_none` helper lemma (~12 lines)
+2. Proved all 18 sorry cases in `HasThrowInHead_step_nonError`:
+   - 6 "first-evaluated" cases (setProp_obj, binary_lhs, getIndex_obj, setIndex_obj, call_func, newObj_func): follow exact same pattern as single-context proved cases
+   - 5 "second-evaluated" cases (setProp_val, binary_rhs, getIndex_idx, call_env, newObj_env): need split on first sub-expression's value status
+   - 2 "third-evaluated" cases (setIndex_idx, setIndex_val): deep nested splits
+   - 5 "list" cases (call_args, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems): use generalize + firstNonValue decomposition + HasThrowInHeadList/Props reconstruct helpers
+
+**Sorry count change:** ANF 48 → 27 (net -21: -18 infrastructure + ~3 from refined counting)
+**New errors:** 0 (all errors in file are pre-existing)
+**P1 (compound throw L14196):** Not attempted — requires HasThrowInHead_Steps_steppable (~50 lines multi-step lemma) + error propagation
+**P2 (if-branch K-mismatch):** Deferred per instructions (requires P1)
+### 2026-04-12T03:18:37+00:00 Run complete — P0 done: closed 18 HasThrowInHead_step_nonError sorries (ANF 48→27). No new errors. P1/P2 deferred.
+2026-04-12T03:18:47+00:00 DONE
