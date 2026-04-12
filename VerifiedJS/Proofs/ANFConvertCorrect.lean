@@ -9519,6 +9519,93 @@ private theorem not_HasNonCallFrameTryCatchInEvalFirst_of_not_Head
     (h : ¬HasNonCallFrameTryCatchInHead e) : ¬HasNonCallFrameTryCatchInEvalFirst e :=
   fun hef => h (HasNonCallFrameTryCatchInEvalFirst_of_Head hef)
 
+/-- If HasNonCallFrameTryCatchInEvalFirst e, then normalizeExpr e k never produces .return.
+    Key insight: tryCatch on the eval-first path blocks .return propagation, because
+    normalizeExpr (.tryCatch ..) always produces .tryCatch regardless of continuation.
+    Proved by induction on HasNonCallFrameTryCatchInEvalFirst. -/
+private theorem normalizeExpr_return_absurd_of_evalFirst_tryCatch
+    {e : Flat.Expr}
+    (hef : HasNonCallFrameTryCatchInEvalFirst e)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : Option ANF.Trivial) (n m : Nat)
+    (h : (ANF.normalizeExpr e k).run n = .ok (.return arg, m)) : False := by
+  induction hef generalizing k arg n m with
+  | tryCatch_direct hcp =>
+    cases arg with
+    | none => exact ANF.normalizeExpr_tryCatch_not_return_none _ _ _ _ k n m h
+    | some t => exact ANF.normalizeExpr_tryCatch_not_return_some _ _ _ _ k t n m h
+  | seq_left _ ih =>
+    simp only [ANF.normalizeExpr_seq'] at h
+    exact ih _ _ _ _ h
+  | let_init _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | if_cond _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | assign_val _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | getProp_obj _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | setProp_obj _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | unary_arg _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | typeof_arg _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | deleteProp_obj _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | binary_lhs _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | getIndex_obj _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | setIndex_obj _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | call_func _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | newObj_func _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | getEnv_env _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | makeClosure_env _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | return_some_arg _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | throw_arg _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | yield_some_arg _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | await_arg _ ih =>
+    simp only [ANF.normalizeExpr] at h
+    exact ih _ _ _ _ h
+  | labeled_body _ ih =>
+    simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run,
+      Except.bind, pure, Pure.pure, StateT.pure, Except.pure] at h
+    split at h <;> simp at h
+
+/-- Corollary: if normalizeExpr e k produces .return, then ¬HasNonCallFrameTryCatchInEvalFirst e. -/
+theorem ANF.normalizeExpr_return_implies_noEvalFirstTryCatch
+    (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+    (arg : Option ANF.Trivial) (n m : Nat)
+    (h : (ANF.normalizeExpr e k).run n = .ok (.return arg, m)) :
+    ¬HasNonCallFrameTryCatchInEvalFirst e :=
+  fun hef => normalizeExpr_return_absurd_of_evalFirst_tryCatch hef k arg n m h
+
 -- DONE (2026-04-11): HasReturnInHead_Steps_steppable sorry closed.
 -- Fix: Carry ¬HasNonCallFrameTryCatchInHead as invariant through the Steps induction.
 -- The by_cases on HasTryCatchInHead was replaced by a single error-step path using
