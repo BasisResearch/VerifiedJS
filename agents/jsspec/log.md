@@ -5446,3 +5446,5 @@ Estimated: ~300-500 lines of changes across ~30 locations.
 
 **Categories F (L7971, L10077):** BLOCKED by multi-step simulation (separate issue)
 **Category G (L10475):** BLOCKED by while_ duplication (needs CCExprEquiv)
+### 2026-04-12T13:43:08+00:00 Run complete — analysis done, added mono_preserve lemmas, all A/B/C sorries confirmed architecturally blocked
+2026-04-12T13:43:21+00:00 DONE

@@ -1,4 +1,4 @@
-# wasmspec — BREAK/CONTINUE + HasNonCallFrameTryCatch
+# wasmspec — noCallFrameReturn + HasNonCallFrameTryCatch
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,41 +9,55 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-12T11:05
-- **BUILD FIXED** by supervisor (24 compilation errors resolved in noCallFrameReturn_normalizeExpr area).
-- ANF line numbers shifted ~+280. Always verify with `lean_goal`.
-- Break/continue cases DECOMPOSED from 2 monolithic sorries to 18 per-case sorries (proof agent owns most).
+## STATUS — 2026-04-12T13:05
+- ANF down to **29 real sorry lines** (19 continue/break cases CLOSED by previous work)
+- YOUR sorries: L18163, L19377, L32642, L32673 = **4 sorry lines**
+- L31484 (body_sim) depends on anfConvert_step_star — recursive, blocked
 
-## P0: noCallFrameReturn (L29822) — catchParam ≠ "__call_frame_return__"
+## P0: noCallFrameReturn preservation (L32642)
 
-This is `(sorry /- catchParam ≠ "__call_frame_return__": needs noCallFrameReturn ... -/)`.
+```
+have hncfr2 : noCallFrameReturn sf2.expr = true := sorry
+/- noCallFrameReturn preservation through flat steps -/
+```
 
-**Approach**: The file now has `noCallFrameReturn_normalizeExpr_tryCatch_param_aux` (around L10087-10216) which proves that if `noCallFrameReturn e = true` and `normalizeExpr e k` produces `.tryCatch`, then `catchParam ≠ "__call_frame_return__"`. **This infrastructure was just fixed by the supervisor** (was previously broken with 24 compilation errors).
+**Approach**: Prove that `Flat.step?` preserves `noCallFrameReturn`. When a flat expression
+steps, the resulting expression should still satisfy `noCallFrameReturn` IF the original did
+AND the step doesn't introduce `__call_frame_return__`.
 
 Steps:
-1. `lean_goal` at L29822 to see what's needed
-2. Check if `noCallFrameReturn_normalizeExpr_tryCatch_param` (no `_aux`) exists as a wrapper
-3. Apply it with the `hncfr` hypothesis from the context
+1. `lean_goal` at L32642 to see the exact goal
+2. Check for existing lemma: `lean_hover_info` on `noCallFrameReturn` near L10455
+3. The `noCallFrameReturn_normalizeExpr_tryCatch_param_aux` infrastructure at L10087-10216
+   was fixed by the supervisor — it may provide the needed tools
+4. Prove: if `noCallFrameReturn e = true` and `Flat.step? s = some (ev, s')` where
+   `s.expr = e`, then `noCallFrameReturn s'.expr = true`
 
-## P1: HasNonCallFrameTryCatch (L19022) — ¬HasNonCallFrameTryCatchInHead a
+## P1: noCallFrameReturn for source (L32673)
 
-This is the hardest sorry. The comment explains three approaches (A, B, C):
-- **(A)** Thread `noCallFrameReturn` as precondition + prove ¬Head when all tryCatch are user-level
-- **(B)** Restructure `_core` to use normalizeExpr evidence directly in Steps induction
-- **(C)** Factor through a "no tryCatch at all" predicate provable from noCallFrameReturn + normalizeExpr
-
-**Recommended: Approach C.** Define:
-```lean
-def noTryCatchInHead : Flat.Expr → Prop := ...
 ```
-Prove: `noCallFrameReturn e → normalizeExpr e k produces .return → noTryCatchInHead (normalizeExpr result)`
-Then: `noTryCatchInHead → ¬HasNonCallFrameTryCatchInHead`
+sorry /- noCallFrameReturn for source program: "__call_frame_return__" is only
+introduced by Flat.step? during call evaluation, not in source syntax.
+Needs precondition from EndToEnd.lean. -/
+```
 
-**BUT**: The comment says `step_error_noNonCallFrameTryCatch_isLit` has 70+ errors. Fix those first.
+This needs a precondition that source programs don't contain `__call_frame_return__`.
+Check EndToEnd.lean for this precondition. If it's not there, you may need to add it.
 
-## P2: body_sim IH (L29823) — inner simulation recursive call
+## P2: HasNonCallFrameTryCatch (L18163, L19377)
 
-This needs `anfConvert_step_star` itself (strong induction). Check if the theorem is set up with `WellFoundedRelation` or has a fuel parameter that provides the IH.
+L18163: `exact sorry`
+L19377: `(sorry /- ¬HasNonCallFrameTryCatchInHead a: EvalFirst approach INSUFFICIENT. -/)`
+
+These are the hardest. The comment at L19377 explains three approaches (A, B, C).
+**Recommended: Approach C** — factor through `noTryCatchInHead` predicate.
+
+BUT: this depends on P0 (noCallFrameReturn preservation). Do P0 first.
+
+## EXECUTION ORDER:
+1. **P0 (L32642)** — noCallFrameReturn preservation. Most tractable.
+2. **P1 (L32673)** — source program precondition. May need EndToEnd.lean edit.
+3. **P2 (L18163, L19377)** — only after P0 and P1 are done.
 
 ## LOG
 **FIRST**: `echo "### $(date -Iseconds) Starting run — [task]" >> agents/wasmspec/log.md`

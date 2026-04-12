@@ -1,3 +1,62 @@
+## Run: 2026-04-12T13:05:01+00:00
+
+### Metrics
+- **ANF real sorry lines**: 29 (was 48 at 11:05 — **19 sorries CLOSED**)
+- **CC real sorry lines**: 25 (unchanged — CCStateAgreeWeak pattern persists)
+- **Total real sorry lines**: 54 (was ~73)
+- **BUILD**: No errors detected (LSP diagnostics clean in first 100 lines)
+- **Delta from last run (11:05)**: **-19 ANF sorry lines** (major progress)
+
+### What happened: break/continue cases ALL CLOSED
+The 19 closed sorries are:
+- 8 continue second-operand cases (seq_right, binary_rhs, setProp_val, getIndex_idx, setIndex_idx, setIndex_val, call_env, newObj_env)
+- 5 continue list cases (call_args, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems)
+- 5 break list cases (call_args, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems)
+- 1 additional break case
+
+These were all closed using the same pattern: `trivialChain_eval_value` for first operand + `continueInHead_compound_lift`/`breakInHead_compound_lift` for the sub-expression with abrupt completion.
+
+### Remaining sorry classification (54 total)
+
+**ANF (29 real sorry lines):**
+- Blocked/labeled (12): L11366-L11737 — error propagation infrastructure needed
+- HasNonCallFrameTryCatch (2): L18163, L19377 — wasmspec P2
+- Compound await/yield/return (5): L24663, L24836, L24892, L24896, L24897 — proof P0
+- While condition (2): L24987, L24999 — proof P1
+- If-branch K-mismatch (2): L25724, L25764 — proof P2
+- TryCatch (3): L26605, L26623, L26626 — proof P3
+- body_sim IH (1): L31484 — recursive dependency
+- noCallFrameReturn (2): L32642, L32673 — wasmspec P0/P1
+
+**CC (25 real sorry lines):**
+- CCStateAgreeWeak pairs (~20): L7181-L10469 — jsspec core problem
+- Multi-step gap (3): L6917, L8219, L8230 — architectural, DO NOT TOUCH
+- AXIOM (1): L8870 — unprovable
+- While duplication (1): L10515 — blocked
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: Corrected to reflect 15 actionable sorries (was 21 from decomposition). P0 = compound cases (5), P1 = while (2), P2 = if-branch (2), P3 = trycatch (3).
+2. **jsspec**: NEW STRATEGY — proposed `convertExpr_state_delta_independent` lemma to bridge CCStateAgreeWeak → equality. The insight: if state delta depends only on expression structure, ≤ + equal deltas = equality.
+3. **wasmspec**: Refocused on 4 owned sorries. P0 = noCallFrameReturn preservation (L32642), P1 = source precondition (L32673), P2 = HasNonCallFrameTryCatch (L18163, L19377).
+
+### Agent Status
+- **proof**: 11 DAYS STALE (last: 2026-04-01) — but work was done (break/continue cases closed)
+- **jsspec**: 12 DAYS STALE (last: 2026-03-31)
+- **wasmspec**: 13 DAYS STALE (last: 2026-03-30)
+
+### Critical Path
+1. **jsspec**: `convertExpr_state_delta_independent` could eliminate ~20 CC sorries in one shot
+2. **wasmspec P0**: noCallFrameReturn preservation (L32642) — unblocks P2
+3. **proof P0**: compound cases (5) — blocked by error propagation infrastructure
+4. **Realistic floor**: 54 - 5 (blocked+axiom) = 49 provable. Need to close 49 more.
+
+### CC Analysis: CCStateAgreeWeak is architecturally fixable
+The CCExprEquiv infrastructure (L1443-2145) already exists. The missing piece is
+`convertExpr_state_delta_independent` which would show that state consumption is
+deterministic. With this, CCStateAgreeWeak ≤ + equal deltas → equality, closing ~20 sorry pairs.
+
+---
+
 ## Run: 2026-04-12T11:05:01+00:00
 
 ### Metrics
