@@ -15784,7 +15784,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
   intro d; induction d with
   | zero =>
     intro e' K arg' n' m' hd hth' hnorm' hewf' hna'
-    cases hth' <;> (simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; omega)
+    cases hth' <;> (simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; try omega)
   | succ d ih =>
     intro e' K arg' n' m' hd hth' hnorm' hewf' hna'
     cases hth' with

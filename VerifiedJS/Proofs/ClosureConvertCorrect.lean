@@ -2137,6 +2137,185 @@ private theorem convertOptExpr_CCExprEquiv_shifted (oe : Option Core.Expr)
   decreasing_by all_goals simp_all <;> omega
 end
 
+/-! ### ValidConversionR: structural valid conversion relation.
+
+`ValidConversionR scope envVar envMap fe ce` holds when the Flat expression `fe` is a valid
+closure-conversion of the Core expression `ce`. Unlike the exact conversion equation
+`fe = (convertExpr ce scope envVar envMap st).fst` (which requires a single state for the
+whole expression), ValidConversionR decomposes structurally: each sub-expression may have
+been converted at an independent CCState. This is necessary because branching constructs
+(if/while/tryCatch) cause the CCState to diverge between taken and un-taken paths.
+
+Key properties:
+- `convertExpr` output satisfies `ValidConversionR` (bridging lemma)
+- Sibling sub-expressions are preserved unchanged through stepping
+- The relation composes without funcs.size constraints between siblings -/
+mutual
+private def ValidConversionR (scope : List String) (envVar : String) (envMap : Flat.EnvMapping)
+    : Flat.Expr → Core.Expr → Prop
+  -- Compound cases: recursive structural decomposition
+  | .seq fa fb, .seq a b =>
+      ValidConversionR scope envVar envMap fa a ∧
+      ValidConversionR scope envVar envMap fb b
+  | .«if» fc ft fe, .«if» c t e =>
+      ValidConversionR scope envVar envMap fc c ∧
+      ValidConversionR scope envVar envMap ft t ∧
+      ValidConversionR scope envVar envMap fe e
+  | .«let» n1 fi fb, .«let» n2 i b =>
+      n1 = n2 ∧ ValidConversionR scope envVar envMap fi i ∧
+      ValidConversionR (n2 :: scope) envVar envMap fb b
+  | .assign n1 fv, .assign n2 v =>
+      n1 = n2 ∧ ValidConversionR scope envVar envMap fv v
+  | .while_ fc fb, .while_ c b =>
+      ValidConversionR scope envVar envMap fc c ∧
+      ValidConversionR scope envVar envMap fb b
+  | .tryCatch fb cp1 fcb (some ffin), .tryCatch b cp2 cb (some fin) =>
+      cp1 = cp2 ∧ ValidConversionR scope envVar envMap fb b ∧
+      ValidConversionR (cp2 :: scope) envVar envMap fcb cb ∧
+      ValidConversionR scope envVar envMap ffin fin
+  | .tryCatch fb cp1 fcb none, .tryCatch b cp2 cb none =>
+      cp1 = cp2 ∧ ValidConversionR scope envVar envMap fb b ∧
+      ValidConversionR (cp2 :: scope) envVar envMap fcb cb
+  | .binary op1 fl fr, .binary op2 l r =>
+      op1 = op2 ∧ ValidConversionR scope envVar envMap fl l ∧
+      ValidConversionR scope envVar envMap fr r
+  | .unary op1 fa, .unary op2 a =>
+      op1 = op2 ∧ ValidConversionR scope envVar envMap fa a
+  | .getProp fo p1, .getProp o p2 =>
+      p1 = p2 ∧ ValidConversionR scope envVar envMap fo o
+  | .setProp fo p1 fv, .setProp o p2 v =>
+      p1 = p2 ∧ ValidConversionR scope envVar envMap fo o ∧
+      ValidConversionR scope envVar envMap fv v
+  | .getIndex fo fi, .getIndex o i =>
+      ValidConversionR scope envVar envMap fo o ∧
+      ValidConversionR scope envVar envMap fi i
+  | .setIndex fo fi fv, .setIndex o i v =>
+      ValidConversionR scope envVar envMap fo o ∧
+      ValidConversionR scope envVar envMap fi i ∧
+      ValidConversionR scope envVar envMap fv v
+  | .deleteProp fo p1, .deleteProp o p2 =>
+      p1 = p2 ∧ ValidConversionR scope envVar envMap fo o
+  | .typeof fa, .typeof a =>
+      ValidConversionR scope envVar envMap fa a
+  | .throw fa, .throw a =>
+      ValidConversionR scope envVar envMap fa a
+  | .labeled l1 fb, .labeled l2 b =>
+      l1 = l2 ∧ ValidConversionR scope envVar envMap fb b
+  | .«return» (some fa), .«return» (some a) =>
+      ValidConversionR scope envVar envMap fa a
+  | .«return» none, .«return» none => True
+  | .await fa, .await a =>
+      ValidConversionR scope envVar envMap fa a
+  -- Base case: exact conversion at some CCState (handles lit, var, this,
+  -- break, continue, call, newObj, objectLit, arrayLit, functionDef→makeClosure,
+  -- yield, forIn, forOf, and all cross-constructor pairs)
+  | fe, ce => ∃ (st : Flat.CCState), fe = (Flat.convertExpr ce scope envVar envMap st).fst
+-- List version for future use with call/newObj args
+private def ValidConversionRList (scope : List String) (envVar : String) (envMap : Flat.EnvMapping)
+    : List Flat.Expr → List Core.Expr → Prop
+  | [], [] => True
+  | fe :: frest, ce :: crest =>
+      ValidConversionR scope envVar envMap fe ce ∧
+      ValidConversionRList scope envVar envMap frest crest
+  | _, _ => False
+end
+
+/-- Exact conversion at a single state implies ValidConversionR. -/
+private theorem convertExpr_implies_ValidConversionR (e : Core.Expr)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping)
+    (st : Flat.CCState) :
+    ValidConversionR scope envVar envMap
+      (Flat.convertExpr e scope envVar envMap st).fst e := by
+  cases e with
+  | lit v => exact ⟨st, rfl⟩
+  | var n => exact ⟨st, rfl⟩
+  | this => exact ⟨st, rfl⟩
+  | «break» l => exact ⟨st, rfl⟩
+  | «continue» l => exact ⟨st, rfl⟩
+  | forIn _ _ _ => exact ⟨st, rfl⟩
+  | forOf _ _ _ => exact ⟨st, rfl⟩
+  | «let» name init body =>
+    simp only [Flat.convertExpr, ValidConversionR]
+    exact ⟨rfl, convertExpr_implies_ValidConversionR init scope envVar envMap st,
+      convertExpr_implies_ValidConversionR body (name :: scope) envVar envMap _⟩
+  | assign name value =>
+    simp only [Flat.convertExpr, ValidConversionR]
+    exact ⟨rfl, convertExpr_implies_ValidConversionR value scope envVar envMap st⟩
+  | «if» cond then_ else_ =>
+    simp only [Flat.convertExpr, ValidConversionR]
+    exact ⟨convertExpr_implies_ValidConversionR cond scope envVar envMap st,
+      convertExpr_implies_ValidConversionR then_ scope envVar envMap _,
+      convertExpr_implies_ValidConversionR else_ scope envVar envMap _⟩
+  | seq a b =>
+    simp only [Flat.convertExpr, ValidConversionR]
+    exact ⟨convertExpr_implies_ValidConversionR a scope envVar envMap st,
+      convertExpr_implies_ValidConversionR b scope envVar envMap _⟩
+  | binary op lhs rhs =>
+    simp only [Flat.convertExpr, ValidConversionR]
+    exact ⟨rfl, convertExpr_implies_ValidConversionR lhs scope envVar envMap st,
+      convertExpr_implies_ValidConversionR rhs scope envVar envMap _⟩
+  | unary op arg =>
+    simp only [Flat.convertExpr, ValidConversionR]
+    exact ⟨rfl, convertExpr_implies_ValidConversionR arg scope envVar envMap st⟩
+  | getProp obj prop =>
+    simp only [Flat.convertExpr, ValidConversionR]
+    exact ⟨rfl, convertExpr_implies_ValidConversionR obj scope envVar envMap st⟩
+  | setProp obj prop value =>
+    simp only [Flat.convertExpr, ValidConversionR]
+    exact ⟨rfl, convertExpr_implies_ValidConversionR obj scope envVar envMap st,
+      convertExpr_implies_ValidConversionR value scope envVar envMap _⟩
+  | getIndex obj idx =>
+    simp only [Flat.convertExpr, ValidConversionR]
+    exact ⟨convertExpr_implies_ValidConversionR obj scope envVar envMap st,
+      convertExpr_implies_ValidConversionR idx scope envVar envMap _⟩
+  | setIndex obj idx value =>
+    simp only [Flat.convertExpr, ValidConversionR]
+    exact ⟨convertExpr_implies_ValidConversionR obj scope envVar envMap st,
+      convertExpr_implies_ValidConversionR idx scope envVar envMap _,
+      convertExpr_implies_ValidConversionR value scope envVar envMap _⟩
+  | deleteProp obj prop =>
+    simp only [Flat.convertExpr, ValidConversionR]
+    exact ⟨rfl, convertExpr_implies_ValidConversionR obj scope envVar envMap st⟩
+  | typeof arg =>
+    simp only [Flat.convertExpr, ValidConversionR]
+    exact convertExpr_implies_ValidConversionR arg scope envVar envMap st
+  | throw arg =>
+    simp only [Flat.convertExpr, ValidConversionR]
+    exact convertExpr_implies_ValidConversionR arg scope envVar envMap st
+  | while_ cond body =>
+    simp only [Flat.convertExpr, ValidConversionR]
+    exact ⟨convertExpr_implies_ValidConversionR cond scope envVar envMap st,
+      convertExpr_implies_ValidConversionR body scope envVar envMap _⟩
+  | labeled label body =>
+    simp only [Flat.convertExpr, ValidConversionR]
+    exact ⟨rfl, convertExpr_implies_ValidConversionR body scope envVar envMap st⟩
+  | await arg =>
+    simp only [Flat.convertExpr, ValidConversionR]
+    exact convertExpr_implies_ValidConversionR arg scope envVar envMap st
+  | «return» arg =>
+    cases arg with
+    | none => simp only [Flat.convertExpr, Flat.convertOptExpr, ValidConversionR]
+    | some e =>
+      simp only [Flat.convertExpr, Flat.convertOptExpr, ValidConversionR]
+      exact convertExpr_implies_ValidConversionR e scope envVar envMap st
+  | tryCatch body catchParam catchBody finally_ =>
+    simp only [Flat.convertExpr, ValidConversionR]
+    cases finally_ with
+    | none =>
+      exact ⟨rfl, convertExpr_implies_ValidConversionR body scope envVar envMap st,
+        convertExpr_implies_ValidConversionR catchBody (catchParam :: scope) envVar envMap _⟩
+    | some fin =>
+      exact ⟨rfl, convertExpr_implies_ValidConversionR body scope envVar envMap st,
+        convertExpr_implies_ValidConversionR catchBody (catchParam :: scope) envVar envMap _,
+        convertExpr_implies_ValidConversionR fin scope envVar envMap _⟩
+  -- Base cases that fall through to ∃ st
+  | call _ _ => exact ⟨st, rfl⟩
+  | newObj _ _ => exact ⟨st, rfl⟩
+  | objectLit _ => exact ⟨st, rfl⟩
+  | arrayLit _ => exact ⟨st, rfl⟩
+  | functionDef _ _ _ _ _ => exact ⟨st, rfl⟩
+  | yield _ _ => exact ⟨st, rfl⟩
+
 mutual
 /-- Returns true if the expression never uses "__call_frame_return__" as a tryCatch catchParam.
     Source programs from `elaborate` satisfy this predicate since "__call_frame_return__" is only

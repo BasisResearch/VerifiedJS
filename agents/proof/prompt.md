@@ -1,4 +1,4 @@
-# proof — COMPOUND THROW + ERROR PROPAGATION
+# proof — COMPOUND THROW: SECOND-OPERAND + LIST CASES
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -8,55 +8,65 @@
 
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## STATUS — 2026-04-12T07:30
+## STATUS — 2026-04-12T08:05
 - ANF: **30** real sorries. CC: 12. Total: **42**.
-- Unchanged since 06:05 (-0). step_error_isLit PROVED. Infrastructure solid.
 - 12 trivial-mismatch sorries (L11366-L11737): BLOCKED, DO NOT TOUCH.
-- L18355 (HasNonCallFrameTryCatch): wasmspec CONFIRMED EvalFirst approach DEAD. DO NOT TOUCH.
+- L18325 (HasNonCallFrameTryCatch): wasmspec owns it. DO NOT TOUCH.
+- You added 16 first-operand cases at 08:01. GREAT. Now close the catch-all.
 
-## ANF SORRY MAP (30 total):
+## P0: L15944 `| _ => sorry` — CLOSE THIS NOW
 
-**Blocked — DO NOT TOUCH (13):**
-- L11366, L11414, L11462, L11512, L11539, L11589, L11591, L11641, L11643, L11674, L11706, L11737
-  (labeled trivial mismatch — needs architectural rethink)
-- L18355 (HasNonCallFrameTryCatch — wasmspec working on noCallFrameReturn approach)
+You proved 16 first-operand cases using `throwInHead_compound_lift`. The remaining `| _ =>` catches:
 
-**P0: compound throw catch-all (L14937) — 1 sorry, HIGH LEVERAGE**
-This is `| _ => sorry` remaining compound cases: second-operand and list-based.
-You have `throwInHead_compound_lift` working for first-operand cases (seq_left, let_init,
-binary_lhs, call_func, newObj_func all PROVED). Now handle:
-- `binary_rhs`: second operand — need step?_binary_rhs_ctx/error
-- `call_args`: list-based — need normalizeExprList handling
-- `newObj_args`: list-based — same pattern
-- `objectLit_value`, `arrayLit_element`, etc.
+**Second-operand cases** (the first sub-expression is already a value):
+- `binary_rhs`: `binary op (.lit lv) rhs` — throw is in rhs
+- `setProp_value`: `setProp (.lit obj) prop val` — throw is in val
+- `getIndex_idx`: `getIndex (.lit obj) idx` — throw is in idx
+- `setIndex_idx`: `setIndex (.lit obj) idx val` — throw is in idx
+- `setIndex_value`: `setIndex (.lit obj) (.lit iv) val` — throw is in val
+- `call_env`: `call (.lit f) env args` — throw is in env
+- `newObj_env`: `newObj (.lit f) env args` — throw is in env
 
-For list-based: the tricky part is that normalizeExprList/normalizeProps produce
-lists. You may need a list-based version of throwInHead_compound_lift.
-If this is too complex for one run, split `| _ =>` into individual cases and sorry each.
-15 individual sorries is BETTER THAN 1 opaque catch-all.
+For these, you need a SECOND-OPERAND variant of throwInHead_compound_lift:
+```lean
+private theorem throwInHead_compound_lift_second
+    {outer : Flat.Expr} {inner : Flat.Expr}
+    (h_sub : HasThrowInHead inner)
+    (h_val : Flat.exprValue? outer.firstChild = some _)  -- first operand is value
+    (h_ctx : ∀ s inner' hv t si, step? ⟨inner, ...⟩ = some (t, si) → ...)
+    (h_err : ...)
+    (ih : ...) : ... := ...
+```
 
-**P1: Compound error propagation (5 sorries):**
-- L23641 (HasAwaitInHead compound)
-- L23814 (HasYieldInHead compound)
-- L23870, L23874 (return/yield some val)
-- L23875 (compound catch-all)
+OR just inline: since the first operand is a `.lit`, `step?` on the compound expression directly steps the second operand. The ctx/error lemmas for second-operand position should exist (step?_binary_rhs_ctx etc.).
 
-These ALL need the same infrastructure as P0 but for await/yield/return compound cases.
-Once P0 pattern is established, apply it here.
+**List cases** (throw is in first non-value element):
+- `call_args`: `call (.lit f) (.lit e) args` — throw is in args list
+- `newObj_args`: `newObj (.lit f) (.lit e) args` — throw is in args list
+- `makeEnv_elem`: `makeEnv values` — throw is in values list
+- `objectLit_value`: `objectLit props` — throw is in props list
+- `arrayLit_elem`: `arrayLit elems` — throw is in elems list
 
-**P2: While condition (2 sorries):**
-- L23965, L23977 (while condition stepping)
+For list cases, use the HasThrowInHeadList/Props infrastructure you already proved in HasThrowInHead_step_nonError. The key: decompose via firstNonValue, step the first non-value element, reconstruct.
 
-**P3: If-branch K-mismatch (2 sorries):**
-- L24702 (if true), L24742 (if false)
+### EXECUTION:
+1. Split `| _ =>` into individual match arms for EACH remaining constructor
+2. Prove each second-operand case (7 cases) — these follow the same pattern as first-operand but use the _rhs/_val/_idx/_env ctx/error lemmas
+3. Prove each list case (5 cases) — use firstNonValue decomposition + list IH
+4. If ANY case is too hard, sorry it individually — 12 individual sorries > 1 opaque catch-all
 
-**P4: TryCatch (3 sorries):**
-- L25583, L25601, L25604
+### AFTER P0: Move to P1 (L23611-L23845)
+These 5 sorries use the SAME infrastructure pattern for HasAwaitInHead/HasYieldInHead compound cases.
 
-**P5: End-of-file (4 sorries):**
-- L26931 (catchParam), L26932 (body_sim), L27151, L27222
-
-## EXECUTION ORDER: P0 → P1 → P2
+## FULL SORRY MAP (30 total):
+- **BLOCKED (12)**: L11366-L11737 (trivial mismatch)
+- **WASMSPEC (1)**: L18325
+- **P0 (1)**: L15944 (compound throw catch-all) ← YOU ARE HERE
+- **P1 (5)**: L23611, L23784, L23840, L23844, L23845 (await/yield/return compound)
+- **P2 (2)**: L23935, L23947 (while condition)
+- **P3 (2)**: L24672, L24712 (if-branch K-mismatch)
+- **P4 (3)**: L25553, L25571, L25574 (tryCatch)
+- **P5 (4)**: L26901, L26902, L27121, L27192 (end-of-file)
 
 ## LOG
 **FIRST**: `echo "### $(date -Iseconds) Starting run — [task]" >> agents/proof/log.md`
