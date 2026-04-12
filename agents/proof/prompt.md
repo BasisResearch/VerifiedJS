@@ -1,4 +1,4 @@
-# proof — THROW LIST + COMPOUND CASES
+# proof — THROW/LIST + BREAK/CONTINUE DECOMPOSED CASES
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -8,70 +8,66 @@
 
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## STATUS — 2026-04-12T10:05
-- ANF: **8 sorry-using declarations** (35 sorry instances). CC: 12 instances. Total: **47 real**.
-- FLAT since 09:05. No agent has committed anything in the last hour.
-- Previous methodology was undercounting inline sorries. Real count is higher than 30.
+## STATUS — 2026-04-12T11:05
+- **BUILD FIXED** by supervisor (24 compilation errors in noCallFrameReturn area resolved).
+- ANF sorry count expanded: break/continue decomposed from 2 monolithic sorries to ~18 per-case sorries.
+- **ALL LINE NUMBERS SHIFTED** ~+280 from last prompt. Always verify with `lean_goal` before editing.
 
-## P0: THROW/LIST AREA (6 sorries — L16180, L16275, L16286, L16288, L16290, L16292)
+## P0: THROW/LIST AREA (3 remaining sorries — L16381, L16430, L16542)
 
-**LINE NUMBERS SHIFTED** from last prompt. Verify with `lean_goal` before editing.
+Previous throw/list sorries were reduced from 6 to 3. Verify exact lines with `lean_goal`.
 
-- **L16180**: third-operand — obj and idx evaluate, then val steps
-- **L16275**: list — f and env evaluate, then args list steps
-- **L16286**: list — f and env evaluate, then args list steps
-- **L16288**: list case — first non-value element in values has throw
-- **L16290**: list case — first non-value prop in props has throw
-- **L16292**: list case — first non-value element in elems has throw
+- **L16381**: list case — funcIdx and envPtr evaluated, args list has throw
+- **L16430**: list case — funcIdx and envPtr evaluated, args list has throw
+- **L16542**: list case — first non-value prop in props has throw
 
-For L16288-16292, the pattern is:
-- HasThrowInHeadList/Props gives the first non-value element with throw
-- Split the list at that element: `values = prefix ++ [elem] ++ suffix` where prefix is all values
-- Flat.step? steps `elem` through the compound context
-- Use ctx lemmas (check with `lean_local_search "step?.*ctx"`)
-- Apply IH on the inner element
+Pattern for all three:
+1. HasThrowInHeadList/Props gives the first non-value element with throw
+2. Use `Flat_step?_*` context lemmas to step the inner element
+3. Apply IH on that element
 
 ### EXECUTION:
-1. `lean_goal` at L16288 to see what's needed
-2. `lean_local_search "throwInHead.*list"` to find existing infrastructure
-3. Prove L16288 first (simplest), replicate for L16290, L16292
-4. Then L16180 (third-operand), L16275, L16286
+1. `lean_goal` at L16381 to see the proof state
+2. Search: `lean_hover_info` on nearby Flat_step? lemmas
+3. Prove L16542 first (props — likely simplest), then L16381, L16430
 
-## P1: COMPOUND AWAIT/YIELD/RETURN (5 sorries — L23959, L24132, L24188, L24192, L24193)
+## P1: BREAK COMPOUND CASES (5 list sorries — L29443-L29447)
 
-- **L23959**: compound HasAwaitInHead — blocked by Flat.step? error propagation
-- **L24132**: compound HasYieldInHead — same blocker
-- **L24188**: return (some val) — compound, can produce .let
-- **L24192**: yield (some val) — compound, can produce .let
-- **L24193**: compound expressions (seq, let, assign, if, call, etc.) — needs structural induction
+These are NEWLY DECOMPOSED from a single monolithic sorry. Each is a specific HasBreakInHead sub-case:
 
-These use the SAME error-propagation pattern as compound throw. Check for `compound_lift` or `abruptHead_compound_lift` infrastructure.
+- **L29443**: call_args — list stepping through args
+- **L29444**: newObj_args — list stepping through args
+- **L29445**: makeEnv_values — list stepping
+- **L29446**: objectLit_props — list stepping
+- **L29447**: arrayLit_elems — list stepping
 
-## P2: WHILE CONDITION (2 sorries — L24283, L24295)
-- L24283: While condition value case — transient state breaks single-step SimRel
-- L24295: Condition-steps case — needs flat while-condition simulation
+All follow the SAME pattern: stepping through a list context. These are likely closable with the same infrastructure as the throw/list cases (P0). Try `lean_multi_attempt` with:
+```
+["exact Flat_step?_list_ctx h_sub", "apply step_list_compound h_sub", "sorry"]
+```
 
-## P3: IF-BRANCH K-MISMATCH (2 sorries — L25020, L25060)
-- L25020: if_branch true — collapsed for OOM fix, 24 sub-cases blocked by K-mismatch
-- L25060: if_branch false — same
-- These are inside `normalizeExpr_if_branch_step` (L24982) and its false variant
+## P2: CONTINUE COMPOUND CASES (13 sorries — L29648-L29660)
 
-## P4: TRYCATCH (3 sorries — L25901, L25919, L25922)
-- L25901: tryCatch body-error
-- L25919: tryCatch body-step — blocked by callStack propagation + counter alignment
-- L25922: compound cases — deferred
+Also NEWLY DECOMPOSED. Two groups:
 
-## BLOCKED (12): L11366-L11737 — labeled-in-compound area. DO NOT TOUCH until error propagation infrastructure exists.
+**Second-operand (8)**: L29648-L29655 — needs `trivialChain` for the first operand
+**List cases (5)**: L29656-L29660 — same pattern as P1
 
-## FULL SORRY MAP (35 instances across 8 declarations):
-- **BLOCKED (12)**: L11366, L11414, L11462, L11512, L11539, L11589, L11591, L11641, L11643, L11674, L11706, L11737
-- **P0 (6)**: L16180, L16275, L16286, L16288, L16290, L16292 ← START HERE
-- **P1 (5)**: L23959, L24132, L24188, L24192, L24193
-- **P2 (2)**: L24283, L24295
-- **P3 (2)**: L25020, L25060
-- **P4 (3)**: L25901, L25919, L25922
-- **WASMSPEC (3)**: L18673, L27249, L27250 (wasmspec owns these)
-- **END (2)**: L27469, L27540
+For the second-operand cases (seq_right, binary_rhs, setProp_val, etc.):
+- The first operand is a value (already evaluated)
+- Need to show Flat.step? steps through the compound context
+- Check for `Flat_step?_*_step` lemmas with the right constructor
+
+## P3: COMPOUND AWAIT/YIELD/RETURN (5 sorries — L24308, L24481, L24537, L24541, L24542)
+- Blocked by Flat.step? error propagation — SKIP unless P0-P2 are done
+
+## P4: WHILE CONDITION (2 sorries — L24632, L24644)
+## P5: IF-BRANCH K-MISMATCH (2 sorries — L25369, L25409)
+## P6: TRYCATCH (3 sorries — L26250, L26268, L26271)
+
+## BLOCKED (12): L11366-L11737 — DO NOT TOUCH
+
+## WASMSPEC-OWNED: L19022, L29822, L29823 — DO NOT TOUCH
 
 ## LOG
 **FIRST**: `echo "### $(date -Iseconds) Starting run — [task]" >> agents/proof/log.md`

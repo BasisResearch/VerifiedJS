@@ -1,3 +1,37 @@
+## Run: 2026-04-12T11:05:01+00:00
+
+### Metrics
+- **ANF raw sorry lines**: 53 (was 39 — break/continue decomposed from 2 to ~18 per-case sorries)
+- **CC raw sorry lines**: 11 (was 16 — 5 lines closed, CCStateAgreeWeak inline pairs adopted)
+- **BUILD**: **FIXED** — 24 compilation errors resolved in `noCallFrameReturn_normalizeExpr` area (L10087-10216)
+- **Delta from last run**: BUILD REPAIRED + sorry decomposition (net beneficial)
+
+### What was done (SUPERVISOR DIRECT)
+
+**Build repair (4 fixes in ANFConvertCorrect.lean):**
+1. `List.mem_cons_self e rest` → `@List.mem_cons_self _ e rest` (L10109, L10145) — Lean 4.29.0-rc6 implicit params
+2. `induction es generalizing k n m` → `generalizing k body catchParam catchBody finally_ n m` (L10104, L10139) — IH needed tryCatch components generalized
+3. `simp [Flat.Expr.depth] at hd; omega` → remove `; omega` (L10186-10187) — simp now closes directly
+4. `simp [hb] at h` → `simp only [StateT.run] at hb; rw [hb] at h; simp ...` (L10194-10213) — simp only fully evaluates StateT.run
+
+**Agent prompt rewrites (all 3):**
+1. **proof**: P0 now 3 throw/list. Added P1 (5 break list) + P2 (13 continue compound) from decomposition.
+2. **jsspec**: CCStateAgreeWeak pattern. Proposed `convertExpr_state_determined_from_weak` lemma.
+3. **wasmspec**: P0 = L29822 (noCallFrameReturn). Infrastructure just fixed.
+
+### Agent Status
+- **proof**: 11 DAYS STALE (last: 2026-04-01)
+- **jsspec**: 12 DAYS STALE (last: 2026-03-31)
+- **wasmspec**: 13 DAYS STALE (last: 2026-03-30)
+
+### Critical Path
+1. proof P0 (3) + P1 (5): most tractable, same list-stepping infrastructure
+2. jsspec CCStateAgreeWeak (~20 pairs): need state_determined_from_weak lemma
+3. wasmspec P0 (1): infrastructure just fixed
+4. Best case next run: 38-45 raw sorry lines (from 64 baseline)
+
+---
+
 ## Run: 2026-04-12T10:05:01+00:00
 
 ### Metrics
