@@ -5417,3 +5417,6 @@ Estimated: ~300-500 lines of changes across ~30 locations.
 ### 2026-04-12T12:00:55+00:00 Fixed 5 of 6 CCStateAgree sorries (L7325, L7351, L10234, L10236, L10310). L10435 while_ left as sorry (needs CCExprEquiv). Now updating production/consumption sites for CCStateAgreeWeak invariant.
 ### 2026-04-12T12:08:40+00:00 Run complete — Invariant changed to CCStateAgreeWeak. 5 of 6 target CCStateAgree sorries closed (L7325, L7351, L10234, L10237, L10314). L10430 while_ still sorry (needs CCExprEquiv). ~30 new consumption-site sorries introduced (all typed 'needs CCStateAgree equality, have CCStateAgreeWeak'). These are systematically fixable via convertExpr_expr_eq_of_funcs_size or CCExprEquiv approach. Net: target sorries reduced from 6 to 1, but total sorries increased from 12 to ~42 due to weaker invariant at consumption sites.
 2026-04-12T12:09:11+00:00 DONE
+
+## Run: 2026-04-12T13:00:01+00:00
+
