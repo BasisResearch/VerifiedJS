@@ -14916,7 +14916,17 @@ private theorem HasThrowInHead_step_nonError
       · simp at hstep
     -- Multi-context cases (binary, setProp, getIndex, setIndex, call, newObj, makeEnv, objectLit, arrayLit)
     -- These require handling multiple sub-expression evaluation orders.
-    | setProp_obj h => sorry -- setProp obj context
+    | setProp_obj h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i prop val
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .setProp_obj (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
     | setProp_val h => sorry -- setProp val context
     | binary_lhs h => sorry -- binary lhs context
     | binary_rhs h => sorry -- binary rhs context

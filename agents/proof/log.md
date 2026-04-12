@@ -7887,3 +7887,4 @@ See full analysis in log above.
 
 ## Run: 2026-04-12T02:30:02+00:00
 
+### 2026-04-12T02:30:11+00:00 Starting run — closing 18 HasThrowInHead infrastructure sorries
