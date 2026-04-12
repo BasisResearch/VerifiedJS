@@ -1797,8 +1797,8 @@ private theorem convertExpr_CCExprEquiv_shifted (e : Core.Expr)
           (toString "__env" ++ toString "_" ++ toString st2.nextId)
           (Flat.indexedMap (Flat.dedupStrings (List.filter (fun x => x != n) (List.filter (fun v => !List.elem v params) (Flat.freeVars body))) []) 0)
           { funcs := st2.funcs, nextId := st2.nextId + 1 }
-        have h1 := hd1.2; have h2 := hd2.2
-        simp only [] at h1 h2; rw [h1, h2]; omega
+        have h1 := hd1.2; have h2 := hd2.2; clear hd1 hd2
+        rw [h1, h2]; clear h1 h2; simp [hsz, Nat.add_comm, Nat.add_assoc]
       · exact CCExprListEquiv_envExprs_refl
           (Flat.dedupStrings (List.filter (fun x => x != n) (List.filter (fun v => !List.elem v params) (Flat.freeVars body))) [])
           envMap envVar δ
@@ -1814,8 +1814,8 @@ private theorem convertExpr_CCExprEquiv_shifted (e : Core.Expr)
           (toString "__env" ++ toString "_" ++ toString st2.nextId)
           (Flat.indexedMap (Flat.dedupStrings (List.filter (fun v => !List.elem v params) (Flat.freeVars body)) []) 0)
           { funcs := st2.funcs, nextId := st2.nextId + 1 }
-        have h1 := hd1.2; have h2 := hd2.2
-        simp only [] at h1 h2; rw [h1, h2]; omega
+        have h1 := hd1.2; have h2 := hd2.2; clear hd1 hd2
+        rw [h1, h2]; clear h1 h2; simp [hsz, Nat.add_comm, Nat.add_assoc]
       · exact CCExprListEquiv_envExprs_refl
           (Flat.dedupStrings (List.filter (fun v => !List.elem v params) (Flat.freeVars body)) [])
           envMap envVar δ

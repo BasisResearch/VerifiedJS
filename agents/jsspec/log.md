@@ -5181,3 +5181,20 @@ and reduces `name = name` to `True` (use `trivial` not `rfl`).
 ## Run: 2026-04-12T02:00:04+00:00
 
 ### 2026-04-12T02:00:27+00:00 Starting run — closing CCStateAgree sorries with CCExprEquiv
+### 2026-04-12T02:53:33+00:00 Run complete — proved 4 CCExprEquiv_shifted theorems (-4 sorry)
+
+**Results:**
+- Proved `convertExpr_CCExprEquiv_shifted` — main theorem (30+ cases, all Core.Expr constructors)
+- Proved `convertExprList_CCExprEquiv_shifted` — list variant
+- Proved `convertPropList_CCExprEquiv_shifted` — property list variant  
+- Proved `convertOptExpr_CCExprEquiv_shifted` — optional variant
+- Removed deleted block comment (190 lines of stale code)
+- File sorry count: 16 → 12
+
+**CCStateAgree analysis:**
+The 5 CCStateAgree sorries (if-true L6928, if-false L6954, tryCatch L9840/L9843/L9917, while L10033) 
+require an invariant change. `convertExpr_CCExprEquiv_shifted` requires **equal nextId**, but 
+branching changes both nextId and funcs.size by `exprFuncCount` of the skipped branch.
+The fix requires extending CCExprEquiv to handle variable name renaming (alpha-equivalence 
+on generated names from different nextId values), which is a significant architectural change.
+2026-04-12T02:54:54+00:00 DONE

@@ -14924,7 +14924,7 @@ private theorem HasThrowInHead_step_nonError
       split at hstep
       · split at hstep
         · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
-          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
           exact .setProp_obj (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
       · simp at hstep
     | setProp_val h =>
