@@ -5314,3 +5314,9 @@ After branching, `sf'.expr` was computed at one state, but the body sub-expressi
 
 ## Run: 2026-04-12T07:00:01+00:00
 
+2026-04-12T07:00:02+00:00 EXIT: code 143
+2026-04-12T07:00:02+00:00 DONE
+
+## Run: 2026-04-12T07:00:03+00:00
+
+### 2026-04-12T07:00:13+00:00 Starting run — CCStateAgree invariant weakening
