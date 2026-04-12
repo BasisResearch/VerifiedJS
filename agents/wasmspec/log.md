@@ -8790,3 +8790,25 @@ call frame within a single ANF step batch.
 
 ### 2026-04-12T15:30:41+00:00 Starting run — P1 noCallFrameReturn precondition + P0 preservation theorem
 2026-04-12T16:15:01+00:00 SKIP: already running
+### 2026-04-12T16:35:27+00:00 Closed P2/L18163 sorry — step_error_noNonCallFrameTryCatch_isLit uncommented and fixed (tryCatch depth case + 34 simp→contradiction fixes)
+### 2026-04-12T16:38:43+00:00 Run complete — closed 1 sorry (P2/L18158 step_error_noNonCallFrameTryCatch_isLit)
+
+Results:
+- P1 (L32673 hncfr_prog): Already closed (prior run)
+- P2/L18158 (step_error_noNonCallFrameTryCatch_isLit): CLOSED ✓
+  - Uncommented ~450-line proof from comment block
+  - Fixed tryCatch depth case (Option split needed for simp/omega)
+  - Fixed 34 non-error branch cases: simp at hstep → simp [Flat.pushTrace] at hstep; exact absurd hstep.1 ‹_›
+  - Zero new errors, zero new sorries
+- P2/L19373 (¬HasNonCallFrameTryCatchInHead): BLOCKED
+  - Cannot derive from HasReturnInHead alone (counter: seq (.return none) (tryCatch body "user" cb fin))
+  - Fix requires adding noCallFrameReturn/¬HasNonCallFrameTryCatchInHead to wrapper + ~20 callers
+  - Too invasive for safe change
+- P0/L32636 (anfConvert_step_star_ncfr): BLOCKED
+  - Requires case analysis mirroring anfConvert_step_star (~300 lines)
+  - OR folding ncfr into anfConvert_step_star conclusion (modifying ~18 refine sites)
+  - Both approaches too large for safe single-session change
+
+Total sorry delta: -1 (from 4 assigned → 3 remaining)
+Build status: CLEAN (0 errors)
+2026-04-12T16:39:54+00:00 DONE
