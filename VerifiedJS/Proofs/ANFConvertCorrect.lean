@@ -17796,13 +17796,23 @@ private theorem HasReturnInHead_Steps_steppable
     {a : Flat.Expr} {env : Flat.Env} {heap : Core.Heap} {trace : List Core.TraceEvent}
     {funcs : Array Flat.FuncDef} {cs : List Flat.Env}
     (hret : HasReturnInHead a)
-    (hncf : ¬HasNonCallFrameTryCatchInHead a)
     {smid : Flat.State} {evs_pre : List Core.TraceEvent}
     (hsteps : Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs_pre smid)
     {t : Core.TraceEvent} {smid' : Flat.State}
     (hstep : Flat.step? smid = some (t, smid')) :
     HasReturnInHead smid.expr :=
-  HasReturnInHead_Steps_steppable_core hret hncf hsteps hstep
+  HasReturnInHead_Steps_steppable_core hret
+    (sorry /- ¬HasNonCallFrameTryCatchInHead a: needs EvalFirst redesign.
+       Infrastructure in place:
+       - HasNonCallFrameTryCatchInEvalFirst defined (weaker predicate, eval-first only)
+       - normalizeExpr_return_absurd_of_evalFirst_tryCatch proved
+       - ANF.normalizeExpr_return_implies_noEvalFirstTryCatch proved
+       Next steps:
+       (1) Prove step_error_noNonCallFrameTryCatchEvalFirst_isLit (error step with ¬EvalFirst → .lit)
+       (2) Prove step_nonError_preserves_noNonCallFrameTryCatchEvalFirst (combined with HasReturnInHead)
+       (3) Define HasReturnInHead_Steps_steppable_core_evalFirst using EvalFirst predicate
+       (4) Replace this sorry with the EvalFirst-based proof -/)
+    hsteps hstep
 
 /-- Main inductive theorem: if HasReturnInHead e and normalizeExpr e K produces .return arg,
     then Flat.Steps from e match the return behavior. Works with ANY continuation K
@@ -17810,7 +17820,6 @@ private theorem HasReturnInHead_Steps_steppable
 private theorem hasReturnInHead_return_steps :
     ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
     HasReturnInHead e →
-    ¬HasNonCallFrameTryCatchInHead e →
     ∀ (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
       (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
       (K : ANF.Trivial → ANF.ConvM ANF.Expr) (n m : Nat)
@@ -17838,7 +17847,7 @@ private theorem hasReturnInHead_return_steps :
         observableTrace evs = observableTrace [.error msg]) := by
   intro d; induction d with
   | zero =>
-    intro e hd hret hncf
+    intro e hd hret
     -- At depth 0, only .return none has HasReturnInHead (depth 0)
     cases hret with
     | return_none_direct =>
@@ -17858,7 +17867,7 @@ private theorem hasReturnInHead_return_steps :
     | await_arg h => simp [Flat.Expr.depth] at hd
     | _ => simp [Flat.Expr.depth] at hd; omega
   | succ d ih =>
-    intro e hd hret hncf env heap trace funcs cs K n m arg hnorm hewf hna
+    intro e hd hret env heap trace funcs cs K n m arg hnorm hewf hna
     cases hret with
     | return_none_direct =>
       simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm
@@ -17881,10 +17890,9 @@ private theorem hasReturnInHead_return_steps :
       rename_i a b
       simp only [ANF.normalizeExpr_seq'] at hnorm
       have ha_depth : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
-      have hncf_a : ¬HasNonCallFrameTryCatchInHead a := fun h => hncf (.seq_left h)
       -- IH on sub-expression a (with the seq continuation as K)
       obtain ⟨ih_none, ih_ok, ih_err⟩ :=
-        ih a ha_depth h_a hncf_a env heap trace funcs cs _ n m arg
+        ih a ha_depth h_a env heap trace funcs cs _ n m arg
           hnorm (fun x hfx => hewf x (VarFreeIn.seq_l _ _ _ hfx))
           (by cases hna with | seq ha _ => exact ha)
       -- Lift through .seq · b using Steps_compound_error_lift
@@ -17900,8 +17908,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.seq · b)
@@ -17922,8 +17930,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.seq · b)
@@ -17944,8 +17952,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.seq · b)
@@ -17974,8 +17982,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body' catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body' catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body' catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.let name · body)
@@ -17995,8 +18003,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body' catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body' catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body' catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.let name · body)
@@ -18016,8 +18024,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body' catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body' catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body' catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.let name · body)
@@ -18046,8 +18054,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.unary op ·)
@@ -18067,8 +18075,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.unary op ·)
@@ -18088,8 +18096,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.unary op ·)
@@ -18118,8 +18126,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.getProp · prop)
@@ -18139,8 +18147,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.getProp · prop)
@@ -18160,8 +18168,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.getProp · prop)
@@ -18190,8 +18198,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift .typeof
@@ -18211,8 +18219,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift .typeof
@@ -18232,8 +18240,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift .typeof
@@ -18262,8 +18270,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.deleteProp · prop)
@@ -18283,8 +18291,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.deleteProp · prop)
@@ -18304,8 +18312,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.deleteProp · prop)
@@ -18334,8 +18342,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.assign name ·)
@@ -18355,8 +18363,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.assign name ·)
@@ -18376,8 +18384,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.assign name ·)
@@ -18406,8 +18414,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.getEnv · idx)
@@ -18427,8 +18435,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.getEnv · idx)
@@ -18448,8 +18456,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.getEnv · idx)
@@ -18478,8 +18486,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.makeClosure funcIdx ·)
@@ -18499,8 +18507,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.makeClosure funcIdx ·)
@@ -18520,8 +18528,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.makeClosure funcIdx ·)
@@ -18550,8 +18558,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.binary op · rhs)
@@ -18571,8 +18579,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.binary op · rhs)
@@ -18592,8 +18600,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.binary op · rhs)
@@ -18622,8 +18630,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.if · then_ else_)
@@ -18643,8 +18651,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.if · then_ else_)
@@ -18664,8 +18672,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.if · then_ else_)
@@ -18694,8 +18702,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.setProp · prop val)
@@ -18715,8 +18723,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.setProp · prop val)
@@ -18736,8 +18744,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.setProp · prop val)
@@ -18766,8 +18774,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.getIndex · idx)
@@ -18787,8 +18795,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.getIndex · idx)
@@ -18808,8 +18816,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.getIndex · idx)
@@ -18838,8 +18846,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.setIndex · idx val)
@@ -18859,8 +18867,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.setIndex · idx val)
@@ -18880,8 +18888,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.setIndex · idx val)
@@ -18910,8 +18918,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.call · envExpr args_list)
@@ -18931,8 +18939,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.call · envExpr args_list)
@@ -18952,8 +18960,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.call · envExpr args_list)
@@ -18982,8 +18990,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.newObj · envExpr args_list)
@@ -19003,8 +19011,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.newObj · envExpr args_list)
@@ -19024,8 +19032,8 @@ private theorem hasReturnInHead_return_steps :
           exact ⟨Flat.Steps_preserves_funcs hsteps,
             Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
               refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+              · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
             Flat.Steps_trace_append hsteps⟩
         obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
           Steps_compound_error_lift (.newObj · envExpr args_list)
@@ -19424,8 +19432,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.binary op (.lit v_b) ·)
@@ -19585,8 +19593,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.binary op (.lit v_b) ·)
@@ -19608,8 +19616,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.binary op (.lit v_b) ·)
@@ -19732,8 +19740,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.setProp (.lit v_b) c ·)
@@ -19893,8 +19901,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.setProp (.lit v_b) c ·)
@@ -19916,8 +19924,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.setProp (.lit v_b) c ·)
@@ -20040,8 +20048,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.getIndex (.lit v_b) ·)
@@ -20201,8 +20209,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.getIndex (.lit v_b) ·)
@@ -20224,8 +20232,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.getIndex (.lit v_b) ·)
@@ -20348,8 +20356,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.setIndex (.lit v_b) · c)
@@ -20509,8 +20517,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.setIndex (.lit v_b) · c)
@@ -20532,8 +20540,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.setIndex (.lit v_b) · c)
@@ -20749,8 +20757,8 @@ private theorem hasReturnInHead_return_steps :
                     exact ⟨Flat.Steps_preserves_funcs hsteps,
                       Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                         refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                        · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                        · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                        · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                        · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                       Flat.Steps_trace_append hsteps⟩
                   obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                     Steps_compound_error_lift (.setIndex (.lit v_b) (.lit v_c) ·)
@@ -21047,8 +21055,8 @@ private theorem hasReturnInHead_return_steps :
                     exact ⟨Flat.Steps_preserves_funcs hsteps,
                       Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                         refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                        · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                        · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                        · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                        · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                       Flat.Steps_trace_append hsteps⟩
                   obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                     Steps_compound_error_lift (.setIndex (.lit v_b) (.lit v_c) ·)
@@ -21071,8 +21079,8 @@ private theorem hasReturnInHead_return_steps :
                     exact ⟨Flat.Steps_preserves_funcs hsteps,
                       Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                         refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                        · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                        · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                        · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                        · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                       Flat.Steps_trace_append hsteps⟩
                   obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                     Steps_compound_error_lift (.setIndex (.lit v_b) (.lit v_c) ·)
@@ -21196,8 +21204,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.call (.lit v_b) · args_list)
@@ -21357,8 +21365,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.call (.lit v_b) · args_list)
@@ -21380,8 +21388,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.call (.lit v_b) · args_list)
@@ -21836,8 +21844,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.newObj (.lit v_b) · args_list)
@@ -21997,8 +22005,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.newObj (.lit v_b) · args_list)
@@ -22020,8 +22028,8 @@ private theorem hasReturnInHead_return_steps :
                 exact ⟨Flat.Steps_preserves_funcs hsteps,
                   Flat.Steps_preserves_callStack hsteps (fun smid' t' smid'' evs_pre hsteps' hstep' _ => by
                     refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).1 body catch_ fin h
-                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hncf_a hsteps' hstep')).2 f' env' args' h),
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).1 body catch_ fin h
+                    · exact (hasReturnInHead_callStackSafe smid'.expr (HasReturnInHead_Steps_steppable h_a hsteps' hstep')).2 f' env' args' h),
                   Flat.Steps_trace_append hsteps⟩
               obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
                 Steps_compound_error_lift (.newObj (.lit v_b) · args_list)
