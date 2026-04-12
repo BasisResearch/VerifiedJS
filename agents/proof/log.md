@@ -8033,3 +8033,6 @@ These errors were masked because they co-existed with sorries in other branches 
 ### 2026-04-12T12:00:00+00:00 Run complete — 3 P0 sorries proved + 3 rename_i bugs fixed
 **Net result**: -3 sorry instances (setIndex_val, makeEnv_values, arrayLit_elems), +3 rename_i fixes (binary_rhs, setProp_val, getIndex_idx), +partial progress on call_args/newObj_args (func/env evaluation proved, list case remaining).
 2026-04-12T11:41:33+00:00 DONE
+
+## Run: 2026-04-12T12:30:07+00:00
+
