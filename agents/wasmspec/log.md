@@ -8688,3 +8688,34 @@ Needs HasBreakInHead_step_nonError + HasBreakInHead_Steps_steppable infrastructu
 
 ### 2026-04-12T10:15:20+00:00 Starting run — P0 break/continue compound error propagation
 2026-04-12T11:15:03+00:00 SKIP: already running
+### 2026-04-12T10:15 — 2026-04-12T12:30 Run complete — P0 break/continue compound error propagation
+
+**Infrastructure written (~2500 lines):**
+- `HasAbruptHead` mutual inductive (unifies throw/break/continue head predicates)
+- `HasAbruptHead_not_value`, `hasAbruptHead_callStackSafe`, list/props helpers
+- `HasAbruptHead_step_nonError` (~600 lines, by depth induction)
+- `HasAbruptHead_Steps_steppable` (multi-step preservation)
+- Embedding lemmas: `HasBreakInHead_to_HasAbruptHead`, `HasContinueInHead_to_HasAbruptHead` + list/props
+- `breakInHead_compound_lift`, `continueInHead_compound_lift`
+- `no_break_head_implies_trivial_chain`, `no_continue_head_implies_trivial_chain`
+- `hasBreakInHead_compound_break_step_sim` (21/28 compound cases proved)
+- `hasContinueInHead_compound_continue_step_sim` (15/28 compound cases proved)
+
+**P0 sorrys CLOSED:**
+- Original break compound sorry (L27469 → now L29967): CLOSED — replaced with call to `hasBreakInHead_compound_break_step_sim`
+- Original continue compound sorry (L27540 → now L30048): CLOSED — replaced with call to `hasContinueInHead_compound_continue_step_sim`
+
+**New sorrys in infrastructure (18 total):**
+- Break compound sim: 5 list cases (call_args, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems) — same blocker as throw version
+- Continue compound sim: 8 second-operand + 5 list cases — second-operand cases are mechanical copies of break version (already implemented there)
+
+**Net sorry change:** -2 P0 sorrys + 18 infrastructure sorrys (but these are at lower granularity and match existing throw gaps)
+
+**Real sorry count (excluding comments):** 43 total sorrys in file
+- Pre-existing ANF sorrys: 20 (unchanged)
+- Pre-existing throw list sorrys: 3 (unchanged)
+- New break compound: 5 list cases
+- New continue compound: 13 (8 second-operand + 5 list)
+- Other pre-existing: 2 (tryCatch param + body sim)
+### 2026-04-12T11:43:09+00:00 Run complete — P0 break/continue compound: 2 original sorrys CLOSED, 18 new lower-level sorrys (8 continue 2nd-operand + 10 list cases)
+2026-04-12T11:43:30+00:00 DONE

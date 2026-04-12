@@ -10101,12 +10101,12 @@ private theorem noCallFrameReturn_normalizeExprList_tryCatch_param_aux
     (h : (ANF.normalizeExprList es k).run n = .ok (.tryCatch body catchParam catchBody finally_, m))
     (hk_ncfr : ∀ ts n' b cp cb f m', (k ts).run n' = .ok (.tryCatch b cp cb f, m') → cp ≠ "__call_frame_return__") :
     catchParam ≠ "__call_frame_return__" := by
-  induction es generalizing k n m with
+  induction es generalizing k body catchParam catchBody finally_ n m with
   | nil => simp only [ANF.normalizeExprList] at h; exact hk_ncfr _ _ _ _ _ _ _ h
   | cons e rest ihl =>
     simp only [ANF.normalizeExprList] at h
     have he : e.depth ≤ d' := by
-      have hmem := Flat.Expr.mem_listDepth_lt (List.mem_cons_self e rest); omega
+      have hmem := Flat.Expr.mem_listDepth_lt (@List.mem_cons_self _ e rest); omega
     have hrest : Flat.Expr.listDepth rest ≤ d' := by simp [Flat.Expr.listDepth] at hd; omega
     have hncfr_e : noCallFrameReturn e = true := by
       unfold noCallFrameReturnList at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1
@@ -10136,13 +10136,13 @@ private theorem noCallFrameReturn_normalizeProps_tryCatch_param_aux
     (h : (ANF.normalizeProps props k).run n = .ok (.tryCatch body catchParam catchBody finally_, m))
     (hk_ncfr : ∀ ts n' b cp cb f m', (k ts).run n' = .ok (.tryCatch b cp cb f, m') → cp ≠ "__call_frame_return__") :
     catchParam ≠ "__call_frame_return__" := by
-  induction props generalizing k n m with
+  induction props generalizing k body catchParam catchBody finally_ n m with
   | nil => simp only [ANF.normalizeProps] at h; exact hk_ncfr _ _ _ _ _ _ _ h
   | cons p rest ihp =>
     obtain ⟨pname, pexpr⟩ := p
     simp only [ANF.normalizeProps] at h
     have he : pexpr.depth ≤ d' := by
-      have hmem := Flat.Expr.mem_propListDepth_lt (List.mem_cons_self (pname, pexpr) rest); omega
+      have hmem := Flat.Expr.mem_propListDepth_lt (@List.mem_cons_self _ (pname, pexpr) rest); omega
     have hrest : Flat.Expr.propListDepth rest ≤ d' := by simp [Flat.Expr.propListDepth] at hd; omega
     have hncfr_e : noCallFrameReturn pexpr = true := by
       unfold noCallFrameReturnProps at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1
@@ -29645,14 +29645,14 @@ private theorem hasContinueInHead_compound_continue_step_sim
         (ih f _ n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
           (fun x hfx => hewf' x (VarFreeIn.newObj_func _ _ _ _ hfx))
           (by cases hna' with | newObj ha _ _ => exact ha) trace')
-    | seq_right h_sub => sorry -- second-operand case (mirror of break)
-    | binary_rhs h_sub => sorry -- second-operand case (mirror of break)
-    | setProp_val h_sub => sorry -- second-operand case (mirror of break)
-    | getIndex_idx h_sub => sorry -- second-operand case (mirror of break)
-    | setIndex_idx h_sub => sorry -- second-operand case (mirror of break)
-    | setIndex_val h_sub => sorry -- third-operand case (mirror of break)
-    | call_env h_sub => sorry -- second-operand case (mirror of break)
-    | newObj_env h_sub => sorry -- second-operand case (mirror of break)
+    | seq_right h_sub => sorry -- continue second-operand: needs trivialChain for a
+    | binary_rhs h_sub => sorry -- continue second-operand: needs trivialChain for lhs
+    | setProp_val h_sub => sorry -- continue second-operand: needs trivialChain for obj
+    | getIndex_idx h_sub => sorry -- continue second-operand: needs trivialChain for obj
+    | setIndex_idx h_sub => sorry -- continue second-operand: needs trivialChain for obj
+    | setIndex_val h_sub => sorry -- continue third-operand: needs trivialChain for obj+idx
+    | call_env h_sub => sorry -- continue second-operand: needs trivialChain for f
+    | newObj_env h_sub => sorry -- continue second-operand: needs trivialChain for f
     | call_args h_sub => sorry -- list case
     | newObj_args h_sub => sorry -- list case
     | makeEnv_values h_sub => sorry -- list case

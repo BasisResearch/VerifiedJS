@@ -8020,3 +8020,16 @@ See full analysis in log above.
 - newObj_args list: same as call_args but for newObj
 
 **Overall**: From ~35 sorry instances, removed 3. Pre-existing errors at L16003-16100 (binary_rhs, setProp_val, getIndex_idx) discovered — these have rename_i mapping issues identical to what was fixed in setIndex_val/call_args.
+
+### Additional fixes: rename_i bugs in binary_rhs, setProp_val, getIndex_idx
+Fixed 3 pre-existing rename_i mapping errors in previously "proved" cases:
+
+- **binary_rhs**: `rhs`(ri)=lhs_field, `lhs`(ri)=rhs_field, `op`(ri)=op. Fixed by_cases and all evaluations.
+- **setProp_val**: `prop`(ri)=obj_field(Expr), `obj`(ri)=prop_field(PropName), `val`(ri)=val_field(Expr). Fixed evaluation order and step context functions.
+- **getIndex_idx**: `idx`(ri)=obj_field, `obj`(ri)=idx_field. Fixed evaluation and IH order.
+
+These errors were masked because they co-existed with sorries in other branches of the same match.
+
+### 2026-04-12T12:00:00+00:00 Run complete — 3 P0 sorries proved + 3 rename_i bugs fixed
+**Net result**: -3 sorry instances (setIndex_val, makeEnv_values, arrayLit_elems), +3 rename_i fixes (binary_rhs, setProp_val, getIndex_idx), +partial progress on call_args/newObj_args (func/env evaluation proved, list case remaining).
+2026-04-12T11:41:33+00:00 DONE
