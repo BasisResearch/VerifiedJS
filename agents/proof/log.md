@@ -7952,3 +7952,4 @@ See full analysis in log above.
 
 ### 2026-04-12T05:30:35+00:00 Starting run — P0 step_error_isLit + P1 compound throw
 ### 2026-04-12T06:18:54+00:00 Run complete — P0 step_error_isLit PROVED (-1 sorry, 30→29 real sorries). P1 compound assessed: needs Steps_compound_error_lift infrastructure (env/heap preservation through intermediate steps). All remaining sorries blocked by compound error propagation or K-mismatch.
+2026-04-12T06:20:40+00:00 DONE
