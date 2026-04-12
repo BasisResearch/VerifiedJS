@@ -16051,7 +16051,38 @@ private theorem hasThrowInHead_compound_throw_step_sim
           (ih obj _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) hobj hnorm'
             (fun x hfx => hewf' x (VarFreeIn.setProp_obj _ _ _ _ hfx))
             (by cases hna' with | setProp ha _ => exact ha) trace')
-      · sorry -- second-operand: obj evaluates to value, then val steps
+      · -- obj has no throw: obj is trivial chain, throw from val via continuation
+        rcases ANF.normalizeExpr_throw_or_k obj _ arg' n' m' hnorm' with hobj' | ⟨_, n₁, m₁, hcont⟩
+        · exact absurd hobj' hobj
+        · have htc := no_throw_head_implies_trivial_chain obj.depth obj (Nat.le_refl _) _ arg' n' m' hnorm' hobj
+          obtain ⟨vobj, evs_obj, hsteps_obj, hnoerr_obj, hobs_obj, hpres_obj⟩ :=
+            trivialChain_eval_value (trivialChainCost obj) obj env heap trace' funcs cs htc
+              (Nat.le_refl _) (fun x hfx => hewf' x (VarFreeIn.setProp_obj _ _ _ _ hfx))
+          obtain ⟨ws_obj, hwsteps_obj, hwexpr_obj, hwenv_obj, hwheap_obj, hwfuncs_obj, hwcs_obj, hwtrace_obj⟩ :=
+            Steps_setProp_obj_ctx_b prop val hsteps_obj hnoerr_obj
+              (fun smid evs1 h _ => hpres_obj smid evs1 h)
+          have hws_obj_eq : ws_obj = ⟨.setProp (.lit vobj) prop val, env, heap, trace' ++ evs_obj, funcs, cs⟩ := by
+            cases ws_obj; simp_all
+          obtain ⟨ih_ok, ih_err⟩ :=
+            throwInHead_compound_lift h_sub
+              (fun s inner hv t si hs he => step?_setProp_val_ctx s vobj prop inner hv t si hs he)
+              (fun s inner hv msg si hs => step?_setProp_val_error s vobj prop inner hv msg si hs)
+              (ih val _ arg' n₁ m₁ (by simp [Flat.Expr.depth] at hd; omega) h_sub hcont
+                (fun x hfx => hewf' x (VarFreeIn.setProp_value _ _ _ _ hfx))
+                (by cases hna' with | setProp _ ha => exact ha) (trace' ++ evs_obj))
+          refine ⟨fun v heval => ?_, fun msg heval => ?_⟩
+          · obtain ⟨evs_val, sf_val, hsteps_val, hexpr_val, henv_val, hheap_val, htrace_val, hobs_val⟩ := ih_ok v heval
+            refine ⟨evs_obj ++ evs_val, sf_val,
+              Flat.Steps_trans (hws_obj_eq ▸ hwsteps_obj) hsteps_val,
+              hexpr_val, henv_val, hheap_val, ?_, ?_⟩
+            · rw [htrace_val]; simp [List.append_assoc]
+            · rw [observableTrace_append, hobs_obj, hobs_val]; simp
+          · obtain ⟨evs_val, sf_val, hsteps_val, hexpr_val, henv_val, hheap_val, htrace_val, hobs_val⟩ := ih_err msg heval
+            refine ⟨evs_obj ++ evs_val, sf_val,
+              Flat.Steps_trans (hws_obj_eq ▸ hwsteps_obj) hsteps_val,
+              hexpr_val, henv_val, hheap_val, ?_, ?_⟩
+            · rw [htrace_val]; simp [List.append_assoc]
+            · rw [observableTrace_append, hobs_obj, hobs_val]; simp
     | getIndex_idx h_sub =>
       rename_i obj idx
       simp only [ANF.normalizeExpr] at hnorm'
@@ -16062,7 +16093,38 @@ private theorem hasThrowInHead_compound_throw_step_sim
           (ih obj _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) hobj hnorm'
             (fun x hfx => hewf' x (VarFreeIn.getIndex_obj _ _ _ hfx))
             (by cases hna' with | getIndex ha _ => exact ha) trace')
-      · sorry -- second-operand: obj evaluates to value, then idx steps
+      · -- obj has no throw: obj is trivial chain, throw from idx via continuation
+        rcases ANF.normalizeExpr_throw_or_k obj _ arg' n' m' hnorm' with hobj' | ⟨_, n₁, m₁, hcont⟩
+        · exact absurd hobj' hobj
+        · have htc := no_throw_head_implies_trivial_chain obj.depth obj (Nat.le_refl _) _ arg' n' m' hnorm' hobj
+          obtain ⟨vobj, evs_obj, hsteps_obj, hnoerr_obj, hobs_obj, hpres_obj⟩ :=
+            trivialChain_eval_value (trivialChainCost obj) obj env heap trace' funcs cs htc
+              (Nat.le_refl _) (fun x hfx => hewf' x (VarFreeIn.getIndex_obj _ _ _ hfx))
+          obtain ⟨ws_obj, hwsteps_obj, hwexpr_obj, hwenv_obj, hwheap_obj, hwfuncs_obj, hwcs_obj, hwtrace_obj⟩ :=
+            Steps_getIndex_obj_ctx_b idx hsteps_obj hnoerr_obj
+              (fun smid evs1 h _ => hpres_obj smid evs1 h)
+          have hws_obj_eq : ws_obj = ⟨.getIndex (.lit vobj) idx, env, heap, trace' ++ evs_obj, funcs, cs⟩ := by
+            cases ws_obj; simp_all
+          obtain ⟨ih_ok, ih_err⟩ :=
+            throwInHead_compound_lift h_sub
+              (fun s inner hv t si hs he => step?_getIndex_idx_ctx s vobj inner hv t si hs he)
+              (fun s inner hv msg si hs => step?_getIndex_idx_error s vobj inner hv msg si hs)
+              (ih idx _ arg' n₁ m₁ (by simp [Flat.Expr.depth] at hd; omega) h_sub hcont
+                (fun x hfx => hewf' x (VarFreeIn.getIndex_idx _ _ _ hfx))
+                (by cases hna' with | getIndex _ ha => exact ha) (trace' ++ evs_obj))
+          refine ⟨fun v heval => ?_, fun msg heval => ?_⟩
+          · obtain ⟨evs_idx, sf_idx, hsteps_idx, hexpr_idx, henv_idx, hheap_idx, htrace_idx, hobs_idx⟩ := ih_ok v heval
+            refine ⟨evs_obj ++ evs_idx, sf_idx,
+              Flat.Steps_trans (hws_obj_eq ▸ hwsteps_obj) hsteps_idx,
+              hexpr_idx, henv_idx, hheap_idx, ?_, ?_⟩
+            · rw [htrace_idx]; simp [List.append_assoc]
+            · rw [observableTrace_append, hobs_obj, hobs_idx]; simp
+          · obtain ⟨evs_idx, sf_idx, hsteps_idx, hexpr_idx, henv_idx, hheap_idx, htrace_idx, hobs_idx⟩ := ih_err msg heval
+            refine ⟨evs_obj ++ evs_idx, sf_idx,
+              Flat.Steps_trans (hws_obj_eq ▸ hwsteps_obj) hsteps_idx,
+              hexpr_idx, henv_idx, hheap_idx, ?_, ?_⟩
+            · rw [htrace_idx]; simp [List.append_assoc]
+            · rw [observableTrace_append, hobs_obj, hobs_idx]; simp
     | setIndex_idx h_sub =>
       rename_i obj idx val
       simp only [ANF.normalizeExpr] at hnorm'

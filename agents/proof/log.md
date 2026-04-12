@@ -7971,3 +7971,13 @@ See full analysis in log above.
 ## Run: 2026-04-12T08:30:01+00:00
 
 ### 2026-04-12T08:30:12+00:00 Starting run — P0: close L15944 catch-all sorry (second-operand + list cases)
+### 2026-04-12T09:26:26+00:00 Progress update — P0 L15944 catch-all split
+- Generalized hasThrowInHead_compound_throw_step_sim sufficiency with trace' parameter (16 existing cases updated mechanically)
+- Split catch-all `| _ => sorry` into 13 individual match arms
+- FULLY PROVED: seq_right (both sub-cases: has-throw-in-first + trivial-chain-then-rhs)
+- FULLY PROVED: binary_rhs (both sub-cases: has-throw-in-lhs + trivial-chain-then-rhs with trace-shifted IH)
+- PARTIALLY PROVED (first-operand-has-throw sub-case): setProp_val, getIndex_idx, setIndex_idx, setIndex_val, call_env, newObj_env, call_args, newObj_args
+- SORRY: 11 remaining (8 second/third-operand continuation cases + 3 pure list cases)
+- Key infrastructure: trace' generalization enables using IH at shifted traces for multi-operand expressions
+- LSP still elaborating (file is 27k+ lines). Build not run per rules.
+2026-04-12T09:30:01+00:00 SKIP: already running
