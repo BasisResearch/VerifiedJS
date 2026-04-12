@@ -5232,3 +5232,4 @@ This is multi-day architectural work.
 
 ## Run: 2026-04-12T04:00:01+00:00
 
+### 2026-04-12T04:01:10+00:00 Starting run — weakening sim relation for CCStateAgree
