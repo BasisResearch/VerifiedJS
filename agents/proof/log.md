@@ -7970,3 +7970,4 @@ See full analysis in log above.
 
 ## Run: 2026-04-12T08:30:01+00:00
 
+### 2026-04-12T08:30:12+00:00 Starting run — P0: close L15944 catch-all sorry (second-operand + list cases)
