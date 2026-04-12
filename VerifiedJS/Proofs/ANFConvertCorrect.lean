@@ -28184,6 +28184,466 @@ private theorem HasContinueInHeadProps_to_HasAbruptHeadProps
   | head h => exact .head (HasContinueInHead_to_HasAbruptHead h)
   | tail h => exact .tail (HasContinueInHeadProps_to_HasAbruptHeadProps h)
 
+/-! ## no_break_head_implies_trivial_chain and no_continue_head_implies_trivial_chain -/
+
+set_option maxHeartbeats 400000 in
+private theorem no_break_head_implies_trivial_chain :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    ∀ (k : ANF.Trivial → ANF.ConvM ANF.Expr) (label : Option String) (n m : Nat),
+    (ANF.normalizeExpr e k).run n = .ok (.break label, m) →
+    ¬ HasBreakInHead e label →
+    isTrivialChain e = true := by
+  intro d; induction d with
+  | zero =>
+    intro e hd k label n m h hno
+    cases e with
+    | lit _ => rfl
+    | var _ => rfl
+    | «this» => rfl
+    | «break» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      have := (Prod.mk.inj (Except.ok.inj h)).1
+      exact hno (by cases this; exact HasBreakInHead.break_direct)
+    | «continue» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | «return» arg_r =>
+      cases arg_r with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some _ => exfalso; simp [Flat.Expr.depth] at hd
+    | yield arg_y _ =>
+      cases arg_y with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some _ => exfalso; simp [Flat.Expr.depth] at hd
+    | tryCatch _ _ _ fin => exfalso; cases fin <;> (simp [Flat.Expr.depth] at hd; try omega)
+    | _ => exfalso; simp [Flat.Expr.depth] at hd; try omega
+  | succ d ih =>
+    intro e hd k label n m h hno
+    cases e with
+    | lit _ => rfl
+    | var _ => rfl
+    | «this» => rfl
+    | «break» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      have := (Prod.mk.inj (Except.ok.inj h)).1
+      exact hno (by cases this; exact HasBreakInHead.break_direct)
+    | «continue» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | «throw» _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_break_or_k _ _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.throw_arg hleft)
+      · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
+    | «return» arg_r =>
+      cases arg_r with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some v =>
+        exfalso; simp only [ANF.normalizeExpr] at h
+        rcases ANF.normalizeExpr_break_or_k v _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+        · exact hno (HasBreakInHead.return_some_arg hleft)
+        · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
+    | yield arg_y dlg =>
+      cases arg_y with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some v =>
+        exfalso; simp only [ANF.normalizeExpr] at h
+        rcases ANF.normalizeExpr_break_or_k v _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+        · exact hno (HasBreakInHead.yield_some_arg hleft)
+        · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
+    | await v =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_break_or_k v _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.await_arg hleft)
+      · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
+    | labeled l body => exfalso; exact absurd h (ANF.normalizeExpr_labeled_not_break l body k label n m)
+    | while_ c b => exfalso; exact absurd h (ANF.normalizeExpr_while_not_break c b k label n m)
+    | tryCatch body cp cb fin =>
+      exfalso; exact absurd h (ANF.normalizeExpr_tryCatch_not_break body cp cb fin k label n m)
+    | seq a b =>
+      simp only [ANF.normalizeExpr] at h
+      have hda : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have hdb : b.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have hno_a : ¬HasBreakInHead a label := fun ha => hno (HasBreakInHead.seq_left ha)
+      have hno_b : ¬HasBreakInHead b label := fun hb => hno (HasBreakInHead.seq_right hb)
+      have htc_a := ih a hda (fun _ => ANF.normalizeExpr b k) label n m h hno_a
+      have hpass := normalizeExpr_trivialChain_passthrough a.depth a (Nat.le_refl _) htc_a
+        (ANF.normalizeExpr b k) n
+      have h_b : (ANF.normalizeExpr b k).run n = .ok (.break label, m) := by rw [← hpass]; exact h
+      have htc_b := ih b hdb k label n m h_b hno_b
+      simp [isTrivialChain, htc_a, htc_b]
+    | «let» name init body =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_break_or_k init _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.let_init hleft)
+      · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure,
+          Except.pure, Except.bind] at hkt
+        split at hkt <;> simp_all
+    | «if» c t e =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_break_or_k c _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.if_cond hleft)
+      · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure,
+          Except.pure, Except.bind] at hkt
+        split at hkt <;> (try simp_all)
+        split at hkt <;> simp_all
+    | assign name val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_break_or_k val _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.assign_val hleft)
+      · exact absurd hkt (ANF.bindComplex_never_break_general _ _ _ _ _)
+    | getProp obj _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_break_or_k obj _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.getProp_obj hleft)
+      · exact absurd hkt (ANF.bindComplex_never_break_general _ _ _ _ _)
+    | deleteProp obj _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_break_or_k obj _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.deleteProp_obj hleft)
+      · exact absurd hkt (ANF.bindComplex_never_break_general _ _ _ _ _)
+    | typeof val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_break_or_k val _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.typeof_arg hleft)
+      · exact absurd hkt (ANF.bindComplex_never_break_general _ _ _ _ _)
+    | unary _ val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_break_or_k val _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.unary_arg hleft)
+      · exact absurd hkt (ANF.bindComplex_never_break_general _ _ _ _ _)
+    | getEnv envPtr _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_break_or_k envPtr _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.getEnv_env hleft)
+      · exact absurd hkt (ANF.bindComplex_never_break_general _ _ _ _ _)
+    | makeClosure _ env =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_break_or_k env _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.makeClosure_env hleft)
+      · exact absurd hkt (ANF.bindComplex_never_break_general _ _ _ _ _)
+    | setProp obj _ val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_break_or_k obj _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.setProp_obj hleft)
+      · rcases ANF.normalizeExpr_break_or_k val _ label _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasBreakInHead.setProp_val hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_never_break_general _ _ _ _ _)
+    | binary _ lhs rhs =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_break_or_k lhs _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.binary_lhs hleft)
+      · rcases ANF.normalizeExpr_break_or_k rhs _ label _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasBreakInHead.binary_rhs hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_never_break_general _ _ _ _ _)
+    | getIndex obj idx =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_break_or_k obj _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.getIndex_obj hleft)
+      · rcases ANF.normalizeExpr_break_or_k idx _ label _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasBreakInHead.getIndex_idx hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_never_break_general _ _ _ _ _)
+    | setIndex obj idx val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_break_or_k obj _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.setIndex_obj hleft)
+      · rcases ANF.normalizeExpr_break_or_k idx _ label _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasBreakInHead.setIndex_idx hleft)
+        · rcases ANF.normalizeExpr_break_or_k val _ label _ _ hkt₂ with hleft | ⟨_, _, _, hkt₃⟩
+          · exact hno (HasBreakInHead.setIndex_val hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_never_break_general _ _ _ _ _)
+    | call f env args =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_break_or_k f _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.call_func hleft)
+      · rcases ANF.normalizeExpr_break_or_k env _ label _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasBreakInHead.call_env hleft)
+        · have args_ih : ∀ e, e ∈ args → ∀ k' (label' : Option String) n m,
+              (ANF.normalizeExpr e k').run n = .ok (.break label', m) →
+              HasBreakInHead e label' ∨ ∃ t n' m', (k' t).run n' = .ok (.break label', m') :=
+            fun e he => ANF.normalizeExpr_break_or_k e
+          rcases normalizeExprList_break_or_k args args_ih _ _ _ _ hkt₂ with hleft | ⟨_, _, _, hkt₃⟩
+          · exact hno (HasBreakInHead.call_args hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_never_break_general _ _ _ _ _)
+    | newObj f env args =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_break_or_k f _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.newObj_func hleft)
+      · rcases ANF.normalizeExpr_break_or_k env _ label _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasBreakInHead.newObj_env hleft)
+        · have args_ih : ∀ e, e ∈ args → ∀ k' (label' : Option String) n m,
+              (ANF.normalizeExpr e k').run n = .ok (.break label', m) →
+              HasBreakInHead e label' ∨ ∃ t n' m', (k' t).run n' = .ok (.break label', m') :=
+            fun e he => ANF.normalizeExpr_break_or_k e
+          rcases normalizeExprList_break_or_k args args_ih _ _ _ _ hkt₂ with hleft | ⟨_, _, _, hkt₃⟩
+          · exact hno (HasBreakInHead.newObj_args hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_never_break_general _ _ _ _ _)
+    | makeEnv values =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have vals_ih : ∀ e, e ∈ values → ∀ k' (label' : Option String) n m,
+          (ANF.normalizeExpr e k').run n = .ok (.break label', m) →
+          HasBreakInHead e label' ∨ ∃ t n' m', (k' t).run n' = .ok (.break label', m') :=
+        fun e he => ANF.normalizeExpr_break_or_k e
+      rcases normalizeExprList_break_or_k values vals_ih _ _ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.makeEnv_values hleft)
+      · exact absurd hkt (ANF.bindComplex_never_break_general _ _ _ _ _)
+    | objectLit props =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have props_ih : ∀ (name : Flat.PropName) (e : Flat.Expr), (name, e) ∈ props →
+          ∀ k' (label' : Option String) n m,
+          (ANF.normalizeExpr e k').run n = .ok (.break label', m) →
+          HasBreakInHead e label' ∨ ∃ t n' m', (k' t).run n' = .ok (.break label', m') :=
+        fun name e he => ANF.normalizeExpr_break_or_k e
+      rcases normalizeProps_break_or_k props props_ih _ _ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.objectLit_props hleft)
+      · exact absurd hkt (ANF.bindComplex_never_break_general _ _ _ _ _)
+    | arrayLit elems =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have elems_ih : ∀ e, e ∈ elems → ∀ k' (label' : Option String) n m,
+          (ANF.normalizeExpr e k').run n = .ok (.break label', m) →
+          HasBreakInHead e label' ∨ ∃ t n' m', (k' t).run n' = .ok (.break label', m') :=
+        fun e he => ANF.normalizeExpr_break_or_k e
+      rcases normalizeExprList_break_or_k elems elems_ih _ _ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasBreakInHead.arrayLit_elems hleft)
+      · exact absurd hkt (ANF.bindComplex_never_break_general _ _ _ _ _)
+
+set_option maxHeartbeats 400000 in
+private theorem no_continue_head_implies_trivial_chain :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    ∀ (k : ANF.Trivial → ANF.ConvM ANF.Expr) (label : Option String) (n m : Nat),
+    (ANF.normalizeExpr e k).run n = .ok (.continue label, m) →
+    ¬ HasContinueInHead e label →
+    isTrivialChain e = true := by
+  intro d; induction d with
+  | zero =>
+    intro e hd k label n m h hno
+    cases e with
+    | lit _ => rfl
+    | var _ => rfl
+    | «this» => rfl
+    | «break» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | «continue» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      have := (Prod.mk.inj (Except.ok.inj h)).1
+      exact hno (by cases this; exact HasContinueInHead.continue_direct)
+    | «return» arg_r =>
+      cases arg_r with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some _ => exfalso; simp [Flat.Expr.depth] at hd
+    | yield arg_y _ =>
+      cases arg_y with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some _ => exfalso; simp [Flat.Expr.depth] at hd
+    | tryCatch _ _ _ fin => exfalso; cases fin <;> (simp [Flat.Expr.depth] at hd; try omega)
+    | _ => exfalso; simp [Flat.Expr.depth] at hd; try omega
+  | succ d ih =>
+    intro e hd k label n m h hno
+    cases e with
+    | lit _ => rfl
+    | var _ => rfl
+    | «this» => rfl
+    | «break» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+    | «continue» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+      have := (Prod.mk.inj (Except.ok.inj h)).1
+      exact hno (by cases this; exact HasContinueInHead.continue_direct)
+    | «throw» _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_continue_or_k _ _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.throw_arg hleft)
+      · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
+    | «return» arg_r =>
+      cases arg_r with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some v =>
+        exfalso; simp only [ANF.normalizeExpr] at h
+        rcases ANF.normalizeExpr_continue_or_k v _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+        · exact hno (HasContinueInHead.return_some_arg hleft)
+        · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
+    | yield arg_y dlg =>
+      cases arg_y with
+      | none =>
+        exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at h
+        exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj h)).1
+      | some v =>
+        exfalso; simp only [ANF.normalizeExpr] at h
+        rcases ANF.normalizeExpr_continue_or_k v _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+        · exact hno (HasContinueInHead.yield_some_arg hleft)
+        · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
+    | await v =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_continue_or_k v _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.await_arg hleft)
+      · exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hkt)).1
+    | labeled l body => exfalso; exact absurd h (ANF.normalizeExpr_labeled_not_continue l body k label n m)
+    | while_ c b => exfalso; exact absurd h (ANF.normalizeExpr_while_not_continue c b k label n m)
+    | tryCatch body cp cb fin =>
+      exfalso; exact absurd h (ANF.normalizeExpr_tryCatch_not_continue body cp cb fin k label n m)
+    | seq a b =>
+      simp only [ANF.normalizeExpr] at h
+      have hda : a.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have hdb : b.depth ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      have hno_a : ¬HasContinueInHead a label := fun ha => hno (HasContinueInHead.seq_left ha)
+      have hno_b : ¬HasContinueInHead b label := fun hb => hno (HasContinueInHead.seq_right hb)
+      have htc_a := ih a hda (fun _ => ANF.normalizeExpr b k) label n m h hno_a
+      have hpass := normalizeExpr_trivialChain_passthrough a.depth a (Nat.le_refl _) htc_a
+        (ANF.normalizeExpr b k) n
+      have h_b : (ANF.normalizeExpr b k).run n = .ok (.continue label, m) := by rw [← hpass]; exact h
+      have htc_b := ih b hdb k label n m h_b hno_b
+      simp [isTrivialChain, htc_a, htc_b]
+    | «let» name init body =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_continue_or_k init _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.let_init hleft)
+      · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure,
+          Except.pure, Except.bind] at hkt
+        split at hkt <;> simp_all
+    | «if» c t e =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_continue_or_k c _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.if_cond hleft)
+      · simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure,
+          Except.pure, Except.bind] at hkt
+        split at hkt <;> (try simp_all)
+        split at hkt <;> simp_all
+    | assign name val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_continue_or_k val _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.assign_val hleft)
+      · exact absurd hkt (ANF.bindComplex_never_continue_general _ _ _ _ _)
+    | getProp obj _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_continue_or_k obj _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.getProp_obj hleft)
+      · exact absurd hkt (ANF.bindComplex_never_continue_general _ _ _ _ _)
+    | deleteProp obj _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_continue_or_k obj _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.deleteProp_obj hleft)
+      · exact absurd hkt (ANF.bindComplex_never_continue_general _ _ _ _ _)
+    | typeof val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_continue_or_k val _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.typeof_arg hleft)
+      · exact absurd hkt (ANF.bindComplex_never_continue_general _ _ _ _ _)
+    | unary _ val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_continue_or_k val _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.unary_arg hleft)
+      · exact absurd hkt (ANF.bindComplex_never_continue_general _ _ _ _ _)
+    | getEnv envPtr _ =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_continue_or_k envPtr _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.getEnv_env hleft)
+      · exact absurd hkt (ANF.bindComplex_never_continue_general _ _ _ _ _)
+    | makeClosure _ env =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_continue_or_k env _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.makeClosure_env hleft)
+      · exact absurd hkt (ANF.bindComplex_never_continue_general _ _ _ _ _)
+    | setProp obj _ val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_continue_or_k obj _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.setProp_obj hleft)
+      · rcases ANF.normalizeExpr_continue_or_k val _ label _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasContinueInHead.setProp_val hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_never_continue_general _ _ _ _ _)
+    | binary _ lhs rhs =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_continue_or_k lhs _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.binary_lhs hleft)
+      · rcases ANF.normalizeExpr_continue_or_k rhs _ label _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasContinueInHead.binary_rhs hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_never_continue_general _ _ _ _ _)
+    | getIndex obj idx =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_continue_or_k obj _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.getIndex_obj hleft)
+      · rcases ANF.normalizeExpr_continue_or_k idx _ label _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasContinueInHead.getIndex_idx hleft)
+        · exact absurd hkt₂ (ANF.bindComplex_never_continue_general _ _ _ _ _)
+    | setIndex obj idx val =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_continue_or_k obj _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.setIndex_obj hleft)
+      · rcases ANF.normalizeExpr_continue_or_k idx _ label _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasContinueInHead.setIndex_idx hleft)
+        · rcases ANF.normalizeExpr_continue_or_k val _ label _ _ hkt₂ with hleft | ⟨_, _, _, hkt₃⟩
+          · exact hno (HasContinueInHead.setIndex_val hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_never_continue_general _ _ _ _ _)
+    | call f env args =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_continue_or_k f _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.call_func hleft)
+      · rcases ANF.normalizeExpr_continue_or_k env _ label _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasContinueInHead.call_env hleft)
+        · have args_ih : ∀ e, e ∈ args → ∀ k' (label' : Option String) n m,
+              (ANF.normalizeExpr e k').run n = .ok (.continue label', m) →
+              HasContinueInHead e label' ∨ ∃ t n' m', (k' t).run n' = .ok (.continue label', m') :=
+            fun e he => ANF.normalizeExpr_continue_or_k e
+          rcases normalizeExprList_continue_or_k args args_ih _ _ _ _ hkt₂ with hleft | ⟨_, _, _, hkt₃⟩
+          · exact hno (HasContinueInHead.call_args hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_never_continue_general _ _ _ _ _)
+    | newObj f env args =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      rcases ANF.normalizeExpr_continue_or_k f _ label _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.newObj_func hleft)
+      · rcases ANF.normalizeExpr_continue_or_k env _ label _ _ hkt with hleft | ⟨_, _, _, hkt₂⟩
+        · exact hno (HasContinueInHead.newObj_env hleft)
+        · have args_ih : ∀ e, e ∈ args → ∀ k' (label' : Option String) n m,
+              (ANF.normalizeExpr e k').run n = .ok (.continue label', m) →
+              HasContinueInHead e label' ∨ ∃ t n' m', (k' t).run n' = .ok (.continue label', m') :=
+            fun e he => ANF.normalizeExpr_continue_or_k e
+          rcases normalizeExprList_continue_or_k args args_ih _ _ _ _ hkt₂ with hleft | ⟨_, _, _, hkt₃⟩
+          · exact hno (HasContinueInHead.newObj_args hleft)
+          · exact absurd hkt₃ (ANF.bindComplex_never_continue_general _ _ _ _ _)
+    | makeEnv values =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have vals_ih : ∀ e, e ∈ values → ∀ k' (label' : Option String) n m,
+          (ANF.normalizeExpr e k').run n = .ok (.continue label', m) →
+          HasContinueInHead e label' ∨ ∃ t n' m', (k' t).run n' = .ok (.continue label', m') :=
+        fun e he => ANF.normalizeExpr_continue_or_k e
+      rcases normalizeExprList_continue_or_k values vals_ih _ _ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.makeEnv_values hleft)
+      · exact absurd hkt (ANF.bindComplex_never_continue_general _ _ _ _ _)
+    | objectLit props =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have props_ih : ∀ (name : Flat.PropName) (e : Flat.Expr), (name, e) ∈ props →
+          ∀ k' (label' : Option String) n m,
+          (ANF.normalizeExpr e k').run n = .ok (.continue label', m) →
+          HasContinueInHead e label' ∨ ∃ t n' m', (k' t).run n' = .ok (.continue label', m') :=
+        fun name e he => ANF.normalizeExpr_continue_or_k e
+      rcases normalizeProps_continue_or_k props props_ih _ _ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.objectLit_props hleft)
+      · exact absurd hkt (ANF.bindComplex_never_continue_general _ _ _ _ _)
+    | arrayLit elems =>
+      exfalso; simp only [ANF.normalizeExpr] at h
+      have elems_ih : ∀ e, e ∈ elems → ∀ k' (label' : Option String) n m,
+          (ANF.normalizeExpr e k').run n = .ok (.continue label', m) →
+          HasContinueInHead e label' ∨ ∃ t n' m', (k' t).run n' = .ok (.continue label', m') :=
+        fun e he => ANF.normalizeExpr_continue_or_k e
+      rcases normalizeExprList_continue_or_k elems elems_ih _ _ _ _ h with hleft | ⟨_, _, _, hkt⟩
+      · exact hno (HasContinueInHead.arrayLit_elems hleft)
+      · exact absurd hkt (ANF.bindComplex_never_continue_general _ _ _ _ _)
+
 /-! ## breakInHead_compound_lift and continueInHead_compound_lift -/
 
 private theorem breakInHead_compound_lift
