@@ -14205,17 +14205,17 @@ private theorem step_error_isLit :
                 · simp at hstep
                 · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
     | «break» => unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
-                  obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+                  obtain ⟨_, rfl⟩ := hstep; exact ⟨.undefined, rfl⟩
     | «continue» => unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
-                     obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+                     obtain ⟨_, rfl⟩ := hstep; exact ⟨.undefined, rfl⟩
     | «return» arg =>
       cases arg with
       | none => unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
-                obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+                obtain ⟨_, rfl⟩ := hstep; exact ⟨.undefined, rfl⟩
       | some v =>
         unfold Flat.step? at hstep; dsimp only [] at hstep
         split at hstep
-        · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+        · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨.undefined, rfl⟩
         · split at hstep
           · split at hstep
             · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (.error _, _)›
@@ -14226,10 +14226,11 @@ private theorem step_error_isLit :
     | yield arg _ =>
       cases arg with
       | none => unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
+                obtain ⟨_, rfl⟩ := hstep; exact ⟨.undefined, rfl⟩
       | some v =>
         unfold Flat.step? at hstep; dsimp only [] at hstep
         split at hstep
-        · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+        · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨.undefined, rfl⟩
         · split at hstep
           · split at hstep
             · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (.error _, _)›
@@ -14240,7 +14241,7 @@ private theorem step_error_isLit :
     | throw arg =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
       split at hstep
-      · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+      · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨.undefined, rfl⟩
       · split at hstep
         · split at hstep
           · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (.error _, _)›
@@ -14251,7 +14252,7 @@ private theorem step_error_isLit :
     | await arg =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
       split at hstep
-      · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+      · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨.undefined, rfl⟩
       · split at hstep
         · split at hstep
           · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (.error _, _)›
@@ -14552,54 +14553,6 @@ private theorem step_error_isLit :
     -- labeled: unwraps to body
     | labeled l body =>
       unfold Flat.step? at hstep; simp at hstep
-
-/-- HasThrowInHead is preserved through multi-step evaluation: at every steppable
-    intermediate state reachable from a HasThrowInHead expression, the expression
-    still has HasThrowInHead.
-    Proof: non-error steps preserve by HasThrowInHead_step_nonError; error steps
-    produce .lit (by step_error_isLit) which is stuck, contradicting further steps. -/
-private theorem HasThrowInHead_Steps_steppable
-    {a : Flat.Expr} {env : Flat.Env} {heap : Core.Heap} {trace : List Core.TraceEvent}
-    {funcs : Array Flat.FuncDef} {cs : List Flat.Env}
-    (hth : HasThrowInHead a)
-    {smid : Flat.State} {evs_pre : List Core.TraceEvent}
-    (hsteps : Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs_pre smid)
-    {t : Core.TraceEvent} {smid' : Flat.State}
-    (hstep : Flat.step? smid = some (t, smid')) :
-    HasThrowInHead smid.expr := by
-  suffices h : ∀ (s0 sf : Flat.State) (evs : List Core.TraceEvent),
-      HasThrowInHead s0.expr →
-      Flat.Steps s0 evs sf →
-      ∀ (t' : Core.TraceEvent) (sf' : Flat.State),
-      Flat.step? sf = some (t', sf') →
-      HasThrowInHead sf.expr by
-    exact h ⟨a, env, heap, trace, funcs, cs⟩ smid evs_pre hth hsteps t smid' hstep
-  intro s0 sf evs hth0 hsteps0
-  induction hsteps0 with
-  | refl => intro _ _ _; exact hth0
-  | @tail s1 s2 s3 ev evs' hfirst hrest ih =>
-    intro t' sf' hstep_sf
-    have hstep_s1 : Flat.step? s1 = some (ev, s2) := hfirst.1
-    by_cases ht : ∃ msg', ev = .error msg'
-    · -- Error step: result is .lit (stuck) → no further steps → contradiction
-      obtain ⟨msg', rfl⟩ := ht
-      obtain ⟨v, hv⟩ := step_error_isLit s1.expr.depth s1.expr (Nat.le_refl _)
-        s1.env s1.heap s1.trace s1.funcs s1.callStack s2 msg'
-        (by cases s1; exact hstep_s1)
-      exfalso
-      have hlit : Flat.step? s2 = none := by
-        cases s2 with | mk e2 env2 heap2 trace2 funcs2 cs2 =>
-        simp [Flat.State.expr] at hv; subst hv
-        simp [Flat.step?]
-      cases hrest with
-      | refl => simp_all
-      | tail hfirst2 _ => exact absurd hfirst2.1 (by rw [hlit]; exact fun h => nomatch h)
-    · -- Non-error step: HasThrowInHead preserved
-      have hnoerr : ∀ msg, ev ≠ .error msg := by
-        intro msg h; exact ht ⟨msg, h⟩
-      have hs2_th : HasThrowInHead s2.expr :=
-        HasThrowInHead_step_nonError hth0 hstep_s1 hnoerr
-      exact ih hs2_th t' sf' hstep_sf
 
 /-- General compound HasThrowInHead step simulation. If e has a throw in CPS-head
     position and normalizeExpr e k produces .throw arg, then Flat steps from e
@@ -15764,6 +15717,54 @@ private theorem HasThrowInHead_step_nonError
                 have := Flat.firstNonValueExpr_depth hfnv; omega) ht (by assumption) hnoerr)) .inr)
             simp only [List.singleton_append] at hres ⊢ <;> exact .arrayLit_elems hres
         · simp at hstep
+
+/-- HasThrowInHead is preserved through multi-step evaluation: at every steppable
+    intermediate state reachable from a HasThrowInHead expression, the expression
+    still has HasThrowInHead.
+    Proof: non-error steps preserve by HasThrowInHead_step_nonError; error steps
+    produce .lit (by step_error_isLit) which is stuck, contradicting further steps. -/
+private theorem HasThrowInHead_Steps_steppable
+    {a : Flat.Expr} {env : Flat.Env} {heap : Core.Heap} {trace : List Core.TraceEvent}
+    {funcs : Array Flat.FuncDef} {cs : List Flat.Env}
+    (hth : HasThrowInHead a)
+    {smid : Flat.State} {evs_pre : List Core.TraceEvent}
+    (hsteps : Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs_pre smid)
+    {t : Core.TraceEvent} {smid' : Flat.State}
+    (hstep : Flat.step? smid = some (t, smid')) :
+    HasThrowInHead smid.expr := by
+  suffices h : ∀ (s0 sf : Flat.State) (evs : List Core.TraceEvent),
+      HasThrowInHead s0.expr →
+      Flat.Steps s0 evs sf →
+      ∀ (t' : Core.TraceEvent) (sf' : Flat.State),
+      Flat.step? sf = some (t', sf') →
+      HasThrowInHead sf.expr by
+    exact h ⟨a, env, heap, trace, funcs, cs⟩ smid evs_pre hth hsteps t smid' hstep
+  intro s0 sf evs hth0 hsteps0
+  induction hsteps0 with
+  | refl => intro _ _ _; exact hth0
+  | @tail s1 s2 s3 ev evs' hfirst hrest ih =>
+    intro t' sf' hstep_sf
+    have hstep_s1 : Flat.step? s1 = some (ev, s2) := hfirst.1
+    by_cases ht : ∃ msg', ev = .error msg'
+    · -- Error step: result is .lit (stuck) → no further steps → contradiction
+      obtain ⟨msg', rfl⟩ := ht
+      obtain ⟨v, hv⟩ := step_error_isLit s1.expr.depth s1.expr (Nat.le_refl _)
+        s1.env s1.heap s1.trace s1.funcs s1.callStack s2 msg'
+        (by cases s1; exact hstep_s1)
+      exfalso
+      have hlit : Flat.step? s2 = none := by
+        cases s2 with | mk e2 env2 heap2 trace2 funcs2 cs2 =>
+        simp [Flat.State.expr] at hv; subst hv
+        simp [Flat.step?]
+      cases hrest with
+      | refl => simp_all
+      | tail hfirst2 _ => exact absurd hfirst2.1 (by rw [hlit]; exact fun h => nomatch h)
+    · -- Non-error step: HasThrowInHead preserved
+      have hnoerr : ∀ msg, ev ≠ .error msg := by
+        intro msg h; exact ht ⟨msg, h⟩
+      have hs2_th : HasThrowInHead s2.expr :=
+        HasThrowInHead_step_nonError hth0 hstep_s1 hnoerr
+      exact ih hs2_th t' sf' hstep_sf
 
 /-- Non-error steps preserve HasReturnInHead. -/
 private theorem HasReturnInHead_step_nonError
