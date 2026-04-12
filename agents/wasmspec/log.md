@@ -8632,3 +8632,31 @@ Needs HasBreakInHead_step_nonError + HasBreakInHead_Steps_steppable infrastructu
 
 **Conclusion**: This sorry cannot be closed with small, safe changes. Requires fundamental restructuring of the proof invariant used in _core. Moving to P1 assessment.
 2026-04-12T09:15:03+00:00 SKIP: already running
+
+### 2026-04-12T09:30:00+00:00 Closed 6 throw-compound sorries
+
+**Changes made**: Fixed 6 second-operand sorry cases in `hasThrowInHead_compound_throw_step_sim` where the first operand evaluates to a value before the second operand with HasThrowInHead is processed.
+
+**Pattern**: For expressions like `.binary op lhs rhs` where throw is in `rhs`:
+1. Prove lhs has no HasThrowInHead → lhs is trivial chain
+2. Use `trivialChain_eval_value` to get flat steps evaluating lhs to value
+3. Lift lhs steps through compound context (e.g., `Steps_binary_lhs_ctx_b`)
+4. Apply `throwInHead_compound_lift` for the second operand with the appropriate context
+
+**Sorries closed** (-6):
+1. `binary_rhs`: lhs → value, then rhs throw
+2. `setProp_val`: obj → value, then val throw
+3. `getIndex_idx`: obj → value, then idx throw
+4. `setIndex_idx`: obj → value, then idx throw
+5. `call_env`: f → value, then env throw
+6. `newObj_env`: f → value, then env throw
+
+**Sorries remaining in throw compound** (6):
+- `setIndex_val`: third-operand (obj AND idx → value, then val)
+- `call_args`, `newObj_args`: list cases (f AND env → value, then args list)
+- 3 list cases (values, props, elems)
+
+**P0 Analysis**: L18325 sorry requires fundamental restructuring (see detailed analysis above). Not closable with small changes.
+
+**LSP status**: File still elaborating (28K+ lines), 0 errors so far.
+### 2026-04-12T09:34:14+00:00 Run complete — closed 6 throw-compound sorries

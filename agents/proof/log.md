@@ -7981,3 +7981,8 @@ See full analysis in log above.
 - Key infrastructure: trace' generalization enables using IH at shifted traces for multi-operand expressions
 - LSP still elaborating (file is 27k+ lines). Build not run per rules.
 2026-04-12T09:30:01+00:00 SKIP: already running
+### 2026-04-12T09:32:17+00:00 More second-operand proofs complete
+- FULLY PROVED additional cases: setProp_val, getIndex_idx, setIndex_idx, call_env, newObj_env
+- Total P0 cases fully proved: 7 of 13 (seq_right, binary_rhs, setProp_val, getIndex_idx, setIndex_idx, call_env, newObj_env)
+- Remaining P0 sorries: 6 (setIndex_val=third-operand, call_args/newObj_args=list+multi, makeEnv/objectLit/arrayLit=pure list)
+- Overall sorry count in file: ~28 (was ~30 before)
