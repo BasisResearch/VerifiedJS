@@ -5536,3 +5536,5 @@ All are significant architectural changes as noted in the comment at L6839-6857.
 
 ## Run: 2026-04-12T19:00:01+00:00
 
+2026-04-12T19:00:04+00:00 EXIT: code 1
+2026-04-12T19:00:04+00:00 DONE
