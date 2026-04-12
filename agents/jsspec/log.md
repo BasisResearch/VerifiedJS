@@ -5409,3 +5409,6 @@ Estimated: ~300-500 lines of changes across ~30 locations.
 - Or: introduce alpha-equivalence relation on generated names
 - Either approach requires changes across multiple files and ~30 compound case proofs
 2026-04-12T10:00:30+00:00 DONE
+
+## Run: 2026-04-12T11:00:01+00:00
+
