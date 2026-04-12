@@ -5233,3 +5233,37 @@ This is multi-day architectural work.
 ## Run: 2026-04-12T04:00:01+00:00
 
 ### 2026-04-12T04:01:10+00:00 Starting run — weakening sim relation for CCStateAgree
+
+### 2026-04-12T04:30 Analysis and infrastructure work
+
+**Key insight discovered**: The outer expression from `convertExpr` depends ONLY on `funcs.size`,
+not on `nextId`. The `freshVar`-generated variable names (which use nextId) only appear inside
+FuncDef bodies added to the function list, never in the outer expression tree. The outer
+expression is `.makeClosure funcIdx (.makeEnv capturedExprs)` where:
+- `funcIdx` = `st.funcs.size + exprFuncCount(body)` (depends on funcs.size only)
+- `capturedExprs` depends on outer envMap/envVar (no state dependency)
+
+**Change made**: Strengthened `convertExpr_CCExprEquiv_shifted` (and all 3 mutual variants) by
+removing the `(hid : st1.nextId = st2.nextId)` parameter. The theorem now only requires
+`(hsz : st2.funcs.size = st1.funcs.size + δ)`. This is a strictly stronger result.
+
+Changes:
+- Removed `hid` parameter from all 4 theorem signatures in the mutual block
+- Updated all ~30 recursive calls to remove `hid` argument
+- Removed all intermediate `hid_*` derivations (nextId equality for intermediate states)
+- Kept all `hsz` derivations (funcs.size relationship for intermediate states)
+- For functionDef case: use `convertExpr_state_delta` with actual st1.nextId/st2.nextId
+  (instead of aligning both to st2.nextId via hid rewrite)
+
+**CCStateAgree analysis (confirmed still blocked)**:
+All 6 CCStateAgree sorries require the same architectural change:
+- The suffices invariant requires exact expression matching + exact state agreement
+- Branching creates a `exprFuncCount(skipped_branch)` gap in BOTH nextId and funcs.size
+- Compound case consumers (seq, let, binary) need exact state agreement from sub-step IH
+- CCExprEquiv with uniform δ doesn't compose: the stepped sub-expression has δ>0 but
+  the continuation has δ=0, and CCExprEquiv uses a single δ for the whole expression
+- The real fix requires either flat-step-preserves-CCExprEquiv or a non-uniform equivalence
+
+**Sorry count**: 12 (unchanged). No sorries added or removed.
+### 2026-04-12T04:35:32+00:00 Run complete — strengthened convertExpr_CCExprEquiv_shifted (removed hid requirement). 0 sorries changed. CCStateAgree analysis documented.
+2026-04-12T04:36:10+00:00 DONE
