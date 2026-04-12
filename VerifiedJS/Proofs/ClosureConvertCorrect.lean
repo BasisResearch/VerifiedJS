@@ -6952,7 +6952,7 @@ private theorem closureConvert_step_simulation
         · simp [sc', hheapna]
         · simp [sc', noCallFrameReturn]
         · simp [sc', ExprAddrWF]; exact henvwf name cv hclookup
-        · exact ⟨st, st, by simp [sc', Flat.convertExpr, hfvcv], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hst]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+        · exact ⟨st, st, by simp [sc', Flat.convertExpr, hfvcv], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
       | none =>
         rw [Flat_step?_var_not_found_explicit _ _ hflookup] at hstep
         simp at hstep
@@ -6976,7 +6976,7 @@ private theorem closureConvert_step_simulation
         · simp [sc', hheapna]
         · simp [sc', noCallFrameReturn]
         · simp [sc', ExprAddrWF, ValueAddrWF]
-        · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hst]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+        · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
   | «this» =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
@@ -7005,7 +7005,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', hheapna]
       · simp [sc', noCallFrameReturn]
       · simp [sc', ExprAddrWF]; exact henvwf "this" cv hclookup
-      · exact ⟨st, st, by simp [sc', Flat.convertExpr, hfvcv], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hst]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+      · exact ⟨st, st, by simp [sc', Flat.convertExpr, hfvcv], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
     | none =>
       rw [Flat_step?_this_not_found_explicit _ hflookup] at hstep
       simp at hstep
@@ -7029,7 +7029,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', hheapna]
       · simp [sc', noCallFrameReturn]
       · simp [sc', ExprAddrWF, ValueAddrWF]
-      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hst]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
   | «let» name init body =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
@@ -7064,7 +7064,7 @@ private theorem closureConvert_step_simulation
       · have hscope := convertExpr_scope_irrelevant body scope (name :: scope) envVar envMap st
         exact ⟨st, (Flat.convertExpr body scope envVar envMap st).snd, by
           simp only [sc']; rw [hscope], ⟨Nat.le_refl _, Nat.le_refl _⟩, by
-          rw [hconv.2, convertExpr_scope_irrelevant body (name :: scope) scope]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+          rw [hconv.2, convertExpr_scope_irrelevant body (name :: scope) scope]; exact ⟨rfl, rfl⟩⟩
     | none =>
       have hsupp_init : init.supported = true := by simp [Core.Expr.supported, Bool.and_eq_true] at hsupp; exact hsupp.1
       have hfnv : Flat.exprValue? (Flat.convertExpr init scope envVar envMap st).fst = none :=
@@ -7222,7 +7222,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', hheapna]
       · simp only [sc']; simp [noCallFrameReturn]
       · simp only [sc']; simp [ExprAddrWF]; exact (by simp [ExprAddrWF] at hexprwf; exact hexprwf)
-      · exact ⟨st, st, by simp only [sc']; simp [Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hst]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+      · exact ⟨st, st, by simp only [sc']; simp [Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
     | none =>
       have hfnv : Flat.exprValue? (Flat.convertExpr rhs scope envVar envMap st).fst = none :=
         convertExpr_not_value_supported rhs hcev (by simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp ⊢; first | exact hsupp | exact hsupp.1 | exact hsupp.2 | exact hsupp.1.1 | exact hsupp.1.2 | (simp only [Bool.and_eq_true] at hsupp; first | exact hsupp.1 | exact hsupp.2 | exact hsupp.2.1 | exact hsupp.2.2)) scope envVar envMap st
@@ -7507,7 +7507,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', noCallFrameReturn] at hncfr ⊢; exact hncfr
       · simp [sc', ExprAddrWF] at hexprwf ⊢; exact hexprwf.2
       · exact ⟨st, (Flat.convertExpr b scope envVar envMap st).snd, by
-          simp [sc', Flat.convertExpr], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hst]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+          simp [sc', Flat.convertExpr], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
     | none =>
       have hfnv : Flat.exprValue? (Flat.convertExpr a scope envVar envMap st).fst = none :=
         convertExpr_not_value_supported a hcev (by simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp ⊢; first | exact hsupp | exact hsupp.1 | exact hsupp.2 | exact hsupp.1.1 | exact hsupp.1.2 | (simp only [Bool.and_eq_true] at hsupp; first | exact hsupp.1 | exact hsupp.2 | exact hsupp.2.1 | exact hsupp.2.2)) scope envVar envMap st
@@ -7659,7 +7659,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', hheapna]
       · simp only [sc']; simp [noCallFrameReturn]
       · simp only [sc']; simp [ExprAddrWF]; exact evalUnary_valueAddrWF op cv sc.heap.objects.size (by simp [ExprAddrWF] at hexprwf; exact hexprwf)
-      · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hst]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+      · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
         show (Flat.Expr.lit (Flat.evalUnary op (Flat.convertValue cv)), st) = Flat.convertExpr (.lit (Core.evalUnary op cv)) scope envVar envMap st
         rw [evalUnary_convertValue]; simp [Flat.convertExpr]
     | none =>
@@ -7756,7 +7756,7 @@ private theorem closureConvert_step_simulation
             (by simp [ExprAddrWF] at hexprwf; exact hexprwf.1)
             (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2)
         · exact ⟨st, st, by
-            simp [sc', Flat.convertExpr, evalBinary_convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hst]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+            simp [sc', Flat.convertExpr, evalBinary_convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
       | none =>
         -- rhs stepping, lhs is a value
         have hsupp_rhs : rhs.supported = true := by
@@ -8019,7 +8019,7 @@ private theorem closureConvert_step_simulation
             · simp [sc', noCallFrameReturn]
             · simp [sc', ExprAddrWF, ValueAddrWF]
             · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩,
-                by rw [hst, hst_eq]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+                by rw [hst, hst_eq]; exact ⟨rfl, rfl⟩⟩
           · -- Non-consoleLog function call: FuncsCorr now available (wired into CC_SimRel).
             -- BLOCKED: Still needs multi-step simulation (Flat call is N steps vs Core's 1).
             -- hfuncCorr : FuncsCorr injMap sc.funcs sf.funcs t.functions
@@ -8052,7 +8052,7 @@ private theorem closureConvert_step_simulation
           · simp [sc', hheapna]
           · simp [sc', noCallFrameReturn]
           · simp [sc', ExprAddrWF, ValueAddrWF]
-          · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by rw [hst, allValues_convertExprList_state args argVals scope envVar envMap st hallv]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+          · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by rw [hst, allValues_convertExprList_state args argVals scope envVar envMap st hallv]; exact ⟨rfl, rfl⟩⟩
             simp [sc', Flat.convertExpr, Flat.convertValue]
       | none =>
         -- allValues args = none, so there exists a non-value arg
@@ -8293,7 +8293,7 @@ private theorem closureConvert_step_simulation
         case ncfr_ => simp [sc', noCallFrameReturn]
         case ewf_ => simp only [sc', ExprAddrWF, ValueAddrWF, cheap', caddr, Array.size_push]; rw [hheapna]; omega
         case ccst_ => exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, caddr, hna_eq],
-          ⟨Nat.le_refl _, Nat.le_refl _⟩, by rw [hst, hst_eq]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+          ⟨Nat.le_refl _, Nat.le_refl _⟩, by rw [hst, hst_eq]; exact ⟨rfl, rfl⟩⟩
   | getProp obj prop =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
@@ -8340,7 +8340,7 @@ private theorem closureConvert_step_simulation
           · simp [sc', hheapna]
           · simp [sc', noCallFrameReturn]
           · simp only [sc', ExprAddrWF, ValueAddrWF]
-          · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+          · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
             simp only [sc', Flat.convertExpr, Flat.convertValue]
             congr 1; congr 1
             rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf, hprops]
@@ -8364,7 +8364,7 @@ private theorem closureConvert_step_simulation
             · simp [sc', hheapna]
             · simp [sc', noCallFrameReturn]
             · simp only [sc', ExprAddrWF, coreResult]; split <;> simp [ValueAddrWF]
-            · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+            · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
               simp only [sc', Flat.convertExpr, Flat.convertValue, coreResult]
               congr 1; congr 1
               rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf, hprops]
@@ -8390,7 +8390,7 @@ private theorem closureConvert_step_simulation
             · simp [sc', noCallFrameReturn]
             · simp only [sc', ExprAddrWF]
               exact hheapvwf addr haddr_wf props hprops kv (list_find?_mem hfind)
-            · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+            · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
               simp only [sc', Flat.convertExpr]
               congr 1; congr 1
               rw [heapObjectAt?_eq, ← HeapInj_get hinj haddr_wf, hprops]
@@ -8417,7 +8417,7 @@ private theorem closureConvert_step_simulation
         · simp [sc', hheapna]
         · simp [sc', noCallFrameReturn]
         · simp only [sc', ExprAddrWF, coreResult]; split <;> simp [ValueAddrWF]
-        · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+        · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
           simp only [sc', Flat.convertExpr, coreResult]
           congr 1; congr 1; simp only [beq_iff_eq, coreResult]
           split <;> simp [Flat.convertValue]
@@ -8439,7 +8439,7 @@ private theorem closureConvert_step_simulation
         · simp [sc', hheapna]
         · simp [sc', noCallFrameReturn]
         · simp [sc', ExprAddrWF, ValueAddrWF]
-        · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+        · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
           simp [sc', Flat.convertExpr, Flat.convertValue]
     | none =>
       have hfnv : Flat.exprValue? (Flat.convertExpr obj scope envVar envMap st).fst = none :=
@@ -8603,7 +8603,7 @@ private theorem closureConvert_step_simulation
             rw [hsize]
             exact hvv_wf'
           · -- CCState threading
-            refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩; simp [sc', Flat.convertExpr, Flat.convertValue]
+            refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨rfl, rfl⟩⟩; simp [sc', Flat.convertExpr, Flat.convertValue]
         · -- Non-object case: heap unchanged, return value
           have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr :=
             convertValue_not_object cv hno
@@ -8627,7 +8627,7 @@ private theorem closureConvert_step_simulation
           · have hvv_wf' : ValueAddrWF vv sc.heap.objects.size := by
               simp [ExprAddrWF] at hexprwf; exact hexprwf.2
             simp only [sc', ExprAddrWF, ValueAddrWF]; exact hvv_wf'
-          · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+          · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
             simp [sc', Flat.convertExpr, Flat.convertValue]
       | none =>
         -- Value needs stepping; obj is already a value
@@ -8834,7 +8834,7 @@ private theorem closureConvert_step_simulation
             · simp [sc', hheapna]
             · simp [sc', noCallFrameReturn]
             · simp only [sc', ExprAddrWF, ValueAddrWF]
-            · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+            · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
               simp only [sc', Flat.convertExpr, Flat.convertValue]
           | some props =>
             cases hfind : props.find? (fun (kv : Core.PropName × Core.Value) => kv.fst == Core.valueToString iv) with
@@ -8856,7 +8856,7 @@ private theorem closureConvert_step_simulation
               · simp [sc', hheapna]
               · simp [sc', noCallFrameReturn]
               · simp only [sc', ExprAddrWF, coreResult]; split <;> simp [ValueAddrWF]
-              · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+              · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
                 simp only [sc', Flat.convertExpr, Flat.convertValue, coreResult]
                 congr 1; congr 1
                 simp only [hfind]
@@ -8881,7 +8881,7 @@ private theorem closureConvert_step_simulation
               · simp [sc', noCallFrameReturn]
               · simp only [sc', ExprAddrWF]
                 exact hheapvwf addr haddr_wf props hprops kv (list_find?_mem hfind)
-              · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+              · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
                 simp only [sc', Flat.convertExpr]
                 congr 1; congr 1
                 simp only [hfind]; exact (coreToFlatValue_eq_convertValue kv.2).symm
@@ -8916,7 +8916,7 @@ private theorem closureConvert_step_simulation
           · simp [sc', hheapna]
           · simp [sc', noCallFrameReturn]
           · simp only [sc', ExprAddrWF, ValueAddrWF]
-          · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+          · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
             simp [sc', Flat.convertExpr, Flat.convertValue]
       | none =>
         -- idx needs stepping; obj is already a value
@@ -9185,7 +9185,7 @@ private theorem closureConvert_step_simulation
               rw [hsize]
               exact hvv_wf'
             · -- CCState threading
-              refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+              refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
               simp [sc', Flat.convertExpr, Flat.convertValue]
           · -- Non-object case: heap unchanged, return value
             have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr :=
@@ -9210,7 +9210,7 @@ private theorem closureConvert_step_simulation
             · have hvv_wf' : ValueAddrWF vv sc.heap.objects.size := by
                 simp [ExprAddrWF] at hexprwf; exact hexprwf.2.2
               simp only [sc', ExprAddrWF, ValueAddrWF]; exact hvv_wf'
-            · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+            · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
               simp [sc', Flat.convertExpr, Flat.convertValue]
         | none =>
           -- value needs stepping; obj+idx are values
@@ -9538,7 +9538,7 @@ private theorem closureConvert_step_simulation
         · -- ExprAddrWF
           simp only [sc', ExprAddrWF, ValueAddrWF]
         · -- CCState threading
-          refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+          refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
           simp [sc', Flat.convertExpr, Flat.convertValue]
       · -- Non-object case: heap unchanged, both return .lit (.bool true)
         have hno_flat : ∀ addr, Flat.convertValue cv ≠ .object addr :=
@@ -9562,7 +9562,7 @@ private theorem closureConvert_step_simulation
         · simp [sc', hheapna]
         · simp [sc', noCallFrameReturn]
         · simp [sc', ExprAddrWF, ValueAddrWF]
-        · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+        · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by subst hst; exact ⟨rfl, rfl⟩⟩
           simp [sc', Flat.convertExpr, Flat.convertValue]
     | none =>
       have hfnv : Flat.exprValue? (Flat.convertExpr obj scope envVar envMap st).fst = none :=
@@ -9652,7 +9652,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', hheapna]
       · simp only [sc']; simp [noCallFrameReturn]
       · simp only [sc']; simp [ExprAddrWF, ValueAddrWF, coreResult]
-      · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hst]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+      · refine ⟨st, st, ?_, ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
         simp only [sc']; simp [Flat.convertExpr, Flat.convertValue, coreResult]
         cases cv <;> simp [Flat.convertValue]
     | none =>
@@ -9786,7 +9786,7 @@ private theorem closureConvert_step_simulation
       case ncfr_ => simp [sc', noCallFrameReturn]
       case ewf_ => simp only [sc', ExprAddrWF, ValueAddrWF, cheap', caddr, Array.size_push]; rw [hheapna]; omega
       case ccst_ => exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, caddr, hna_eq],
-        ⟨Nat.le_refl _, Nat.le_refl _⟩, by rw [hst, hst_eq]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+        ⟨Nat.le_refl _, Nat.le_refl _⟩, by rw [hst, hst_eq]; exact ⟨rfl, rfl⟩⟩
     | some val =>
       obtain ⟨done_c, propName_c, target_c, rest_c⟩ := val
       have htarget_not_lit := Core.firstNonValueProp_not_lit hcfnv
@@ -10002,7 +10002,7 @@ private theorem closureConvert_step_simulation
       case ncfr_ => simp [sc', noCallFrameReturn]
       case ewf_ => simp only [sc', ExprAddrWF, ValueAddrWF, cheap', caddr, Array.size_push]; rw [hheapna]; omega
       case ccst_ => exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, caddr, hna_eq],
-        ⟨Nat.le_refl _, Nat.le_refl _⟩, by rw [hst, hst_eq]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+        ⟨Nat.le_refl _, Nat.le_refl _⟩, by rw [hst, hst_eq]; exact ⟨rfl, rfl⟩⟩
     | some val =>
       obtain ⟨done_c, target_c, rest_c⟩ := val
       have htarget_not_lit := Core.firstNonValueExpr_not_lit hcfnv
@@ -10175,7 +10175,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', hheapna]
       · simp [sc', noCallFrameReturn]
       · simp [sc', ExprAddrWF, ValueAddrWF]
-      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hst]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
     | none =>
       -- Sub-expression not a value; Flat steps the sub-expression
       have hfnv : Flat.exprValue? (Flat.convertExpr val scope envVar envMap st).fst = none :=
@@ -10582,7 +10582,7 @@ private theorem closureConvert_step_simulation
     · simp [sc', hheapna]
     · simp [sc', noCallFrameReturn]
     · simp [sc', ExprAddrWF, ValueAddrWF]
-    · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hst]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+    · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
   | «continue» label =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
@@ -10606,7 +10606,7 @@ private theorem closureConvert_step_simulation
     · simp [sc', hheapna]
     · simp [sc', noCallFrameReturn]
     · simp [sc', ExprAddrWF, ValueAddrWF]
-    · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hst]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+    · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
   | «return» val =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     cases val with
@@ -10633,7 +10633,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', hheapna]
       · simp [sc', noCallFrameReturn]
       · simp [sc', ExprAddrWF, ValueAddrWF]
-      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hst]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
     | some e =>
       simp [Flat.convertExpr, Flat.convertOptExpr] at hconv
       obtain ⟨hfexpr, hst⟩ := hconv
@@ -10664,7 +10664,7 @@ private theorem closureConvert_step_simulation
         · simp [sc', hheapna]
         · simp [sc', noCallFrameReturn]
         · simp only [sc']; simp [ExprAddrWF] at hexprwf ⊢; exact hexprwf
-        · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hst]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+        · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
       | none =>
         -- Sub-expression not a value; Flat steps the sub-expression
         have hfnv : Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none :=
@@ -10748,7 +10748,7 @@ private theorem closureConvert_step_simulation
       simp [sc']; exact hncfr
     · show ExprAddrWF sc'.expr sc'.heap.objects.size
       simp [sc']; exact hexprwf
-    · exact ⟨st, (Flat.convertExpr body scope envVar envMap st).snd, by simp [sc'], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (rw [hst']; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr] at hst'; subst hst'; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+    · exact ⟨st, (Flat.convertExpr body scope envVar envMap st).snd, by simp [sc'], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (rw [hst']; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr] at hst'; subst hst'; exact ⟨rfl, rfl⟩)⟩
   | yield arg delegate =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     cases arg with
@@ -10775,7 +10775,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', hheapna]
       · simp [sc', noCallFrameReturn]
       · simp [sc', ExprAddrWF, ValueAddrWF]
-      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hst]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
     | some e =>
       simp [Flat.convertExpr, Flat.convertOptExpr] at hconv
       obtain ⟨hfexpr, hst⟩ := hconv
@@ -10806,7 +10806,7 @@ private theorem closureConvert_step_simulation
         · simp [sc', hheapna]
         · simp [sc', noCallFrameReturn]
         · simp only [sc']; simp [ExprAddrWF] at hexprwf ⊢; exact hexprwf
-        · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hst]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+        · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
       | none =>
         -- Sub-expression not a value; Flat steps the sub-expression
         have hfnv : Flat.exprValue? (Flat.convertExpr e scope envVar envMap st).fst = none :=
@@ -10895,7 +10895,7 @@ private theorem closureConvert_step_simulation
       · simp [sc', hheapna]
       · simp [sc', noCallFrameReturn]
       · simp only [sc']; simp [ExprAddrWF] at hexprwf ⊢; exact hexprwf
-      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hst]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩) | (rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩)⟩
+      · exact ⟨st, st, by simp [sc', Flat.convertExpr, Flat.convertValue], ⟨Nat.le_refl _, Nat.le_refl _⟩, by first | (subst hst_eq; exact ⟨rfl, rfl⟩) | (simp [Flat.convertExpr, Flat.convertValue, Flat.convertOptExpr] at hst; subst hst; exact ⟨rfl, rfl⟩) | (rw [hst]; exact ⟨rfl, rfl⟩) | (rw [hconv.2]; exact ⟨rfl, rfl⟩)⟩
     | none =>
       -- Sub-expression not a value; Flat steps the sub-expression
       have hfnv : Flat.exprValue? (Flat.convertExpr arg scope envVar envMap st).fst = none :=

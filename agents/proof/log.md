@@ -8080,3 +8080,12 @@ These errors were masked because they co-existed with sorries in other branches 
 **Result:** File went from 1246 errors → 0 errors. Sorry count unchanged at 27 active. P4 (L18163 step_error proof) confirmed working.
 
 **Remaining work:** 13 target sorries (P0-P3) all require deep LSP access (times out >L18000). P1 L24995 (while condition steps) needs sub-simulation IH infrastructure.
+### 2026-04-12T17:42:07+00:00 Run complete — ALL compilation errors resolved
+
+**Summary:** Resolved all 1246+ compilation errors in ANFConvertCorrect.lean through:
+- Root cause fix: missing bind lemmas in simp at L10205 (tryCatch fin=none case)
+- `| this =>` pattern fix across 5 theorems: .this never errors, so split branches collapse
+- `; omega` → `<;> omega` fix across 6 locations: simp now closes depth goals that omega used to handle
+
+**File status:** 0 errors, 27 active sorry lines (unchanged), build not broken.
+2026-04-12T17:42:17+00:00 DONE
