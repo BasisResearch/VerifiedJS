@@ -17331,18 +17331,18 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
       split at hstep
       · split at hstep
         · split at hstep
-          · simp [Flat.pushTrace] at hstep
-            obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.binary_lhs h)) (by assumption)
-          · simp at hstep
+          · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+            have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.binary_lhs h)) hsub
+            simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+          · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
         · simp at hstep
       · split at hstep
         · split at hstep
           · split at hstep
-            · simp [Flat.pushTrace] at hstep
-              obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.binary_rhs h)) (by assumption)
-            · simp at hstep
+            · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+              have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.binary_rhs h)) hsub
+              simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+            · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
           · simp at hstep
         · simp at hstep
     | getProp obj prop =>
@@ -17353,10 +17353,10 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
       · simp at hstep
       · split at hstep
         · split at hstep
-          · simp [Flat.pushTrace] at hstep
-            obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getProp_obj h)) (by assumption)
-          · simp at hstep
+          · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+            have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getProp_obj h)) hsub
+            simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+          · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
         · simp at hstep
     | deleteProp obj prop =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
@@ -17364,75 +17364,75 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
       · simp at hstep
       · split at hstep
         · split at hstep
-          · simp [Flat.pushTrace] at hstep
-            obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.deleteProp_obj h)) (by assumption)
-          · simp at hstep
+          · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+            have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.deleteProp_obj h)) hsub
+            simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+          · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
         · simp at hstep
     | setProp obj prop val =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
       split at hstep
       · split at hstep
         · split at hstep
-          · simp [Flat.pushTrace] at hstep
-            obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.setProp_obj h)) (by assumption)
-          · simp at hstep
+          · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+            have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.setProp_obj h)) hsub
+            simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+          · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
         · simp at hstep
       · split at hstep
         · simp at hstep
         · split at hstep
           · split at hstep
-            · simp [Flat.pushTrace] at hstep
-              obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.setProp_val h)) (by assumption)
-            · simp at hstep
+            · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+              have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.setProp_val h)) hsub
+              simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+            · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
           · simp at hstep
       · split at hstep
         · simp at hstep
         · split at hstep
           · split at hstep
-            · simp [Flat.pushTrace] at hstep
-              obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.setProp_val h)) (by assumption)
-            · simp at hstep
+            · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+              have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.setProp_val h)) hsub
+              simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+            · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
           · simp at hstep
     | getIndex obj idx =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
       split at hstep
       · split at hstep
         · split at hstep
-          · simp [Flat.pushTrace] at hstep
-            obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getIndex_obj h)) (by assumption)
-          · simp at hstep
+          · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+            have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getIndex_obj h)) hsub
+            simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+          · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
         · simp at hstep
       · split at hstep
         · simp at hstep
         · split at hstep
           · split at hstep
-            · simp [Flat.pushTrace] at hstep
-              obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getIndex_idx h)) (by assumption)
-            · simp at hstep
+            · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+              have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getIndex_idx h)) hsub
+              simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+            · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
           · simp at hstep
       · split at hstep
         · simp at hstep
         · split at hstep
           · split at hstep
-            · simp [Flat.pushTrace] at hstep
-              obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getIndex_idx h)) (by assumption)
-            · simp at hstep
+            · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+              have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getIndex_idx h)) hsub
+              simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+            · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
           · simp at hstep
       · split at hstep
         · simp at hstep
         · split at hstep
           · split at hstep
-            · simp [Flat.pushTrace] at hstep
-              obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getIndex_idx h)) (by assumption)
-            · simp at hstep
+            · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+              have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getIndex_idx h)) hsub
+              simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+            · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
           · simp at hstep
     | setIndex obj idx val =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
@@ -17443,10 +17443,10 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
         (try split at hstep) <;> (try split at hstep) <;>
         (try split at hstep) <;> (try split at hstep) <;>
         first
+        | (obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _))
         | simp at hstep
-        | (simp [Flat.pushTrace] at hstep
-           obtain ⟨_, rfl⟩ := hstep
-           exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption) (by assumption))
+        | (have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+           exact ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (by assumption) hsub)
     | getEnv envE idx =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
       split at hstep
@@ -17454,10 +17454,10 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
       · simp at hstep
       · split at hstep
         · split at hstep
-          · simp [Flat.pushTrace] at hstep
-            obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getEnv_env h)) (by assumption)
-          · simp at hstep
+          · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+            have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.getEnv_env h)) hsub
+            simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+          · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
         · simp at hstep
     | makeClosure funcIdx envE =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
@@ -17466,28 +17466,28 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
       · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
       · split at hstep
         · split at hstep
-          · simp [Flat.pushTrace] at hstep
-            obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.makeClosure_env h)) (by assumption)
-          · simp at hstep
+          · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+            have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.makeClosure_env h)) hsub
+            simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+          · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
         · simp at hstep
     | call f envE args =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
       split at hstep
       · split at hstep
         · split at hstep
-          · simp [Flat.pushTrace] at hstep
-            obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.call_func h)) (by assumption)
-          · simp at hstep
+          · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+            have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.call_func h)) hsub
+            simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+          · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
         · simp at hstep
       · split at hstep
         · split at hstep
           · split at hstep
-            · simp [Flat.pushTrace] at hstep
-              obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.call_env h)) (by assumption)
-            · simp at hstep
+            · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+              have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.call_env h)) hsub
+              simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+            · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
           · simp at hstep
         · split at hstep
           · -- all args values: call. All branches produce .silent/.log, contradicts .error
@@ -17496,10 +17496,10 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
             · rename_i hfnv
               split at hstep
               · split at hstep
-                · simp [Flat.pushTrace] at hstep
-                  obtain ⟨_, rfl⟩ := hstep
-                  exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (fun h => hncf_e (.call_args (HasNonCallFrameTryCatchInHeadList_of_firstNonValue hfnv h))) (by assumption)
-                · simp at hstep
+                · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+                  have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (fun h => hncf_e (.call_args (HasNonCallFrameTryCatchInHeadList_of_firstNonValue hfnv h))) hsub
+                  simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+                · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
               · simp at hstep
             · simp at hstep
     | newObj f envE args =>
@@ -17507,18 +17507,18 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
       split at hstep
       · split at hstep
         · split at hstep
-          · simp [Flat.pushTrace] at hstep
-            obtain ⟨_, rfl⟩ := hstep
-            exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.newObj_func h)) (by assumption)
-          · simp at hstep
+          · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+            have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.newObj_func h)) hsub
+            simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+          · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
         · simp at hstep
       · split at hstep
         · split at hstep
           · split at hstep
-            · simp [Flat.pushTrace] at hstep
-              obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.newObj_env h)) (by assumption)
-            · simp at hstep
+            · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+              have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) (fun h => hncf_e (.newObj_env h)) hsub
+              simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+            · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
           · simp at hstep
         · split at hstep
           · simp at hstep
@@ -17526,10 +17526,10 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
             · rename_i hfnv
               split at hstep
               · split at hstep
-                · simp [Flat.pushTrace] at hstep
-                  obtain ⟨_, rfl⟩ := hstep
-                  exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (fun h => hncf_e (.newObj_args (HasNonCallFrameTryCatchInHeadList_of_firstNonValue hfnv h))) (by assumption)
-                · simp at hstep
+                · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+                  have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (fun h => hncf_e (.newObj_args (HasNonCallFrameTryCatchInHeadList_of_firstNonValue hfnv h))) hsub
+                  simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+                · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
               · simp at hstep
             · simp at hstep
     | makeEnv values =>
@@ -17540,10 +17540,10 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
         · rename_i hfnv
           split at hstep
           · split at hstep
-            · simp [Flat.pushTrace] at hstep
-              obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (fun h => hncf_e (.makeEnv_values (HasNonCallFrameTryCatchInHeadList_of_firstNonValue hfnv h))) (by assumption)
-            · simp at hstep
+            · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+              have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (fun h => hncf_e (.makeEnv_values (HasNonCallFrameTryCatchInHeadList_of_firstNonValue hfnv h))) hsub
+              simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+            · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
           · simp at hstep
         · simp at hstep
     | arrayLit elems =>
@@ -17554,10 +17554,10 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
         · rename_i hfnv
           split at hstep
           · split at hstep
-            · simp [Flat.pushTrace] at hstep
-              obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (fun h => hncf_e (.arrayLit_elems (HasNonCallFrameTryCatchInHeadList_of_firstNonValue hfnv h))) (by assumption)
-            · simp at hstep
+            · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+              have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueExpr_depth hfnv; omega) (fun h => hncf_e (.arrayLit_elems (HasNonCallFrameTryCatchInHeadList_of_firstNonValue hfnv h))) hsub
+              simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+            · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
           · simp at hstep
         · simp at hstep
     | objectLit props =>
@@ -17568,10 +17568,10 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
         · rename_i hfnv
           split at hstep
           · split at hstep
-            · simp [Flat.pushTrace] at hstep
-              obtain ⟨_, rfl⟩ := hstep
-              exact ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueProp_depth hfnv; omega) (fun h => hncf_e (.objectLit_props (HasNonCallFrameTryCatchInHeadProps_of_firstNonValue hfnv h))) (by assumption)
-            · simp at hstep
+            · have hsub := ‹Flat.step? ⟨_, env, heap, trace, funcs, cs⟩ = some (Core.TraceEvent.error _, _)›
+              have ⟨v, hv⟩ := ih _ env heap trace funcs cs _ _ (by simp [Flat.Expr.depth] at hd ⊢; have := Flat.firstNonValueProp_depth hfnv; omega) (fun h => hncf_e (.objectLit_props (HasNonCallFrameTryCatchInHeadProps_of_firstNonValue hfnv h))) hsub
+              simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨v, hv⟩
+            · obtain ⟨h1, _⟩ := hstep; exact absurd h1 (‹∀ (s : String), _ = Core.TraceEvent.error s → False› _)
           · simp at hstep
         · simp at hstep
     | tryCatch body catchParam catchBody fin =>
