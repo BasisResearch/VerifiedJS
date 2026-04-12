@@ -14473,6 +14473,19 @@ private theorem HasThrowInHeadList_valuesFromExprList_none
     simp only [Flat.valuesFromExprList?, ih]
     cases Flat.exprValue? _ <;> rfl
 
+/-- HasThrowInHeadProps implies valuesFromExprList? on mapped values is none. -/
+private theorem HasThrowInHeadProps_valuesFromExprList_none
+    {props : List (Flat.PropName × Flat.Expr)} (h : HasThrowInHeadProps props) :
+    Flat.valuesFromExprList? (props.map Prod.snd) = none := by
+  cases h with
+  | head h =>
+    have hv := HasThrowInHead_not_value _ h
+    simp only [List.map, Flat.valuesFromExprList?, hv]; rfl
+  | tail htl =>
+    have ih := HasThrowInHeadProps_valuesFromExprList_none htl
+    simp only [List.map, Flat.valuesFromExprList?, ih]
+    cases Flat.exprValue? _ <;> rfl
+
 /-- HasThrowInHead e implies callStack safety conditions:
     (1) e is not a tryCatch call frame
     (2) if e is a .call, not all sub-expressions are values. -/
@@ -15133,7 +15146,46 @@ private theorem HasThrowInHead_step_nonError
           · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
             exact .call_env (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
         · simp at hstep
-    | call_args h => sorry -- call args context
+    | call_args h =>
+      rename_i f_expr env_expr
+      have hvl := HasThrowInHeadList_valuesFromExprList_none h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? f
+      · -- f not a value: step f, args unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .call_args h
+        · simp at hstep
+      · -- f = some _
+        split at hstep  -- exprValue? env
+        · -- env not a value: step env, args unchanged
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .call_args h
+          · simp at hstep
+        · -- env = some _: handle args
+          rw [hvl] at hstep; dsimp only [] at hstep
+          generalize hfnv : Flat.firstNonValueExpr _ = fnv at hstep
+          cases fnv with
+          | none => simp at hstep
+          | some val =>
+            obtain ⟨done, target, remaining⟩ := val
+            have hor := HasThrowInHeadList_firstNonValue hfnv h
+            dsimp only [] at hstep
+            split at hstep
+            · split at hstep
+              · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+              · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+                have hres := HasThrowInHeadList_reconstruct done _ remaining
+                  (hor.elim (fun ht => .inl (ih _ _ _ _ _ _ _ _ (by
+                    simp [Flat.Expr.depth, Flat.Expr.listDepth] at hd ⊢
+                    have := Flat.firstNonValueExpr_depth hfnv; omega) ht (by assumption) hnoerr)) .inr)
+                simp only [List.singleton_append] at hres ⊢ <;> exact .call_args hres
+            · simp at hstep
     | newObj_func h =>
       have hv := HasThrowInHead_not_value _ h
       rename_i env args
@@ -15165,7 +15217,46 @@ private theorem HasThrowInHead_step_nonError
           · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
             exact .newObj_env (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
         · simp at hstep
-    | newObj_args h => sorry -- newObj args context
+    | newObj_args h =>
+      rename_i f_expr env_expr
+      have hvl := HasThrowInHeadList_valuesFromExprList_none h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? f
+      · -- f not a value: step f, args unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .newObj_args h
+        · simp at hstep
+      · -- f = some _
+        split at hstep  -- exprValue? env
+        · -- env not a value: step env, args unchanged
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .newObj_args h
+          · simp at hstep
+        · -- env = some _: handle args
+          rw [hvl] at hstep; dsimp only [] at hstep
+          generalize hfnv : Flat.firstNonValueExpr _ = fnv at hstep
+          cases fnv with
+          | none => simp at hstep
+          | some val =>
+            obtain ⟨done, target, remaining⟩ := val
+            have hor := HasThrowInHeadList_firstNonValue hfnv h
+            dsimp only [] at hstep
+            split at hstep
+            · split at hstep
+              · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+              · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+                have hres := HasThrowInHeadList_reconstruct done _ remaining
+                  (hor.elim (fun ht => .inl (ih _ _ _ _ _ _ _ _ (by
+                    simp [Flat.Expr.depth, Flat.Expr.listDepth] at hd ⊢
+                    have := Flat.firstNonValueExpr_depth hfnv; omega) ht (by assumption) hnoerr)) .inr)
+                simp only [List.singleton_append] at hres ⊢ <;> exact .newObj_args hres
+            · simp at hstep
     | makeEnv_values h =>
       have hvl := HasThrowInHeadList_valuesFromExprList_none h
       unfold Flat.step? at hstep; dsimp only [] at hstep
@@ -15187,7 +15278,27 @@ private theorem HasThrowInHead_step_nonError
                 have := Flat.firstNonValueExpr_depth hfnv; omega) ht (by assumption) hnoerr)) .inr)
             simp only [List.singleton_append] at hres ⊢ <;> exact .makeEnv_values hres
         · simp at hstep
-    | objectLit_props h => sorry -- objectLit props context
+    | objectLit_props h =>
+      have hvl := HasThrowInHeadProps_valuesFromExprList_none h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [hvl] at hstep; dsimp only [] at hstep
+      generalize hfnv : Flat.firstNonValueProp _ = fnv at hstep
+      cases fnv with
+      | none => simp at hstep
+      | some val =>
+        obtain ⟨done, propName, target, remaining⟩ := val
+        have hor := HasThrowInHeadProps_firstNonValue hfnv h
+        dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            have hres := HasThrowInHeadProps_reconstruct done propName _ remaining
+              (hor.elim (fun ht => .inl (ih _ _ _ _ _ _ _ _ (by
+                simp [Flat.Expr.depth, Flat.Expr.propListDepth] at hd ⊢
+                have := Flat.firstNonValueProp_depth hfnv; omega) ht (by assumption) hnoerr)) .inr)
+            simp only [List.singleton_append] at hres ⊢ <;> exact .objectLit_props hres
+        · simp at hstep
     | arrayLit_elems h =>
       have hvl := HasThrowInHeadList_valuesFromExprList_none h
       unfold Flat.step? at hstep; dsimp only [] at hstep

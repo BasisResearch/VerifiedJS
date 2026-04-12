@@ -5202,3 +5202,29 @@ on generated names from different nextId values), which is a significant archite
 ## Run: 2026-04-12T03:00:04+00:00
 
 ### 2026-04-12T03:00:21+00:00 Starting run — closing CCExprEquiv_shifted + applying to CCStateAgree
+
+### 2026-04-12T03:15 Analysis of CCStateAgree sorries
+
+**P0 STATUS**: DONE — 3 CCExprEquiv_shifted infrastructure sorries confirmed closed (no sorry warnings in L1-2000).
+
+**P1 ANALYSIS**: All 5 CCStateAgree sorries are ARCHITECTURALLY BLOCKED.
+
+Root cause analysis:
+- The `suffices` invariant (L6421-6423) requires `CCStateAgree st st_a ∧ CCStateAgree st' st_a'` (exact equality of both nextId AND funcs.size)
+- For branching constructs (if/while/tryCatch), `st'` = output state after converting ALL branches, but `st_a'` = output state after converting only the TAKEN branch
+- The gap exists in BOTH nextId and funcs.size
+- `CCExprEquiv δ` (L1631-1637) handles funcs.size differences but REQUIRES nextId equality (`hid : st1.nextId = st2.nextId`)
+- Branching creates nextId gaps too (each branch generates fresh vars via `freshVar`)
+- Fixing requires extending CCExprEquiv to handle nextId shifts (α-equivalence on generated names) — confirmed at L6417-6420 and L1588-1590
+
+The `CCStateAgree` output is consumed at L7175-7176 (seq case) via `convertExpr_state_determined`, which needs exact equality of both nextId and funcs.size. Weakening to CCExprEquiv + CCStateAgreeWeak would require:
+1. Extending CCExprEquiv to handle nextId differences (variable name shifts)
+2. Changing the invariant from expression equality to CCExprEquiv
+3. Rewriting ALL ~20 proved cases that produce/consume CCStateAgree output
+
+This is multi-day architectural work.
+
+**P2**: L9683 is functionDef case — multi-step simulation gap (DO NOT ATTEMPT).
+
+**CC sorry count**: 11 remaining (5 CCStateAgree, 4 multi-step, 1 getIndex axiom, 1 functionDef). All architecturally blocked. No further reduction possible without architectural changes.
+### 2026-04-12T03:14:19+00:00 Run complete — P0 confirmed done (0 new sorries closed). P1/P2 all BLOCKED by architectural issues (CCExprEquiv needs α-equivalence for nextId shifts). 11 CC sorries remain, all architectural.
