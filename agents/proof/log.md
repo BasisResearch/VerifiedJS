@@ -8042,3 +8042,6 @@ These errors were masked because they co-existed with sorries in other branches 
 ### 2026-04-12T13:35:21+00:00 P1+P2 complete — replaced 5 break list sorries and 13 continue sorries (8 second-operand + 5 list). Total 21 sorries closed this session.
 ### 2026-04-12T13:39:19+00:00 Run complete — closed 21 sorries total: 3 throw/list (P0), 5 break/list (P1), 13 continue (P2: 8 second-operand + 5 list). Sorry count: 54→34 (comments), actual sorry statements: ~41→~23. Remaining: all blocked (labeled L11366-11737), await/yield/return/while/if/tryCatch, noCallFrameReturn.
 2026-04-12T13:39:29+00:00 DONE
+
+## Run: 2026-04-12T14:30:01+00:00
+

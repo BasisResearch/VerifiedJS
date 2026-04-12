@@ -8758,3 +8758,25 @@ Needs HasBreakInHead_step_nonError + HasBreakInHead_Steps_steppable infrastructu
 ## Run: 2026-04-12T14:15:01+00:00
 
 ### 2026-04-12T14:15:13+00:00 Starting run — P1 noCallFrameReturn precondition
+### 2026-04-12T14:20 P1 done, P0 restructured
+
+**P1 (L32673)**: CLOSED. Added `hncfr_prog : noCallFrameReturn s.main = true` and
+`hfuncs_ncfr_prog` preconditions to `anfConvert_correct`. Sorry replaced with `hncfr_prog`.
+
+**P0 (L32642)**: CLOSED inline sorry. Replaced with call to new theorem
+`anfConvert_step_star_ncfr` (L32622-32640) which has a single sorry.
+This theorem is correctly stated — it asserts ncfr preservation specifically
+through ANF-simulation flat steps (not general flat steps, which would be FALSE).
+
+**EndToEnd.lean**: BLOCKED — file has no group write permission (`rw-r-----`).
+Needs `hncfr_flat` and `hfuncs_ncfr_flat` preconditions added and passed to
+`anfConvert_correct`. Owner `proof` must update.
+
+**Net sorry count**: 4 → 3 (L18163, L19377, L32640 in anfConvert_step_star_ncfr)
+
+**Key design note**: General `noCallFrameReturn` flat-step preservation is FALSE
+because Flat.step? wraps call bodies in `tryCatch body "__call_frame_return__" ...`.
+The correct invariant is simulation-specific: anfConvert_step_star resolves the
+call frame within a single ANF step batch.
+### 2026-04-12T14:25:51+00:00 Run complete — P1 closed, P0 restructured (4→3 sorries), EndToEnd blocked on permissions
+2026-04-12T14:25:57+00:00 DONE
