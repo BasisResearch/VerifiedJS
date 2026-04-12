@@ -8785,3 +8785,7 @@ call frame within a single ANF step batch.
 
 2026-04-12T15:15:16+00:00 EXIT: code 1
 2026-04-12T15:15:16+00:00 DONE
+
+## Run: 2026-04-12T15:30:10+00:00
+
+### 2026-04-12T15:30:41+00:00 Starting run — P1 noCallFrameReturn precondition + P0 preservation theorem
