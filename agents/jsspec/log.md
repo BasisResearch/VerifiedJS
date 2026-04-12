@@ -5421,3 +5421,28 @@ Estimated: ~300-500 lines of changes across ~30 locations.
 ## Run: 2026-04-12T13:00:01+00:00
 
 ### 2026-04-12T13:00:14+00:00 Starting run — exploring sorry locations and attempting closures
+
+### 2026-04-12T13:00:01+00:00 Analysis complete — all A/B/C sorries ARCHITECTURALLY BLOCKED
+
+**Investigation summary:**
+- LSP times out on ClosureConvertCorrect.lean (11496 lines, too large for elaboration within 30s)
+- Analyzed all 11 sorry lines + inline sorry pairs. All categories A/B/C need `=` from `≤` which is **FALSE in general**.
+
+**Root cause (proven via `convertExpr_state_delta`):**
+- Sorry reduces to: `st.nextId + exprFuncCount(full_expr) = st_a.nextId + exprFuncCount(sub_expr)`
+- Have `≤` in both directions but they DON'T combine (gap depends on prior branching + funcCount change)
+- The proposed `convertExpr_state_determined_from_weak` is FALSE when expressions contain `functionDef`
+
+**Correct resolution path: CCExprEquiv-based invariant**
+- File already has `CCExprEquiv δ` (L1443+) and `convertExpr_CCExprEquiv_shifted` (L1854)
+- Key insight: `convertExpr_CCExprEquiv_shifted` only needs `funcs.size` difference (NO nextId constraint)
+- Invariant at L6818 should use `CCExprEquiv δ` instead of expression equality
+- Missing piece: "Flat stepping preserves CCExprEquiv" (estimated ~500 lines)
+
+**Contribution this session:**
+- Added `convertExpr_state_mono_preserve` (+ List/PropList variants) after L1441
+  - Proves: if `st1 ≤ st2` then `(convertExpr e ... st1).snd ≤ (convertExpr e ... st2).snd`
+  - Building block for CCStateAgreeWeak propagation
+
+**Categories F (L7971, L10077):** BLOCKED by multi-step simulation (separate issue)
+**Category G (L10475):** BLOCKED by while_ duplication (needs CCExprEquiv)

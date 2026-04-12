@@ -1440,6 +1440,46 @@ theorem convertExpr_nextId_funcs_size_sync (e : Core.Expr)
   have hd := convertExpr_state_delta e scope envVar envMap st
   omega
 
+/-- Monotonicity preservation: if st1 ≤ st2, then convertExpr output from st1 ≤ output from st2.
+    Key building block for CCStateAgreeWeak propagation through sub-conversions. -/
+theorem convertExpr_state_mono_preserve (e : Core.Expr)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping)
+    (st1 st2 : Flat.CCState)
+    (h1 : st1.nextId ≤ st2.nextId) (h2 : st1.funcs.size ≤ st2.funcs.size) :
+    (Flat.convertExpr e scope envVar envMap st1).snd.nextId ≤
+      (Flat.convertExpr e scope envVar envMap st2).snd.nextId ∧
+    (Flat.convertExpr e scope envVar envMap st1).snd.funcs.size ≤
+      (Flat.convertExpr e scope envVar envMap st2).snd.funcs.size := by
+  have hd1 := convertExpr_state_delta e scope envVar envMap st1
+  have hd2 := convertExpr_state_delta e scope envVar envMap st2
+  constructor <;> omega
+
+/-- List version of monotonicity preservation. -/
+theorem convertExprList_state_mono_preserve (es : List Core.Expr)
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping)
+    (st1 st2 : Flat.CCState)
+    (h1 : st1.nextId ≤ st2.nextId) (h2 : st1.funcs.size ≤ st2.funcs.size) :
+    (Flat.convertExprList es scope envVar envMap st1).snd.nextId ≤
+      (Flat.convertExprList es scope envVar envMap st2).snd.nextId ∧
+    (Flat.convertExprList es scope envVar envMap st1).snd.funcs.size ≤
+      (Flat.convertExprList es scope envVar envMap st2).snd.funcs.size := by
+  have hd1 := convertExprList_state_delta es scope envVar envMap st1
+  have hd2 := convertExprList_state_delta es scope envVar envMap st2
+  constructor <;> omega
+
+/-- PropList version of monotonicity preservation. -/
+theorem convertPropList_state_mono_preserve (ps : List (Core.PropName × Core.Expr))
+    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping)
+    (st1 st2 : Flat.CCState)
+    (h1 : st1.nextId ≤ st2.nextId) (h2 : st1.funcs.size ≤ st2.funcs.size) :
+    (Flat.convertPropList ps scope envVar envMap st1).snd.nextId ≤
+      (Flat.convertPropList ps scope envVar envMap st2).snd.nextId ∧
+    (Flat.convertPropList ps scope envVar envMap st1).snd.funcs.size ≤
+      (Flat.convertPropList ps scope envVar envMap st2).snd.funcs.size := by
+  have hd1 := convertPropList_state_delta ps scope envVar envMap st1
+  have hd2 := convertPropList_state_delta ps scope envVar envMap st2
+  constructor <;> omega
+
 /-! ### CCExprEquiv: structural equivalence of Flat expressions modulo function indices.
 
 When `convertExpr` is applied to the same Core expression with two different CCState values
