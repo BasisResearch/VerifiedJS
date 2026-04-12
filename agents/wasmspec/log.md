@@ -8631,3 +8631,4 @@ Needs HasBreakInHead_step_nonError + HasBreakInHead_Steps_steppable infrastructu
 - This is a ~800 line change affecting multiple lemmas
 
 **Conclusion**: This sorry cannot be closed with small, safe changes. Requires fundamental restructuring of the proof invariant used in _core. Moving to P1 assessment.
+2026-04-12T09:15:03+00:00 SKIP: already running
