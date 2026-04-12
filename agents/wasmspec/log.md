@@ -8534,3 +8534,35 @@ Fix options documented in the sorry comment:
 
 ### 2026-04-12T06:30:23+00:00 Starting run — EvalFirst chain completion
 2026-04-12T07:15:01+00:00 SKIP: already running
+
+### 2026-04-12T06:30+00:00 Deep analysis of P0 and infrastructure
+
+**P0 Analysis (L18355 sorry for ¬HasNonCallFrameTryCatchInHead):**
+
+The EvalFirst approach proposed in the sorry comment does NOT work as designed:
+
+1. **Error lemma**: `step_error_noEvalFirstTryCatch_isLit` (¬EvalFirst + error step → .lit) is FALSE. Counter-example: `seq (seq (.lit v) (tryCatch (throw (.lit "err")) "user" (seq (.lit 1) (.lit 2)) none)) b` — step? goes deep recursively through value transitions, encounters non-call-frame tryCatch in non-eval-first positions that ¬EvalFirst doesn't track.
+
+2. **Preservation lemma**: `step_nonError_preserves_noEvalFirstTryCatch` fails for value transitions. E.g., `seq (.lit v) b → b` — ¬EvalFirst for `seq` only tracks `a`'s eval-first, knows nothing about `b`'s eval-first.
+
+3. **¬Head from normalizeExpr .return**: Also FALSE. Example: `seq (.return none) (tryCatch body "user" cb fin)` — normalizeExpr produces .return (from .return none short-circuit, never processing b) but has HasNonCallFrameTryCatchInHead via seq_right.
+
+**Root cause**: step? is recursive — it follows value transitions into sub-expressions, reaching positions that any eval-first-only predicate misses. The Head predicate works because it covers ALL positions. But ¬Head can't be proved from normalizeExpr .return.
+
+**Possible solutions (for future work)**:
+- Thread `noCallFrameReturn` as precondition (ensures ALL tryCatches are non-call-frame) PLUS strengthen to no tryCatch at all in e
+- Restructure the proof to not use ¬NCF as loop invariant
+- Use normalizeExpr evidence directly in the Steps induction (but this requires showing normalizeExpr commutes with step)
+
+**Infrastructure errors found**:
+- `step_error_isLit` (L14345): 56 errors — theorem FALSE for non-call-frame tryCatch
+- `step_error_noNonCallFrameTryCatch_isLit` (L17134): 28+ errors — `(by assumption)` pattern fails, non-error contradiction branches unclosed
+- `step_nonError_preserves_noNonCallFrameTryCatch` (L17336): 48+ errors — same pattern issues
+- `HasReturnInHead_step_error_isLit` (L16641): 91 errors — uses ¬HasTryCatchInHead (too strong)
+
+All errors share the same fix pattern: replace `(by assumption)` with explicit `have hsub := ‹...›` + pass directly to IH, and handle non-error contradiction branches with explicit absurd/exfalso.
+
+**P1 Analysis (break/continue compound L26891/27146, L26962/27217)**:
+Needs HasBreakInHead_step_nonError + HasBreakInHead_Steps_steppable infrastructure (~630 lines each). These follow HasThrowInHead pattern exactly but HasThrowInHead_Steps_steppable depends on step_error_isLit which is broken. Same dependency chain issue.
+
+**Explicit sorry count**: 30 in ANFConvertCorrect.lean. Implicit sorries (unsolved goals): 200+.

@@ -18352,16 +18352,21 @@ private theorem HasReturnInHead_Steps_steppable
     (hstep : Flat.step? smid = some (t, smid')) :
     HasReturnInHead smid.expr :=
   HasReturnInHead_Steps_steppable_core hret
-    (sorry /- ¬HasNonCallFrameTryCatchInHead a: needs EvalFirst redesign.
-       Infrastructure in place:
-       - HasNonCallFrameTryCatchInEvalFirst defined (weaker predicate, eval-first only)
-       - normalizeExpr_return_absurd_of_evalFirst_tryCatch proved
-       - ANF.normalizeExpr_return_implies_noEvalFirstTryCatch proved
-       Next steps:
-       (1) Prove step_error_noNonCallFrameTryCatchEvalFirst_isLit (error step with ¬EvalFirst → .lit)
-       (2) Prove step_nonError_preserves_noNonCallFrameTryCatchEvalFirst (combined with HasReturnInHead)
-       (3) Define HasReturnInHead_Steps_steppable_core_evalFirst using EvalFirst predicate
-       (4) Replace this sorry with the EvalFirst-based proof -/)
+    (sorry /- ¬HasNonCallFrameTryCatchInHead a: EvalFirst approach INSUFFICIENT.
+       Analysis (2026-04-12):
+       - ¬EvalFirst is provable from normalizeExpr .return ✓
+       - But step? recursively follows value transitions into non-eval-first positions,
+         so ¬EvalFirst is too weak for both:
+         (a) error lemma: non-call-frame tryCatch in non-eval-first position can catch errors
+         (b) preservation: value transitions (seq (.lit v) b → b) lose ¬EvalFirst for b
+       - ¬Head is correct but unprovable from normalizeExpr .return alone
+         (counter-example: seq (.return none) (tryCatch body "user" cb fin))
+       Viable approaches:
+       (A) Thread noCallFrameReturn as precondition + prove ¬Head when all tryCatch are user-level
+       (B) Restructure _core to use normalizeExpr evidence directly in Steps induction
+       (C) Factor through a "no tryCatch at all" predicate provable from noCallFrameReturn + normalizeExpr
+       Also: step_error_noNonCallFrameTryCatch_isLit and step_nonError_preserves have 70+ errors
+       (broken (by assumption) pattern) — fix those first before attempting this sorry. -/)
     hsteps hstep
 
 /-- Main inductive theorem: if HasReturnInHead e and normalizeExpr e K produces .return arg,
