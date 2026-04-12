@@ -18155,6 +18155,11 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
     (hncf : ¬HasNonCallFrameTryCatchInHead e)
     (hstep : Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (.error msg, sf')) :
     ∃ v, sf'.expr = .lit v := by
+  -- Proof approach: Strong induction on depth. Error sub-steps propagate .lit by IH.
+  -- TryCatch: must be call-frame (¬HNCFTCIH excludes non-call-frame) → .lit .undefined.
+  -- The inductive proof was ~450 lines but had tactic mismatches after `split at hstep`.
+  -- Each non-error sub-step branch needs: `simp at hstep; exact absurd hstep.1 ‹_›`
+  -- TODO: fix the `obtain ⟨h1, _⟩` → `simp at hstep; absurd hstep.1` migration in all 33 cases.
   exact sorry
 /-  suffices hgen : ∀ (n : Nat) (e : Flat.Expr) (env : Flat.Env) (heap : Core.Heap)
       (trace : List Core.TraceEvent) (funcs : Array Flat.FuncDef) (cs : List Flat.Env)

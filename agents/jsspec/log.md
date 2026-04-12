@@ -5464,3 +5464,32 @@ Estimated: ~300-500 lines of changes across ~30 locations.
 
 ### 2026-04-12T15:00:28+00:00 Starting run — CCExprEquiv-based simulation prototype on L7461
 2026-04-12T16:00:02+00:00 SKIP: already running
+
+#### Changes Made
+**Converted 9 sorry sites from `convertExpr_state_determined` (needs both nextId= and funcs.size=) to `convertExpr_expr_eq_of_funcs_size` (needs only funcs.size=):**
+- L7184 (let body): 4 sorries → 1 sorry
+- L7466 (if cond): 2 sorries → 1 sorry  
+- L7619 (seq substep): 2 sorries → 1 sorry
+- L7880 (binary lhs): 2 sorries → 1 sorry
+- L7959 (call f): 2 sorries → 1 sorry (uses convertExprList variant)
+- L8762 (setProp value): 2 sorries → 1 sorry
+- L9059 (getIndex idx): 2 sorries → 1 sorry
+- L9374 (setIndex value): 2 sorries → 1 sorry
+- L9453 (setIndex obj): 2 sorries → 1 sorry (double chain with idx+value)
+
+**Output CCStateAgreeWeak proofs** replaced `exact hX.2` (from CCStateAgree) with `convertExpr_state_mono_preserve` (from CCStateAgreeWeak monotonicity).
+
+**Net reduction:** ~12 individual sorry markers eliminated. All remaining sorries are for `funcs.size` equality only (nextId requirement completely eliminated from these sites).
+
+#### Remaining Unconverted Sites (more complex patterns)
+- L8161, L8175-8176 (exprList): `hAgreeIn` pattern + `hAgreeOut.symm` direction reversal
+- L9890, L9905 (propList): Same as exprList  
+- L10106, L10121 (arrayLit): Same as exprList
+- L10498 (tryCatch): `hAgreeOut.symm` with different state threading
+
+#### Key Analysis Finding
+The CCExprEquiv-based invariant change (Approach B from prompt) has a **fundamental δ-consistency issue**: after a Core step that changes `exprFuncCount` (e.g., if-value-reduction discarding a branch), the δ offset varies per sub-expression position. A uniform δ across the whole expression cannot be maintained. This affects ALL branching constructs (if/while/tryCatch).
+
+The root cause: `exprFuncCount` is NOT preserved by Core steps that involve value reductions (if-true → then_, let-value → body, etc.). After such a step, the "real" flat state has allocated indices for the untaken branch, but the witness state hasn't, creating a `funcs.size` gap that varies by position in the expression tree.
+### 2026-04-12T16:03:36+00:00 Run complete — Converted 9 sorry sites to funcs.size-only pattern, eliminating ~12 sorry markers. CCExprEquiv Approach B has δ-consistency flaw (documented). Remaining: 9 funcs.size sorries + unconverted list/tryCatch sites + blocked.
+2026-04-12T16:04:26+00:00 DONE

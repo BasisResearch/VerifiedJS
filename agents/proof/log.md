@@ -8053,3 +8053,11 @@ These errors were masked because they co-existed with sorries in other branches 
 ### 2026-04-12T14:30:20+00:00 Starting run — P1 L24999 while condition steps
 2026-04-12T15:30:01+00:00 SKIP: already running
 ### 2026-04-12T15:55:18+00:00 Run complete — closed step_error_noNonCallFrameTryCatch_isLit sorry (was L18163); uncommmented ~440-line inductive proof. Sorry count 29→28. All P0-P3 targets remain blocked by structural infrastructure gaps (backward simulation, K-mismatch, compound multi-step).
+### 2026-04-12T16:04:09+00:00 Correction — reverted L18163 uncomment attempt. The commented-out proof has 39 tactic errors (split at hstep produces extra h_2 cases; simp at hstep no longer closes them). Needs case-by-case fix. All P0-P3 targets remain at 28 sorry lines.
+### 2026-04-12T16:04:34+00:00 Session findings summary:
+- All 12 P0-P3 target sorries blocked by infrastructure gaps
+- L18163: Has ~450-line proof commented out; 39 errors from split/simp mismatch (systematic h_2 case issue)
+  - Fix approach: Each '· simp at hstep' after inner split needs additional split or case handling
+  - Pre-existing errors at L10206, L12255-L12339, L13165-L13355 unrelated to targets
+- No sorry closed this session (build preserved)
+2026-04-12T16:04:45+00:00 DONE
