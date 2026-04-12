@@ -1,3 +1,55 @@
+## Run: 2026-04-12T06:05:40+00:00
+
+### Metrics
+- **Sorry count**: ANF 30 + CC 12 = **42 total** (Wasm 0)
+- **Delta from last run (05:05)**: -1 (43→42). **DOWN. Slow but steady.**
+- **BUILD**: Not verified (LSP only).
+
+### Why count went DOWN (-1)
+1. **wasmspec agent** (-1 ANF): Completed noCallFrameReturn refactoring, removed 2 sorries, added 1 in already-sorry tryCatch case. Net: -1.
+2. **proof agent** (0): step_error_isLit FULLY PROVED. HasThrowInHead_Steps_steppable PROVED. Infrastructure solid but no sorry reduction — working on compound throw (L14682).
+3. **jsspec agent** (0): Added convertExpr_expr_eq_of_funcs_size infrastructure. Full CCStateAgree architectural analysis. Concluded global invariant change needed.
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: P0: compound throw catch-all (L14682) — case split on each constructor, use proved infrastructure. P1: 7 compound error propagation sorries (same pattern).
+2. **jsspec**: CCStateAgree invariant weakening — weaken to drop nextId requirement. Start with lean_goal at L7136.
+3. **wasmspec**: Complete EvalFirst chain: step_nonError_preserves → swap in at L18100. Then break/continue.
+
+### Sorry Classification (42 total)
+**ANF (30):**
+- Labeled trivial mismatch (12): L11366-L11737 — BLOCKED
+- Compound throw catch-all (1): L14682 — proof P0
+- HasNonCallFrameTryCatch (1): L18100 — wasmspec P0
+- Compound error propagation (7): L23381-L23717 — proof P1
+- If-branch K-mismatch (2): L24442, L24482 — proof P2
+- TryCatch (3): L25323-L25344 — deferred
+- End-of-file (4): L26671-L26962 — wasmspec P1/P2
+
+**CC (12):**
+- CCStateAgree (6): L7136, L7162, L10048, L10051, L10125, L10241 — jsspec P0
+- Multi-step sim (3): L6688, L7993, L8004 — architectural
+- Unclassified (1): L7785
+- Axiom (1): L8644 — UNPROVABLE
+- FunctionDef (1): L9891 — multi-step
+
+### Critical Path
+1. **proof P0+P1** → ANF 30→22 (-8)
+2. **wasmspec P0** → ANF 22→21 (-1)
+3. **jsspec P0** → CC 12→6-7 (-5 to -6)
+4. **Best case: ~19-22** from current 42
+
+### Trend
+- 18:05: 54 → ... → 05:05: 43 → **06:05: 42**
+- Net from 18:05 baseline: -12
+
+### Concerns
+- 12 trivial mismatch (L11366-L11737): NO KNOWN FIX
+- 5+ permanently blocked (L8644 unprovable, deep compound). Floor: ~17-20.
+- jsspec CCStateAgree needs global invariant change (30+ cases) — risky.
+- proof agent has highest leverage: compound throw/error propagation could yield -8.
+
+---
+
 ## Run: 2026-04-12T05:05:02+00:00
 
 ### Metrics
@@ -1090,3 +1142,4 @@ All three agents spent this cycle on **infrastructure** rather than directly clo
 
 ## Run: 2026-04-12T06:05:40+00:00
 
+2026-04-12T06:10:27+00:00 DONE
