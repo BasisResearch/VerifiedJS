@@ -1161,8 +1161,7 @@ private theorem convertPropList_state_id_no_functionDef (ps : List (Core.PropNam
     have hn := by simp [propListNoFunctionDef, Bool.and_eq_true] at h; exact h
     have he := convertExpr_state_id_no_functionDef pe hn.1 scope envVar envMap st; rw [he]
     exact convertPropList_state_id_no_functionDef rest hn.2 scope envVar envMap st
-  termination_by sizeOf ps
-  decreasing_by all_goals (try simp_wf) <;> simp_all <;> omega
+  termination_by ps.length
 
 private theorem convertOptExpr_state_id_no_functionDef (oe : Option Core.Expr)
     (h : (match oe with | some e => noFunctionDef e | none => true) = true)
@@ -1683,19 +1682,23 @@ private theorem convertExpr_expr_eq_of_funcs_size (e : Core.Expr)
         | some n => List.filter (fun x => x != n) (List.filter (fun v => !List.elem v params) (Flat.freeVars body))
         | none => List.filter (fun v => !List.elem v params) (Flat.freeVars body)) []) 0)
       { funcs := st2.funcs, nextId := st2.nextId + 1 }
+    -- Abbreviations for the envVar and envMap used in hd1/hd2
+    let ev1 := toString "__env" ++ toString "_" ++ toString st1.nextId
+    let ev2 := toString "__env" ++ toString "_" ++ toString st2.nextId
+    let em := Flat.indexedMap (Flat.dedupStrings
+        (match fname with
+        | some n => List.filter (fun x => x != n) (List.filter (fun v => !List.elem v params) (Flat.freeVars body))
+        | none => List.filter (fun v => !List.elem v params) (Flat.freeVars body)) []) 0
+    have hsz_out : (Flat.convertExpr body params ev1 em { funcs := st1.funcs, nextId := st1.nextId + 1 }).snd.funcs.size =
+        (Flat.convertExpr body params ev2 em { funcs := st2.funcs, nextId := st2.nextId + 1 }).snd.funcs.size := by
+      rw [hd1.2, hd2.2]; simp [hsz]
     refine ⟨?_, ?_⟩
     · -- .fst: .makeClosure funcIdx envExpr — funcIdx depends only on output funcs.size
       show Flat.Expr.makeClosure _ _ = Flat.Expr.makeClosure _ _
-      have hsz_out : (Flat.convertExpr body _ _ _ { funcs := st1.funcs, nextId := st1.nextId + 1 }).snd.funcs.size =
-          (Flat.convertExpr body _ _ _ { funcs := st2.funcs, nextId := st2.nextId + 1 }).snd.funcs.size := by
-        rw [hd1.2, hd2.2]; simp [hsz]
       exact congrArg (Flat.Expr.makeClosure · _) hsz_out
     · -- funcs.size: addFunc increments by 1
       show Array.size _ = Array.size _
       simp only [Array.size_push]
-      have hsz_out : (Flat.convertExpr body _ _ _ { funcs := st1.funcs, nextId := st1.nextId + 1 }).snd.funcs.size =
-          (Flat.convertExpr body _ _ _ { funcs := st2.funcs, nextId := st2.nextId + 1 }).snd.funcs.size := by
-        rw [hd1.2, hd2.2]; simp [hsz]
       exact congrArg (· + 1) hsz_out
   | throw arg =>
     simp only [Flat.convertExpr]
@@ -1754,7 +1757,7 @@ private theorem convertPropList_expr_eq_of_funcs_size (ps : List (Core.PropName 
     (Flat.convertPropList ps scope envVar envMap st1).snd.funcs.size =
     (Flat.convertPropList ps scope envVar envMap st2).snd.funcs.size := by
   cases ps with
-  | nil => simp [Flat.convertPropList, hsz]
+  | nil => exact ⟨rfl, hsz⟩
   | cons p rest =>
     simp only [Flat.convertPropList]
     have he := convertExpr_expr_eq_of_funcs_size p.2 scope envVar envMap st1 st2 hsz
@@ -1769,10 +1772,11 @@ private theorem convertOptExpr_expr_eq_of_funcs_size (oe : Option Core.Expr)
     (Flat.convertOptExpr oe scope envVar envMap st1).snd.funcs.size =
     (Flat.convertOptExpr oe scope envVar envMap st2).snd.funcs.size := by
   cases oe with
-  | none => simp [Flat.convertOptExpr, hsz]
+  | none => exact ⟨rfl, hsz⟩
   | some e =>
     simp only [Flat.convertOptExpr]
-    exact convertExpr_expr_eq_of_funcs_size e scope envVar envMap st1 st2 hsz
+    have h := convertExpr_expr_eq_of_funcs_size e scope envVar envMap st1 st2 hsz
+    exact ⟨congrArg some h.1, h.2⟩
 end
 
 /-! #### Equality implies CCExprEquiv: if two expressions are equal, they are CCExprEquiv for any δ.
