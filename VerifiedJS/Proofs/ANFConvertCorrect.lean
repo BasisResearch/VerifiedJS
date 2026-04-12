@@ -16169,91 +16169,84 @@ private theorem hasThrowInHead_compound_throw_step_sim
               by rw [observableTrace_append, hobs_obj, hobs_r]; simp⟩
     | setIndex_val h_sub =>
       rename_i obj idx val
+      -- After rename_i: idx=obj-field (1st), val=idx-field (2nd), obj=value-field (3rd)
+      -- h_sub : HasThrowInHead obj (value-field)
+      -- Normalization order: idx → val → obj
       simp only [ANF.normalizeExpr] at hnorm'
-      by_cases hobj : HasThrowInHead obj
-      · exact throwInHead_compound_lift hobj
-          (fun s inner hv t si hs he => step?_setIndex_obj_ctx s inner idx val hv t si hs he)
-          (fun s inner hv msg si hs => step?_setIndex_obj_error s inner idx val hv msg si hs)
-          (ih obj _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) hobj hnorm'
+      by_cases hidx : HasThrowInHead idx
+      · -- First operand (idx=obj-field) has throw: direct lift
+        exact throwInHead_compound_lift hidx
+          (fun s inner hv t si hs he => step?_setIndex_obj_ctx s inner val obj hv t si hs he)
+          (fun s inner hv msg si hs => step?_setIndex_obj_error s inner val obj hv msg si hs)
+          (ih idx _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) hidx hnorm'
             (fun x hfx => hewf' x (VarFreeIn.setIndex_obj _ _ _ _ hfx))
             (by cases hna' with | setIndex ha _ _ => exact ha) trace')
-      · -- obj has no throw; check idx
-        by_cases hidx : HasThrowInHead idx
-        · -- idx has throw: evaluate obj trivially, then lift idx
-          rcases ANF.normalizeExpr_throw_or_k obj _ arg' n' m' hnorm' with hobj' | ⟨_, n₁, m₁, hcont⟩
-          · exact absurd hobj' hobj
-          · have htc := no_throw_head_implies_trivial_chain obj.depth obj (Nat.le_refl _) _ arg' n' m' hnorm' hobj
-            obtain ⟨vobj, evs_obj, hsteps_obj, hnoerr_obj, hobs_obj, hpres_obj⟩ :=
-              trivialChain_eval_value (trivialChainCost obj) obj env heap trace' funcs cs htc
-                (Nat.le_refl _) (fun x hfx => hewf' x (VarFreeIn.setIndex_obj _ _ _ _ hfx))
-            obtain ⟨ws_obj, hwsteps_obj, _, _, _, _, _, _⟩ :=
-              Steps_setIndex_obj_ctx_b idx val hsteps_obj hnoerr_obj
-                (fun smid evs1 h _ => hpres_obj smid evs1 h)
-            have hws_obj_eq : ws_obj = ⟨.setIndex (.lit vobj) idx val, env, heap, trace' ++ evs_obj, funcs, cs⟩ := by
-              cases ws_obj; simp_all
+      · -- First operand no throw: evaluate it, then check second
+        rcases ANF.normalizeExpr_throw_or_k idx _ arg' n' m' hnorm' with hidx' | ⟨_, n₁, m₁, hcont₁⟩
+        · exact absurd hidx' hidx
+        · have htc_idx := no_throw_head_implies_trivial_chain idx.depth idx (Nat.le_refl _) _ arg' n' m' hnorm' hidx
+          obtain ⟨vidx, evs_idx, hsteps_idx, hnoerr_idx, hobs_idx, hpres_idx⟩ :=
+            trivialChain_eval_value (trivialChainCost idx) idx env heap trace' funcs cs htc_idx
+              (Nat.le_refl _) (fun x hfx => hewf' x (VarFreeIn.setIndex_obj _ _ _ _ hfx))
+          obtain ⟨ws_idx, hwsteps_idx, _, _, _, _, _, _⟩ :=
+            Steps_setIndex_obj_ctx_b val obj hsteps_idx hnoerr_idx
+              (fun smid evs1 h _ => hpres_idx smid evs1 h)
+          have hws_idx_eq : ws_idx = ⟨.setIndex (.lit vidx) val obj, env, heap, trace' ++ evs_idx, funcs, cs⟩ := by
+            cases ws_idx; simp_all
+          by_cases hval : HasThrowInHead val
+          · -- Second operand (val=idx-field) has throw: eval first, lift second
             obtain ⟨ih_ok, ih_err⟩ :=
-              throwInHead_compound_lift hidx
-                (fun s inner hv t si hs he => step?_setIndex_idx_ctx s vobj inner val hv t si hs he)
-                (fun s inner hv msg si hs => step?_setIndex_idx_error s vobj inner val hv msg si hs)
-                (ih idx _ arg' n₁ m₁ (by simp [Flat.Expr.depth] at hd; omega) hidx hcont
+              throwInHead_compound_lift hval
+                (fun s inner hv t si hs he => step?_setIndex_idx_ctx s vidx inner obj hv t si hs he)
+                (fun s inner hv msg si hs => step?_setIndex_idx_error s vidx inner obj hv msg si hs)
+                (ih val _ arg' n₁ m₁ (by simp [Flat.Expr.depth] at hd; omega) hval hcont₁
                   (fun x hfx => hewf' x (VarFreeIn.setIndex_idx _ _ _ _ hfx))
-                  (by cases hna' with | setIndex _ ha _ => exact ha) (trace' ++ evs_obj))
+                  (by cases hna' with | setIndex _ ha _ => exact ha) (trace' ++ evs_idx))
             refine ⟨fun v heval => ?_, fun msg heval => ?_⟩
             · obtain ⟨evs_r, sf_r, hsteps_r, hexpr_r, henv_r, hheap_r, htrace_r, hobs_r⟩ := ih_ok v heval
-              exact ⟨evs_obj ++ evs_r, sf_r,
-                Flat.Steps_trans (hws_obj_eq ▸ hwsteps_obj) hsteps_r,
+              exact ⟨evs_idx ++ evs_r, sf_r,
+                Flat.Steps_trans (hws_idx_eq ▸ hwsteps_idx) hsteps_r,
                 hexpr_r, henv_r, hheap_r,
                 by rw [htrace_r]; simp [List.append_assoc],
-                by rw [observableTrace_append, hobs_obj, hobs_r]; simp⟩
+                by rw [observableTrace_append, hobs_idx, hobs_r]; simp⟩
             · obtain ⟨evs_r, sf_r, hsteps_r, hexpr_r, henv_r, hheap_r, htrace_r, hobs_r⟩ := ih_err msg heval
-              exact ⟨evs_obj ++ evs_r, sf_r,
-                Flat.Steps_trans (hws_obj_eq ▸ hwsteps_obj) hsteps_r,
+              exact ⟨evs_idx ++ evs_r, sf_r,
+                Flat.Steps_trans (hws_idx_eq ▸ hwsteps_idx) hsteps_r,
                 hexpr_r, henv_r, hheap_r,
                 by rw [htrace_r]; simp [List.append_assoc],
-                by rw [observableTrace_append, hobs_obj, hobs_r]; simp⟩
-        · -- neither obj nor idx has throw: evaluate both, then IH on val
-          rcases ANF.normalizeExpr_throw_or_k obj _ arg' n' m' hnorm' with hobj' | ⟨_, n₁, m₁, hcont₁⟩
-          · exact absurd hobj' hobj
-          · have htc_obj := no_throw_head_implies_trivial_chain obj.depth obj (Nat.le_refl _) _ arg' n' m' hnorm' hobj
-            obtain ⟨vobj, evs_obj, hsteps_obj, hnoerr_obj, hobs_obj, hpres_obj⟩ :=
-              trivialChain_eval_value (trivialChainCost obj) obj env heap trace' funcs cs htc_obj
-                (Nat.le_refl _) (fun x hfx => hewf' x (VarFreeIn.setIndex_obj _ _ _ _ hfx))
-            obtain ⟨ws_obj, hwsteps_obj, _, _, _, _, _, _⟩ :=
-              Steps_setIndex_obj_ctx_b idx val hsteps_obj hnoerr_obj
-                (fun smid evs1 h _ => hpres_obj smid evs1 h)
-            have hws_obj_eq : ws_obj = ⟨.setIndex (.lit vobj) idx val, env, heap, trace' ++ evs_obj, funcs, cs⟩ := by
-              cases ws_obj; simp_all
-            rcases ANF.normalizeExpr_throw_or_k idx _ arg' n₁ m₁ hcont₁ with hidx' | ⟨_, n₂, m₂, hcont₂⟩
-            · exact absurd hidx' hidx
-            · have htc_idx := no_throw_head_implies_trivial_chain idx.depth idx (Nat.le_refl _) _ arg' n₁ m₁ hcont₁ hidx
-              obtain ⟨vidx, evs_idx, hsteps_idx, hnoerr_idx, hobs_idx, hpres_idx⟩ :=
-                trivialChain_eval_value (trivialChainCost idx) idx env heap (trace' ++ evs_obj) funcs cs htc_idx
+                by rw [observableTrace_append, hobs_idx, hobs_r]; simp⟩
+          · -- Neither first nor second has throw: evaluate both, then IH on third (obj=value-field)
+            rcases ANF.normalizeExpr_throw_or_k val _ arg' n₁ m₁ hcont₁ with hval' | ⟨_, n₂, m₂, hcont₂⟩
+            · exact absurd hval' hval
+            · have htc_val := no_throw_head_implies_trivial_chain val.depth val (Nat.le_refl _) _ arg' n₁ m₁ hcont₁ hval
+              obtain ⟨vval, evs_val, hsteps_val, hnoerr_val, hobs_val, hpres_val⟩ :=
+                trivialChain_eval_value (trivialChainCost val) val env heap (trace' ++ evs_idx) funcs cs htc_val
                   (Nat.le_refl _) (fun x hfx => hewf' x (VarFreeIn.setIndex_idx _ _ _ _ hfx))
-              obtain ⟨ws_idx, hwsteps_idx, _, _, _, _, _, _⟩ :=
-                Steps_setIndex_idx_ctx_b vobj val hsteps_idx hnoerr_idx
-                  (fun smid evs1 h _ => hpres_idx smid evs1 h)
-              have hws_idx_eq : ws_idx = ⟨.setIndex (.lit vobj) (.lit vidx) val, env, heap, (trace' ++ evs_obj) ++ evs_idx, funcs, cs⟩ := by
-                cases ws_idx; simp_all
+              obtain ⟨ws_val, hwsteps_val, _, _, _, _, _, _⟩ :=
+                Steps_setIndex_idx_ctx_b vidx obj hsteps_val hnoerr_val
+                  (fun smid evs1 h _ => hpres_val smid evs1 h)
+              have hws_val_eq : ws_val = ⟨.setIndex (.lit vidx) (.lit vval) obj, env, heap, (trace' ++ evs_idx) ++ evs_val, funcs, cs⟩ := by
+                cases ws_val; simp_all
               obtain ⟨ih_ok, ih_err⟩ :=
                 throwInHead_compound_lift h_sub
-                  (fun s inner hv t si hs he => step?_setIndex_val_ctx s vobj vidx inner hv t si hs he)
-                  (fun s inner hv msg si hs => step?_setIndex_val_error s vobj vidx inner hv msg si hs)
-                  (ih val _ arg' n₂ m₂ (by simp [Flat.Expr.depth] at hd; omega) h_sub hcont₂
+                  (fun s inner hv t si hs he => step?_setIndex_val_ctx s vidx vval inner hv t si hs he)
+                  (fun s inner hv msg si hs => step?_setIndex_val_error s vidx vval inner hv msg si hs)
+                  (ih obj _ arg' n₂ m₂ (by simp [Flat.Expr.depth] at hd; omega) h_sub hcont₂
                     (fun x hfx => hewf' x (VarFreeIn.setIndex_value _ _ _ _ hfx))
-                    (by cases hna' with | setIndex _ _ ha => exact ha) ((trace' ++ evs_obj) ++ evs_idx))
+                    (by cases hna' with | setIndex _ _ ha => exact ha) ((trace' ++ evs_idx) ++ evs_val))
               refine ⟨fun v heval => ?_, fun msg heval => ?_⟩
-              · obtain ⟨evs_v, sf_v, hsteps_v, hexpr_v, henv_v, hheap_v, htrace_v, hobs_v⟩ := ih_ok v heval
-                exact ⟨evs_obj ++ evs_idx ++ evs_v, sf_v,
-                  Flat.Steps_trans (hws_obj_eq ▸ hwsteps_obj) (Flat.Steps_trans (hws_idx_eq ▸ hwsteps_idx) hsteps_v),
-                  hexpr_v, henv_v, hheap_v,
-                  by rw [htrace_v]; simp [List.append_assoc],
-                  by rw [observableTrace_append, observableTrace_append, hobs_obj, hobs_idx, hobs_v]; simp⟩
-              · obtain ⟨evs_v, sf_v, hsteps_v, hexpr_v, henv_v, hheap_v, htrace_v, hobs_v⟩ := ih_err msg heval
-                exact ⟨evs_obj ++ evs_idx ++ evs_v, sf_v,
-                  Flat.Steps_trans (hws_obj_eq ▸ hwsteps_obj) (Flat.Steps_trans (hws_idx_eq ▸ hwsteps_idx) hsteps_v),
-                  hexpr_v, henv_v, hheap_v,
-                  by rw [htrace_v]; simp [List.append_assoc],
-                  by rw [observableTrace_append, observableTrace_append, hobs_obj, hobs_idx, hobs_v]; simp⟩
+              · obtain ⟨evs_o, sf_o, hsteps_o, hexpr_o, henv_o, hheap_o, htrace_o, hobs_o⟩ := ih_ok v heval
+                exact ⟨evs_idx ++ evs_val ++ evs_o, sf_o,
+                  Flat.Steps_trans (hws_idx_eq ▸ hwsteps_idx) (Flat.Steps_trans (hws_val_eq ▸ hwsteps_val) hsteps_o),
+                  hexpr_o, henv_o, hheap_o,
+                  by rw [htrace_o]; simp [List.append_assoc],
+                  by rw [observableTrace_append, observableTrace_append, hobs_idx, hobs_val, hobs_o]; simp⟩
+              · obtain ⟨evs_o, sf_o, hsteps_o, hexpr_o, henv_o, hheap_o, htrace_o, hobs_o⟩ := ih_err msg heval
+                exact ⟨evs_idx ++ evs_val ++ evs_o, sf_o,
+                  Flat.Steps_trans (hws_idx_eq ▸ hwsteps_idx) (Flat.Steps_trans (hws_val_eq ▸ hwsteps_val) hsteps_o),
+                  hexpr_o, henv_o, hheap_o,
+                  by rw [htrace_o]; simp [List.append_assoc],
+                  by rw [observableTrace_append, observableTrace_append, hobs_idx, hobs_val, hobs_o]; simp⟩
     | call_env h_sub =>
       rename_i f envExpr args
       simp only [ANF.normalizeExpr] at hnorm'
@@ -27161,6 +27154,1059 @@ private theorem NoNestedAbrupt_steps_preserved {sf sf' : Flat.State} {evs : List
     exact ih (NoNestedAbrupt_step_preserved _ _ _ hna hfuncs_na hfuncs_ac hstep_eq)
       (fun i fd h => hfuncs_na i fd (hfuncs_eq ▸ h))
       (fun i fd h => hfuncs_ac i fd (hfuncs_eq ▸ h))
+
+/-! ## HasAbruptHead — generic abrupt head predicate -/
+
+set_option autoImplicit true in
+mutual
+/-- Generic abrupt head predicate — unifies HasThrowInHead, HasBreakInHead, HasContinueInHead.
+    An expression has an "abrupt head" if some sub-expression in evaluation position is
+    a throw/break/continue that will produce an error event. -/
+inductive HasAbruptHead : Flat.Expr → Prop where
+  | throw_leaf : HasAbruptHead (.throw arg)
+  | break_leaf : HasAbruptHead (.break label)
+  | continue_leaf : HasAbruptHead (.continue label)
+  | seq_left : HasAbruptHead a → HasAbruptHead (.seq a b)
+  | seq_right : HasAbruptHead b → HasAbruptHead (.seq a b)
+  | let_init : HasAbruptHead init → HasAbruptHead (.let name init body)
+  | getProp_obj : HasAbruptHead obj → HasAbruptHead (.getProp obj prop)
+  | setProp_obj : HasAbruptHead obj → HasAbruptHead (.setProp obj prop val)
+  | setProp_val : HasAbruptHead val → HasAbruptHead (.setProp obj prop val)
+  | binary_lhs : HasAbruptHead lhs → HasAbruptHead (.binary op lhs rhs)
+  | binary_rhs : HasAbruptHead rhs → HasAbruptHead (.binary op lhs rhs)
+  | unary_arg : HasAbruptHead arg → HasAbruptHead (.unary op arg)
+  | typeof_arg : HasAbruptHead arg → HasAbruptHead (.typeof arg)
+  | deleteProp_obj : HasAbruptHead obj → HasAbruptHead (.deleteProp obj prop)
+  | assign_val : HasAbruptHead val → HasAbruptHead (.assign name val)
+  | call_func : HasAbruptHead f → HasAbruptHead (.call f env args)
+  | call_env : HasAbruptHead env → HasAbruptHead (.call f env args)
+  | call_args : HasAbruptHeadList args → HasAbruptHead (.call f env args)
+  | newObj_func : HasAbruptHead f → HasAbruptHead (.newObj f env args)
+  | newObj_env : HasAbruptHead env → HasAbruptHead (.newObj f env args)
+  | newObj_args : HasAbruptHeadList args → HasAbruptHead (.newObj f env args)
+  | if_cond : HasAbruptHead c → HasAbruptHead (.if c t e)
+  | throw_arg : HasAbruptHead arg → HasAbruptHead (.throw arg)
+  | return_some_arg : HasAbruptHead v → HasAbruptHead (.return (some v))
+  | yield_some_arg : HasAbruptHead v → HasAbruptHead (.yield (some v) d)
+  | await_arg : HasAbruptHead arg → HasAbruptHead (.await arg)
+  | getIndex_obj : HasAbruptHead obj → HasAbruptHead (.getIndex obj idx)
+  | getIndex_idx : HasAbruptHead idx → HasAbruptHead (.getIndex obj idx)
+  | setIndex_obj : HasAbruptHead obj → HasAbruptHead (.setIndex obj idx val)
+  | setIndex_idx : HasAbruptHead idx → HasAbruptHead (.setIndex obj idx val)
+  | setIndex_val : HasAbruptHead val → HasAbruptHead (.setIndex obj idx val)
+  | getEnv_env : HasAbruptHead env → HasAbruptHead (.getEnv env idx)
+  | makeClosure_env : HasAbruptHead env → HasAbruptHead (.makeClosure funcIdx env)
+  | makeEnv_values : HasAbruptHeadList values → HasAbruptHead (.makeEnv values)
+  | objectLit_props : HasAbruptHeadProps props → HasAbruptHead (.objectLit props)
+  | arrayLit_elems : HasAbruptHeadList elems → HasAbruptHead (.arrayLit elems)
+
+inductive HasAbruptHeadList : List Flat.Expr → Prop where
+  | head : HasAbruptHead e → HasAbruptHeadList (e :: rest)
+  | tail : HasAbruptHeadList rest → HasAbruptHeadList (e :: rest)
+
+inductive HasAbruptHeadProps : List (Flat.PropName × Flat.Expr) → Prop where
+  | head : HasAbruptHead e → HasAbruptHeadProps ((name, e) :: rest)
+  | tail : HasAbruptHeadProps rest → HasAbruptHeadProps (p :: rest)
+end
+
+/-- HasAbruptHead expressions are never values. -/
+private theorem HasAbruptHead_not_value
+    (h : HasAbruptHead e) : Flat.exprValue? e = none := by
+  cases h <;> simp [Flat.exprValue?]
+
+/-- HasAbruptHeadList implies valuesFromExprList? is none (some arg is non-value). -/
+private theorem HasAbruptHeadList_valuesFromExprList_none
+    {args : List Flat.Expr} (h : HasAbruptHeadList args) :
+    Flat.valuesFromExprList? args = none := by
+  cases h with
+  | head h =>
+    have hv := HasAbruptHead_not_value h
+    simp only [Flat.valuesFromExprList?, hv]; rfl
+  | tail htl =>
+    have ih := HasAbruptHeadList_valuesFromExprList_none htl
+    simp only [Flat.valuesFromExprList?, ih]
+    cases Flat.exprValue? _ <;> rfl
+
+/-- HasAbruptHeadProps implies valuesFromExprList? on mapped values is none. -/
+private theorem HasAbruptHeadProps_valuesFromExprList_none
+    {props : List (Flat.PropName × Flat.Expr)} (h : HasAbruptHeadProps props) :
+    Flat.valuesFromExprList? (props.map Prod.snd) = none := by
+  cases h with
+  | head h =>
+    have hv := HasAbruptHead_not_value h
+    simp only [List.map, Flat.valuesFromExprList?, hv]; rfl
+  | tail htl =>
+    have ih := HasAbruptHeadProps_valuesFromExprList_none htl
+    simp only [List.map, Flat.valuesFromExprList?, ih]
+    cases Flat.exprValue? _ <;> rfl
+
+/-- HasAbruptHead e implies callStack safety conditions:
+    (1) e is not a tryCatch call frame
+    (2) if e is a .call, not all sub-expressions are values. -/
+private theorem hasAbruptHead_callStackSafe (e : Flat.Expr) (hth : HasAbruptHead e) :
+    (∀ body catch_ fin, e ≠ .tryCatch body "__call_frame_return__" catch_ fin) ∧
+    (∀ f env args, e = .call f env args →
+      Flat.exprValue? f = none ∨ Flat.exprValue? env = none ∨
+      Flat.valuesFromExprList? args = none) := by
+  constructor
+  · intro body catch_ fin h; cases hth <;> exact Flat.Expr.noConfusion h
+  · intro f env args h
+    cases hth with
+    | call_func h => left; cases h; exact HasAbruptHead_not_value h
+    | call_env h => right; left; cases h; exact HasAbruptHead_not_value h
+    | call_args h => right; right; cases h; exact HasAbruptHeadList_valuesFromExprList_none h
+    | _ => exact absurd h (by intro h'; exact Flat.Expr.noConfusion h')
+
+/-- Prepending to a list preserves HasAbruptHeadList. -/
+private theorem HasAbruptHeadList_append_right
+    (prefix_ : List Flat.Expr) {suffix_ : List Flat.Expr}
+    (h : HasAbruptHeadList suffix_) :
+    HasAbruptHeadList (prefix_ ++ suffix_) := by
+  induction prefix_ with
+  | nil => exact h
+  | cons _ _ ih => exact HasAbruptHeadList.tail ih
+
+/-- When firstNonValueExpr splits a list with HasAbruptHeadList,
+    either the target or the remaining has it. -/
+private theorem HasAbruptHeadList_firstNonValue
+    {args done : List Flat.Expr} {target : Flat.Expr} {remaining : List Flat.Expr}
+    (hfnv : Flat.firstNonValueExpr args = some (done, target, remaining))
+    (h : HasAbruptHeadList args) :
+    HasAbruptHead target ∨ HasAbruptHeadList remaining := by
+  have hsplit := firstNonValueExpr_eq_append hfnv
+  have hdone := firstNonValueExpr_done_all_lit hfnv
+  rw [hsplit] at h
+  induction done with
+  | nil =>
+    simp at h; cases h with
+    | head h => exact Or.inl h
+    | tail h => exact Or.inr h
+  | cons d ds ih =>
+    simp [List.cons_append] at h
+    cases h with
+    | head hd =>
+      obtain ⟨v, rfl⟩ := hdone d (List.mem_cons_self _ _)
+      exact absurd (HasAbruptHead_not_value hd) (by simp [Flat.exprValue?])
+    | tail h =>
+      exact ih (fun e he => hdone e (List.mem_cons_of_mem _ he)) h
+
+/-- Reconstruct HasAbruptHeadList after replacing target in a split list. -/
+private theorem HasAbruptHeadList_reconstruct
+    (done : List Flat.Expr) (e : Flat.Expr) (remaining : List Flat.Expr)
+    (h : HasAbruptHead e ∨ HasAbruptHeadList remaining) :
+    HasAbruptHeadList (done ++ e :: remaining) :=
+  match h with
+  | .inl he => HasAbruptHeadList_append_right done (.head he)
+  | .inr hr => HasAbruptHeadList_append_right done (.tail hr)
+
+/-- Prepending to a prop list preserves HasAbruptHeadProps. -/
+private theorem HasAbruptHeadProps_append_right
+    (prefix_ : List (Flat.PropName × Flat.Expr))
+    {suffix_ : List (Flat.PropName × Flat.Expr)}
+    (h : HasAbruptHeadProps suffix_) :
+    HasAbruptHeadProps (prefix_ ++ suffix_) := by
+  induction prefix_ with
+  | nil => exact h
+  | cons _ _ ih => exact HasAbruptHeadProps.tail ih
+
+/-- When firstNonValueProp splits a prop list with HasAbruptHeadProps,
+    either the target or the remaining has it. -/
+private theorem HasAbruptHeadProps_firstNonValue
+    {props done : List (Flat.PropName × Flat.Expr)}
+    {name : Flat.PropName} {target : Flat.Expr}
+    {remaining : List (Flat.PropName × Flat.Expr)}
+    (hfnv : Flat.firstNonValueProp props = some (done, name, target, remaining))
+    (h : HasAbruptHeadProps props) :
+    HasAbruptHead target ∨ HasAbruptHeadProps remaining := by
+  have hsplit := firstNonValueProp_eq_append hfnv
+  have hdone := firstNonValueProp_done_all_lit hfnv
+  rw [hsplit] at h
+  induction done with
+  | nil =>
+    simp at h; cases h with
+    | head h => exact Or.inl h
+    | tail h => exact Or.inr h
+  | cons d ds ih =>
+    simp [List.cons_append] at h
+    cases h with
+    | head hd =>
+      obtain ⟨v, rfl⟩ := hdone d (List.mem_cons_self _ _)
+      exact absurd (HasAbruptHead_not_value hd) (by simp [Flat.exprValue?])
+    | tail h =>
+      exact ih (fun p hp => hdone p (List.mem_cons_of_mem _ hp)) h
+
+/-- Reconstruct HasAbruptHeadProps after replacing target in a split prop list. -/
+private theorem HasAbruptHeadProps_reconstruct
+    (done : List (Flat.PropName × Flat.Expr))
+    (name : Flat.PropName) (e : Flat.Expr)
+    (remaining : List (Flat.PropName × Flat.Expr))
+    (h : HasAbruptHead e ∨ HasAbruptHeadProps remaining) :
+    HasAbruptHeadProps (done ++ (name, e) :: remaining) :=
+  match h with
+  | .inl he => HasAbruptHeadProps_append_right done (.head he)
+  | .inr hr => HasAbruptHeadProps_append_right done (.tail hr)
+
+/-- HasAbruptHead is preserved through a single non-error step. -/
+private theorem HasAbruptHead_step_nonError
+    {sf sf' : Flat.State} {t : Core.TraceEvent}
+    (hth : HasAbruptHead sf.expr)
+    (hstep : Flat.step? sf = some (t, sf'))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    HasAbruptHead sf'.expr := by
+  suffices hmain : ∀ (n : Nat) (e : Flat.Expr) (env : Flat.Env) (heap : Core.Heap)
+      (trace : List Core.TraceEvent) (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+      (sf' : Flat.State) (t : Core.TraceEvent),
+      e.depth ≤ n →
+      HasAbruptHead e →
+      Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (t, sf') →
+      (∀ msg, t ≠ .error msg) →
+      HasAbruptHead sf'.expr by
+    cases sf with | mk e env heap trace funcs cs =>
+    exact hmain e.depth e env heap trace funcs cs sf' t (Nat.le_refl _) hth hstep hnoerr
+  intro n
+  induction n with
+  | zero =>
+    intro e env heap trace funcs cs sf' t hd hth hstep hnoerr
+    cases hth
+    next => -- throw_leaf (depth 1, not 0)
+      simp [Flat.Expr.depth] at hd
+    next => -- break_leaf
+      simp [Flat.Expr.depth] at hd
+    next => -- continue_leaf
+      simp [Flat.Expr.depth] at hd
+    all_goals (simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; omega)
+  | succ n ih =>
+    intro e env heap trace funcs cs sf' t hd hth hstep hnoerr
+    cases hth with
+    | throw_leaf =>
+      rename_i arg
+      -- .throw arg where arg might be a value: step? evaluates arg.
+      -- If arg is value, produces error (contradicts hnoerr).
+      -- If arg is not value, steps arg (non-error) → .throw arg'
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · -- arg is value: throw produces error → contradiction
+        simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+      · -- arg is not value: step arg
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .throw_leaf
+        · simp at hstep
+    | break_leaf =>
+      rename_i label
+      -- .break label always steps to error → contradiction with hnoerr.
+      unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+    | continue_leaf =>
+      rename_i label
+      -- .continue label always steps to error → contradiction with hnoerr.
+      unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+    | throw_arg h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i arg
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .throw_arg (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | seq_left h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i b
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .seq_left (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | seq_right h =>
+      rename_i a
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact h
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact .seq_right h
+        · simp at hstep
+    | let_init h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i name body
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .let_init (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | if_cond h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i then_ else_
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .if_cond (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | assign_val h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i name
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .assign_val (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | getProp_obj h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i prop
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .getProp_obj (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | deleteProp_obj h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i prop
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .deleteProp_obj (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | typeof_arg h =>
+      have hv := HasAbruptHead_not_value h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .typeof_arg (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | unary_arg h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i op
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .unary_arg (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | getEnv_env h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i idx
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .getEnv_env (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | makeClosure_env h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i funcIdx
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .makeClosure_env (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | return_some_arg h =>
+      have hv := HasAbruptHead_not_value h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .return_some_arg (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | yield_some_arg h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i delegate
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .yield_some_arg (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | await_arg h =>
+      have hv := HasAbruptHead_not_value h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .await_arg (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    -- Multi-context cases (binary, setProp, getIndex, setIndex, call, newObj, makeEnv, objectLit, arrayLit)
+    | setProp_obj h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i prop val
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .setProp_obj (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | setProp_val h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i obj prop
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? obj
+      · -- obj not a value: step obj, val unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .setProp_val h
+        · simp at hstep
+      · -- obj = some (.object addr): step val
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .setProp_val (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+        · simp at hstep
+      · -- obj = some _ (non-object): step val
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .setProp_val (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+        · simp at hstep
+    | binary_lhs h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i op rhs
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .binary_lhs (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | binary_rhs h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i op lhs
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? lhs
+      · -- lhs not a value: step lhs, rhs unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .binary_rhs h
+        · simp at hstep
+      · -- lhs = some lv: step rhs
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .binary_rhs (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+        · simp at hstep
+    | getIndex_obj h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i idx
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .getIndex_obj (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | getIndex_idx h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i obj
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? obj
+      · -- obj not a value: step obj, idx unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .getIndex_idx h
+        · simp at hstep
+      all_goals (  -- obj = some (.object addr) | some (.string str) | some _
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .getIndex_idx (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+        · simp at hstep)
+    | setIndex_obj h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i idx val
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .setIndex_obj (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | setIndex_idx h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i obj val
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? obj
+      · -- obj not a value: step obj, idx unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .setIndex_idx h
+        · simp at hstep
+      · -- obj = some (.object addr): step idx
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .setIndex_idx (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+        · simp at hstep
+      · -- obj = some _ (non-object): step idx
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .setIndex_idx (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+        · simp at hstep
+    | setIndex_val h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i obj idx
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? obj
+      · -- obj not a value: step obj, val unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .setIndex_val h
+        · simp at hstep
+      · -- obj = some (.object addr)
+        split at hstep  -- exprValue? idx
+        · -- idx not a value: step idx, val unchanged
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .setIndex_val h
+          · simp at hstep
+        · -- idx = some idxVal: step val
+          rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .setIndex_val (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+          · simp at hstep
+      · -- obj = some _ (non-object)
+        split at hstep  -- exprValue? idx
+        · -- idx not a value: step idx, val unchanged
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .setIndex_val h
+          · simp at hstep
+        · -- idx = some _: step val
+          rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .setIndex_val (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+          · simp at hstep
+    | call_func h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i env args
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .call_func (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | call_env h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i f args
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? funcExpr
+      · -- func not a value: step func, env unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .call_env h
+        · simp at hstep
+      · -- func = some _: step env
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .call_env (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+        · simp at hstep
+    | call_args h =>
+      rename_i f_expr env_expr
+      have hvl := HasAbruptHeadList_valuesFromExprList_none h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? f
+      · -- f not a value: step f, args unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .call_args h
+        · simp at hstep
+      · -- f = some _
+        split at hstep  -- exprValue? env
+        · -- env not a value: step env, args unchanged
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .call_args h
+          · simp at hstep
+        · -- env = some _: handle args
+          rw [hvl] at hstep; dsimp only [] at hstep
+          generalize hfnv : Flat.firstNonValueExpr _ = fnv at hstep
+          cases fnv with
+          | none => simp at hstep
+          | some val =>
+            obtain ⟨done, target, remaining⟩ := val
+            have hor := HasAbruptHeadList_firstNonValue hfnv h
+            dsimp only [] at hstep
+            split at hstep
+            · split at hstep
+              · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+              · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+                have hres := HasAbruptHeadList_reconstruct done _ remaining
+                  (hor.elim (fun ht => .inl (ih _ _ _ _ _ _ _ _ (by
+                    simp [Flat.Expr.depth, Flat.Expr.listDepth] at hd ⊢
+                    have := Flat.firstNonValueExpr_depth hfnv; omega) ht (by assumption) hnoerr)) .inr)
+                simp only [List.singleton_append] at hres ⊢ <;> exact .call_args hres
+            · simp at hstep
+    | newObj_func h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i env args
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+        · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .newObj_func (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | newObj_env h =>
+      have hv := HasAbruptHead_not_value h
+      rename_i f args
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? funcExpr
+      · -- func not a value: step func, env unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .newObj_env h
+        · simp at hstep
+      · -- func = some _: step env
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .newObj_env (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+        · simp at hstep
+    | newObj_args h =>
+      rename_i f_expr env_expr
+      have hvl := HasAbruptHeadList_valuesFromExprList_none h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? f
+      · -- f not a value: step f, args unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .newObj_args h
+        · simp at hstep
+      · -- f = some _
+        split at hstep  -- exprValue? env
+        · -- env not a value: step env, args unchanged
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .newObj_args h
+          · simp at hstep
+        · -- env = some _: handle args
+          rw [hvl] at hstep; dsimp only [] at hstep
+          generalize hfnv : Flat.firstNonValueExpr _ = fnv at hstep
+          cases fnv with
+          | none => simp at hstep
+          | some val =>
+            obtain ⟨done, target, remaining⟩ := val
+            have hor := HasAbruptHeadList_firstNonValue hfnv h
+            dsimp only [] at hstep
+            split at hstep
+            · split at hstep
+              · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+              · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+                have hres := HasAbruptHeadList_reconstruct done _ remaining
+                  (hor.elim (fun ht => .inl (ih _ _ _ _ _ _ _ _ (by
+                    simp [Flat.Expr.depth, Flat.Expr.listDepth] at hd ⊢
+                    have := Flat.firstNonValueExpr_depth hfnv; omega) ht (by assumption) hnoerr)) .inr)
+                simp only [List.singleton_append] at hres ⊢ <;> exact .newObj_args hres
+            · simp at hstep
+    | makeEnv_values h =>
+      have hvl := HasAbruptHeadList_valuesFromExprList_none h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [hvl] at hstep; dsimp only [] at hstep
+      generalize hfnv : Flat.firstNonValueExpr _ = fnv at hstep
+      cases fnv with
+      | none => simp at hstep
+      | some val =>
+        obtain ⟨done, target, remaining⟩ := val
+        have hor := HasAbruptHeadList_firstNonValue hfnv h
+        dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            have hres := HasAbruptHeadList_reconstruct done _ remaining
+              (hor.elim (fun ht => .inl (ih _ _ _ _ _ _ _ _ (by
+                simp [Flat.Expr.depth, Flat.Expr.listDepth] at hd ⊢
+                have := Flat.firstNonValueExpr_depth hfnv; omega) ht (by assumption) hnoerr)) .inr)
+            simp only [List.singleton_append] at hres ⊢ <;> exact .makeEnv_values hres
+        · simp at hstep
+    | objectLit_props h =>
+      have hvl := HasAbruptHeadProps_valuesFromExprList_none h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [hvl] at hstep; dsimp only [] at hstep
+      generalize hfnv : Flat.firstNonValueProp _ = fnv at hstep
+      cases fnv with
+      | none => simp at hstep
+      | some val =>
+        obtain ⟨done, propName, target, remaining⟩ := val
+        have hor := HasAbruptHeadProps_firstNonValue hfnv h
+        dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            have hres := HasAbruptHeadProps_reconstruct done propName _ remaining
+              (hor.elim (fun ht => .inl (ih _ _ _ _ _ _ _ _ (by
+                simp [Flat.Expr.depth, Flat.Expr.propListDepth] at hd ⊢
+                have := Flat.firstNonValueProp_depth hfnv; omega) ht (by assumption) hnoerr)) .inr)
+            simp only [List.singleton_append] at hres ⊢ <;> exact .objectLit_props hres
+        · simp at hstep
+    | arrayLit_elems h =>
+      have hvl := HasAbruptHeadList_valuesFromExprList_none h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [hvl] at hstep; dsimp only [] at hstep
+      generalize hfnv : Flat.firstNonValueExpr _ = fnv at hstep
+      cases fnv with
+      | none => simp at hstep
+      | some val =>
+        obtain ⟨done, target, remaining⟩ := val
+        have hor := HasAbruptHeadList_firstNonValue hfnv h
+        dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            have hres := HasAbruptHeadList_reconstruct done _ remaining
+              (hor.elim (fun ht => .inl (ih _ _ _ _ _ _ _ _ (by
+                simp [Flat.Expr.depth, Flat.Expr.listDepth] at hd ⊢
+                have := Flat.firstNonValueExpr_depth hfnv; omega) ht (by assumption) hnoerr)) .inr)
+            simp only [List.singleton_append] at hres ⊢ <;> exact .arrayLit_elems hres
+        · simp at hstep
+
+/-- HasAbruptHead is preserved through multi-step evaluation: at every steppable
+    intermediate state reachable from a HasAbruptHead expression, the expression
+    still has HasAbruptHead. -/
+private theorem HasAbruptHead_Steps_steppable
+    {a : Flat.Expr} {env : Flat.Env} {heap : Core.Heap} {trace : List Core.TraceEvent}
+    {funcs : Array Flat.FuncDef} {cs : List Flat.Env}
+    (hth : HasAbruptHead a)
+    {smid : Flat.State} {evs_pre : List Core.TraceEvent}
+    (hsteps : Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs_pre smid)
+    {t : Core.TraceEvent} {smid' : Flat.State}
+    (hstep : Flat.step? smid = some (t, smid')) :
+    HasAbruptHead smid.expr := by
+  suffices h : ∀ (s0 sf : Flat.State) (evs : List Core.TraceEvent),
+      HasAbruptHead s0.expr →
+      Flat.Steps s0 evs sf →
+      ∀ (t' : Core.TraceEvent) (sf' : Flat.State),
+      Flat.step? sf = some (t', sf') →
+      HasAbruptHead sf.expr by
+    exact h ⟨a, env, heap, trace, funcs, cs⟩ smid evs_pre hth hsteps t smid' hstep
+  intro s0 sf evs hth0 hsteps0
+  induction hsteps0 with
+  | refl => intro _ _ _; exact hth0
+  | @tail s1 s2 s3 ev evs' hfirst hrest ih =>
+    intro t' sf' hstep_sf
+    have hstep_s1 : Flat.step? s1 = some (ev, s2) := hfirst.1
+    by_cases ht : ∃ msg', ev = .error msg'
+    · -- Error step: result is .lit (stuck) → no further steps → contradiction
+      obtain ⟨msg', rfl⟩ := ht
+      obtain ⟨v, hv⟩ := step_error_isLit s1 s2 msg' hstep_s1
+      exfalso
+      have hlit : Flat.step? s2 = none := by
+        cases s2 with | mk e2 env2 heap2 trace2 funcs2 cs2 =>
+        simp [Flat.State.expr] at hv; subst hv
+        simp [Flat.step?]
+      cases hrest with
+      | refl => simp_all
+      | tail hfirst2 _ => exact absurd hfirst2.1 (by rw [hlit]; exact fun h => nomatch h)
+    · -- Non-error step: HasAbruptHead preserved
+      have hnoerr : ∀ msg, ev ≠ .error msg := by
+        intro msg h; exact ht ⟨msg, h⟩
+      have hs2_th : HasAbruptHead s2.expr :=
+        HasAbruptHead_step_nonError hth0 hstep_s1 hnoerr
+      exact ih hs2_th t' sf' hstep_sf
+
+/-! ## Embedding lemmas: HasBreakInHead/HasContinueInHead → HasAbruptHead -/
+
+private theorem HasBreakInHead_to_HasAbruptHead
+    {e : Flat.Expr} {label : Option Flat.LabelName}
+    (h : HasBreakInHead e label) : HasAbruptHead e := by
+  induction h with
+  | break_direct => exact .break_leaf
+  | seq_left _ ih => exact .seq_left ih
+  | seq_right _ ih => exact .seq_right ih
+  | let_init _ ih => exact .let_init ih
+  | getProp_obj _ ih => exact .getProp_obj ih
+  | setProp_obj _ ih => exact .setProp_obj ih
+  | setProp_val _ ih => exact .setProp_val ih
+  | binary_lhs _ ih => exact .binary_lhs ih
+  | binary_rhs _ ih => exact .binary_rhs ih
+  | unary_arg _ ih => exact .unary_arg ih
+  | typeof_arg _ ih => exact .typeof_arg ih
+  | deleteProp_obj _ ih => exact .deleteProp_obj ih
+  | assign_val _ ih => exact .assign_val ih
+  | call_func _ ih => exact .call_func ih
+  | call_env _ ih => exact .call_env ih
+  | call_args _ ih => exact .call_args ih
+  | newObj_func _ ih => exact .newObj_func ih
+  | newObj_env _ ih => exact .newObj_env ih
+  | newObj_args _ ih => exact .newObj_args ih
+  | if_cond _ ih => exact .if_cond ih
+  | throw_arg _ ih => exact .throw_arg ih
+  | return_some_arg _ ih => exact .return_some_arg ih
+  | yield_some_arg _ ih => exact .yield_some_arg ih
+  | await_arg _ ih => exact .await_arg ih
+  | getIndex_obj _ ih => exact .getIndex_obj ih
+  | getIndex_idx _ ih => exact .getIndex_idx ih
+  | setIndex_obj _ ih => exact .setIndex_obj ih
+  | setIndex_idx _ ih => exact .setIndex_idx ih
+  | setIndex_val _ ih => exact .setIndex_val ih
+  | getEnv_env _ ih => exact .getEnv_env ih
+  | makeClosure_env _ ih => exact .makeClosure_env ih
+  | makeEnv_values _ ih => exact .makeEnv_values ih
+  | objectLit_props _ ih => exact .objectLit_props ih
+  | arrayLit_elems _ ih => exact .arrayLit_elems ih
+
+private theorem HasBreakInHeadList_to_HasAbruptHeadList
+    {es : List Flat.Expr} {label : Option Flat.LabelName}
+    (h : HasBreakInHeadList es label) : HasAbruptHeadList es := by
+  cases h with
+  | head h => exact .head (HasBreakInHead_to_HasAbruptHead h)
+  | tail h => exact .tail (HasBreakInHeadList_to_HasAbruptHeadList h)
+
+private theorem HasBreakInHeadProps_to_HasAbruptHeadProps
+    {ps : List (Flat.PropName × Flat.Expr)} {label : Option Flat.LabelName}
+    (h : HasBreakInHeadProps ps label) : HasAbruptHeadProps ps := by
+  cases h with
+  | head h => exact .head (HasBreakInHead_to_HasAbruptHead h)
+  | tail h => exact .tail (HasBreakInHeadProps_to_HasAbruptHeadProps h)
+
+private theorem HasContinueInHead_to_HasAbruptHead
+    {e : Flat.Expr} {label : Option Flat.LabelName}
+    (h : HasContinueInHead e label) : HasAbruptHead e := by
+  induction h with
+  | continue_direct => exact .continue_leaf
+  | seq_left _ ih => exact .seq_left ih
+  | seq_right _ ih => exact .seq_right ih
+  | let_init _ ih => exact .let_init ih
+  | getProp_obj _ ih => exact .getProp_obj ih
+  | setProp_obj _ ih => exact .setProp_obj ih
+  | setProp_val _ ih => exact .setProp_val ih
+  | binary_lhs _ ih => exact .binary_lhs ih
+  | binary_rhs _ ih => exact .binary_rhs ih
+  | unary_arg _ ih => exact .unary_arg ih
+  | typeof_arg _ ih => exact .typeof_arg ih
+  | deleteProp_obj _ ih => exact .deleteProp_obj ih
+  | assign_val _ ih => exact .assign_val ih
+  | call_func _ ih => exact .call_func ih
+  | call_env _ ih => exact .call_env ih
+  | call_args _ ih => exact .call_args ih
+  | newObj_func _ ih => exact .newObj_func ih
+  | newObj_env _ ih => exact .newObj_env ih
+  | newObj_args _ ih => exact .newObj_args ih
+  | if_cond _ ih => exact .if_cond ih
+  | throw_arg _ ih => exact .throw_arg ih
+  | return_some_arg _ ih => exact .return_some_arg ih
+  | yield_some_arg _ ih => exact .yield_some_arg ih
+  | await_arg _ ih => exact .await_arg ih
+  | getIndex_obj _ ih => exact .getIndex_obj ih
+  | getIndex_idx _ ih => exact .getIndex_idx ih
+  | setIndex_obj _ ih => exact .setIndex_obj ih
+  | setIndex_idx _ ih => exact .setIndex_idx ih
+  | setIndex_val _ ih => exact .setIndex_val ih
+  | getEnv_env _ ih => exact .getEnv_env ih
+  | makeClosure_env _ ih => exact .makeClosure_env ih
+  | makeEnv_values _ ih => exact .makeEnv_values ih
+  | objectLit_props _ ih => exact .objectLit_props ih
+  | arrayLit_elems _ ih => exact .arrayLit_elems ih
+
+private theorem HasContinueInHeadList_to_HasAbruptHeadList
+    {es : List Flat.Expr} {label : Option Flat.LabelName}
+    (h : HasContinueInHeadList es label) : HasAbruptHeadList es := by
+  cases h with
+  | head h => exact .head (HasContinueInHead_to_HasAbruptHead h)
+  | tail h => exact .tail (HasContinueInHeadList_to_HasAbruptHeadList h)
+
+private theorem HasContinueInHeadProps_to_HasAbruptHeadProps
+    {ps : List (Flat.PropName × Flat.Expr)} {label : Option Flat.LabelName}
+    (h : HasContinueInHeadProps ps label) : HasAbruptHeadProps ps := by
+  cases h with
+  | head h => exact .head (HasContinueInHead_to_HasAbruptHead h)
+  | tail h => exact .tail (HasContinueInHeadProps_to_HasAbruptHeadProps h)
+
+/-! ## breakInHead_compound_lift and continueInHead_compound_lift -/
+
+private theorem breakInHead_compound_lift
+    {inner : Flat.Expr} {label : Option Flat.LabelName}
+    (hbreak_inner : HasBreakInHead inner label)
+    {wrap : Flat.Expr → Flat.Expr}
+    {env : Flat.Env} {heap : Core.Heap} {trace : List Core.TraceEvent}
+    {funcs : Array Flat.FuncDef} {cs : List Flat.Env}
+    (step_ctx : ∀ (s : Flat.State) (inner' : Flat.Expr),
+      Flat.exprValue? inner' = none →
+      ∀ (t : Core.TraceEvent) (si : Flat.State),
+      Flat.step? { s with expr := inner' } = some (t, si) →
+      (∀ msg, t ≠ .error msg) →
+      ∃ s', Flat.step? { s with expr := wrap inner' } = some (t, s') ∧
+        s'.expr = wrap si.expr ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+        s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧ s'.trace = s.trace ++ [t])
+    (step_error : ∀ (s : Flat.State) (inner' : Flat.Expr),
+      Flat.exprValue? inner' = none →
+      ∀ (msg : String) (si : Flat.State),
+      Flat.step? { s with expr := inner' } = some (.error msg, si) →
+      ∃ s', Flat.step? { s with expr := wrap inner' } = some (.error msg, s') ∧
+        s'.expr = si.expr ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+        s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧ s'.trace = s.trace ++ [.error msg])
+    (ih : ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps ⟨inner, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧
+        observableTrace evs = observableTrace [.error ("break:" ++ (label.getD ""))]) :
+    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+      Flat.Steps ⟨wrap inner, env, heap, trace, funcs, cs⟩ evs sf' ∧
+      sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+      sf'.trace = trace ++ evs ∧
+      observableTrace evs = observableTrace [.error ("break:" ++ (label.getD ""))] := by
+  obtain ⟨evs, sf_inner, hsteps, hexpr, henv, hheap, htrace, hobs⟩ := ih
+  have hpres : ∀ smid evs1, Flat.Steps ⟨inner, env, heap, trace, funcs, cs⟩ evs1 smid →
+      evs1.length ≤ evs.length →
+      smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+    intro smid evs1 hsteps' _hlen
+    exact ⟨Flat.Steps_preserves_funcs hsteps',
+      Flat.Steps_preserves_callStack hsteps' (fun smid' t' smid'' evs_pre hsteps'' hstep' _ => by
+        refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+        · exact (hasAbruptHead_callStackSafe smid'.expr
+            (HasAbruptHead_Steps_steppable (HasBreakInHead_to_HasAbruptHead hbreak_inner) hsteps'' hstep')).1 body catch_ fin h
+        · exact (hasAbruptHead_callStackSafe smid'.expr
+            (HasAbruptHead_Steps_steppable (HasBreakInHead_to_HasAbruptHead hbreak_inner) hsteps'' hstep')).2 f' env' args' h),
+      Flat.Steps_trace_append hsteps'⟩
+  have herr : ∃ msg', .error msg' ∈ evs := observableTrace_return_has_error hobs
+  obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+    Steps_compound_error_lift wrap step_ctx step_error hsteps herr hpres
+  exact ⟨evs, sf', hsteps', hexpr'.trans hexpr, henv'.trans henv, hheap'.trans hheap, htrace'.trans htrace, hobs⟩
+
+private theorem continueInHead_compound_lift
+    {inner : Flat.Expr} {label : Option Flat.LabelName}
+    (hcontinue_inner : HasContinueInHead inner label)
+    {wrap : Flat.Expr → Flat.Expr}
+    {env : Flat.Env} {heap : Core.Heap} {trace : List Core.TraceEvent}
+    {funcs : Array Flat.FuncDef} {cs : List Flat.Env}
+    (step_ctx : ∀ (s : Flat.State) (inner' : Flat.Expr),
+      Flat.exprValue? inner' = none →
+      ∀ (t : Core.TraceEvent) (si : Flat.State),
+      Flat.step? { s with expr := inner' } = some (t, si) →
+      (∀ msg, t ≠ .error msg) →
+      ∃ s', Flat.step? { s with expr := wrap inner' } = some (t, s') ∧
+        s'.expr = wrap si.expr ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+        s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧ s'.trace = s.trace ++ [t])
+    (step_error : ∀ (s : Flat.State) (inner' : Flat.Expr),
+      Flat.exprValue? inner' = none →
+      ∀ (msg : String) (si : Flat.State),
+      Flat.step? { s with expr := inner' } = some (.error msg, si) →
+      ∃ s', Flat.step? { s with expr := wrap inner' } = some (.error msg, s') ∧
+        s'.expr = si.expr ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+        s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧ s'.trace = s.trace ++ [.error msg])
+    (ih : ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps ⟨inner, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧
+        observableTrace evs = observableTrace [.error ("continue:" ++ (label.getD ""))]) :
+    ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+      Flat.Steps ⟨wrap inner, env, heap, trace, funcs, cs⟩ evs sf' ∧
+      sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+      sf'.trace = trace ++ evs ∧
+      observableTrace evs = observableTrace [.error ("continue:" ++ (label.getD ""))] := by
+  obtain ⟨evs, sf_inner, hsteps, hexpr, henv, hheap, htrace, hobs⟩ := ih
+  have hpres : ∀ smid evs1, Flat.Steps ⟨inner, env, heap, trace, funcs, cs⟩ evs1 smid →
+      evs1.length ≤ evs.length →
+      smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+    intro smid evs1 hsteps' _hlen
+    exact ⟨Flat.Steps_preserves_funcs hsteps',
+      Flat.Steps_preserves_callStack hsteps' (fun smid' t' smid'' evs_pre hsteps'' hstep' _ => by
+        refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+        · exact (hasAbruptHead_callStackSafe smid'.expr
+            (HasAbruptHead_Steps_steppable (HasContinueInHead_to_HasAbruptHead hcontinue_inner) hsteps'' hstep')).1 body catch_ fin h
+        · exact (hasAbruptHead_callStackSafe smid'.expr
+            (HasAbruptHead_Steps_steppable (HasContinueInHead_to_HasAbruptHead hcontinue_inner) hsteps'' hstep')).2 f' env' args' h),
+      Flat.Steps_trace_append hsteps'⟩
+  have herr : ∃ msg', .error msg' ∈ evs := observableTrace_return_has_error hobs
+  obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+    Steps_compound_error_lift wrap step_ctx step_error hsteps herr hpres
+  exact ⟨evs, sf', hsteps', hexpr'.trans hexpr, henv'.trans henv, hheap'.trans hheap, htrace'.trans htrace, hobs⟩
 
 /-- Stuttering simulation: one ANF step corresponds to one or more Flat steps,
     preserving observable events and the simulation relation.
