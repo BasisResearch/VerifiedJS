@@ -1,3 +1,59 @@
+## Run: 2026-04-12T07:30:12+00:00
+
+### Metrics
+- **Sorry count**: ANF 30 + CC 12 = **42 total** (Wasm 0)
+- **Delta from last run (06:05)**: 0 (42→42). **FLAT.**
+- **BUILD**: Not verified (LSP only — ANF file too large to load).
+
+### Why count is FLAT (0 change)
+1. **proof agent** (0): Running since 06:30 on P0 compound throw L14937 (catch-all). Still running at 07:30 (SKIP logged). No results yet — this is a large case split.
+2. **jsspec agent** (0): Crashed at 06:30 (EXIT code 1), restarted at 07:00 on CCStateAgree weakening. Just started, no results.
+3. **wasmspec agent** (0): **CRITICAL FINDING** — EvalFirst approach for L18355 is DEAD. Counter-examples found for error lemma, preservation, and normalizeExpr→¬Head. Pivoting to noCallFrameReturn approach (A). Also found 70+ implicit errors in infrastructure lemmas (broken `by assumption` patterns) — not new sorries but need fixing.
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: Kept on P0 L14937 (compound throw). Added detail on list-based cases (call_args, newObj_args). Instruction to split catch-all into individual sorries if too complex. Updated sorry map.
+2. **wasmspec**: MAJOR PIVOT — abandoned EvalFirst, new prompt for NoNonCallFrameTryCatchAnywhere approach. Key insight: "Anywhere" predicate is closed under sub-expression extraction (unlike EvalFirst). 5-step plan: define predicate → prove from normalizeExpr → prove preservation → swap in.
+3. **jsspec**: Maintained CCStateAgreeWeak (Option C) approach. Emphasized test-one-sorry-first strategy. No changes to target list.
+
+### Sorry Classification (42 total)
+**ANF (30):**
+- Labeled trivial mismatch (12): L11366-L11737 — BLOCKED
+- Compound throw catch-all (1): L14937 — proof P0
+- HasNonCallFrameTryCatch (1): L18355 — wasmspec P0 (NEW APPROACH)
+- Compound error propagation (5): L23641-L23875 — proof P1
+- While condition (2): L23965, L23977 — proof P2
+- If-branch K-mismatch (2): L24702, L24742 — proof P3
+- TryCatch (3): L25583-L25604 — proof P4
+- End-of-file (4): L26931-L27222 — proof P5
+
+**CC (12):**
+- CCStateAgree (6): L7136, L7162, L10048, L10051, L10125, L10241 — jsspec P0
+- Multi-step sim (3): L6688, L7993, L8004 — architectural
+- Unclassified (1): L7785
+- Axiom (1): L8644 — UNPROVABLE
+- FunctionDef (1): L9891 — multi-step
+
+### Critical Path
+1. **proof P0** (L14937 → split into ~10 individual cases): even if sorry'd individually, unlocks P1
+2. **wasmspec P0** (L18355 → noCallFrameReturn approach): -1 if successful
+3. **jsspec P0** (CCStateAgreeWeak): -5 to -6 if invariant change works
+4. **Best case next run: ~35-38** from 42
+
+### Trend
+- 18:05: 54 → ... → 05:05: 43 → 06:05: 42 → **07:30: 42**
+- Net from 18:05 baseline: -12
+- **STALL**: 2 consecutive runs with ≤1 change. Agents hitting architectural walls.
+
+### Concerns
+- **STALLING**: 42 for 1.5 hours. proof agent running long, jsspec crashing/restarting, wasmspec pivoting.
+- 12 trivial mismatch (L11366-L11737): NO KNOWN FIX
+- L8644 unprovable. Floor: ~17-20.
+- wasmspec NoNonCallFrameTryCatchAnywhere is unproven approach — may hit same walls.
+- jsspec CCStateAgreeWeak may break currently-proved cases when invariant is weakened globally.
+- proof agent may be stuck in an hour-long LSP wait on the large catch-all split.
+
+---
+
 ## Run: 2026-04-12T06:05:40+00:00
 
 ### Metrics

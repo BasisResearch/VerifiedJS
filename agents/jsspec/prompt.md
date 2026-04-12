@@ -9,55 +9,43 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-12T06:05
+## STATUS — 2026-04-12T07:30
 - CC: **12** real sorries. Total: **42** (ANF 30 + CC 12).
 - convertExpr_expr_eq_of_funcs_size infrastructure DONE.
 - CCStateAgree analysis complete: global invariant change IS needed.
 
-## YOUR ANALYSIS CONCLUSION (from last run):
-You correctly identified:
-1. Branching creates a gap in BOTH nextId AND funcs.size
-2. No local fix works — the simulation invariant itself needs changing
-3. Need CCExprEquiv δ instead of exact equality
+## YOUR TARGET: 6 CCStateAgree sorries
 
-## THE PATH FORWARD: WEAKEN THE INVARIANT INCREMENTALLY
+These are the sorries you can close:
+- L7136 (if-true CCStateAgree)
+- L7162 (if-false CCStateAgree)
+- L10048 (tryCatch CCStateAgree)
+- L10051 (tryCatch body-value with finally)
+- L10125 (CCStateAgree after conversion)
+- L10241 (while_ CCStateAgree)
 
-The suffices block (L6411-6413) currently requires:
-```lean
-(sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
-CCStateAgree st st_a ∧ CCStateAgree st' st_a'
-```
+## THE APPROACH: Weaken CCStateAgree to drop nextId
 
-**Option A (RECOMMENDED — smallest change):** Instead of exact equality for expr, use:
-```lean
-∃ δ, (sf'.expr = (Flat.convertExpr sc'.expr scope envVar envMap (st_a.withFuncsSize (st_a.funcs.size + δ))).fst) ∧
-  st_a'.funcs.size = (Flat.convertExpr sc'.expr scope envVar envMap (st_a.withFuncsSize (st_a.funcs.size + δ))).snd.funcs.size
-```
-Then use `convertExpr_expr_eq_of_funcs_size` to show that δ doesn't affect expr equality when funcs.size is aligned.
+From your analysis: the ONLY field that causes mismatch is `nextId`. `funcs` and `names` stay deterministic.
 
-Wait — you already showed expr depends on funcs.size too. So actually:
-
-**Option B (ACTUALLY correct):** The real insight is that after branching, the expressions
-produced are IDENTICAL because they don't depend on nextId at all (only funcs.size matters),
-AND funcs.size is deterministic. So the only difference is in `nextId`. Define:
+**Option C (RECOMMENDED):** Define:
 ```lean
 def CCStateAgreeWeak (st_real st_sim : CCState) : Prop :=
-  st_real.funcs.size = st_sim.funcs.size
-  -- (nextId can differ)
-```
-
-**Option C (HYBRID):** Keep CCStateAgree for funcs agreement, allow nextId to differ:
-```lean
-def CCStateAgreeModNextId (st_real st_sim : CCState) : Prop :=
   st_real.funcs = st_sim.funcs ∧ st_real.names = st_sim.names
   -- nextId can differ
 ```
 
-**START HERE:**
-1. `lean_goal` at L7136 and L10241 to see the EXACT mismatch
-2. Determine which fields actually MUST agree vs which can differ
-3. If only nextId differs: Option C is cleanest — just weaken CCStateAgree to drop nextId
-4. Test on ONE sorry first before changing the invariant globally
+Then change the suffices block (L6411-6413) to use CCStateAgreeWeak instead of CCStateAgree.
+
+### EXECUTION:
+1. `lean_goal` at L7136 to see the EXACT current goal
+2. Define CCStateAgreeWeak near CCStateAgree
+3. Try replacing CCStateAgree with CCStateAgreeWeak in the suffices for ONE sorry (L7136)
+4. If the goal becomes provable, extend to the other 5
+
+### IMPORTANT: Test on ONE sorry FIRST
+Don't change the whole invariant globally until you've confirmed ONE case works.
+The risk is that weakening the invariant makes OTHER (currently-proved) cases break.
 
 ## DO NOT TOUCH:
 - L6688, L7993, L8004 (multi-step — architectural, different class)
@@ -66,5 +54,5 @@ def CCStateAgreeModNextId (st_real st_sim : CCState) : Prop :=
 - L9891 (functionDef — multi-step)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — CCStateAgree invariant weakening" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — [task]" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`
