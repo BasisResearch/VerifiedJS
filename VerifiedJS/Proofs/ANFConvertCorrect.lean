@@ -9484,9 +9484,10 @@ inductive HasNonCallFrameTryCatchInEvalFirst : Flat.Expr → Prop where
 private theorem HasNonCallFrameTryCatchInEvalFirst_not_lit {v : Flat.Value} :
     ¬HasNonCallFrameTryCatchInEvalFirst (.lit v) := fun h => nomatch h
 
-/-- HasNonCallFrameTryCatchInHead implies HasNonCallFrameTryCatchInEvalFirst
-    (the strong predicate implies the weak one, for eval-first sub-expressions). -/
+/-- HasNonCallFrameTryCatchInEvalFirst implies HasNonCallFrameTryCatchInHead
+    (the weak predicate implies the strong one, since eval-first ⊆ all positions). -/
 private theorem HasNonCallFrameTryCatchInEvalFirst_of_Head
+    {e : Flat.Expr}
     (h : HasNonCallFrameTryCatchInEvalFirst e) : HasNonCallFrameTryCatchInHead e := by
   induction h with
   | tryCatch_direct hcp => exact .tryCatch_direct hcp
@@ -9514,6 +9515,7 @@ private theorem HasNonCallFrameTryCatchInEvalFirst_of_Head
 
 /-- ¬HasNonCallFrameTryCatchInHead implies ¬HasNonCallFrameTryCatchInEvalFirst. -/
 private theorem not_HasNonCallFrameTryCatchInEvalFirst_of_not_Head
+    {e : Flat.Expr}
     (h : ¬HasNonCallFrameTryCatchInHead e) : ¬HasNonCallFrameTryCatchInEvalFirst e :=
   fun hef => h (HasNonCallFrameTryCatchInEvalFirst_of_Head hef)
 
