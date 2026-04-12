@@ -7457,17 +7457,21 @@ private theorem closureConvert_step_simulation
       · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf',
             ExprAddrWF_mono then_ (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.1) (Core_step_heap_size_mono hcstep_sub),
             ExprAddrWF_mono else_ (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.2) (Core_step_heap_size_mono hcstep_sub)⟩
-      · have hthen := convertExpr_state_determined then_ scope envVar envMap
-            (Flat.convertExpr cond scope envVar envMap st).snd st_a' sorry /- hAgreeOut.1 -/ sorry /- hAgreeOut.2 — needs CCStateAgree equality, have CCStateAgreeWeak (≤) -/
-        have helse := convertExpr_state_determined else_ scope envVar envMap
+      · -- Use convertExpr_expr_eq_of_funcs_size (needs only funcs.size=, not nextId=)
+        have hthen := convertExpr_expr_eq_of_funcs_size then_ scope envVar envMap
+            (Flat.convertExpr cond scope envVar envMap st).snd st_a'
+            sorry /- funcs.size eq: needs (Flat.convertExpr cond ... st).snd.funcs.size = st_a'.funcs.size — have CCStateAgreeWeak (≤) -/
+        have helse := convertExpr_expr_eq_of_funcs_size else_ scope envVar envMap
             (Flat.convertExpr then_ scope envVar envMap (Flat.convertExpr cond scope envVar envMap st).snd).snd
-            (Flat.convertExpr then_ scope envVar envMap st_a').snd hthen.2.1 hthen.2.2
+            (Flat.convertExpr then_ scope envVar envMap st_a').snd hthen.2
         refine ⟨st_a, (Flat.convertExpr else_ scope envVar envMap (Flat.convertExpr then_ scope envVar envMap st_a').snd).snd, ?_, hAgreeIn, ?_⟩
         · simp only [sc', Flat.convertExpr]
           rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from (congrArg Prod.fst hconv').symm]
           rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
           rw [hthen.1, helse.1]
-        · rw [hconv.2]; exact helse.2
+        · rw [hconv.2]
+          have haw_then := convertExpr_state_mono_preserve then_ scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2
+          exact convertExpr_state_mono_preserve else_ scope envVar envMap _ _ haw_then.1 haw_then.2
   | seq a b =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
