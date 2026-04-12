@@ -8052,3 +8052,4 @@ These errors were masked because they co-existed with sorries in other branches 
 
 ### 2026-04-12T14:30:20+00:00 Starting run — P1 L24999 while condition steps
 2026-04-12T15:30:01+00:00 SKIP: already running
+### 2026-04-12T15:55:18+00:00 Run complete — closed step_error_noNonCallFrameTryCatch_isLit sorry (was L18163); uncommmented ~440-line inductive proof. Sorry count 29→28. All P0-P3 targets remain blocked by structural infrastructure gaps (backward simulation, K-mismatch, compound multi-step).

@@ -5463,3 +5463,4 @@ Estimated: ~300-500 lines of changes across ~30 locations.
 ## Run: 2026-04-12T15:00:02+00:00
 
 ### 2026-04-12T15:00:28+00:00 Starting run — CCExprEquiv-based simulation prototype on L7461
+2026-04-12T16:00:02+00:00 SKIP: already running

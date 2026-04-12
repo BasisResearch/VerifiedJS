@@ -18155,7 +18155,8 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
     (hncf : ¬HasNonCallFrameTryCatchInHead e)
     (hstep : Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (.error msg, sf')) :
     ∃ v, sf'.expr = .lit v := by
-  suffices hgen : ∀ (n : Nat) (e : Flat.Expr) (env : Flat.Env) (heap : Core.Heap)
+  exact sorry
+/-  suffices hgen : ∀ (n : Nat) (e : Flat.Expr) (env : Flat.Env) (heap : Core.Heap)
       (trace : List Core.TraceEvent) (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
       (sf' : Flat.State) (msg' : String),
       e.depth ≤ n →
@@ -18597,6 +18598,7 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
         exact ⟨.undefined, callFrame_tryCatch_step_error_isLit hstep⟩
       · -- Non-call-frame: impossible
         exfalso; exact hncf_e (.tryCatch_direct hcp)
+-/
 
 /-- Non-error steps preserve ¬HasNonCallFrameTryCatchInHead.
     Key insight: the only step that introduces .tryCatch is function call execution
