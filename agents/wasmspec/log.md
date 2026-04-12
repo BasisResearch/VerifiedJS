@@ -8585,3 +8585,6 @@ Needs HasBreakInHead_step_nonError + HasBreakInHead_Steps_steppable infrastructu
 - ¬EvalFirst is too weak for both the error lemma and the preservation lemma
 - Need a different strategy (threading noCallFrameReturn, or restructuring the proof)
 2026-04-12T07:37:27+00:00 DONE
+
+## Run: 2026-04-12T08:15:01+00:00
+

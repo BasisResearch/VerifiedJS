@@ -1,3 +1,58 @@
+## Run: 2026-04-12T08:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 30 + CC 12 = **42 total** (Lower 0)
+- **Delta from last run (07:30)**: 0 (42→42). **FLAT for 2 hours.**
+- **BUILD**: Not verified (LSP only).
+
+### Why count is FLAT (0 change)
+1. **proof agent** (0): Made structural progress — restructured compound throw theorem, added 16 first-operand cases to hasThrowInHead_compound_throw_step_sim at 08:01. L15944 catch-all still exists but now covers fewer cases (second-operand + list only). Active work in progress.
+2. **jsspec agent** (0): Crashed at 06:00, 06:30, 07:00. Running CCStateAgree weakening since 07:00 (still going at 08:00). Removed hid from convertExpr_CCExprEquiv_shifted (good infrastructure). No sorry reduction yet.
+3. **wasmspec agent** (0): **MAJOR infrastructure fix at 07:37** — fixed 70+ broken `by assumption` patterns in step_error_noNonCallFrameTryCatch_isLit and step_nonError_preserves. Both now compile clean. EvalFirst confirmed DEAD. Has the tools to close L18325 but hasn't attempted it yet.
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: Updated P0 with specific second-operand cases (binary_rhs, setProp_value, etc.) and list cases (call_args, newObj_args, etc.). Suggested throwInHead_compound_lift_second variant or inline approach.
+2. **wasmspec**: PIVOTED — told to USE the fixed infrastructure lemmas to close L18325. Plan: prove normalizeExpr .return produces no tryCatch → ¬HasNonCallFrameTryCatchInHead. This is now tractable with the fixed lemmas.
+3. **jsspec**: Clarified 3 approach options for CCStateAgreeWeak. Emphasized: test ONE sorry (L7136) before global changes. Stop crashing.
+
+### Sorry Classification (42 total)
+**ANF (30):**
+- Trivial mismatch (12): L11366-L11737 — BLOCKED
+- Compound throw catch-all (1): L15944 — proof P0 (ACTIVE, partially decomposed)
+- HasNonCallFrameTryCatch (1): L18325 — wasmspec P0 (infrastructure READY)
+- Compound await/yield/return (5): L23611-L23845 — proof P1
+- While condition (2): L23935, L23947 — proof P2
+- If-branch K-mismatch (2): L24672, L24712 — proof P3
+- TryCatch (3): L25553-L25574 — proof P4
+- End-of-file (4): L26901-L27192 — proof P5
+
+**CC (12):**
+- CCStateAgree (6): L7136, L7162, L10048, L10051, L10125, L10241 — jsspec P0
+- Multi-step sim (3): L6688, L7993, L8004 — architectural
+- Unclassified (1): L7785
+- Axiom (1): L8644 — UNPROVABLE
+- FunctionDef (1): L9891 — multi-step
+
+### Critical Path
+1. **proof P0** (L15944 → split into ~12 individual cases): partially done, 16/28 constructors handled
+2. **wasmspec P0** (L18325 → use fixed infrastructure): -1 if successful
+3. **jsspec P0** (CCStateAgreeWeak): -5 to -6 if invariant change works
+4. **Best case next run: ~35-37** from 42
+
+### Trend
+- 18:05: 54 → ... → 05:05: 43 → 06:05: 42 → 07:30: 42 → **08:05: 42**
+- Net from 18:05 baseline: -12
+- **STALL**: 3 consecutive runs at 42. But infrastructure progress is real.
+
+### Concerns
+- **3-run stall**: All agents doing infrastructure/restructuring, no sorry reductions.
+- proof agent restructured code well but still no net reduction — need second-operand + list cases closed.
+- jsspec stability: 3 crashes in 2 hours. If it crashes again, need to simplify its task.
+- wasmspec has the infrastructure but hasn't attempted L18325 yet — may hit new blockers.
+- 12 trivial mismatch + 1 axiom = floor of ~17-20 even with perfect execution.
+
+---
+
 ## Run: 2026-04-12T07:30:12+00:00
 
 ### Metrics
@@ -1211,3 +1266,4 @@ All three agents spent this cycle on **infrastructure** rather than directly clo
 
 ## Run: 2026-04-12T08:05:01+00:00
 
+2026-04-12T08:10:56+00:00 DONE
