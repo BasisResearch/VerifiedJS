@@ -1,4 +1,4 @@
-# wasmspec — CLOSE noCallFrameReturn + HasNonCallFrameTryCatch SORRIES
+# wasmspec — CLOSE noCallFrameReturn PRESERVATION + INITIAL STATE
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,13 +9,12 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-12T02:05
-- Total: **63 real sorries** (ANF 48, CC 15). UP FROM 42. CRISIS.
-- Bridge lemma `noCallFrameReturn_normalizeExpr_tryCatch_param` is PROVED.
-- `HasReturnInHead_Steps_steppable_core` is sorry-free.
-- L17182 wrapper sorry is isolated.
+## STATUS — 2026-04-12T03:05
+- Total: **47 real sorries** (ANF 35, CC 12). DOWN from 63 last run. -16!
+- Bridge lemma is PROVED. Two new sorries remain: L27149 (preservation) + L27184 (initial state).
+- P1 (HasNonCallFrameTryCatch L17436) is BLOCKED per your analysis — predicate too strong.
 
-## P0: noCallFrameReturn PRESERVATION (L26895 — 1 sorry)
+## P0: noCallFrameReturn PRESERVATION (L27149) — HIGHEST PRIORITY
 
 Goal: `noCallFrameReturn sf2.expr = true` where sf2 comes from flat steps simulating one ANF step.
 
@@ -27,43 +26,45 @@ theorem noCallFrameReturn_step_preserved
     noCallFrameReturn sf'.expr = true
 ```
 
-Key insight: Flat.step? only introduces `__call_frame_return__` tryCatch for function calls (`.call`), and it wraps the ENTIRE call. After the call returns, the tryCatch is consumed and the result is a value (`.lit`). So:
-- Non-call steps: preserve noCallFrameReturn structurally
-- Call steps: the post-call expr is `.lit v` which trivially has noCallFrameReturn
+Proof strategy — case split on `Flat.step?`:
+- **Value/literal cases**: result is value, trivially noCallFrameReturn
+- **Seq/let/if/etc**: structural — sub-expression stepped, rest unchanged
+- **Call**: post-call result is `.lit v` (value), trivially noCallFrameReturn
+- **TryCatch**: only introduces `__call_frame_return__` for call-frame tryCatch,
+  which is excluded by `noCallFrameReturn`. Non-call-frame tryCatch preserves the property.
 
-Then extend to multi-step: `noCallFrameReturn_steps_preserved` for `Flat.Steps`.
-
-At L26895, apply `noCallFrameReturn_steps_preserved hncfr hfsteps1`.
-
-**Expected: -1 sorry**
-
-## P1: HasNonCallFrameTryCatchInHead (L17182 — 1 sorry)
-
-Goal: `¬HasNonCallFrameTryCatchInHead a` where `a` has `HasReturnInHead a`.
-
-### Approach: thread through the caller chain
-1. `HasReturnInHead_Steps_steppable` calls `HasReturnInHead_Steps_steppable_core` which needs `hncf`
-2. The caller of `HasReturnInHead_Steps_steppable` is `hasReturnInHead_return_steps` or similar
-3. Trace upward until you find where the expression comes from `normalizeExpr`
-4. Prove: `normalizeExpr_no_nonCallFrameTryCatch_in_head` — normalizeExpr output never has non-call-frame tryCatch in head position (because normalizeExpr only creates .let, .seq, .labeled, .tryCatch with call-frame param)
-5. Thread this property down to L17182
-
-### Alternative (faster):
-At the caller of `HasReturnInHead_Steps_steppable`, add `¬HasNonCallFrameTryCatchInHead` as precondition and prove it at the call site from normalizeExpr properties.
+Then extend to multi-step with `noCallFrameReturn_steps_preserved`.
+Apply at L27149.
 
 **Expected: -1 sorry**
 
-## P2: L25975, L26046 — check what's needed
-`lean_goal` at these lines. They may be closeable with existing infrastructure.
+## P1: noCallFrameReturn INITIAL STATE (L27184)
 
-**Expected: -0 to -2 sorries**
+Goal: `noCallFrameReturn (initialState program).expr = true` or similar.
+
+Source programs never use `"__call_frame_return__"` as a tryCatch catchParam because:
+- It's a compiler-generated name (starts with `__`)
+- Source programs only have user-written catch parameter names
+- The `compile` function introduces `__call_frame_return__` ONLY during lowering
+
+Prove: source expressions have `noCallFrameReturn = true` by structural induction on the AST.
+
+**Expected: -1 sorry**
+
+## P2: HasNonCallFrameTryCatch — REDESIGN NEEDED (L17436)
+
+Your analysis showed the predicate is too strong. If you have time:
+- Define `HasNonCallFrameTryCatchInEvalFirst` that only checks eval-first positions
+- This is a bigger change (~700 lines per your estimate). Only attempt if P0+P1 done quickly.
+
+## P3: L26229, L26300 — check what's needed
+`lean_goal` at these. May be closeable.
 
 ## DO NOT WORK ON:
 - L11186-L11557 (labeled trivial mismatch — proof agent, BLOCKED)
 - ClosureConvertCorrect.lean (jsspec)
-- Any CC file
-- L14919-14936 (proof agent HasThrowInHead infrastructure)
+- L15136-L15190 (proof agent HasThrowInHead infrastructure)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — noCallFrameReturn + HasNonCallFrameTryCatch" >> agents/wasmspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — noCallFrameReturn preservation + initial" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

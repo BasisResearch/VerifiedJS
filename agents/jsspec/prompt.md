@@ -1,4 +1,4 @@
-# jsspec — CLOSE CCExprEquiv_shifted SORRIES THEN APPLY TO CCStateAgree
+# jsspec — CLOSE CCStateAgree SORRIES WITH CCEXPREQUIV
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,47 +9,46 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-12T02:05
-- CC: 15 real sorries (12 original + 3 you added). Total: **63** (ANF 48 + CC 15).
-- **Sorry count went UP by 21 total. CRISIS MODE. Close sorries NOW.**
-- You added 3 infrastructure sorries at L1848, L1857, L1866 (convertExpr_CCExprEquiv_shifted recursive calls).
-- Your own log says the fix: "replace `_ _` with explicit states in recursive IH calls."
+## STATUS — 2026-04-12T03:05
+- CC: 12 real sorries. Total: **47** (ANF 35 + CC 12). Down from 63!
+- CCExprEquiv_shifted is FULLY PROVED (-4 sorries from last run). GREAT WORK.
+- Your log says CCStateAgree needs architectural change: branching changes nextId,
+  so you need alpha-equiv (CCExprEquiv handles variable renaming from different nextId).
 
-## P0: CLOSE 3 convertExpr_CCExprEquiv_shifted SORRIES (L1848, L1857, L1866)
+## P0: WEAKEN SIM RELATION TO ACCEPT CCExprEquiv — HIGHEST PRIORITY
 
-You already know the fix from your own analysis:
-1. At each sorry, the issue is Lean can't infer implicit state args in recursive calls
-2. Replace `_ _` with explicit `(Flat.convertExpr sub ... st1).snd` / `(Flat.convertExpr sub ... st2).snd`
-3. Use `lean_goal` at each sorry to see the exact type expected
-4. Verify each with `lean_diagnostic_messages`
+The 5 CCStateAgree sorries (L6928, L6954, L9840, L9917, L10033) all have the same root cause:
+after branching (if/while/tryCatch), nextId differs by `exprFuncCount` of the skipped branch.
 
-**Expected: -3 sorries**
+### Strategy:
+1. **Weaken the simulation relation** (`CC_SimRel` or the `suffices` at each site) to accept
+   `CCExprEquiv δ` instead of exact equality where appropriate
+2. At each sorry site, the converted expression from one branch needs to be equivalent to the
+   expression computed with a different starting nextId
+3. Use `convertExpr_CCExprEquiv_shifted` to bridge the gap
 
-## P1: APPLY CCExprEquiv TO CLOSE CCStateAgree SORRIES (5 targets: L6865, L6891, L9777, L9854, L9970)
+### Start with L6928 (if-true branch):
+1. `lean_goal` to see the exact mismatch
+2. Look at the `suffices` or `have` that produces the CCStateAgree obligation
+3. Change it to produce a weaker obligation (CCExprEquiv-based)
+4. Prove the weaker obligation using `convertExpr_CCExprEquiv_shifted`
+5. Show the rest of the proof still goes through with the weaker relation
 
-After P0, your convertExpr_CCExprEquiv_shifted is fully proved. Now USE it:
-
-### For each CCStateAgree sorry:
-1. The goal needs `CCStateAgree st' st_a'` or expression equality
-2. Instead, provide `CCExprEquiv δ` witness where δ = `exprFuncCount` of the skipped branch
-3. Use `convertExpr_state_delta` to compute δ
-
-### BUT FIRST: Check if the simulation relation needs weakening
-The current relation may require exact equality. If so, you need to change the `suffices` or `have` upstream to accept CCExprEquiv instead. This is the REAL work.
-
-**Start with L6865** (if-true branch). Read the surrounding proof to understand what equality is actually needed.
+### If the relation change is too invasive:
+- Try adding a lemma that converts CCExprEquiv back to the needed form at each site
+- Or add `exprFuncCount` normalization so both branches produce the same nextId
 
 **Expected: -2 to -5 sorries**
 
-## P2: L9620 — Check what's needed here
-`lean_goal` at L9620 to see if it's a CCStateAgree case or something else.
+## P1: L7577, L9683 — Check what these are
+
+`lean_goal` at L7577 and L9683. They might be different blockers.
 
 ## DO NOT ATTEMPT:
-- L8373 (getIndex semantic mismatch — UNPROVABLE)
-- L6417, L7722, L7733 (multi-step architectural — different blocker)
-- L7514 (check what it is but don't spend >15 min)
-- Building MORE infrastructure
+- L8436 (getIndex semantic mismatch — UNPROVABLE axiom)
+- L6480, L7785, L7796 (multi-step architectural — different blocker class)
+- Building MORE infrastructure theorems
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — closing CCExprEquiv_shifted + applying to CCStateAgree" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — weakening sim relation for CCStateAgree" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`

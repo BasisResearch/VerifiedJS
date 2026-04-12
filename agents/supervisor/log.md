@@ -904,3 +904,67 @@ All three agents spent this cycle on **infrastructure** rather than directly clo
 
 ## Run: 2026-04-12T03:05:01+00:00
 
+
+## Run: 2026-04-12T03:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 35 + CC 12 = **47 total** (Lower 0)
+- **Delta from last run (02:05)**: -16 (63→47). **DOWN. MAJOR PROGRESS.**
+- **BUILD**: not checked (LSP-only mode)
+
+### Why count went DOWN (-16)
+1. **proof agent** (-13): Closed 14 of 18 HasThrowInHead_step_nonError infrastructure sorries. 4 list/props cases remain (call_args, newObj_args, objectLit_props, arrayLit_elems). Currently running since 02:30.
+2. **jsspec agent** (-3→-4?): Proved all 4 CCExprEquiv_shifted theorems (convertExpr, convertExprList, convertPropList, convertOptExpr). CC went 15→12. Started new run at 03:00 for CCStateAgree.
+3. **wasmspec agent** (0): Last completed at 02:28. P0 bridge lemma connected, +2 new preservation sorries. P1 BLOCKED (predicate too strong).
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: Close 4 remaining list/props infrastructure sorries → then L14196 compound throw → then if-branch K-mismatch.
+2. **jsspec**: Weaken sim relation to accept CCExprEquiv instead of exact equality at CCStateAgree sites. 5 targets.
+3. **wasmspec**: Prove noCallFrameReturn_step_preserved (L27149) + initial state (L27184). P1 redesign if time.
+
+### Sorry Classification (47 total)
+**ANF (35):**
+- Trivial mismatch (12): L11186-L11557 — BLOCKED (no known fix)
+- Compound throw (1): L14196 — proof agent P1
+- HasThrowInHead infra (4): L15136-L15190 — proof agent P0 (list/props cases)
+- HasNonCallFrameTryCatch (1): L17436 — wasmspec BLOCKED (predicate too strong)
+- Compound await/yield (2): L22718, L22891 — deep, deferred
+- Return/yield/compound (3): L22947, L22951, L22952 — deep, deferred
+- While condition (2): L23042, L23054 — deep, deferred
+- If-branch K-mismatch (2): L23779, L23819 — proof agent P2
+- TryCatch (3): L24660, L24678, L24681 — deep, deferred
+- body_sim (1): L26010 — needs strong induction
+- End-of-file (2): L26229, L26300 — wasmspec P3
+- noCallFrameReturn (2): L27149, L27184 — wasmspec P0+P1
+
+**CC (12):**
+- Multi-step gap (1): L6480 — architectural, deferred
+- CCStateAgree if-branches (2): L6928, L6954 — jsspec P0
+- Unknown (1): L7577 — jsspec P1 (check)
+- Multi-step architectural (2): L7785, L7796 — deferred
+- Axiom mismatch (1): L8436 — UNPROVABLE
+- Unknown (1): L9683 — jsspec P1 (check)
+- CCStateAgree tryCatch (2): L9840, L9843 — jsspec P0
+- CCStateAgree tryCatch (1): L9917 — jsspec P0
+- CCStateAgree while (1): L10033 — jsspec P0
+
+### Critical Path (best case this cycle)
+1. proof closes 4 infra → 47→43
+2. proof closes L14196 → 43→42
+3. wasmspec closes L27149+L27184 → 42→40
+4. jsspec closes 3-5 CCStateAgree → 40→35-37
+5. **Best case: ~35-37** (from 47)
+
+### Blockers (no current path to closing)
+- 12 trivial-mismatch sorries (K' dead, no alternative known)
+- 1 axiom mismatch (L8436 — semantic gap, UNPROVABLE)
+- 1 HasNonCallFrameTryCatch (L17436 — needs predicate redesign)
+- 3 multi-step architectural (L6480, L7785, L7796)
+- ~10 deep compound cases (await/yield/return/while/tryCatch)
+
+**Minimum achievable sorry count: ~27** (if all non-blocked sorries close)
+**Hard floor: ~27** (blocked + deep deferred)
+
+### Trend
+- 18:05: 54 → 19:05: 49 → 20:05: 49 → 21:05: 50 → 22:05: 44 → 23:30: 42 → 01:05: 42 → 02:05: 63 → **03:05: 47**
+2026-04-12T03:09:27+00:00 DONE
