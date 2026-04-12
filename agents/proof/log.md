@@ -7997,3 +7997,4 @@ See full analysis in log above.
 
 ## Run: 2026-04-12T10:30:08+00:00
 
+### 2026-04-12T10:30:42+00:00 Starting run — P0: close remaining 6 throw-compound sorries (third-operand + list cases)

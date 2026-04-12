@@ -1,3 +1,66 @@
+## Run: 2026-04-12T10:05:01+00:00
+
+### Metrics
+- **Sorry count (old method)**: ANF 22 + CC 8 = **30** (unchanged from 09:05)
+- **Sorry count (CORRECTED)**: ANF 35 + CC 12 = **47 real sorry instances**
+- **Sorry-using declarations (LSP ground truth)**: ANF 8, CC unknown (LSP timeout)
+- **Delta from last run (09:05)**: **0** (FLAT)
+- **BUILD**: Not verified (LSP only).
+
+### METHODOLOGY CORRECTION
+Previous runs used `^\s*sorry\b` which only matches sorry at line start. This systematically undercounted:
+- Inline sorries like `· sorry`, `(sorry /- ... -/)`, `sorry⟩`, `sorry,` were MISSED
+- ANF actual: 35 (was reported as 22). CC actual: 12 (was reported as 8).
+- The 30→30 comparison is consistent (same method). Real count has been ~47 all along.
+- **Going forward, use full `\bsorry\b` count (excluding comments) as ground truth.**
+
+### Why FLAT (0 change)
+1. **No agents have committed** in the last hour. Agent logs are stale (proof: April 1, jsspec: March 31, wasmspec: March 30).
+2. Git status: clean. No uncommitted work visible.
+3. Agents may not be running, or are running without producing results.
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: Fixed ALL line numbers (shifted significantly). P0 is now 6 throw/list sorries at L16180-L16292 (was 4 at wrong lines). Blocked area corrected to 12 (was 9). Total ANF instances corrected to 35.
+2. **jsspec**: Corrected CC sorry count to 12 (was 8). Identified 6 CCStateAgree sorries (was 2). Added L7325, L7351, L10237, L10240 as inline CCStateAgree targets. Gave execution order starting with L10314 (has proof skeleton).
+3. **wasmspec**: Fixed break/continue lines to L27249, L27250 (was L27278, L27349). Added L18673 as new P1 (different from closed L18325). Added end-of-file sorries L27469, L27540 as P2.
+
+### Sorry Classification (47 total — CORRECTED)
+**ANF (35):**
+- Blocked/labeled (12): L11366-L11737 — error propagation infrastructure needed
+- Throw/list (6): L16180, L16275, L16286, L16288, L16290, L16292 — proof P0
+- HasNonCallFrameTryCatch (1): L18673 — wasmspec P1
+- Compound await/yield/return (5): L23959, L24132, L24188, L24192, L24193 — proof P1
+- While condition (2): L24283, L24295 — proof P2
+- If-branch K-mismatch (2): L25020, L25060 — proof P3
+- TryCatch (3): L25901, L25919, L25922 — proof P4
+- Break/continue+IH (2): L27249, L27250 — wasmspec P0
+- End-of-file (2): L27469, L27540 — wasmspec P2
+
+**CC (12):**
+- CCStateAgree (6): L7325, L7351, L10237, L10240, L10314, L10430 — jsspec P0
+- Multi-step (3): L6877, L8182, L8193 — architectural (DO NOT TOUCH)
+- Unclassified (2): L7974, L10080
+- AXIOM (1): L8833 — unprovable
+
+### Critical Path
+1. **proof P0** (throw/list -6): Line numbers corrected, needs ctx lemma infrastructure
+2. **jsspec P0** (CCStateAgree -6): 6 targets identified (was 2), L10314 has proof skeleton
+3. **wasmspec P0** (break/continue -2): Line numbers corrected
+4. **Best case next run: ~35-39** from 47 (corrected baseline)
+
+### Trend (corrected methodology)
+- Previous runs were all ~47 (masked by undercounting as 30)
+- True baseline: **47** sorry instances
+- No real progress in the last hour
+
+### Concerns
+- **Agent activity**: Logs are 10+ days stale. Agents may not be running. Need to verify agent processes are alive.
+- **12 blocked sorries** (L11366-L11737) require error-propagation infrastructure that no agent is building.
+- **CC architectural sorries** (3) and AXIOM (1) = 4 permanently blocked.
+- **Realistic floor**: 47 - 4 unprovable = 43 provable. Need to close 43 more.
+
+---
+
 ## Run: 2026-04-12T09:05:06+00:00
 
 ### Metrics
@@ -1326,3 +1389,4 @@ All three agents spent this cycle on **infrastructure** rather than directly clo
 
 ## Run: 2026-04-12T10:05:01+00:00
 
+2026-04-12T10:31:26+00:00 DONE
