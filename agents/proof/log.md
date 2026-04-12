@@ -8000,3 +8000,23 @@ See full analysis in log above.
 ### 2026-04-12T10:30:42+00:00 Starting run — P0: close remaining 6 throw-compound sorries (third-operand + list cases)
 ### 2026-04-12T11:12:14+00:00 Progress update — setIndex_val proved, call_args/newObj_args restructured
 2026-04-12T11:30:01+00:00 SKIP: already running
+### 2026-04-12T10:30:08+00:00 → Run progress
+**Proved P0 sorries: setIndex_val, makeEnv_values, arrayLit_elems** (-3 sorries net)
+
+1. **setIndex_val** (was L16180): Three-operand case. Key insight: `rename_i obj idx val` maps differently than expected (idx=obj-field, val=idx-field, obj=value-field). Proof evaluates first two operands as trivial chains via by_cases on HasThrowInHead, then applies IH on the value-field through `throwInHead_compound_lift`.
+
+2. **call_args** and **newObj_args** (was L16275, L16286): Fixed rename_i mapping (envExpr=funcIdx, f=envPtr). Correctly structured: check funcIdx first, evaluate, then envPtr. The remaining sorry is only for the list case (args with HasThrowInHeadList).
+
+3. **makeEnv_values** (was L16288): List induction using `suffices h_aux`. Two branches per element:
+   - HasThrowInHead e: use depth IH + throwInHead_compound_lift through makeEnv context
+   - ¬HasThrowInHead e: trivial chain → evaluate to value → shift done prefix → recurse on rest
+   Adapted from return_step_sim's makeEnv_values pattern.
+
+4. **arrayLit_elems** (was L16292): Same list induction pattern as makeEnv_values, with arrayLit_elem_ctx/error step lemmas.
+
+**Remaining P0 sorries (3)**:
+- objectLit_props: needs Props-specific infrastructure (normalizeProps, PropName pairs)
+- call_args list: funcIdx/envPtr evaluated, need list decomposition for args
+- newObj_args list: same as call_args but for newObj
+
+**Overall**: From ~35 sorry instances, removed 3. Pre-existing errors at L16003-16100 (binary_rhs, setProp_val, getIndex_idx) discovered — these have rename_i mapping issues identical to what was fixed in setIndex_val/call_args.
