@@ -5414,3 +5414,4 @@ Estimated: ~300-500 lines of changes across ~30 locations.
 
 ### 2026-04-12T11:00:12+00:00 Starting run — closing CCStateAgree sorries per prompt
 2026-04-12T12:00:09+00:00 SKIP: already running
+### 2026-04-12T12:00:55+00:00 Fixed 5 of 6 CCStateAgree sorries (L7325, L7351, L10234, L10236, L10310). L10435 while_ left as sorry (needs CCExprEquiv). Now updating production/consumption sites for CCStateAgreeWeak invariant.
