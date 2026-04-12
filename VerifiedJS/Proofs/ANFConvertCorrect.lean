@@ -18160,8 +18160,7 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
   -- The inductive proof was ~450 lines but had tactic mismatches after `split at hstep`.
   -- Each non-error sub-step branch needs: `simp at hstep; exact absurd hstep.1 ‹_›`
   -- TODO: fix the `obtain ⟨h1, _⟩` → `simp at hstep; absurd hstep.1` migration in all 33 cases.
-  exact sorry
-/-  suffices hgen : ∀ (n : Nat) (e : Flat.Expr) (env : Flat.Env) (heap : Core.Heap)
+  suffices hgen : ∀ (n : Nat) (e : Flat.Expr) (env : Flat.Env) (heap : Core.Heap)
       (trace : List Core.TraceEvent) (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
       (sf' : Flat.State) (msg' : String),
       e.depth ≤ n →
