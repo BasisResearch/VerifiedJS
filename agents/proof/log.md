@@ -7779,3 +7779,15 @@ Dead code with false statement. Removed.
 ## Run: 2026-04-11T23:30:01+00:00
 
 ### 2026-04-11T23:30:10+00:00 Starting run — P0 labeled list tail + P1 break/continue non-head
+
+**Analysis results:**
+- P0 labeled list tail (L11107, L11139, L11170): Blocked by trivial mismatch. The theorem `normalizeExpr_labeled_branch_step` conclusion requires `(ANF.normalizeExpr sf'.expr K).run n' = .ok (body, m')` with the SAME fixed K and body. When a trivialChain `e` (like `.var "x"`) steps to `.lit (env("x"))`, the ANF trivial changes (`.var "x"` → `.lit num`), which changes `body` through the continuation. This affects ALL 12 non-head sorries in this theorem (L10799-L11170). Fix requires generalizing to existential K' and updating 7+ consumers. Not a proof gap — a theorem design issue.
+- P1 break/continue (L5005, L6143): Already removed (dead code deleted 2026-04-11).
+- L13809 (compound throw): Potentially closeable but needs ~550 lines of new infrastructure (`HasThrowInHead_step_nonError` + `HasThrowInHead_Steps_steppable`). Key insight: unlike HasReturnInHead, HasThrowInHead does NOT go through tryCatch, so `HasThrowInHead_Steps_steppable` should be provable without the `¬HasNonCallFrameTryCatchInHead` assumption.
+- L16451 (`HasReturnInHead_Steps_steppable`): Design issue — needs `¬HasNonCallFrameTryCatchInHead` as a new hypothesis, propagated through callers.
+- All other sorries: Compound/blocked categories.
+
+**Sorry count**: 30 total (12 trivial mismatch + 1 compound throw + 1 design issue + 16 other blocked).
+**Result**: 0 sorries closed. All remaining sorries require significant infrastructure changes.
+### 2026-04-12T00:07:25+00:00 Run complete — 0 sorries closed. All 30 remaining sorries are infrastructure-blocked. Key finding: HasThrowInHead_Steps_steppable is provable (no tryCatch constructors) but requires ~550 lines of new code. Trivial mismatch blocks 12 labeled branch sorries (theorem design issue).
+2026-04-12T00:07:37+00:00 DONE

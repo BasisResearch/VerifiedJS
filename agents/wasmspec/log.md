@@ -8426,3 +8426,5 @@ The theorem quantifies over ALL expressions with HasReturnInHead, but is only TR
 - **Root cause**: The theorem is universally quantified over `a` but the property only holds for expressions from normalizeExpr `.return` context. The `normalizeExpr_tryCatch_not_return_none/some` theorems prove tryCatch can't produce return, but this info isn't in scope.
 - **Fix applied**: Restructured into `HasReturnInHead_Steps_steppable_core` (takes `hncf` parameter, sorry-free) + `HasReturnInHead_Steps_steppable` wrapper (same signature, sorry for `hncf`). 200+ callers unchanged. Sorry count unchanged (30 ANF).
 - **To fully eliminate**: Thread `¬HasNonCallFrameTryCatchInHead` through `hasReturnInHead_return_steps` → `normalizeExpr_return_step_sim` → top-level caller. Derive from `normalizeExpr_tryCatch_not_return_*` at each sub-expression level. This requires ~90 edits across 3 theorems.
+### 2026-04-12T00:06:03+00:00 Run complete — P0+P1 verified done, P2 restructured (core sorry-free, wrapper has isolated sorry). Net sorry change: 0. See log for full analysis.
+2026-04-12T00:06:21+00:00 DONE
