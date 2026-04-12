@@ -5176,3 +5176,4 @@ and reduces `name = name` to `True` (use `trivial` not `rfl`).
 2. This handles nextId-equal case. Full solution needs CCExprEquiv extended for nextId shifts too
 3. Then modify CC_SimRel suffices to use CCExprEquiv instead of CCStateAgree equality
 ### 2026-04-12T01:37:36+00:00 Run complete — CCExprEquiv_shifted infrastructure added (+4 sorry in new theorems, 0 existing changed)
+2026-04-12T01:47:24+00:00 DONE

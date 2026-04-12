@@ -7880,3 +7880,7 @@ The body produced by normalizeExpr changes syntactically when a non-head trivial
 representation changes (.var "x" → .litNumber 42 in bindComplex). No amount of K'
 flexibility at the outer level compensates for this syntactic difference.
 See full analysis in log above.
+
+**File stats:** 26933 lines (was 26570, +363 lines added)
+**Sorry stats:** 42 total (24 original + 18 new infrastructure)
+2026-04-12T01:45:25+00:00 DONE

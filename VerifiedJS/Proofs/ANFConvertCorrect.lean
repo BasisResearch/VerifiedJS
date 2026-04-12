@@ -25594,13 +25594,14 @@ private theorem anfConvert_step_star
       ANF_SimRel s t sa sf →
       ExprWellFormed sf.expr sf.env →
       NoNestedAbrupt sf.expr →
+      noCallFrameReturn sf.expr = true →
       ANF.Step sa ev sa' →
       ∃ (sf' : Flat.State) (evs : List Core.TraceEvent),
         Flat.Steps sf evs sf' ∧
         observableTrace [ev] = observableTrace evs ∧
         ANF_SimRel s t sa' sf' ∧
         ExprWellFormed sf'.expr sf'.env := by
-  intro sa sf ev sa' hrel hewf hna hstep
+  intro sa sf ev sa' hrel hewf hna hncfr hstep
   obtain ⟨hstep_eq⟩ := hstep
   -- Decompose SimRel
   obtain ⟨hheap, henv, htrace, k, n, m, hnorm, hk_triv⟩ := hrel
@@ -25744,17 +25745,7 @@ private theorem anfConvert_step_star
     simp only [ANF.State.env] at henv
     simp only [ANF.State.trace] at htrace
     exact normalizeExpr_tryCatch_step_sim sf s t k n m body catchParam catchBody finally_ hnorm hk_triv hewf
-      (sorry /- noCallFrameReturn: Need catchParam ≠ "__call_frame_return__".
-         The ANF catchParam = source Flat catchParam (from normalizeExpr_tryCatch_decomp).
-         Source programs never use "__call_frame_return__" — it's only introduced by
-         Flat.step? for function calls. But during simulation, sf.expr could temporarily
-         be a __call_frame_return__ tryCatch (from a call step). The invariant that sf.expr
-         has no __call_frame_return__ catch params is maintained by the SimRel reconstruction
-         (call case handles the entire function execution internally).
-         FIX: Add NoCallFrameParam predicate to anfConvert_step_star preconditions,
-         prove it for initial state and preservation through simulation steps.
-         Cannot add to NoNestedAbrupt because function call stepping creates
-         __call_frame_return__ tryCatch wrappers (L12115 constructs .tryCatch_none). -/)
+      (noCallFrameReturn_normalizeExpr_tryCatch_param sf.expr k hk_triv body catchParam catchBody finally_ n m hnorm hncfr)
       (sorry /- body_sim: inner simulation IH, needs anfConvert_step_star to be proved by strong induction -/)
       sa_env sa_heap sa_trace hheap henv htrace _ _ hstep_eq
   | «return» arg =>
@@ -26877,6 +26868,7 @@ private theorem anfConvert_steps_star
       ANF_SimRel s t sa sf →
       ExprWellFormed sf.expr sf.env →
       NoNestedAbrupt sf.expr →
+      noCallFrameReturn sf.expr = true →
       (∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → NoNestedAbrupt fd.body) →
       (∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → hasAbruptCompletion fd.body = false) →
       ANF.Steps sa tr sa' →
@@ -26885,16 +26877,22 @@ private theorem anfConvert_steps_star
         observableTrace tr = observableTrace tr' ∧
         ANF_SimRel s t sa' sf' ∧
         ExprWellFormed sf'.expr sf'.env := by
-  intro sa sf tr sa' hrel hwf hna hfuncs_na hfuncs_ac hsteps
+  intro sa sf tr sa' hrel hwf hna hncfr hfuncs_na hfuncs_ac hsteps
   induction hsteps generalizing sf with
   | refl => exact ⟨sf, [], .refl sf, rfl, hrel, hwf⟩
   | tail hstep _ ih =>
     obtain ⟨sf2, evs1, hfsteps1, hobsev, hrel2, hwf2⟩ :=
-      anfConvert_step_star s t h _ _ _ _ hrel hwf hna hstep
+      anfConvert_step_star s t h _ _ _ _ hrel hwf hna hncfr hstep
     have hna2 : NoNestedAbrupt sf2.expr := NoNestedAbrupt_steps_preserved hna hfuncs_na hfuncs_ac hfsteps1
+    have hncfr2 : noCallFrameReturn sf2.expr = true :=
+      sorry /- noCallFrameReturn preservation: sf2 comes from simulation of one ANF step.
+         The Flat.Steps sf→sf2 may traverse call-frame tryCatch internally, but the final
+         state sf2 has noCallFrameReturn because ANF step results correspond to source-level
+         expressions (not call-frame temporaries). Prove by showing each sim lemma's output
+         preserves noCallFrameReturn, or add noCallFrameReturn to anfConvert_step_star conclusion. -/
     have hfuncs_eq := Flat.Steps_preserves_funcs hfsteps1
     obtain ⟨sf3, evs2, hfsteps2, hobstr, hrel3, hwf3⟩ :=
-      ih sf2 hrel2 hwf2 hna2
+      ih sf2 hrel2 hwf2 hna2 hncfr2
         (fun i fd h => hfuncs_na i fd (hfuncs_eq ▸ h))
         (fun i fd h => hfuncs_ac i fd (hfuncs_eq ▸ h))
     exact ⟨sf3, evs1 ++ evs2,
@@ -26912,6 +26910,7 @@ theorem anfConvert_correct (s : Flat.Program) (t : ANF.Program)
     (h : ANF.convert s = .ok t)
     (hwf_prog : ExprWellFormed s.main (Flat.initialState s).env)
     (hna_prog : NoNestedAbrupt s.main)
+    (hncfr_prog : noCallFrameReturn s.main = true)
     (hfuncs_na_prog : ∀ (i : Nat) (fd : Flat.FuncDef), s.functions[i]? = some fd → NoNestedAbrupt fd.body)
     (hfuncs_ac_prog : ∀ (i : Nat) (fd : Flat.FuncDef), s.functions[i]? = some fd → hasAbruptCompletion fd.body = false) :
     ∀ b, ANF.Behaves t b →
@@ -26921,9 +26920,10 @@ theorem anfConvert_correct (s : Flat.Program) (t : ANF.Program)
   have hwf_init : ExprWellFormed (Flat.initialState s).expr (Flat.initialState s).env :=
     hwf_prog
   have hna_init : NoNestedAbrupt (Flat.initialState s).expr := hna_prog
+  have hncfr_init : noCallFrameReturn (Flat.initialState s).expr = true := hncfr_prog
   -- Multi-step simulation (now threads WF)
   obtain ⟨sf, tr', hfsteps, hobstr, hrel, hwf_sf⟩ :=
-    anfConvert_steps_star s t h _ _ _ _ hinit hwf_init hna_init hfuncs_na_prog hfuncs_ac_prog hsteps
+    anfConvert_steps_star s t h _ _ _ _ hinit hwf_init hna_init hncfr_init hfuncs_na_prog hfuncs_ac_prog hsteps
   obtain ⟨sf', evs', hfsteps', hhalt', hobsevs, hrel'⟩ :=
     anfConvert_halt_star s t h _ _ hrel hhalt hwf_sf
   -- Combine: Flat reaches sf via tr', then sf' via evs' (all silent)
