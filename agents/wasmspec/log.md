@@ -8783,3 +8783,5 @@ call frame within a single ANF step batch.
 
 ## Run: 2026-04-12T15:15:05+00:00
 
+2026-04-12T15:15:16+00:00 EXIT: code 1
+2026-04-12T15:15:16+00:00 DONE
