@@ -1611,14 +1611,15 @@ private theorem CCExprListEquiv_envExprs_refl (captured : List String)
         | some idx => .getEnv (.var envVar) idx
         | none => .var v)) := by
   induction captured with
-  | nil => unfold CCExprListEquiv; trivial
+  | nil => simp only [List.map]; unfold CCExprListEquiv; trivial
   | cons v rest ih =>
-    unfold CCExprListEquiv
-    constructor
-    · cases Flat.lookupEnv envMap v with
-      | none => exact CCExprEquiv_var_self v δ
-      | some idx => exact CCExprEquiv_getEnv_var_self envVar idx δ
-    · exact ih
+    simp only [List.map]; unfold CCExprListEquiv
+    refine ⟨?_, ih⟩
+    split
+    · -- some idx case: .getEnv (.var envVar) idx
+      exact CCExprEquiv_getEnv_var_self envVar _ δ
+    · -- none case: .var v
+      exact CCExprEquiv_var_self _ δ
 
 mutual
 /-- Converting the same Core expression with two CCStates that agree on `nextId` but

@@ -16422,21 +16422,20 @@ private theorem step_nonError_preserves_noNonCallFrameTryCatch
       · -- Non-call-frame tryCatch: impossible from hypothesis
         exfalso; exact hncf (.tryCatch_direct hcp)
 
-/-- At every steppable intermediate state reachable from a HasReturnInHead expression,
-    the expression has HasReturnInHead (so callStack safety conditions hold). -/
-private theorem HasReturnInHead_Steps_steppable
+/-- Core proof: at every steppable intermediate state reachable from a HasReturnInHead
+    expression with ¬HasNonCallFrameTryCatchInHead, the expression has HasReturnInHead.
+    The hncf invariant is needed because error steps through non-call-frame tryCatches
+    can produce non-.lit results that lose HasReturnInHead. -/
+private theorem HasReturnInHead_Steps_steppable_core
     {a : Flat.Expr} {env : Flat.Env} {heap : Core.Heap} {trace : List Core.TraceEvent}
     {funcs : Array Flat.FuncDef} {cs : List Flat.Env}
     (hret : HasReturnInHead a)
+    (hncf : ¬HasNonCallFrameTryCatchInHead a)
     {smid : Flat.State} {evs_pre : List Core.TraceEvent}
     (hsteps : Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs_pre smid)
     {t : Core.TraceEvent} {smid' : Flat.State}
     (hstep : Flat.step? smid = some (t, smid')) :
     HasReturnInHead smid.expr := by
-  -- Carry ¬HasNonCallFrameTryCatchInHead as an invariant through the Steps induction.
-  -- This is needed because error steps through non-call-frame tryCatches can produce
-  -- non-.lit results that lose HasReturnInHead. With only call-frame tryCatches,
-  -- error steps always produce .lit → stuck → contradiction.
   suffices h : ∀ (s0 sf : Flat.State) (evs : List Core.TraceEvent),
       HasReturnInHead s0.expr →
       ¬HasNonCallFrameTryCatchInHead s0.expr →
@@ -16444,12 +16443,7 @@ private theorem HasReturnInHead_Steps_steppable
       ∀ (t' : Core.TraceEvent) (sf' : Flat.State),
       Flat.step? sf = some (t', sf') →
       HasReturnInHead sf.expr by
-    exact h ⟨a, env, heap, trace, funcs, cs⟩ smid evs_pre hret
-      (by -- ¬HasNonCallFrameTryCatchInHead a: true in normalizeExpr .return context
-       -- because normalizeExpr(.tryCatch ..) never produces .return, and the initial
-       -- expression from normalizeExpr has no tryCatch in eval-head at all.
-       sorry)
-      hsteps t smid' hstep
+    exact h ⟨a, env, heap, trace, funcs, cs⟩ smid evs_pre hret hncf hsteps t smid' hstep
   intro s0 sf evs hret0 hncf0 hsteps0
   induction hsteps0 with
   | refl => intro _ _ _; exact hret0
@@ -16476,6 +16470,28 @@ private theorem HasReturnInHead_Steps_steppable
       have hs2_ncf : ¬HasNonCallFrameTryCatchInHead s2.expr :=
         step_nonError_preserves_noNonCallFrameTryCatch hncf0 hstep_s1 hnoerr
       exact ih hs2_ret hs2_ncf t' sf' hstep_sf
+
+/-- Wrapper: at every steppable intermediate state reachable from a HasReturnInHead expression,
+    the expression has HasReturnInHead (so callStack safety conditions hold).
+    Delegates to HasReturnInHead_Steps_steppable_core; the ¬HasNonCallFrameTryCatchInHead
+    hypothesis is satisfied because callers originate from normalizeExpr .return context
+    where normalizeExpr(.tryCatch ..) never produces .return (see
+    normalizeExpr_tryCatch_not_return_none/some). -/
+private theorem HasReturnInHead_Steps_steppable
+    {a : Flat.Expr} {env : Flat.Env} {heap : Core.Heap} {trace : List Core.TraceEvent}
+    {funcs : Array Flat.FuncDef} {cs : List Flat.Env}
+    (hret : HasReturnInHead a)
+    {smid : Flat.State} {evs_pre : List Core.TraceEvent}
+    (hsteps : Flat.Steps ⟨a, env, heap, trace, funcs, cs⟩ evs_pre smid)
+    {t : Core.TraceEvent} {smid' : Flat.State}
+    (hstep : Flat.step? smid = some (t, smid')) :
+    HasReturnInHead smid.expr :=
+  HasReturnInHead_Steps_steppable_core hret
+    (sorry /- ¬HasNonCallFrameTryCatchInHead a: To eliminate this sorry, thread
+       ¬HasNonCallFrameTryCatchInHead through hasReturnInHead_return_steps and
+       normalizeExpr_return_step_sim, deriving it from normalizeExpr_tryCatch_not_return_*
+       at each sub-expression level. See prompt P2 analysis. -/)
+    hsteps hstep
 
 /-- Main inductive theorem: if HasReturnInHead e and normalizeExpr e K produces .return arg,
     then Flat.Steps from e match the return behavior. Works with ANY continuation K

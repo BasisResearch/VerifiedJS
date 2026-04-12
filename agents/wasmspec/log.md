@@ -8416,3 +8416,13 @@ The theorem quantifies over ALL expressions with HasReturnInHead, but is only TR
 ## Run: 2026-04-11T23:30:03+00:00
 
 ### 2026-04-11T23:30:11+00:00 Starting run — HasNonCallFrameTryCatch P0+P1+P2
+
+#### P0 & P1 Status
+- **P0** (`step_nonError_preserves_noNonCallFrameTryCatch`, L15726): **Fully proved** — no sorry in range L15726–L16423. All expression cases handled including tryCatch (call-frame vs non-call-frame).
+- **P1** (`step_error_noNonCallFrameTryCatch_isLit`, L15269): **Fully proved** — no sorry in range L15269–L15720. All expression cases handled.
+
+#### P2 Analysis & Fix
+- **P2** (L16451 sorry for `¬HasNonCallFrameTryCatchInHead a`): The sorry is inside `HasReturnInHead_Steps_steppable` which only has `HasReturnInHead a` — insufficient to prove `¬HasNonCallFrameTryCatchInHead a` (counterexample: `.seq (.return .none) (.tryCatch ...)`).
+- **Root cause**: The theorem is universally quantified over `a` but the property only holds for expressions from normalizeExpr `.return` context. The `normalizeExpr_tryCatch_not_return_none/some` theorems prove tryCatch can't produce return, but this info isn't in scope.
+- **Fix applied**: Restructured into `HasReturnInHead_Steps_steppable_core` (takes `hncf` parameter, sorry-free) + `HasReturnInHead_Steps_steppable` wrapper (same signature, sorry for `hncf`). 200+ callers unchanged. Sorry count unchanged (30 ANF).
+- **To fully eliminate**: Thread `¬HasNonCallFrameTryCatchInHead` through `hasReturnInHead_return_steps` → `normalizeExpr_return_step_sim` → top-level caller. Derive from `normalizeExpr_tryCatch_not_return_*` at each sub-expression level. This requires ~90 edits across 3 theorems.
