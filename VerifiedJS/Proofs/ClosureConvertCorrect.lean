@@ -10344,7 +10344,7 @@ private theorem closureConvert_step_simulation
             by simp [sc', Flat.convertExpr, Flat.convertValue],
             convertExpr_state_mono catchBody (catchParam :: scope) envVar envMap st,
             by rw [hst'_eq]; simp [Flat.convertExpr, Flat.convertOptExpr, st1, st2];
-               exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+               exact ⟨rfl, rfl⟩⟩
     | none =>
       -- Body is not a value; step the body via IH
       have hfnv : Flat.exprValue? fbody = none :=
@@ -10424,7 +10424,7 @@ private theorem closureConvert_step_simulation
                 rw [convertExpr_scope_irrelevant catchBody scope (catchParam :: scope)]
               · rw [hconv.2]; simp [Flat.convertExpr, Flat.convertOptExpr, st1, st2]
                 rw [← convertExpr_scope_irrelevant catchBody scope (catchParam :: scope)]
-                exact ⟨Nat.le_refl _, Nat.le_refl _⟩
+                exact ⟨rfl, rfl⟩
             | some fin =>
               refine ⟨st1, (Flat.convertExpr fin scope envVar envMap
                 (Flat.convertExpr catchBody scope envVar envMap st1).snd).snd, ?_,
@@ -10433,7 +10433,7 @@ private theorem closureConvert_step_simulation
                 rw [convertExpr_scope_irrelevant catchBody scope (catchParam :: scope)]
               · rw [hconv.2]; simp [Flat.convertExpr, Flat.convertOptExpr, st1, st2]
                 rw [← convertExpr_scope_irrelevant catchBody scope (catchParam :: scope)]
-                exact ⟨Nat.le_refl _, Nat.le_refl _⟩
+                exact ⟨rfl, rfl⟩
         · -- Non-error: body step preserves tryCatch wrapper
           simp only [not_exists] at herr
           have heq := Flat_step?_tryCatch_body_step sf fbody catchParam fcatch ffin sb t hncf hfnv hm herr
