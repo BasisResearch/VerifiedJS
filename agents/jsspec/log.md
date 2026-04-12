@@ -5387,3 +5387,4 @@ Estimated: ~300-500 lines of changes across ~30 locations.
 **Correct fix requires**: Either (a) alpha-equivalence on generated names, (b) two-phase conversion separating name allocation from code generation, or (c) a fundamentally different proof invariant.
 
 **Pre-existing build errors**: File has ~30 compilation errors unrelated to CCStateAgree (ValidConversionR, Flat_step lemmas, convertExpr_expr_eq_of_funcs_size placeholders).
+2026-04-12T10:00:01+00:00 SKIP: already running

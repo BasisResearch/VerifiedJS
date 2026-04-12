@@ -1161,7 +1161,8 @@ private theorem convertPropList_state_id_no_functionDef (ps : List (Core.PropNam
     have hn := by simp [propListNoFunctionDef, Bool.and_eq_true] at h; exact h
     have he := convertExpr_state_id_no_functionDef pe hn.1 scope envVar envMap st; rw [he]
     exact convertPropList_state_id_no_functionDef rest hn.2 scope envVar envMap st
-  termination_by ps.length
+  termination_by sizeOf ps
+  decreasing_by simp_wf; simp only [Prod.mk.sizeOf_spec]; omega
 
 private theorem convertOptExpr_state_id_no_functionDef (oe : Option Core.Expr)
     (h : (match oe with | some e => noFunctionDef e | none => true) = true)
@@ -1682,15 +1683,20 @@ private theorem convertExpr_expr_eq_of_funcs_size (e : Core.Expr)
         | some n => List.filter (fun x => x != n) (List.filter (fun v => !List.elem v params) (Flat.freeVars body))
         | none => List.filter (fun v => !List.elem v params) (Flat.freeVars body)) []) 0)
       { funcs := st2.funcs, nextId := st2.nextId + 1 }
-    -- Abbreviations for the envVar and envMap used in hd1/hd2
-    let ev1 := toString "__env" ++ toString "_" ++ toString st1.nextId
-    let ev2 := toString "__env" ++ toString "_" ++ toString st2.nextId
-    let em := Flat.indexedMap (Flat.dedupStrings
-        (match fname with
-        | some n => List.filter (fun x => x != n) (List.filter (fun v => !List.elem v params) (Flat.freeVars body))
-        | none => List.filter (fun v => !List.elem v params) (Flat.freeVars body)) []) 0
-    have hsz_out : (Flat.convertExpr body params ev1 em { funcs := st1.funcs, nextId := st1.nextId + 1 }).snd.funcs.size =
-        (Flat.convertExpr body params ev2 em { funcs := st2.funcs, nextId := st2.nextId + 1 }).snd.funcs.size := by
+    have hsz_out : (Flat.convertExpr body params
+        (toString "__env" ++ toString "_" ++ toString st1.nextId)
+        (Flat.indexedMap (Flat.dedupStrings
+          (match fname with
+          | some n => List.filter (fun x => x != n) (List.filter (fun v => !List.elem v params) (Flat.freeVars body))
+          | none => List.filter (fun v => !List.elem v params) (Flat.freeVars body)) []) 0)
+        { funcs := st1.funcs, nextId := st1.nextId + 1 }).snd.funcs.size =
+        (Flat.convertExpr body params
+        (toString "__env" ++ toString "_" ++ toString st2.nextId)
+        (Flat.indexedMap (Flat.dedupStrings
+          (match fname with
+          | some n => List.filter (fun x => x != n) (List.filter (fun v => !List.elem v params) (Flat.freeVars body))
+          | none => List.filter (fun v => !List.elem v params) (Flat.freeVars body)) []) 0)
+        { funcs := st2.funcs, nextId := st2.nextId + 1 }).snd.funcs.size := by
       rw [hd1.2, hd2.2]; simp [hsz]
     refine ⟨?_, ?_⟩
     · -- .fst: .makeClosure funcIdx envExpr — funcIdx depends only on output funcs.size
