@@ -7796,3 +7796,55 @@ Dead code with false statement. Removed.
 
 ### 2026-04-12T00:30:12+00:00 Starting run — normalizeExpr_labeled_branch_step K' refactor
 2026-04-12T01:30:01+00:00 SKIP: already running
+
+### 2026-04-12T00:30+00:00 Analysis run — K' refactor + compound throw
+
+**File: ANFConvertCorrect.lean — 26570 lines, 24 real sorries (34 occurrences including comments)**
+
+#### P0 Analysis: normalizeExpr_labeled_branch_step K' refactor
+
+**Finding: The K' flexibility approach CANNOT solve the trivial mismatch sorries (12 cases).**
+
+Root cause analysis:
+1. The theorem conclusion requires `(normalizeExpr sf'.expr K').run n' = .ok (body, m')` with the SAME `body` from the hypothesis
+2. In the ¬HasLabeledInHead non-head cases (e.g., binary_rhs), stepping the non-head sub-expression changes its trivial representation
+3. This changes the continuation (`fun rt => bindComplex (.binary op t_lhs rt) K` vs `fun rt => bindComplex (.binary op (trivialOfFlatValue v) rt) K`)
+4. The changed continuation produces a DIFFERENT body (different bound expression in .let bindings)
+5. K' flexibility at the outer level cannot compensate because normalizeExpr unfolds through the trivial chain and reaches the inner continuation
+
+**Key infrastructure found:**
+- `normalizeExpr_trivialChain_apply`: for trivial chains, normalizeExpr e k = k t with 0 state consumption
+- `no_labeled_head_implies_trivial_chain`: ¬HasLabeledInHead + labeled output → isTrivialChain
+- `trivialChain_eval_value`: evaluates trivial chains to .lit v in flat steps
+
+**What WOULD work (partial):** When the non-head sub-expression is already `.lit v` (no stepping needed), the trivial doesn't change, and the proof goes through. But this is a sub-case of each sorry, not the full case. Splitting would create more sub-sorries without reducing count.
+
+**Fundamental fix needed:** Either:
+a) Weaken the body requirement (allow body' ≠ body with semantic equivalence)
+b) Change the proof architecture to avoid the mismatch (e.g., don't step non-head sub-expressions)
+c) Use a simulation relation that equates syntactically different but semantically equivalent bodies
+
+#### P1 Analysis: compound throw (L14196)
+
+**Finding: Provable but requires ~700+ lines of new infrastructure + ~2000 lines of compound case proofs.**
+
+Prerequisites needed:
+1. `HasThrowInHead_step_nonError` (~500-700 lines): non-error steps preserve HasThrowInHead
+2. `HasThrowInHead_Steps_steppable` (~50 lines): HasThrowInHead at every steppable intermediate state
+3. Each compound case in hasThrowInHead_compound_throw_step_sim (~30 cases × ~70 lines)
+
+**Available infrastructure:**
+- `Steps_compound_error_lift`: lifts multi-step with error through compound wrappers ✓
+- `hasThrowInHead_callStackSafe`: callStack safety from HasThrowInHead ✓
+- `step?_seq_error`, `step?_let_init_error`, etc.: single-step error propagation ✓
+- `step?_seq_ctx`, `step?_let_init_ctx`, etc.: single-step non-error lifting ✓
+- `observableTrace_return_has_error`: extract error from observableTrace ✓
+- `Flat.Steps_preserves_funcs`, `Steps_preserves_callStack`, `Steps_trace_append` ✓
+
+**Blocker:** Memory (67MB free, 7.7GB total, no swap). Cannot verify with LSP.
+
+#### Recommendations for next run:
+1. Kill lean server before starting (recover ~3GB)
+2. Write `HasThrowInHead_step_nonError` first (highest leverage)
+3. Then `HasThrowInHead_Steps_steppable`
+4. Then tackle compound cases one-by-one in hasThrowInHead_compound_throw_step_sim
