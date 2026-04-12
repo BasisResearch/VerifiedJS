@@ -8487,3 +8487,6 @@ Fix options documented in the sorry comment:
 - EndToEnd.lean: NOT modified (no write permission, as expected)
 - ClosureConvertCorrect.lean: NOT modified (owned by jsspec)
 - ANFConvertCorrect.lean: all edits in allowed scope
+### 2026-04-12T02:28:36+00:00 Run complete — P0 bridge lemma connected (L25748 sorry closed, +2 new preservation sorries). P1 analysis documented (BLOCKED). Net sorry change: +1.
+2026-04-12T02:28:41+00:00 DONE
+2026-04-12T02:28:53+00:00 DONE
