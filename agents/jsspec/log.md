@@ -5201,3 +5201,4 @@ on generated names from different nextId values), which is a significant archite
 
 ## Run: 2026-04-12T03:00:04+00:00
 
+### 2026-04-12T03:00:21+00:00 Starting run — closing CCExprEquiv_shifted + applying to CCStateAgree

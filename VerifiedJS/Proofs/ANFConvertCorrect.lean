@@ -15166,7 +15166,26 @@ private theorem HasThrowInHead_step_nonError
             exact .newObj_env (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
         · simp at hstep
     | newObj_args h => sorry -- newObj args context
-    | makeEnv_values h => sorry -- makeEnv values context
+    | makeEnv_values h =>
+      have hvl := HasThrowInHeadList_valuesFromExprList_none h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [hvl] at hstep; dsimp only [] at hstep
+      generalize hfnv : Flat.firstNonValueExpr _ = fnv at hstep
+      cases fnv with
+      | none => simp at hstep
+      | some val =>
+        obtain ⟨done, target, remaining⟩ := val
+        have hor := HasThrowInHeadList_firstNonValue hfnv h
+        dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .makeEnv_values (HasThrowInHeadList_reconstruct done _ remaining
+              (hor.elim (fun ht => .inl (ih _ _ _ _ _ _ _ _ (by
+                simp [Flat.Expr.depth, Flat.Expr.listDepth] at hd ⊢
+                have := Flat.firstNonValueExpr_depth hfnv; omega) ht (by assumption) hnoerr)) .inr))
+        · simp at hstep
     | objectLit_props h => sorry -- objectLit props context
     | arrayLit_elems h => sorry -- arrayLit elems context
 
