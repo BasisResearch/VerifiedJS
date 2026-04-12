@@ -6857,7 +6857,7 @@ private theorem closureConvert_step_simulation
         -- Both are significant architectural changes beyond the current proof framework.
         ((∃ (st_a st_a' : Flat.CCState),
           (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
-          CCStateAgreeWeak st st_a ∧ CCStateAgreeWeak st_a' st') ∨
+          CCStateAgreeWeak st st_a ∧ CCStateAgree st_a' st') ∨
          (∃ (v : Flat.Value) (msg : String), sf'.expr = .lit v ∧ ev = .error msg)) ∧
         FuncsCorr injMap' sc'.funcs sf'.funcs t.functions by
     intro sf sc ev sf' hrel hstep
