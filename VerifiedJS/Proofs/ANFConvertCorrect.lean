@@ -15656,6 +15656,428 @@ private theorem HasThrowInHead_Steps_steppable
         HasThrowInHead_step_nonError hth0 hstep_s1 hnoerr
       exact ih hs2_th t' sf' hstep_sf
 
+/-- Helper: lift throw step simulation from inner sub-expression to compound wrapper.
+    Given IH result for the inner expression and step?_ctx/step?_error lemmas for the wrapper,
+    produces the simulation result for the compound expression. -/
+private theorem throwInHead_compound_lift
+    {inner : Flat.Expr} (hth_inner : HasThrowInHead inner)
+    {wrap : Flat.Expr → Flat.Expr}
+    {env : Flat.Env} {heap : Core.Heap} {trace : List Core.TraceEvent}
+    {funcs : Array Flat.FuncDef} {cs : List Flat.Env}
+    {arg : ANF.Trivial}
+    (step_ctx : ∀ (s : Flat.State) (inner' : Flat.Expr),
+      Flat.exprValue? inner' = none →
+      ∀ (t : Core.TraceEvent) (si : Flat.State),
+      Flat.step? { s with expr := inner' } = some (t, si) →
+      (∀ msg, t ≠ .error msg) →
+      ∃ s', Flat.step? { s with expr := wrap inner' } = some (t, s') ∧
+        s'.expr = wrap si.expr ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+        s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧ s'.trace = s.trace ++ [t])
+    (step_error : ∀ (s : Flat.State) (inner' : Flat.Expr),
+      Flat.exprValue? inner' = none →
+      ∀ (msg : String) (si : Flat.State),
+      Flat.step? { s with expr := inner' } = some (.error msg, si) →
+      ∃ s', Flat.step? { s with expr := wrap inner' } = some (.error msg, s') ∧
+        s'.expr = si.expr ∧ s'.env = si.env ∧ s'.heap = si.heap ∧
+        s'.funcs = s.funcs ∧ s'.callStack = s.callStack ∧ s'.trace = s.trace ++ [.error msg])
+    (ih : (∀ v, ANF.evalTrivial env arg = .ok v →
+        ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+          Flat.Steps ⟨inner, env, heap, trace, funcs, cs⟩ evs sf' ∧
+          sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+          sf'.trace = trace ++ evs ∧
+          observableTrace evs = observableTrace [.error (Flat.valueToString v)]) ∧
+      (∀ msg, ANF.evalTrivial env arg = .error msg →
+        ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+          Flat.Steps ⟨inner, env, heap, trace, funcs, cs⟩ evs sf' ∧
+          sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+          sf'.trace = trace ++ evs ∧
+          observableTrace evs = observableTrace [.error msg])) :
+    (∀ v, ANF.evalTrivial env arg = .ok v →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps ⟨wrap inner, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧
+        observableTrace evs = observableTrace [.error (Flat.valueToString v)]) ∧
+    (∀ msg, ANF.evalTrivial env arg = .error msg →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps ⟨wrap inner, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧
+        observableTrace evs = observableTrace [.error msg]) := by
+  obtain ⟨ih_ok, ih_err⟩ := ih
+  have lift : ∀ {evs : List Core.TraceEvent} {sf_inner : Flat.State},
+      Flat.Steps ⟨inner, env, heap, trace, funcs, cs⟩ evs sf_inner →
+      sf_inner.expr = .lit .undefined → sf_inner.env = env → sf_inner.heap = heap →
+      sf_inner.trace = trace ++ evs →
+      (∃ msg', .error msg' ∈ evs) →
+      ∃ sf', Flat.Steps ⟨wrap inner, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs := by
+    intro evs sf_inner hsteps hexpr henv hheap htrace herr
+    have hpres : ∀ smid evs1, Flat.Steps ⟨inner, env, heap, trace, funcs, cs⟩ evs1 smid →
+        evs1.length ≤ evs.length →
+        smid.funcs = funcs ∧ smid.callStack = cs ∧ smid.trace = trace ++ evs1 := by
+      intro smid evs1 hsteps' _hlen
+      exact ⟨Flat.Steps_preserves_funcs hsteps',
+        Flat.Steps_preserves_callStack hsteps' (fun smid' t' smid'' evs_pre hsteps'' hstep' _ => by
+          refine ⟨fun body catch_ fin h => ?_, fun f' env' args' h => ?_⟩
+          · exact (hasThrowInHead_callStackSafe smid'.expr
+              (HasThrowInHead_Steps_steppable hth_inner hsteps'' hstep')).1 body catch_ fin h
+          · exact (hasThrowInHead_callStackSafe smid'.expr
+              (HasThrowInHead_Steps_steppable hth_inner hsteps'' hstep')).2 f' env' args' h),
+        Flat.Steps_trace_append hsteps'⟩
+    obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+      Steps_compound_error_lift wrap step_ctx step_error hsteps herr hpres
+    exact ⟨sf', hsteps', hexpr'.trans hexpr, henv'.trans henv, hheap'.trans hheap, htrace'.trans htrace⟩
+  refine ⟨?_, ?_⟩
+  · intro v heval
+    obtain ⟨evs, sf_inner, hsteps, hexpr, henv, hheap, htrace, hobs⟩ := ih_ok v heval
+    obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+      lift hsteps hexpr henv hheap htrace (observableTrace_return_has_error hobs)
+    exact ⟨evs, sf', hsteps', hexpr', henv', hheap', htrace', hobs⟩
+  · intro msg heval
+    obtain ⟨evs, sf_inner, hsteps, hexpr, henv, hheap, htrace, hobs⟩ := ih_err msg heval
+    obtain ⟨sf', hsteps', hexpr', henv', hheap', htrace'⟩ :=
+      lift hsteps hexpr henv hheap htrace (observableTrace_return_has_error hobs)
+    exact ⟨evs, sf', hsteps', hexpr', henv', hheap', htrace', hobs⟩
+
+/-- General compound HasThrowInHead step simulation. Proved by depth induction.
+    Now placed after all dependencies (Steps_compound_error_lift, HasThrowInHead_Steps_steppable, etc.). -/
+private theorem hasThrowInHead_compound_throw_step_sim
+    (e : Flat.Expr) (hth : HasThrowInHead e)
+    (env : Flat.Env) (heap : Core.Heap) (trace : List Core.TraceEvent)
+    (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat)
+    (hnorm : (ANF.normalizeExpr e k).run n = .ok (.throw arg, m))
+    (hewf : ExprWellFormed e env)
+    (hna : NoNestedAbrupt e) :
+    (∀ v, ANF.evalTrivial env arg = .ok v →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧
+        observableTrace evs = observableTrace [.error (Flat.valueToString v)]) ∧
+    (∀ msg, ANF.evalTrivial env arg = .error msg →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+        sf'.trace = trace ++ evs ∧
+        observableTrace evs = observableTrace [.error msg]) := by
+  suffices hgen : ∀ (d : Nat) (e' : Flat.Expr)
+      (K : ANF.Trivial → ANF.ConvM ANF.Expr) (arg' : ANF.Trivial) (n' m' : Nat),
+      e'.depth ≤ d → HasThrowInHead e' →
+      (ANF.normalizeExpr e' K).run n' = .ok (.throw arg', m') →
+      ExprWellFormed e' env → NoNestedAbrupt e' →
+      (∀ v, ANF.evalTrivial env arg' = .ok v →
+        ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+          Flat.Steps ⟨e', env, heap, trace, funcs, cs⟩ evs sf' ∧
+          sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+          sf'.trace = trace ++ evs ∧
+          observableTrace evs = observableTrace [.error (Flat.valueToString v)]) ∧
+      (∀ msg, ANF.evalTrivial env arg' = .error msg →
+        ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+          Flat.Steps ⟨e', env, heap, trace, funcs, cs⟩ evs sf' ∧
+          sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+          sf'.trace = trace ++ evs ∧
+          observableTrace evs = observableTrace [.error msg]) by
+    exact hgen e.depth e k arg n m (Nat.le_refl _) hth hnorm hewf hna
+  intro d; induction d with
+  | zero =>
+    intro e' K arg' n' m' hd hth' hnorm' hewf' hna'
+    cases hth' <;> (simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; omega)
+  | succ d ih =>
+    intro e' K arg' n' m' hd hth' hnorm' hewf' hna'
+    cases hth' with
+    | throw_direct =>
+      rename_i flat_arg
+      have hnorm'' : (ANF.normalizeExpr flat_arg (fun t => pure (ANF.Expr.throw t))).run n' =
+          .ok (.throw arg', m') := by
+        simp only [ANF.normalizeExpr] at hnorm'; exact hnorm'
+      exact normalizeExpr_throw_compound_case flat_arg env heap trace funcs cs arg' n' m' hnorm'' hewf' hna'
+    | return_some_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_return hna' h
+    | yield_some_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_yield hna' h
+    | await_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_await hna' h
+    | seq_left h_sub =>
+      rename_i a b
+      simp only [ANF.normalizeExpr_seq'] at hnorm'
+      exact throwInHead_compound_lift h_sub
+        (fun s inner hv t si hs he => step?_seq_ctx s inner b hv t si hs he)
+        (fun s inner hv msg si hs => step?_seq_error s inner b hv msg si hs)
+        (ih a _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
+          (fun x hfx => hewf' x (VarFreeIn.seq_l _ _ _ hfx))
+          (by cases hna' with | seq ha _ => exact ha))
+    | let_init h_sub =>
+      rename_i init name body
+      simp only [ANF.normalizeExpr_let'] at hnorm'
+      exact throwInHead_compound_lift h_sub
+        (fun s inner hv t si hs he => step?_let_init_ctx s name inner body hv t si hs he)
+        (fun s inner hv msg si hs => step?_let_init_error s name inner body hv msg si hs)
+        (ih init _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
+          (fun x hfx => hewf' x (VarFreeIn.let_init _ _ _ _ hfx))
+          (by cases hna' with | «let» ha _ => exact ha))
+    | getProp_obj h_sub =>
+      rename_i obj prop
+      simp only [ANF.normalizeExpr] at hnorm'
+      exact throwInHead_compound_lift h_sub
+        (fun s inner hv t si hs he => step?_getProp_ctx s inner prop hv t si hs he)
+        (fun s inner hv msg si hs => step?_getProp_error s inner prop hv msg si hs)
+        (ih obj _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
+          (fun x hfx => hewf' x (VarFreeIn.getProp_obj _ _ _ hfx))
+          (by cases hna' with | getProp ha => exact ha))
+    | unary_arg h_sub =>
+      rename_i a op
+      simp only [ANF.normalizeExpr] at hnorm'
+      exact throwInHead_compound_lift h_sub
+        (fun s inner hv t si hs he => step?_unary_ctx s op inner hv t si hs he)
+        (fun s inner hv msg si hs => step?_unary_error s op inner hv msg si hs)
+        (ih a _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
+          (fun x hfx => hewf' x (VarFreeIn.unary_arg _ _ _ hfx))
+          (by cases hna' with | unary ha => exact ha))
+    | typeof_arg h_sub =>
+      rename_i a
+      simp only [ANF.normalizeExpr] at hnorm'
+      exact throwInHead_compound_lift h_sub
+        (fun s inner hv t si hs he => step?_typeof_ctx s inner hv t si hs he)
+        (fun s inner hv msg si hs => step?_typeof_error s inner hv msg si hs)
+        (ih a _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
+          (fun x hfx => hewf' x (VarFreeIn.typeof_arg _ _ hfx))
+          (by cases hna' with | typeof ha => exact ha))
+    | deleteProp_obj h_sub =>
+      rename_i obj prop
+      simp only [ANF.normalizeExpr] at hnorm'
+      exact throwInHead_compound_lift h_sub
+        (fun s inner hv t si hs he => step?_deleteProp_ctx s inner prop hv t si hs he)
+        (fun s inner hv msg si hs => step?_deleteProp_error s inner prop hv msg si hs)
+        (ih obj _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
+          (fun x hfx => hewf' x (VarFreeIn.deleteProp_obj _ _ _ hfx))
+          (by cases hna' with | deleteProp ha => exact ha))
+    | assign_val h_sub =>
+      rename_i val name
+      simp only [ANF.normalizeExpr_assign'] at hnorm'
+      exact throwInHead_compound_lift h_sub
+        (fun s inner hv t si hs he => step?_assign_ctx s name inner hv t si hs he)
+        (fun s inner hv msg si hs => step?_assign_error s name inner hv msg si hs)
+        (ih val _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
+          (fun x hfx => hewf' x (VarFreeIn.assign_value _ _ _ hfx))
+          (by cases hna' with | assign ha => exact ha))
+    | if_cond h_sub =>
+      rename_i c t_ e_
+      simp only [ANF.normalizeExpr_if'] at hnorm'
+      exact throwInHead_compound_lift h_sub
+        (fun s inner hv t si hs he => step?_if_cond_step s inner t_ e_ hv t si hs he)
+        (fun s inner hv msg si hs => step?_if_cond_error s inner t_ e_ hv msg si hs)
+        (ih c _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
+          (fun x hfx => hewf' x (VarFreeIn.if_cond _ _ _ _ hfx))
+          (by cases hna' with | «if» ha _ _ => exact ha))
+    | binary_lhs h_sub =>
+      rename_i lhs op rhs
+      simp only [ANF.normalizeExpr] at hnorm'
+      exact throwInHead_compound_lift h_sub
+        (fun s inner hv t si hs he => step?_binary_lhs_ctx s op inner rhs hv t si hs he)
+        (fun s inner hv msg si hs => step?_binary_lhs_error s op inner rhs hv msg si hs)
+        (ih lhs _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
+          (fun x hfx => hewf' x (VarFreeIn.binary_lhs _ _ _ _ hfx))
+          (by cases hna' with | binary ha _ => exact ha))
+    | setProp_obj h_sub =>
+      rename_i obj prop val
+      simp only [ANF.normalizeExpr] at hnorm'
+      exact throwInHead_compound_lift h_sub
+        (fun s inner hv t si hs he => step?_setProp_obj_ctx s inner prop val hv t si hs he)
+        (fun s inner hv msg si hs => step?_setProp_obj_error s inner prop val hv msg si hs)
+        (ih obj _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
+          (fun x hfx => hewf' x (VarFreeIn.setProp_obj _ _ _ _ hfx))
+          (by cases hna' with | setProp ha _ => exact ha))
+    | getIndex_obj h_sub =>
+      rename_i obj idx
+      simp only [ANF.normalizeExpr] at hnorm'
+      exact throwInHead_compound_lift h_sub
+        (fun s inner hv t si hs he => step?_getIndex_obj_ctx s inner idx hv t si hs he)
+        (fun s inner hv msg si hs => step?_getIndex_obj_error s inner idx hv msg si hs)
+        (ih obj _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
+          (fun x hfx => hewf' x (VarFreeIn.getIndex_obj _ _ _ hfx))
+          (by cases hna' with | getIndex ha _ => exact ha))
+    | setIndex_obj h_sub =>
+      rename_i obj idx val
+      simp only [ANF.normalizeExpr] at hnorm'
+      exact throwInHead_compound_lift h_sub
+        (fun s inner hv t si hs he => step?_setIndex_obj_ctx s inner idx val hv t si hs he)
+        (fun s inner hv msg si hs => step?_setIndex_obj_error s inner idx val hv msg si hs)
+        (ih obj _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
+          (fun x hfx => hewf' x (VarFreeIn.setIndex_obj _ _ _ _ hfx))
+          (by cases hna' with | setIndex ha _ _ => exact ha))
+    | getEnv_env h_sub =>
+      rename_i envExpr idx
+      simp only [ANF.normalizeExpr] at hnorm'
+      exact throwInHead_compound_lift h_sub
+        (fun s inner hv t si hs he => step?_getEnv_ctx s inner idx hv t si hs he)
+        (fun s inner hv msg si hs => step?_getEnv_error s inner idx hv msg si hs)
+        (ih envExpr _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
+          (fun x hfx => hewf' x (VarFreeIn.getEnv_env _ _ _ hfx))
+          (by cases hna' with | getEnv ha => exact ha))
+    | makeClosure_env h_sub =>
+      rename_i envExpr funcIdx
+      simp only [ANF.normalizeExpr] at hnorm'
+      exact throwInHead_compound_lift h_sub
+        (fun s inner hv t si hs he => step?_makeClosure_env_ctx s funcIdx inner hv t si hs he)
+        (fun s inner hv msg si hs => step?_makeClosure_env_error s funcIdx inner hv msg si hs)
+        (ih envExpr _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
+          (fun x hfx => hewf' x (VarFreeIn.makeClosure_env _ _ _ hfx))
+          (by cases hna' with | makeClosure ha => exact ha))
+    | call_func h_sub =>
+      rename_i f envExpr args
+      simp only [ANF.normalizeExpr] at hnorm'
+      exact throwInHead_compound_lift h_sub
+        (fun s inner hv t si hs he => step?_call_func_ctx s inner envExpr args hv t si hs he)
+        (fun s inner hv msg si hs => step?_call_func_error s inner envExpr args hv msg si hs)
+        (ih f _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
+          (fun x hfx => hewf' x (VarFreeIn.call_func _ _ _ _ hfx))
+          (by cases hna' with | call ha _ _ => exact ha))
+    | newObj_func h_sub =>
+      rename_i f envExpr args
+      simp only [ANF.normalizeExpr] at hnorm'
+      exact throwInHead_compound_lift h_sub
+        (fun s inner hv t si hs he => step?_newObj_func_ctx s inner envExpr args hv t si hs he)
+        (fun s inner hv msg si hs => step?_newObj_func_error s inner envExpr args hv msg si hs)
+        (ih f _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
+          (fun x hfx => hewf' x (VarFreeIn.newObj_func _ _ _ _ hfx))
+          (by cases hna' with | newObj ha _ _ => exact ha))
+    | _ => sorry -- remaining compound cases: second-operand and list-based
+
+/-- If normalizeExpr sf.expr k produces .throw arg (with trivial-preserving k),
+    then there exist Flat steps from sf that produce the same error event
+    as the ANF throw step. Covers both evalTrivial ok and error cases. -/
+private theorem normalizeExpr_throw_step_sim
+    (sf : Flat.State)
+    (k : ANF.Trivial → ANF.ConvM ANF.Expr) (arg : ANF.Trivial) (n m : Nat)
+    (hnorm : (ANF.normalizeExpr sf.expr k).run n = .ok (.throw arg, m))
+    (hk : ∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m'))
+    (hewf : ExprWellFormed sf.expr sf.env)
+    (hna : NoNestedAbrupt sf.expr) :
+    (∀ v, ANF.evalTrivial sf.env arg = .ok v →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps sf evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+        sf'.trace = sf.trace ++ evs ∧
+        observableTrace evs = observableTrace [.error (Flat.valueToString v)]) ∧
+    (∀ msg, ANF.evalTrivial sf.env arg = .error msg →
+      ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
+        Flat.Steps sf evs sf' ∧
+        sf'.expr = .lit .undefined ∧ sf'.env = sf.env ∧ sf'.heap = sf.heap ∧
+        sf'.trace = sf.trace ++ evs ∧
+        observableTrace evs = observableTrace [.error msg]) := by
+  have hthrow := ANF.normalizeExpr_throw_implies_hasThrowInHead sf.expr k hk arg n m hnorm
+  cases sf with
+  | mk e env heap trace funcs cs =>
+  simp only [Flat.State.expr] at hnorm hewf hthrow hna
+  cases hthrow with
+  | throw_direct =>
+    rename_i flat_arg
+    simp only [Flat.State.env, Flat.State.heap, Flat.State.trace]
+    have hnorm' : (ANF.normalizeExpr flat_arg (fun t => pure (ANF.Expr.throw t))).run n =
+        .ok (.throw arg, m) := by
+      simp only [ANF.normalizeExpr] at hnorm; exact hnorm
+    cases flat_arg with
+    | lit v =>
+      simp only [ANF.normalizeExpr, ANF.trivialOfFlatValue] at hnorm'
+      cases v <;> (
+        simp only [pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
+        obtain ⟨rfl, rfl⟩ := hnorm'
+        refine ⟨?_, ?_⟩
+        · intro val heval
+          simp only [ANF.evalTrivial, ANF.trivialValue?, Except.ok.injEq] at heval
+          subst heval
+          exact ⟨_, _, .tail ⟨by unfold Flat.step?; rfl⟩ (.refl _), rfl, rfl, rfl, rfl, rfl⟩
+        · intro msg heval
+          simp only [ANF.evalTrivial, ANF.trivialValue?] at heval
+          exact absurd heval (by simp))
+    | var name =>
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
+      obtain ⟨rfl, rfl⟩ := hnorm'
+      have hwf_var : env.lookup name ≠ none := by
+        apply hewf; exact VarFreeIn.throw_arg _ _ (VarFreeIn.var name)
+      obtain ⟨v, hv_flat⟩ := Option.ne_none_iff_exists'.mp hwf_var
+      have hv_anf : ANF.Env.lookup env name = some v := by
+        simp only [ANF.Env.lookup, Flat.Env.lookup] at hv_flat ⊢; exact hv_flat
+      refine ⟨?_, ?_⟩
+      · intro val heval
+        simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval
+        subst heval
+        have hv_flat_env : Flat.Env.lookup env name = some v := by
+          simp only [Flat.Env.lookup, ANF.Env.lookup] at hv_flat ⊢; exact hv_flat
+        have hstep1 := Flat.step?_throw_var_ok name v env heap trace funcs cs hv_flat_env
+        have hstep2 := Flat.step?_throw_lit_eq v env heap (trace ++ [.silent]) funcs cs
+        refine ⟨[.silent, .error (Flat.valueToString v)], _,
+          .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)),
+          rfl, rfl, rfl, ?_, ?_⟩
+        · simp only [List.append_assoc, List.cons_append, List.nil_append]
+        · simp only [observableTrace, List.filter]; rfl
+      · intro msg heval
+        simp only [ANF.evalTrivial, hv_anf] at heval
+        exact absurd heval (by simp)
+    | this =>
+      simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.ok.injEq, Prod.mk.injEq] at hnorm'
+      obtain ⟨rfl, rfl⟩ := hnorm'
+      have hwf_this : env.lookup "this" ≠ none := by
+        apply hewf; exact VarFreeIn.throw_arg _ _ VarFreeIn.this_var
+      obtain ⟨v, hv_flat⟩ := Option.ne_none_iff_exists'.mp hwf_this
+      have hv_anf : ANF.Env.lookup env "this" = some v := by
+        simp only [ANF.Env.lookup, Flat.Env.lookup] at hv_flat ⊢; exact hv_flat
+      refine ⟨?_, ?_⟩
+      · intro val heval
+        simp only [ANF.evalTrivial, hv_anf, Except.ok.injEq] at heval
+        subst heval
+        have hv_flat_env : Flat.Env.lookup env "this" = some v := by
+          simp only [Flat.Env.lookup, ANF.Env.lookup] at hv_flat ⊢; exact hv_flat
+        have hstep1 := Flat.step?_throw_this_ok v env heap trace funcs cs hv_flat_env
+        have hstep2 := Flat.step?_throw_lit_eq v env heap (trace ++ [.silent]) funcs cs
+        refine ⟨[.silent, .error (Flat.valueToString v)], _,
+          .tail ⟨hstep1⟩ (.tail ⟨hstep2⟩ (.refl _)),
+          rfl, rfl, rfl, ?_, ?_⟩
+        · simp only [List.append_assoc, List.cons_append, List.nil_append]
+        · simp only [observableTrace, List.filter]; rfl
+      · intro msg heval
+        simp only [ANF.evalTrivial, hv_anf] at heval
+        exact absurd heval (by simp)
+    | «break» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
+    | «continue» _ =>
+      exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure] at hnorm'
+      exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm')).1
+    | _ => exact normalizeExpr_throw_compound_case _ env heap trace funcs cs arg n m hnorm' hewf hna
+  | return_some_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_return hna h
+  | yield_some_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_yield hna h
+  | await_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_await hna h
+  | seq_left h => exact hasThrowInHead_compound_throw_step_sim _ (.seq_left h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | seq_right h => exact hasThrowInHead_compound_throw_step_sim _ (.seq_right h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | let_init h => exact hasThrowInHead_compound_throw_step_sim _ (.let_init h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | getProp_obj h => exact hasThrowInHead_compound_throw_step_sim _ (.getProp_obj h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | setProp_obj h => exact hasThrowInHead_compound_throw_step_sim _ (.setProp_obj h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | setProp_val h => exact hasThrowInHead_compound_throw_step_sim _ (.setProp_val h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | binary_lhs h => exact hasThrowInHead_compound_throw_step_sim _ (.binary_lhs h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | binary_rhs h => exact hasThrowInHead_compound_throw_step_sim _ (.binary_rhs h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | unary_arg h => exact hasThrowInHead_compound_throw_step_sim _ (.unary_arg h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | typeof_arg h => exact hasThrowInHead_compound_throw_step_sim _ (.typeof_arg h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | deleteProp_obj h => exact hasThrowInHead_compound_throw_step_sim _ (.deleteProp_obj h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | assign_val h => exact hasThrowInHead_compound_throw_step_sim _ (.assign_val h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | call_func h => exact hasThrowInHead_compound_throw_step_sim _ (.call_func h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | call_env h => exact hasThrowInHead_compound_throw_step_sim _ (.call_env h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | call_args h => exact hasThrowInHead_compound_throw_step_sim _ (.call_args h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | newObj_func h => exact hasThrowInHead_compound_throw_step_sim _ (.newObj_func h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | newObj_env h => exact hasThrowInHead_compound_throw_step_sim _ (.newObj_env h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | newObj_args h => exact hasThrowInHead_compound_throw_step_sim _ (.newObj_args h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | if_cond h => exact hasThrowInHead_compound_throw_step_sim _ (.if_cond h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | getIndex_obj h => exact hasThrowInHead_compound_throw_step_sim _ (.getIndex_obj h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | getIndex_idx h => exact hasThrowInHead_compound_throw_step_sim _ (.getIndex_idx h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | setIndex_obj h => exact hasThrowInHead_compound_throw_step_sim _ (.setIndex_obj h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | setIndex_idx h => exact hasThrowInHead_compound_throw_step_sim _ (.setIndex_idx h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | setIndex_val h => exact hasThrowInHead_compound_throw_step_sim _ (.setIndex_val h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | getEnv_env h => exact hasThrowInHead_compound_throw_step_sim _ (.getEnv_env h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | makeClosure_env h => exact hasThrowInHead_compound_throw_step_sim _ (.makeClosure_env h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | makeEnv_values h => exact hasThrowInHead_compound_throw_step_sim _ (.makeEnv_values h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | objectLit_props h => exact hasThrowInHead_compound_throw_step_sim _ (.objectLit_props h) env heap trace funcs cs k arg n m hnorm hewf hna
+  | arrayLit_elems h => exact hasThrowInHead_compound_throw_step_sim _ (.arrayLit_elems h) env heap trace funcs cs k arg n m hnorm hewf hna
+
 /-- Non-error steps preserve HasReturnInHead. -/
 private theorem HasReturnInHead_step_nonError
     {sf sf' : Flat.State} {t : Core.TraceEvent}

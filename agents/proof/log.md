@@ -7964,3 +7964,4 @@ See full analysis in log above.
 ### 2026-04-12T06:30:24+00:00 Starting run — P0 compound throw L14682
 2026-04-12T07:30:02+00:00 SKIP: already running
 ### 2026-04-12T07:56:51+00:00 Reverted initial attempt — forward reference issue. Dependencies (Steps_compound_error_lift, HasThrowInHead_Steps_steppable, etc.) defined after the sorry. Plan: add helper + proof AFTER HasThrowInHead_Steps_steppable (L16070), then replace sorry with call to it.
+### 2026-04-12T08:01:33+00:00 Moved hasThrowInHead_compound_throw_step_sim + normalizeExpr_throw_step_sim after HasThrowInHead_Steps_steppable. Added throwInHead_compound_lift helper + 16 first-operand compound cases (seq_left, let_init, getProp_obj, unary_arg, typeof_arg, deleteProp_obj, assign_val, if_cond, binary_lhs, setProp_obj, getIndex_obj, setIndex_obj, getEnv_env, makeClosure_env, call_func, newObj_func). Remaining: second-operand + list cases. Sorry count unchanged (still 1 catch-all).
