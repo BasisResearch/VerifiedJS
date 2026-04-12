@@ -8432,3 +8432,16 @@ The theorem quantifies over ALL expressions with HasReturnInHead, but is only TR
 ## Run: 2026-04-12T00:15:01+00:00
 
 ### 2026-04-12T00:15:26+00:00 Starting run — P2 HasNonCallFrameTryCatch + noCallFrameReturn
+
+#### Bridge lemma added: noCallFrameReturn_normalizeExpr_tryCatch_param
+- Proved: if normalizeExpr e k produces .tryCatch with trivial-preserving k and noCallFrameReturn e = true, then catchParam ≠ "__call_frame_return__"
+- Three theorems added (~330 lines total):
+  - noCallFrameReturn_normalizeExprList_tryCatch_param_aux (list helper)
+  - noCallFrameReturn_normalizeProps_tryCatch_param_aux (props helper)
+  - noCallFrameReturn_normalizeExpr_tryCatch_param_aux (main inductive proof)
+  - noCallFrameReturn_normalizeExpr_tryCatch_param (top-level corollary)
+- All compile with zero errors
+- **Next step**: Add noCallFrameReturn sf.expr = true as hypothesis+conclusion to anfConvert_step_star, then use this bridge lemma at the sorry site (L25055 → now ~L25385)
+- Sorry count unchanged: infrastructure only, no sorry closed this run
+
+### 2026-04-12T00:54:39+00:00 Run complete — bridge lemma noCallFrameReturn_normalizeExpr_tryCatch_param proved (~330 lines). P2 was already closed. No sorry count change — infrastructure only. Next: thread noCallFrameReturn through anfConvert_step_star.

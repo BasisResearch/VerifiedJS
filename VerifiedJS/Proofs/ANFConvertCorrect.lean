@@ -9902,11 +9902,80 @@ end TryCatchInHead
 
 /-! ## noCallFrameReturn bridge: normalizeExpr tryCatch output preserves catch param safety -/
 
+/-- Helper for normalizeExprList: if noCallFrameReturnList holds and normalizeExprList
+    produces a tryCatch, the param is not "__call_frame_return__". -/
+private theorem noCallFrameReturn_normalizeExprList_tryCatch_param_aux
+    {d' : Nat}
+    (es : List Flat.Expr) (hd : Flat.Expr.listDepth es ≤ d')
+    (ih : ∀ e, e.depth ≤ d' → ∀ (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+      (body : ANF.Expr) (catchParam : ANF.VarName) (catchBody : ANF.Expr)
+      (finally_ : Option ANF.Expr) (n m : Nat),
+      (ANF.normalizeExpr e k).run n = .ok (.tryCatch body catchParam catchBody finally_, m) →
+      noCallFrameReturn e = true →
+      (∀ t n' b cp cb f m', (k t).run n' = .ok (.tryCatch b cp cb f, m') → cp ≠ "__call_frame_return__") →
+      catchParam ≠ "__call_frame_return__")
+    (hncfr : noCallFrameReturnList es = true)
+    (k : List ANF.Trivial → ANF.ConvM ANF.Expr)
+    (body : ANF.Expr) (catchParam : ANF.VarName) (catchBody : ANF.Expr)
+    (finally_ : Option ANF.Expr) (n m : Nat)
+    (h : (ANF.normalizeExprList es k).run n = .ok (.tryCatch body catchParam catchBody finally_, m))
+    (hk_ncfr : ∀ ts n' b cp cb f m', (k ts).run n' = .ok (.tryCatch b cp cb f, m') → cp ≠ "__call_frame_return__") :
+    catchParam ≠ "__call_frame_return__" := by
+  induction es generalizing k n m with
+  | nil => simp only [ANF.normalizeExprList] at h; exact hk_ncfr _ _ _ _ _ _ _ h
+  | cons e rest ihl =>
+    simp only [ANF.normalizeExprList] at h
+    have he : e.depth ≤ d' := by
+      have hmem := Flat.Expr.mem_listDepth_lt (List.mem_cons_self e rest); omega
+    have hrest : Flat.Expr.listDepth rest ≤ d' := by simp [Flat.Expr.listDepth] at hd; omega
+    have hncfr_e : noCallFrameReturn e = true := by
+      unfold noCallFrameReturnList at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1
+    have hncfr_rest : noCallFrameReturnList rest = true := by
+      unfold noCallFrameReturnList at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
+    exact ih e he _ _ _ _ _ _ _ h hncfr_e
+      (fun t n' b' cp' cb' f' m' hkt =>
+        ihl hrest hncfr_rest (fun ts => k (t :: ts)) _ _ hkt
+          (fun ts n'' b'' cp'' cb'' f'' m'' hk' => hk_ncfr _ _ _ _ _ _ _ hk'))
+
+/-- Helper for normalizeProps: if noCallFrameReturnProps holds and normalizeProps
+    produces a tryCatch, the param is not "__call_frame_return__". -/
+private theorem noCallFrameReturn_normalizeProps_tryCatch_param_aux
+    {d' : Nat}
+    (props : List (Flat.PropName × Flat.Expr)) (hd : Flat.Expr.propListDepth props ≤ d')
+    (ih : ∀ e, e.depth ≤ d' → ∀ (k : ANF.Trivial → ANF.ConvM ANF.Expr)
+      (body : ANF.Expr) (catchParam : ANF.VarName) (catchBody : ANF.Expr)
+      (finally_ : Option ANF.Expr) (n m : Nat),
+      (ANF.normalizeExpr e k).run n = .ok (.tryCatch body catchParam catchBody finally_, m) →
+      noCallFrameReturn e = true →
+      (∀ t n' b cp cb f m', (k t).run n' = .ok (.tryCatch b cp cb f, m') → cp ≠ "__call_frame_return__") →
+      catchParam ≠ "__call_frame_return__")
+    (hncfr : noCallFrameReturnProps props = true)
+    (k : List (ANF.PropName × ANF.Trivial) → ANF.ConvM ANF.Expr)
+    (body : ANF.Expr) (catchParam : ANF.VarName) (catchBody : ANF.Expr)
+    (finally_ : Option ANF.Expr) (n m : Nat)
+    (h : (ANF.normalizeProps props k).run n = .ok (.tryCatch body catchParam catchBody finally_, m))
+    (hk_ncfr : ∀ ts n' b cp cb f m', (k ts).run n' = .ok (.tryCatch b cp cb f, m') → cp ≠ "__call_frame_return__") :
+    catchParam ≠ "__call_frame_return__" := by
+  induction props generalizing k n m with
+  | nil => simp only [ANF.normalizeProps] at h; exact hk_ncfr _ _ _ _ _ _ _ h
+  | cons p rest ihp =>
+    obtain ⟨pname, pexpr⟩ := p
+    simp only [ANF.normalizeProps] at h
+    have he : pexpr.depth ≤ d' := by
+      have hmem := Flat.Expr.mem_propListDepth_lt (List.mem_cons_self (pname, pexpr) rest); omega
+    have hrest : Flat.Expr.propListDepth rest ≤ d' := by simp [Flat.Expr.propListDepth] at hd; omega
+    have hncfr_e : noCallFrameReturn pexpr = true := by
+      unfold noCallFrameReturnProps at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1
+    have hncfr_rest : noCallFrameReturnProps rest = true := by
+      unfold noCallFrameReturnProps at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
+    exact ih pexpr he _ _ _ _ _ _ _ h hncfr_e
+      (fun t n' b' cp' cb' f' m' hkt =>
+        ihp hrest hncfr_rest (fun ps => k ((pname, t) :: ps)) _ _ hkt
+          (fun ps n'' b'' cp'' cb'' f'' m'' hk' => hk_ncfr _ _ _ _ _ _ _ hk'))
+
 /-- If `normalizeExpr e k` produces `.tryCatch body catchParam catchBody finally_`,
     `noCallFrameReturn e = true`, and `k` never produces a tryCatch with
-    `"__call_frame_return__"` as catch param, then `catchParam ≠ "__call_frame_return__"`.
-    This is the key bridge lemma for threading the noCallFrameReturn invariant
-    through anfConvert_step_star's tryCatch case. -/
+    `"__call_frame_return__"` as catch param, then `catchParam ≠ "__call_frame_return__"`. -/
 private theorem noCallFrameReturn_normalizeExpr_tryCatch_param_aux :
     ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
     ∀ (k : ANF.Trivial → ANF.ConvM ANF.Expr)
@@ -9934,13 +10003,12 @@ private theorem noCallFrameReturn_normalizeExpr_tryCatch_param_aux :
     | yield arg _ => cases arg with | none => simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h; exact absurd h (by simp) | some _ => simp [Flat.Expr.depth] at hd
     | throw _ => simp [Flat.Expr.depth] at hd
     | await _ => simp [Flat.Expr.depth] at hd
-    | «if» _ _ _ => simp [Flat.Expr.depth] at hd; try omega
-    | _ => simp [Flat.Expr.depth] at hd; try omega
+    | «if» _ _ _ => simp [Flat.Expr.depth] at hd; omega
+    | _ => simp [Flat.Expr.depth] at hd; omega
   | succ d' ih =>
     intro e hd k body catchParam catchBody finally_ n m h hncfr hk_ncfr
     cases e with
     | tryCatch body_f cp_f cb_f fin_f =>
-      -- Direct tryCatch: catchParam = cp_f, and noCallFrameReturn gives cp_f ≠ "__call_frame_return__"
       unfold noCallFrameReturn at hncfr
       simp only [Bool.and_eq_true, bne_iff_ne, ne_eq] at hncfr
       simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at h
@@ -10011,210 +10079,200 @@ private theorem noCallFrameReturn_normalizeExpr_tryCatch_param_aux :
       simp only [ANF.normalizeExpr] at h
       have ha : a.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
       have hb : b.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      have hncfr_a : noCallFrameReturn a = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1
-      have hncfr_b : noCallFrameReturn b = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
+      have hncfr_a : noCallFrameReturn a = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1
+      have hncfr_b : noCallFrameReturn b = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
       exact ih a ha _ _ _ _ _ _ _ h hncfr_a
         (fun t n' b' cp' cb' f' m' hkb => ih b hb _ _ _ _ _ _ _ hkb hncfr_b hk_ncfr)
     | «let» name init bdy =>
       simp only [ANF.normalizeExpr] at h
       have hi : init.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      have hncfr_i : noCallFrameReturn init = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1
+      have hncfr_i : noCallFrameReturn init = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1
       exact ih init hi _ _ _ _ _ _ _ h hncfr_i
         (fun t n' b' cp' cb' f' m' hkt => by
-          simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure, Except.pure, Except.bind] at hkt
+          simp only [bind, Bind.bind, StateT.bind, StateT.run, pure, Pure.pure, StateT.pure,
+            Except.pure, Except.bind] at hkt
           split at hkt <;> simp_all)
-    | «if» c t e =>
+    | «if» c then_ else_ =>
       simp only [ANF.normalizeExpr] at h
       have hc : c.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      have hncfr_c : noCallFrameReturn c = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1
+      have hncfr_c : noCallFrameReturn c = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1.1
       exact ih c hc _ _ _ _ _ _ _ h hncfr_c
         (fun t_val n' b' cp' cb' f' m' hkt => by
-          simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, pure, Pure.pure, StateT.pure, Except.pure] at hkt
+          simp only [bind, Bind.bind, StateT.bind, StateT.run, Except.bind, pure, Pure.pure,
+            StateT.pure, Except.pure] at hkt
           split at hkt <;> (try split at hkt) <;> simp_all)
     | assign name val =>
       simp only [ANF.normalizeExpr] at h
       have hv : val.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
       have hncfr_v : noCallFrameReturn val = true := by unfold noCallFrameReturn at hncfr; exact hncfr
       exact ih val hv _ _ _ _ _ _ _ h hncfr_v
-        (fun t n' b' cp' cb' f' m' hkt => absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
+        (fun t n' b' cp' cb' f' m' hkt =>
+          absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
     | getProp obj prop =>
       simp only [ANF.normalizeExpr] at h
       have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
       have hncfr_o : noCallFrameReturn obj = true := by unfold noCallFrameReturn at hncfr; exact hncfr
       exact ih obj ho _ _ _ _ _ _ _ h hncfr_o
-        (fun t n' b' cp' cb' f' m' hkt => absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
+        (fun t n' b' cp' cb' f' m' hkt =>
+          absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
     | deleteProp obj prop =>
       simp only [ANF.normalizeExpr] at h
       have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
       have hncfr_o : noCallFrameReturn obj = true := by unfold noCallFrameReturn at hncfr; exact hncfr
       exact ih obj ho _ _ _ _ _ _ _ h hncfr_o
-        (fun t n' b' cp' cb' f' m' hkt => absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
+        (fun t n' b' cp' cb' f' m' hkt =>
+          absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
     | typeof arg_t =>
       simp only [ANF.normalizeExpr] at h
       have ha : arg_t.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
       have hncfr_a : noCallFrameReturn arg_t = true := by unfold noCallFrameReturn at hncfr; exact hncfr
       exact ih arg_t ha _ _ _ _ _ _ _ h hncfr_a
-        (fun t n' b' cp' cb' f' m' hkt => absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
+        (fun t n' b' cp' cb' f' m' hkt =>
+          absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
     | unary op arg_u =>
       simp only [ANF.normalizeExpr] at h
       have ha : arg_u.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
       have hncfr_a : noCallFrameReturn arg_u = true := by unfold noCallFrameReturn at hncfr; exact hncfr
       exact ih arg_u ha _ _ _ _ _ _ _ h hncfr_a
-        (fun t n' b' cp' cb' f' m' hkt => absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
+        (fun t n' b' cp' cb' f' m' hkt =>
+          absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
     | getEnv envPtr idx =>
       simp only [ANF.normalizeExpr] at h
       have he : envPtr.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
       have hncfr_e : noCallFrameReturn envPtr = true := by unfold noCallFrameReturn at hncfr; exact hncfr
       exact ih envPtr he _ _ _ _ _ _ _ h hncfr_e
-        (fun t n' b' cp' cb' f' m' hkt => absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
+        (fun t n' b' cp' cb' f' m' hkt =>
+          absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
     | makeClosure funcIdx env =>
       simp only [ANF.normalizeExpr] at h
       have he : env.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
       have hncfr_e : noCallFrameReturn env = true := by unfold noCallFrameReturn at hncfr; exact hncfr
       exact ih env he _ _ _ _ _ _ _ h hncfr_e
-        (fun t n' b' cp' cb' f' m' hkt => absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
+        (fun t n' b' cp' cb' f' m' hkt =>
+          absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
     | setProp obj prop val =>
       simp only [ANF.normalizeExpr] at h
       have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
       have hv : val.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      have hncfr_o : noCallFrameReturn obj = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1
-      have hncfr_v : noCallFrameReturn val = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
+      have hncfr_o : noCallFrameReturn obj = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1
+      have hncfr_v : noCallFrameReturn val = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
       exact ih obj ho _ _ _ _ _ _ _ h hncfr_o
         (fun t₁ n₁ b₁ cp₁ cb₁ f₁ m₁ hk₁ => ih val hv _ _ _ _ _ _ _ hk₁ hncfr_v
-          (fun t₂ n₂ b₂ cp₂ cb₂ f₂ m₂ hk₂ => absurd hk₂ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)))
+          (fun t₂ n₂ b₂ cp₂ cb₂ f₂ m₂ hk₂ =>
+            absurd hk₂ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)))
     | binary op lhs rhs =>
       simp only [ANF.normalizeExpr] at h
       have hl : lhs.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
       have hr : rhs.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      have hncfr_l : noCallFrameReturn lhs = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1
-      have hncfr_r : noCallFrameReturn rhs = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
+      have hncfr_l : noCallFrameReturn lhs = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1
+      have hncfr_r : noCallFrameReturn rhs = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
       exact ih lhs hl _ _ _ _ _ _ _ h hncfr_l
         (fun t₁ n₁ b₁ cp₁ cb₁ f₁ m₁ hk₁ => ih rhs hr _ _ _ _ _ _ _ hk₁ hncfr_r
-          (fun t₂ n₂ b₂ cp₂ cb₂ f₂ m₂ hk₂ => absurd hk₂ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)))
+          (fun t₂ n₂ b₂ cp₂ cb₂ f₂ m₂ hk₂ =>
+            absurd hk₂ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)))
     | getIndex obj idx =>
       simp only [ANF.normalizeExpr] at h
       have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
       have hi : idx.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      have hncfr_o : noCallFrameReturn obj = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1
-      have hncfr_i : noCallFrameReturn idx = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
+      have hncfr_o : noCallFrameReturn obj = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1
+      have hncfr_i : noCallFrameReturn idx = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
       exact ih obj ho _ _ _ _ _ _ _ h hncfr_o
         (fun t₁ n₁ b₁ cp₁ cb₁ f₁ m₁ hk₁ => ih idx hi _ _ _ _ _ _ _ hk₁ hncfr_i
-          (fun t₂ n₂ b₂ cp₂ cb₂ f₂ m₂ hk₂ => absurd hk₂ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)))
+          (fun t₂ n₂ b₂ cp₂ cb₂ f₂ m₂ hk₂ =>
+            absurd hk₂ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _)))
     | setIndex obj idx val =>
       simp only [ANF.normalizeExpr] at h
       have ho : obj.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
       have hi : idx.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
       have hv : val.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      have hncfr_o : noCallFrameReturn obj = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1.1
-      have hncfr_i : noCallFrameReturn idx = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1.2
-      have hncfr_v : noCallFrameReturn val = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
+      have hncfr_o : noCallFrameReturn obj = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1.1
+      have hncfr_i : noCallFrameReturn idx = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1.2
+      have hncfr_v : noCallFrameReturn val = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
       exact ih obj ho _ _ _ _ _ _ _ h hncfr_o
         (fun t₁ n₁ b₁ cp₁ cb₁ f₁ m₁ hk₁ => ih idx hi _ _ _ _ _ _ _ hk₁ hncfr_i
           (fun t₂ n₂ b₂ cp₂ cb₂ f₂ m₂ hk₂ => ih val hv _ _ _ _ _ _ _ hk₂ hncfr_v
-            (fun t₃ n₃ b₃ cp₃ cb₃ f₃ m₃ hk₃ => absurd hk₃ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))))
+            (fun t₃ n₃ b₃ cp₃ cb₃ f₃ m₃ hk₃ =>
+              absurd hk₃ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))))
     | call f env args =>
       simp only [ANF.normalizeExpr] at h
       have hf : f.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
       have henv : env.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
       have hargs : Flat.Expr.listDepth args ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      have hncfr_f : noCallFrameReturn f = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1.1
-      have hncfr_env : noCallFrameReturn env = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1.2
-      have hncfr_args : noCallFrameReturnList args = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
+      have hncfr_f : noCallFrameReturn f = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1.1
+      have hncfr_env : noCallFrameReturn env = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1.2
+      have hncfr_args : noCallFrameReturnList args = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
       exact ih f hf _ _ _ _ _ _ _ h hncfr_f
         (fun t₁ n₁ b₁ cp₁ cb₁ f₁ m₁ hk₁ => ih env henv _ _ _ _ _ _ _ hk₁ hncfr_env
           (fun t₂ n₂ b₂ cp₂ cb₂ f₂ m₂ hk₂ =>
-            noCallFrameReturn_normalizeExprList_tryCatch_param_aux args hargs ih hncfr_args _ _ _ _ _ _ _ hk₂
-              (fun t₃ n₃ b₃ cp₃ cb₃ f₃ m₃ hk₃ => absurd hk₃ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))))
+            noCallFrameReturn_normalizeExprList_tryCatch_param_aux args hargs ih hncfr_args
+              _ _ _ _ _ _ _ hk₂
+              (fun ts n₃ b₃ cp₃ cb₃ f₃ m₃ hk₃ =>
+                absurd hk₃ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))))
     | newObj f env args =>
       simp only [ANF.normalizeExpr] at h
       have hf : f.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
       have henv : env.depth ≤ d' := by simp [Flat.Expr.depth] at hd; omega
       have hargs : Flat.Expr.listDepth args ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      have hncfr_f : noCallFrameReturn f = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1.1
-      have hncfr_env : noCallFrameReturn env = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1.2
-      have hncfr_args : noCallFrameReturnList args = true := by unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
+      have hncfr_f : noCallFrameReturn f = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1.1
+      have hncfr_env : noCallFrameReturn env = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1.2
+      have hncfr_args : noCallFrameReturnList args = true := by
+        unfold noCallFrameReturn at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
       exact ih f hf _ _ _ _ _ _ _ h hncfr_f
         (fun t₁ n₁ b₁ cp₁ cb₁ f₁ m₁ hk₁ => ih env henv _ _ _ _ _ _ _ hk₁ hncfr_env
           (fun t₂ n₂ b₂ cp₂ cb₂ f₂ m₂ hk₂ =>
-            noCallFrameReturn_normalizeExprList_tryCatch_param_aux args hargs ih hncfr_args _ _ _ _ _ _ _ hk₂
-              (fun t₃ n₃ b₃ cp₃ cb₃ f₃ m₃ hk₃ => absurd hk₃ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))))
+            noCallFrameReturn_normalizeExprList_tryCatch_param_aux args hargs ih hncfr_args
+              _ _ _ _ _ _ _ hk₂
+              (fun ts n₃ b₃ cp₃ cb₃ f₃ m₃ hk₃ =>
+                absurd hk₃ (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))))
     | makeEnv values =>
       simp only [ANF.normalizeExpr] at h
       have hvals : Flat.Expr.listDepth values ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      have hncfr_vals : noCallFrameReturnList values = true := by unfold noCallFrameReturn at hncfr; exact hncfr
-      exact noCallFrameReturn_normalizeExprList_tryCatch_param_aux values hvals ih hncfr_vals _ _ _ _ _ _ _ h
-        (fun t n' b' cp' cb' f' m' hkt => absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
+      have hncfr_vals : noCallFrameReturnList values = true := by
+        unfold noCallFrameReturn at hncfr; exact hncfr
+      exact noCallFrameReturn_normalizeExprList_tryCatch_param_aux values hvals ih hncfr_vals
+        _ _ _ _ _ _ _ h
+        (fun ts n' b' cp' cb' f' m' hkt =>
+          absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
     | objectLit props =>
       simp only [ANF.normalizeExpr] at h
       have hprops : Flat.Expr.propListDepth props ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      have hncfr_props : noCallFrameReturnProps props = true := by unfold noCallFrameReturn at hncfr; exact hncfr
-      exact noCallFrameReturn_normalizeProps_tryCatch_param_aux props hprops ih hncfr_props _ _ _ _ _ _ _ h
-        (fun t n' b' cp' cb' f' m' hkt => absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
+      have hncfr_props : noCallFrameReturnProps props = true := by
+        unfold noCallFrameReturn at hncfr; exact hncfr
+      exact noCallFrameReturn_normalizeProps_tryCatch_param_aux props hprops ih hncfr_props
+        _ _ _ _ _ _ _ h
+        (fun ts n' b' cp' cb' f' m' hkt =>
+          absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
     | arrayLit elems =>
       simp only [ANF.normalizeExpr] at h
       have helems : Flat.Expr.listDepth elems ≤ d' := by simp [Flat.Expr.depth] at hd; omega
-      have hncfr_elems : noCallFrameReturnList elems = true := by unfold noCallFrameReturn at hncfr; exact hncfr
-      exact noCallFrameReturn_normalizeExprList_tryCatch_param_aux elems helems ih hncfr_elems _ _ _ _ _ _ _ h
-        (fun t n' b' cp' cb' f' m' hkt => absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
-where
-  /-- Helper for normalizeExprList: if noCallFrameReturnList holds and normalizeExprList
-      produces a tryCatch, the param is not "__call_frame_return__". -/
-  noCallFrameReturn_normalizeExprList_tryCatch_param_aux
-      (es : List Flat.Expr) (hd : Flat.Expr.listDepth es ≤ d')
-      (ih : ∀ e, e.depth ≤ d' → ∀ k body catchParam catchBody finally_ n m,
-        (ANF.normalizeExpr e k).run n = .ok (.tryCatch body catchParam catchBody finally_, m) →
-        noCallFrameReturn e = true →
-        (∀ t n' b cp cb f m', (k t).run n' = .ok (.tryCatch b cp cb f, m') → cp ≠ "__call_frame_return__") →
-        catchParam ≠ "__call_frame_return__")
-      (hncfr : noCallFrameReturnList es = true)
-      (k : List ANF.Trivial → ANF.ConvM ANF.Expr)
-      (body : ANF.Expr) (catchParam : ANF.VarName) (catchBody : ANF.Expr)
-      (finally_ : Option ANF.Expr) (n m : Nat)
-      (h : (ANF.normalizeExprList es k).run n = .ok (.tryCatch body catchParam catchBody finally_, m))
-      (hk_ncfr : ∀ t n' b cp cb f m', (k t).run n' = .ok (.tryCatch b cp cb f, m') → cp ≠ "__call_frame_return__") :
-      catchParam ≠ "__call_frame_return__" := by
-    induction es generalizing k n m with
-    | nil => simp only [ANF.normalizeExprList] at h; exact hk_ncfr _ _ _ _ _ _ _ h
-    | cons e rest ihl =>
-      simp only [ANF.normalizeExprList] at h
-      have he : e.depth ≤ d' := by have := Flat.Expr.mem_listDepth_lt (List.mem_cons_self e rest); omega
-      have hrest : Flat.Expr.listDepth rest ≤ d' := by simp [Flat.Expr.listDepth] at hd; omega
-      have hncfr_e : noCallFrameReturn e = true := by unfold noCallFrameReturnList at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1
-      have hncfr_rest : noCallFrameReturnList rest = true := by unfold noCallFrameReturnList at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
-      exact ih e he _ _ _ _ _ _ _ h hncfr_e
-        (fun t n' b' cp' cb' f' m' hkt => ihl hrest hncfr_rest (fun ts => k (t :: ts)) _ _ hkt
-          (fun ts n'' b'' cp'' cb'' f'' m'' hk' => hk_ncfr _ _ _ _ _ _ _ hk'))
-  /-- Helper for normalizeProps: if noCallFrameReturnProps holds and normalizeProps
-      produces a tryCatch, the param is not "__call_frame_return__". -/
-  noCallFrameReturn_normalizeProps_tryCatch_param_aux
-      (props : List (Flat.PropName × Flat.Expr)) (hd : Flat.Expr.propListDepth props ≤ d')
-      (ih : ∀ e, e.depth ≤ d' → ∀ k body catchParam catchBody finally_ n m,
-        (ANF.normalizeExpr e k).run n = .ok (.tryCatch body catchParam catchBody finally_, m) →
-        noCallFrameReturn e = true →
-        (∀ t n' b cp cb f m', (k t).run n' = .ok (.tryCatch b cp cb f, m') → cp ≠ "__call_frame_return__") →
-        catchParam ≠ "__call_frame_return__")
-      (hncfr : noCallFrameReturnProps props = true)
-      (k : List (ANF.PropName × ANF.Trivial) → ANF.ConvM ANF.Expr)
-      (body : ANF.Expr) (catchParam : ANF.VarName) (catchBody : ANF.Expr)
-      (finally_ : Option ANF.Expr) (n m : Nat)
-      (h : (ANF.normalizeProps props k).run n = .ok (.tryCatch body catchParam catchBody finally_, m))
-      (hk_ncfr : ∀ t n' b cp cb f m', (k t).run n' = .ok (.tryCatch b cp cb f, m') → cp ≠ "__call_frame_return__") :
-      catchParam ≠ "__call_frame_return__" := by
-    induction props generalizing k n m with
-    | nil => simp only [ANF.normalizeProps] at h; exact hk_ncfr _ _ _ _ _ _ _ h
-    | cons p rest ihp =>
-      obtain ⟨pname, pexpr⟩ := p
-      simp only [ANF.normalizeProps] at h
-      have he : pexpr.depth ≤ d' := by have := Flat.Expr.mem_propListDepth_lt (List.mem_cons_self (pname, pexpr) rest); omega
-      have hrest : Flat.Expr.propListDepth rest ≤ d' := by simp [Flat.Expr.propListDepth] at hd; omega
-      have hncfr_e : noCallFrameReturn pexpr = true := by unfold noCallFrameReturnProps at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.1
-      have hncfr_rest : noCallFrameReturnProps rest = true := by unfold noCallFrameReturnProps at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
-      exact ih pexpr he _ _ _ _ _ _ _ h hncfr_e
-        (fun t n' b' cp' cb' f' m' hkt => ihp hrest hncfr_rest (fun ps => k ((pname, t) :: ps)) _ _ hkt
-          (fun ps n'' b'' cp'' cb'' f'' m'' hk' => hk_ncfr _ _ _ _ _ _ _ hk'))
+      have hncfr_elems : noCallFrameReturnList elems = true := by
+        unfold noCallFrameReturn at hncfr; exact hncfr
+      exact noCallFrameReturn_normalizeExprList_tryCatch_param_aux elems helems ih hncfr_elems
+        _ _ _ _ _ _ _ h
+        (fun ts n' b' cp' cb' f' m' hkt =>
+          absurd hkt (ANF.bindComplex_never_tryCatch_general _ _ _ _ _ _ _ _))
 
 /-- Top-level bridge: if `normalizeExpr e k` produces tryCatch with trivial-preserving k,
-    and `noCallFrameReturn e = true`, then `catchParam ≠ "__call_frame_return__"`. -/
+    and `noCallFrameReturn e = true`, then `catchParam ≠ "__call_frame_return__"`.
+    This is the key lemma for closing the noCallFrameReturn sorry in anfConvert_step_star. -/
 private theorem noCallFrameReturn_normalizeExpr_tryCatch_param
     (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr)
     (hk : ∀ t n, ∃ m, (k t).run n = .ok (.trivial t, m))
