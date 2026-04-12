@@ -16789,7 +16789,107 @@ private theorem hasThrowInHead_compound_throw_step_sim
               by rw [htrace_r]; simp [List.append_assoc],
               by rw [observableTrace_append, observableTrace_all_silent hsil_e, List.nil_append]; exact hobs_r⟩
     | objectLit_props h_sub =>
-      sorry -- list case: first non-value prop in props has throw
+      rename_i props
+      simp only [ANF.normalizeExpr] at hnorm'
+      have hprops_depth : Flat.Expr.propListDepth props ≤ d := by simp [Flat.Expr.depth] at hd; omega
+      suffices h_aux : ∀ (ps : List (Flat.PropName × Flat.Expr)) (done_p : List (Flat.PropName × Flat.Expr)),
+          (∀ p ∈ done_p, ∃ v, p.snd = .lit v) →
+          HasThrowInHeadProps ps →
+          Flat.Expr.propListDepth ps ≤ d →
+          ∀ (K_l : List (ANF.PropName × ANF.Trivial) → ANF.ConvM ANF.Expr) (n_l m_l : Nat),
+          (ANF.normalizeProps ps K_l).run n_l = .ok (.throw arg', m_l) →
+          (∀ p, p ∈ ps → ∀ x, VarFreeIn x p.2 → env.lookup x ≠ none) →
+          (∀ p, p ∈ ps → NoNestedAbrupt p.2) →
+          ∀ (trace_l : List Core.TraceEvent),
+          (∀ v, ANF.evalTrivial env arg' = .ok v →
+            ∃ evs sf', Flat.Steps ⟨.objectLit (done_p ++ ps), env, heap, trace_l, funcs, cs⟩ evs sf' ∧
+              sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+              sf'.trace = trace_l ++ evs ∧
+              observableTrace evs = observableTrace [.error (Flat.valueToString v)]) ∧
+          (∀ msg, ANF.evalTrivial env arg' = .error msg →
+            ∃ evs sf', Flat.Steps ⟨.objectLit (done_p ++ ps), env, heap, trace_l, funcs, cs⟩ evs sf' ∧
+              sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
+              sf'.trace = trace_l ++ evs ∧
+              observableTrace evs = observableTrace [.error msg]) by
+        exact h_aux props [] (by simp) h_sub hprops_depth
+          _ arg' n' m' hnorm'
+          (fun p hp x hfx => hewf' x (VarFreeIn.objectLit_value _ _ p hp hfx))
+          (by cases hna' with | objectLit hprops => exact fun p hp => hprops p hp) trace'
+      intro ps
+      induction ps with
+      | nil => intro _ _ h_list; exact absurd h_list (by intro h; cases h)
+      | cons p rest ih_list =>
+        obtain ⟨propName, e⟩ := p
+        intro done_p h_done h_list h_depths K_l n_l m_l hnorm_l hewf_l hna_l trace_l
+        unfold ANF.normalizeProps at hnorm_l
+        rcases Classical.em (HasThrowInHead e) with h_e_throw | h_e_nothrow
+        · have he_depth : e.depth ≤ d := by
+            have := Flat.Expr.mem_propListDepth_lt (@List.mem_cons_self _ (propName, e) rest); omega
+          obtain ⟨ih_ok, ih_err⟩ :=
+            throwInHead_compound_lift h_e_throw
+              (fun s inner hv t si hs he =>
+                have : done_p ++ [(propName, inner)] ++ rest = done_p ++ ((propName, inner) :: rest) := by simp
+                this ▸ step?_objectLit_val_ctx s done_p rest propName inner h_done hv t si hs he)
+              (fun s inner hv msg si hs =>
+                have : done_p ++ [(propName, inner)] ++ rest = done_p ++ ((propName, inner) :: rest) := by simp
+                this ▸ step?_objectLit_val_error s done_p rest propName inner h_done hv msg si hs)
+              (ih e _ arg' n_l m_l he_depth h_e_throw hnorm_l
+                (fun x hfx => hewf_l (propName, e) (List.mem_cons_self _ _) x hfx)
+                (hna_l (propName, e) (List.mem_cons_self _ _)) trace_l)
+          refine ⟨fun v heval => ?_, fun msg heval => ?_⟩
+          · obtain ⟨evs, sf', hsteps, hexpr, henv_r, hheap, htrace, hobs⟩ := ih_ok v heval
+            exact ⟨evs, sf',
+              by rw [show done_p ++ (propName, e) :: rest = done_p ++ [(propName, e)] ++ rest from by simp]; exact hsteps,
+              hexpr, henv_r, hheap, htrace, hobs⟩
+          · obtain ⟨evs, sf', hsteps, hexpr, henv_r, hheap, htrace, hobs⟩ := ih_err msg heval
+            exact ⟨evs, sf',
+              by rw [show done_p ++ (propName, e) :: rest = done_p ++ [(propName, e)] ++ rest from by simp]; exact hsteps,
+              hexpr, henv_r, hheap, htrace, hobs⟩
+        · have he_depth : e.depth ≤ d := by
+            have := Flat.Expr.mem_propListDepth_lt (@List.mem_cons_self _ (propName, e) rest); omega
+          have htc_e := no_throw_head_implies_trivial_chain e.depth e (Nat.le_refl _) _ arg' n_l m_l hnorm_l h_e_nothrow
+          obtain ⟨t_e, ht_e⟩ := normalizeExpr_trivialChain_apply e.depth e (Nat.le_refl _) htc_e
+          have hnorm_rest : (ANF.normalizeProps rest (fun tail => K_l ((propName, t_e) :: tail))).run n_l =
+              .ok (.throw arg', m_l) := by rwa [ht_e] at hnorm_l
+          obtain ⟨v_e, evs_e, hsteps_e, hnoerr_e, hobs_e, hpres_e⟩ :=
+            trivialChain_eval_value (trivialChainCost e) e env heap trace_l funcs cs
+              htc_e (Nat.le_refl _) (fun x hfx => hewf_l (propName, e) (List.mem_cons_self _ _) x hfx)
+          have hsil_e : ∀ ev ∈ evs_e, ev = Core.TraceEvent.silent := by
+            intro ev hev; cases ev with
+            | silent => rfl
+            | log s => exfalso; have hmem : Core.TraceEvent.log s ∈ observableTrace evs_e := by simp only [observableTrace, List.mem_filter]; exact ⟨hev, by rfl⟩; simp [hobs_e] at hmem
+            | error s => exfalso; exact hnoerr_e ev hev s rfl
+          obtain ⟨ws, hwsteps, hwexpr, hwenv, hwheap, hwfuncs, hwcs, hwtrace⟩ :=
+            Steps_objectLit_val_ctx_b done_p rest propName h_done hsteps_e
+              (fun ev hev msg => by rw [hsil_e ev hev]; exact Core.TraceEvent.noConfusion)
+              (fun smid evs1 h _ => hpres_e smid evs1 h)
+          have hws_eq : ws = ⟨.objectLit (done_p ++ [(propName, .lit v_e)] ++ rest), env, heap, trace_l ++ evs_e, funcs, cs⟩ := by
+            cases ws; simp_all
+          rw [hws_eq] at hwsteps
+          have h_rest_list : HasThrowInHeadProps rest := by
+            cases h_list with | head h => exact absurd h h_e_nothrow | tail h => exact h
+          obtain ⟨ih_ok_r, ih_err_r⟩ := ih_list (done_p ++ [(propName, .lit v_e)])
+            (by intro p' hp'; rcases List.mem_append.mp hp' with h | h; exact h_done p' h; simp at h; exact ⟨v_e, h.2⟩)
+            h_rest_list (by simp [Flat.Expr.propListDepth] at h_depths ⊢; omega)
+            (fun tail => K_l ((propName, t_e) :: tail)) n_l m_l hnorm_rest
+            (fun p' hp' x hfx => hewf_l p' (List.mem_cons_of_mem _ hp') x hfx)
+            (fun p' hp' => hna_l p' (List.mem_cons_of_mem _ hp'))
+            (trace_l ++ evs_e)
+          refine ⟨fun v heval => ?_, fun msg heval => ?_⟩
+          · obtain ⟨evs_r, sf_r, hsteps_r, hexpr_r, henv_r, hheap_r, htrace_r, hobs_r⟩ := ih_ok_r v heval
+            rw [show done_p ++ [(propName, .lit v_e)] ++ rest = done_p ++ ((propName, .lit v_e) :: rest) from by simp] at hsteps_r
+            exact ⟨evs_e ++ evs_r, sf_r,
+              by rw [show done_p ++ (propName, e) :: rest = done_p ++ [(propName, e)] ++ rest from by simp]; exact Flat.Steps.append hwsteps hsteps_r,
+              hexpr_r, henv_r, hheap_r,
+              by rw [htrace_r]; simp [List.append_assoc],
+              by rw [observableTrace_append, observableTrace_all_silent hsil_e, List.nil_append]; exact hobs_r⟩
+          · obtain ⟨evs_r, sf_r, hsteps_r, hexpr_r, henv_r, hheap_r, htrace_r, hobs_r⟩ := ih_err_r msg heval
+            rw [show done_p ++ [(propName, .lit v_e)] ++ rest = done_p ++ ((propName, .lit v_e) :: rest) from by simp] at hsteps_r
+            exact ⟨evs_e ++ evs_r, sf_r,
+              by rw [show done_p ++ (propName, e) :: rest = done_p ++ [(propName, e)] ++ rest from by simp]; exact Flat.Steps.append hwsteps hsteps_r,
+              hexpr_r, henv_r, hheap_r,
+              by rw [htrace_r]; simp [List.append_assoc],
+              by rw [observableTrace_append, observableTrace_all_silent hsil_e, List.nil_append]; exact hobs_r⟩
     | arrayLit_elems h_sub =>
       rename_i elems
       simp only [ANF.normalizeExpr] at hnorm'
