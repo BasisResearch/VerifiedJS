@@ -17179,10 +17179,17 @@ private theorem HasReturnInHead_Steps_steppable
     (hstep : Flat.step? smid = some (t, smid')) :
     HasReturnInHead smid.expr :=
   HasReturnInHead_Steps_steppable_core hret
-    (sorry /- ¬HasNonCallFrameTryCatchInHead a: To eliminate this sorry, thread
-       ¬HasNonCallFrameTryCatchInHead through hasReturnInHead_return_steps and
-       normalizeExpr_return_step_sim, deriving it from normalizeExpr_tryCatch_not_return_*
-       at each sub-expression level. See prompt P2 analysis. -/)
+    (sorry /- ¬HasNonCallFrameTryCatchInHead a: BLOCKED — predicate is too strong.
+       HasNonCallFrameTryCatchInHead checks ALL sub-expressions (including seq_right,
+       let_body, etc.), but expressions with HasReturnInHead can have non-call-frame
+       tryCatch in non-eval-first positions (e.g., .seq (.return .none) (.tryCatch body "e" cb none)).
+       FIX OPTIONS:
+       (A) Define HasNonCallFrameTryCatchInEvalFirst that only follows the eval-first path
+           (seq_left, let_init, binary_lhs, etc.), re-prove step_error/step_nonError preservation
+           (~700 lines), and update HasReturnInHead_Steps_steppable_core.
+       (B) Add ¬HasNonCallFrameTryCatchInHead as a parameter to HasReturnInHead_Steps_steppable
+           and hasReturnInHead_return_steps, then restructure callers to only pass sub-expressions
+           where the property holds (the eval-first sub-expression at each recursion level). -/)
     hsteps hstep
 
 /-- Main inductive theorem: if HasReturnInHead e and normalizeExpr e K produces .return arg,

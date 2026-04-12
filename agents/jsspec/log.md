@@ -5180,3 +5180,4 @@ and reduces `name = name` to `True` (use `trivial` not `rfl`).
 
 ## Run: 2026-04-12T02:00:04+00:00
 
+### 2026-04-12T02:00:27+00:00 Starting run — closing CCStateAgree sorries with CCExprEquiv
