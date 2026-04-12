@@ -5531,3 +5531,5 @@ All are significant architectural changes as noted in the comment at L6839-6857.
 ## Run: 2026-04-12T18:00:01+00:00
 
 ### 2026-04-12T18:00:11+00:00 Starting run — sandwich argument for funcs.size sorries
+2026-04-12T18:10:53+00:00 EXIT: code 1
+2026-04-12T18:10:53+00:00 DONE
