@@ -1,3 +1,63 @@
+## Run: 2026-04-12T02:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 48 + CC 15 = **63 total** (Wasm 0)
+- **Delta from last run (01:05)**: +21 (42→63). **UP. ALL INFRASTRUCTURE.**
+- **BUILD**: LSP not responding (loading). Not verified.
+
+### Why count went UP (+21)
+1. **proof agent** (+18): Added `HasThrowInHead_step_nonError` with 18 sorry'd multi-context cases (L14919-14936). 16 cases proved, 18 remain. K' refactor CONFIRMED DEAD — cannot solve trivial mismatch. This is a strategic bet: once the 18 are closed, L14196 (compound throw) closes → net -1 from original.
+2. **jsspec agent** (+3): Added `convertExpr_CCExprEquiv_shifted` with 3 sorry'd recursive calls (L1848, L1857, L1866). Fix is known: explicit state args. Once closed, enables closing CCStateAgree sorries.
+3. **wasmspec agent** (0): Still running from 01:15. Working on noCallFrameReturn threading + HasNonCallFrameTryCatch. No changes yet this cycle.
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: CRISIS MODE. Close 18 infrastructure sorries at L14919-14936 first. Gave template pattern from the 16 proved cases. Then L14196.
+2. **jsspec**: CRISIS MODE. Close 3 CCExprEquiv_shifted sorries (known fix). Then apply to CCStateAgree (5 targets).
+3. **wasmspec**: P0: noCallFrameReturn preservation (L26895). P1: HasNonCallFrameTryCatch (L17182). P2: check L25975/L26046.
+
+### Sorry Classification (63 total)
+**ANF (48):**
+- Trivial mismatch (12): L11186-L11557 — BLOCKED (K' dead, no known fix)
+- Compound throw (1): L14196 — proof agent, closeable after HasThrowInHead infrastructure
+- HasThrowInHead infrastructure (18): L14919-14936 — proof agent P0, template pattern
+- HasNonCallFrameTryCatch (1): L17182 — wasmspec P1
+- Compound await/yield (2): L22464, L22637 — deep, deferred
+- Return/yield/compound (3): L22693, L22697, L22698 — deep, deferred
+- While condition (2): L22788, L22800 — deep, deferred
+- If-branch K-mismatch (2): L23525, L23565 — proof agent P2
+- TryCatch (3): L24406, L24424, L24427 — deep, deferred
+- body_sim (1): L25756 — needs strong induction
+- End-of-file (2): L25975, L26046 — wasmspec P2
+- noCallFrameReturn (1): L26895 — wasmspec P0
+
+**CC (15):**
+- CCExprEquiv_shifted infrastructure (4): L1638, L1848, L1857, L1866 — jsspec P0
+- Multi-step simulation (3): L6417, L7722, L7733 — architectural, deferred
+- CCStateAgree (5): L6865, L6891, L9777, L9854, L9970 — jsspec P1
+- Axiom mismatch (1): L8373 — UNPROVABLE
+- Other (1): L7514 — unclassified
+- TryCatch+finally (1): L9780 — deferred
+
+### Critical Path
+1. **proof closes 18 infrastructure** → ANF 48→30 (+0 net vs previous baseline)
+2. **proof closes L14196** → ANF 30→29 (-1 net)
+3. **jsspec closes 3 infrastructure** → CC 15→12 (+0 net)
+4. **jsspec closes CCStateAgree** → CC 12→7-9 (-3 to -5 net)
+5. **wasmspec closes L26895 + L17182** → ANF 29→27 (-2 net)
+6. Best case after this cycle: **~36-40** (from current 63)
+
+### Trend
+- 18:05: 54 → 19:05: 49 → 20:05: 49 → 21:05: 50 → 22:05: 44 → 23:30: 42 → 01:05: 42 → **02:05: 63**
+- Net movement: -12 in 7hrs, then +21 in 1hr (infrastructure explosion)
+- Infrastructure should be temporary — expect sharp drop next 2-3 runs as it gets closed
+
+### Concerns
+- **12 trivial mismatch sorries (L11186-11557) have NO KNOWN FIX.** K' is dead. Need architectural rethink: semantic equivalence relation for syntactically different bodies, or skip non-head stepping entirely. This is the biggest long-term blocker.
+- **8+ sorries are likely permanently blocked** (L8373 unprovable, deep compound cases). Realistic floor: ~30-33.
+- **Memory pressure** continues. Agents hitting OOM. LSP-only mode critical.
+
+---
+
 ## Run: 2026-04-12T01:05:01+00:00
 
 ### Metrics
@@ -840,3 +900,4 @@ All three agents spent this cycle on **infrastructure** rather than directly clo
 
 ## Run: 2026-04-12T02:05:01+00:00
 
+2026-04-12T02:18:48+00:00 DONE

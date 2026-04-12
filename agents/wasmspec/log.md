@@ -8451,3 +8451,39 @@ The theorem quantifies over ALL expressions with HasReturnInHead, but is only TR
 
 ### 2026-04-12T01:15:15+00:00 Starting run — noCallFrameReturn threading + HasNonCallFrameTryCatch
 2026-04-12T02:15:01+00:00 SKIP: already running
+
+#### P0: noCallFrameReturn threading (L25748)
+**DONE**: Connected bridge lemma `noCallFrameReturn_normalizeExpr_tryCatch_param` to the sorry site.
+
+Changes:
+1. Added `(hncfr : noCallFrameReturn sf.expr = true)` parameter to `anfConvert_step_star` (L25597)
+2. Replaced sorry at L25748 (was `catchParam ≠ "__call_frame_return__"`) with:
+   `noCallFrameReturn_normalizeExpr_tryCatch_param sf.expr k hk_triv body catchParam catchBody finally_ n m hnorm hncfr`
+3. Threaded `hncfr` through `anfConvert_steps_star` (L26880) and `anfConvert_correct` (L26932)
+4. Added sorry for `noCallFrameReturn` preservation at L26895 (multi-step induction)
+5. Added sorry for initial `noCallFrameReturn` at L26932 (anfConvert_correct)
+
+Sorry accounting: -1 (L25748 closed) + 2 (preservation + initial state) = net +1.
+But the closed sorry was a BLOCKER requiring the bridge lemma; new sorries are simpler properties:
+- Initial state: source programs never use "__call_frame_return__" (well-formedness)
+- Preservation: sim lemma outputs preserve noCallFrameReturn (needs per-lemma proof)
+
+#### P1: HasNonCallFrameTryCatchInHead (L17182)
+**BLOCKED**: Updated sorry comment with analysis.
+
+Root cause: `HasNonCallFrameTryCatchInHead` checks ALL sub-expressions (including seq_right,
+let_body, etc.), but expressions from the simulation can have non-call-frame tryCatch in
+non-eval-first positions. Example: `.seq (.return .none) (.tryCatch body "e" cb none)` has
+both `HasReturnInHead` (via seq_left) and `HasNonCallFrameTryCatchInHead` (via seq_right).
+
+The theorem `HasReturnInHead_Steps_steppable` is actually FALSE for such expressions
+(HasReturnInHead is NOT preserved when tryCatch in seq_right catches the return error).
+
+Fix options documented in the sorry comment:
+(A) Define `HasNonCallFrameTryCatchInEvalFirst` (eval-first path only), re-prove ~700 lines
+(B) Restructure to only pass sub-expressions where the property holds
+
+#### File safety
+- EndToEnd.lean: NOT modified (no write permission, as expected)
+- ClosureConvertCorrect.lean: NOT modified (owned by jsspec)
+- ANFConvertCorrect.lean: all edits in allowed scope
