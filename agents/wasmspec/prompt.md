@@ -1,4 +1,4 @@
-# wasmspec — CLOSE 2 SORRIES: noCallFrameReturn threading + HasNonCallFrameTryCatch
+# wasmspec — CLOSE noCallFrameReturn + HasNonCallFrameTryCatch SORRIES
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,58 +9,61 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-12T01:05
-- Total: **42 real sorries** (ANF 30, CC 12). Stable.
-- P0+P1 (step_nonError_preserves + step_error) fully proved.
-- P2: `HasReturnInHead_Steps_steppable_core` is sorry-free, wrapper at L16877 has isolated sorry.
-- **Bridge lemma DONE**: `noCallFrameReturn_normalizeExpr_tryCatch_param` (~330 lines, proven).
-- **Infrastructure is READY. TIME TO CLOSE SORRIES.**
+## STATUS — 2026-04-12T02:05
+- Total: **63 real sorries** (ANF 48, CC 15). UP FROM 42. CRISIS.
+- Bridge lemma `noCallFrameReturn_normalizeExpr_tryCatch_param` is PROVED.
+- `HasReturnInHead_Steps_steppable_core` is sorry-free.
+- L17182 wrapper sorry is isolated.
 
-## P0: THREAD noCallFrameReturn THROUGH anfConvert_step_star (L25442 — 1 sorry)
+## P0: noCallFrameReturn PRESERVATION (L26895 — 1 sorry)
 
-Your bridge lemma `noCallFrameReturn_normalizeExpr_tryCatch_param` is proved. Now USE it.
+Goal: `noCallFrameReturn sf2.expr = true` where sf2 comes from flat steps simulating one ANF step.
 
-### Concrete steps:
-1. **Check current goal** at L25442 with `lean_goal` — you need `catchParam ≠ "__call_frame_return__"`
-2. **Add `noCallFrameReturn sf.expr = true`** as a hypothesis to `anfConvert_step_star`:
-   - Find the theorem statement (search for `anfConvert_step_star`)
-   - Add `(hncfr : noCallFrameReturn sf.expr = true)` as a precondition
-   - This is valid: the initial expression from normalizeExpr has no call frame returns
-3. **At L25442**, apply your bridge lemma:
-   ```lean
-   exact noCallFrameReturn_normalizeExpr_tryCatch_param ... hncfr ...
-   ```
-   (adjust args to match actual types)
-4. **Prove preservation**: In the simulation step cases, prove `noCallFrameReturn sf'.expr = true` from `noCallFrameReturn sf.expr = true` + step properties. The key insight: Flat.step? only introduces `__call_frame_return__` tryCatch for function calls, and the call case handles the entire function execution internally before returning.
-5. **Update callers** of anfConvert_step_star to provide the new precondition.
+### Approach: prove noCallFrameReturn_step_preserved
+```lean
+theorem noCallFrameReturn_step_preserved
+    (hncfr : noCallFrameReturn sf.expr = true)
+    (hstep : Flat.step? sf = some (t, sf')) :
+    noCallFrameReturn sf'.expr = true
+```
 
-### If threading is too invasive (>50 edits):
-Alternative: at L25442, directly derive `catchParam ≠ "__call_frame_return__"` from the normalizeExpr decomposition. The `hnorm` hypothesis tells you what normalizeExpr produced. Use `normalizeExpr_tryCatch_decomp` to extract the catchParam and show it equals the source catchParam, then use your bridge lemma.
+Key insight: Flat.step? only introduces `__call_frame_return__` tryCatch for function calls (`.call`), and it wraps the ENTIRE call. After the call returns, the tryCatch is consumed and the result is a value (`.lit`). So:
+- Non-call steps: preserve noCallFrameReturn structurally
+- Call steps: the post-call expr is `.lit v` which trivially has noCallFrameReturn
+
+Then extend to multi-step: `noCallFrameReturn_steps_preserved` for `Flat.Steps`.
+
+At L26895, apply `noCallFrameReturn_steps_preserved hncfr hfsteps1`.
 
 **Expected: -1 sorry**
 
-## P1: HasNonCallFrameTryCatchInHead (L16877 — 1 sorry)
+## P1: HasNonCallFrameTryCatchInHead (L17182 — 1 sorry)
 
-The sorry needs `¬HasNonCallFrameTryCatchInHead a`.
+Goal: `¬HasNonCallFrameTryCatchInHead a` where `a` has `HasReturnInHead a`.
 
-### Approach: prove normalizeExpr_no_tryCatch_in_head
-- `normalizeExpr` output never has tryCatch in eval-head position
-- Structural induction: normalizeExpr produces .let, .seq, .labeled, .trivial — NONE are .tryCatch
-- Then at L16877: `exact normalizeExpr_no_tryCatch_in_head ...`
+### Approach: thread through the caller chain
+1. `HasReturnInHead_Steps_steppable` calls `HasReturnInHead_Steps_steppable_core` which needs `hncf`
+2. The caller of `HasReturnInHead_Steps_steppable` is `hasReturnInHead_return_steps` or similar
+3. Trace upward until you find where the expression comes from `normalizeExpr`
+4. Prove: `normalizeExpr_no_nonCallFrameTryCatch_in_head` — normalizeExpr output never has non-call-frame tryCatch in head position (because normalizeExpr only creates .let, .seq, .labeled, .tryCatch with call-frame param)
+5. Thread this property down to L17182
 
-### Alternative (if direct proof is hard):
-Thread `¬HasNonCallFrameTryCatchInHead` through the caller chain:
-- `hasReturnInHead_return_steps` → add as precondition
-- `normalizeExpr_return_step_sim` → derive from normalizeExpr properties
-- Top-level → derive from `normalizeExpr_no_tryCatch_in_head`
+### Alternative (faster):
+At the caller of `HasReturnInHead_Steps_steppable`, add `¬HasNonCallFrameTryCatchInHead` as precondition and prove it at the call site from normalizeExpr properties.
 
 **Expected: -1 sorry**
+
+## P2: L25975, L26046 — check what's needed
+`lean_goal` at these lines. They may be closeable with existing infrastructure.
+
+**Expected: -0 to -2 sorries**
 
 ## DO NOT WORK ON:
-- L10799-L11557 (labeled trivial mismatch — proof agent)
+- L11186-L11557 (labeled trivial mismatch — proof agent, BLOCKED)
 - ClosureConvertCorrect.lean (jsspec)
 - Any CC file
+- L14919-14936 (proof agent HasThrowInHead infrastructure)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — noCallFrameReturn threading + HasNonCallFrameTryCatch" >> agents/wasmspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — noCallFrameReturn + HasNonCallFrameTryCatch" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

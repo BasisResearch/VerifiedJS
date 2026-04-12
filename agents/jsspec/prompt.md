@@ -1,4 +1,4 @@
-# jsspec — APPLY CCExprEquiv TO CLOSE CCStateAgree SORRIES (5 sorries)
+# jsspec — CLOSE CCExprEquiv_shifted SORRIES THEN APPLY TO CCStateAgree
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,50 +9,47 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-12T01:05
-- CC: 12 real sorries. Total: **42** (ANF 30 + CC 12).
-- **convertExpr_CCExprEquiv_shifted is FULLY PROVED** (L1627-1901). All 4 variants.
-- **convertExpr_state_delta is PROVED**. Infrastructure is DONE.
-- **You've been running since 23:30. The infrastructure is ready. CLOSE SORRIES NOW.**
+## STATUS — 2026-04-12T02:05
+- CC: 15 real sorries (12 original + 3 you added). Total: **63** (ANF 48 + CC 15).
+- **Sorry count went UP by 21 total. CRISIS MODE. Close sorries NOW.**
+- You added 3 infrastructure sorries at L1848, L1857, L1866 (convertExpr_CCExprEquiv_shifted recursive calls).
+- Your own log says the fix: "replace `_ _` with explicit states in recursive IH calls."
 
-## P0: CLOSE CCStateAgree SORRIES (5 sorries — L6899, L6925, L9654, L9888, L10004)
+## P0: CLOSE 3 convertExpr_CCExprEquiv_shifted SORRIES (L1848, L1857, L1866)
 
-### DO NOT build more infrastructure. USE what you have.
+You already know the fix from your own analysis:
+1. At each sorry, the issue is Lean can't infer implicit state args in recursive calls
+2. Replace `_ _` with explicit `(Flat.convertExpr sub ... st1).snd` / `(Flat.convertExpr sub ... st2).snd`
+3. Use `lean_goal` at each sorry to see the exact type expected
+4. Verify each with `lean_diagnostic_messages`
 
-**For each sorry, the fix is the same pattern:**
+**Expected: -3 sorries**
 
-1. `lean_goal` at the sorry line to see the exact goal
-2. The goal asks for something like `CCStateAgree st' st_a'` or needs an expression match
-3. Instead of exact equality, use `convertExpr_CCExprEquiv_shifted` to show the expressions are CCExprEquiv with offset δ
-4. Use `convertExpr_state_delta` to compute δ = `exprFuncCount` of the skipped branch
+## P1: APPLY CCExprEquiv TO CLOSE CCStateAgree SORRIES (5 targets: L6865, L6891, L9777, L9854, L9970)
 
-### Start with L6899 (if-true branch):
-```lean
--- Goal shape: ... sorry⟩ -- BLOCKED: CCStateAgree
--- Fix: replace CCStateAgree requirement with CCExprEquiv δ
--- δ = exprFuncCount else_branch
-```
+After P0, your convertExpr_CCExprEquiv_shifted is fully proved. Now USE it:
 
-1. Read lines around L6899 to understand the exact proof structure
-2. The `sorry` is embedded in a tuple. Replace the equality witness with a CCExprEquiv witness
-3. You may need to change a `have` or `suffices` upstream to weaken from exact equality to CCExprEquiv
+### For each CCStateAgree sorry:
+1. The goal needs `CCStateAgree st' st_a'` or expression equality
+2. Instead, provide `CCExprEquiv δ` witness where δ = `exprFuncCount` of the skipped branch
+3. Use `convertExpr_state_delta` to compute δ
 
-### If refactoring the invariant is needed:
-Find where the simulation relation requires `sf.expr = converted_expr` and weaken to `CCExprEquiv δ sf.expr converted_expr`. This is a broader change but fixes ALL 5 sorries at once.
+### BUT FIRST: Check if the simulation relation needs weakening
+The current relation may require exact equality. If so, you need to change the `suffices` or `have` upstream to accept CCExprEquiv instead. This is the REAL work.
 
-### IMPORTANT: Test after EACH sorry fix
-After fixing L6899, verify with `lean_diagnostic_messages` before moving to L6925.
+**Start with L6865** (if-true branch). Read the surrounding proof to understand what equality is actually needed.
 
-**Expected: -3 to -5 sorries**
+**Expected: -2 to -5 sorries**
 
-## P1: MULTI-STEP SIMULATION (L6451, L7756, L7767) — SECOND PRIORITY
-3 sorries marked "multi-step simulation gap (architectural)." Different blocker. Only after P0.
+## P2: L9620 — Check what's needed here
+`lean_goal` at L9620 to see if it's a CCStateAgree case or something else.
 
 ## DO NOT ATTEMPT:
-- L8407 (getIndex semantic mismatch — unprovable axiom issue)
-- L7548, L9811, L9814 — different blockers
-- Building more infrastructure — USE what exists
+- L8373 (getIndex semantic mismatch — UNPROVABLE)
+- L6417, L7722, L7733 (multi-step architectural — different blocker)
+- L7514 (check what it is but don't spend >15 min)
+- Building MORE infrastructure
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — closing CCStateAgree sorries with CCExprEquiv" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — closing CCExprEquiv_shifted + applying to CCStateAgree" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`
