@@ -10183,8 +10183,8 @@ private theorem noCallFrameReturn_normalizeExpr_tryCatch_param_aux :
     | yield arg _ => cases arg with | none => simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at h; exact absurd h (by simp) | some _ => simp [Flat.Expr.depth] at hd
     | throw _ => simp [Flat.Expr.depth] at hd
     | await _ => simp [Flat.Expr.depth] at hd
-    | «if» _ _ _ => simp [Flat.Expr.depth] at hd; omega
-    | _ => simp [Flat.Expr.depth] at hd; omega
+    | «if» _ _ _ => simp [Flat.Expr.depth] at hd
+    | _ => simp [Flat.Expr.depth] at hd
   | succ d' ih =>
     intro e hd k body catchParam catchBody finally_ n m h hncfr hk_ncfr
     cases e with
@@ -10193,13 +10193,13 @@ private theorem noCallFrameReturn_normalizeExpr_tryCatch_param_aux :
       simp only [Bool.and_eq_true, bne_iff_ne, ne_eq] at hncfr
       simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at h
       cases hb : (ANF.normalizeExpr body_f k).run n with
-      | error msg => simp [hb] at h
+      | error msg => rw [hb] at h; simp at h
       | ok vb =>
-        obtain ⟨body', n1⟩ := vb; simp [hb] at h
+        obtain ⟨body', n1⟩ := vb; rw [hb] at h; simp only [Except.bind] at h
         cases hc : (ANF.normalizeExpr cb_f k).run n1 with
-        | error msg => simp [hc] at h
+        | error msg => rw [hc] at h; simp at h
         | ok vc =>
-          obtain ⟨catch', n2⟩ := vc; simp [hc] at h
+          obtain ⟨catch', n2⟩ := vc; rw [hc] at h; simp only [Except.bind] at h
           cases fin_f with
           | none =>
             simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h
