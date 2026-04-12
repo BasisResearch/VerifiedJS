@@ -1,4 +1,4 @@
-# proof — ANF COMPOUND CASES + WHILE/IF/TRYCATCH
+# proof — TRIVIAL MISMATCH INFRASTRUCTURE + WHILE/IF/TRYCATCH
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -8,46 +8,63 @@
 
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## STATUS — 2026-04-12T17:05
-- ANF has **26 sorry lines** (L18163 CLOSED by wasmspec — DO NOT TOUCH)
-- 12 are BLOCKED (L11366-L11737) — DO NOT TOUCH
-- 2 are wasmspec-owned (L19377, L32634) — DO NOT TOUCH
-- **YOUR TARGET: 12 remaining sorry lines across P1-P3**
+## STATUS — 2026-04-12T18:05
+- ANF has **~29 sorry statements**
+- Build is CLEAN (you fixed all 1246 errors last run — GREAT WORK)
+- 12 are infrastructure "trivial mismatch" (L11388-L11759) — **NEW P0: THESE ARE YOUR TOP PRIORITY**
+- 2 are wasmspec-owned (L19389, L32645) — DO NOT TOUCH
+- ~15 are P1-P4 (compound/while/if/tryCatch)
 
-## !! CRITICAL: P4/L18163 IS DONE !!
-Wasmspec closed L18163 (step_error_noNonCallFrameTryCatch_isLit) at 16:35.
-The proof is LIVE in the file. DO NOT revert or modify it.
-If you are currently working on L18163, STOP IMMEDIATELY and move to P1.
+## !! P0: TRIVIAL MISMATCH INFRASTRUCTURE (12 sorries) — DO THIS FIRST !!
 
-## P1: WHILE CONDITION (2 sorries) — DO THIS FIRST
+These 12 sorries are ALL the same pattern: `¬HasLabeledInHead e label` means the sub-expression is "trivial" (no label in head position), but we can't connect this to the flat simulation.
 
-### L24993: Condition-steps case
-This IS normalizeExpr-compatible. Use `normalizeExpr_while_decomp` (around L24901).
-
-```lean
--- At L24993, proof state has hnorm for .seq (.while_ c d) b
-obtain ⟨n1, n2, hc_norm, hd_norm, hk_norm⟩ := normalizeExpr_while_decomp wc wb k _ _ _ _ _ hnorm
--- Then use condition stepping IH for wc → sc.expr
+### The pattern (7 cases at L11388, L11436, L11484, L11534, L11561, L11611, L11663):
+```
+· -- ¬HasLabeledInHead sub: blocked by trivial mismatch (ANF trivial ≠ flat value)
+  sorry
 ```
 
-### L24981: While condition value case — transient state, needs multi-step SimRel
-Try `lean_goal` first to see exact proof state.
+### What you need:
+A lemma like:
+```lean
+theorem noLabeledInHead_sim (e : Flat.Expr) (label : String)
+    (h : ¬HasLabeledInHead e label)
+    (hrel : ANF_SimRel ...) :
+    -- The flat expression evaluates to a value without encountering label
+    ∃ sf', Flat.Steps sf sf' ∧ sf'.expr.isValue = true ∧ ...
+```
 
-## P0: COMPOUND AWAIT/YIELD/RETURN (5 sorries) — L24657, L24830, L24886, L24890, L24891
-Blocked by error propagation infrastructure. Lower priority than P1.
+Or check: does `¬HasLabeledInHead e label` with the ANF normalization hypothesis give you enough to invoke the IH at depth 0? The sub-expression has no label, so its ANF normalization should be trivial.
 
-## P2: IF-BRANCH (2 sorries) — L25718, L25758
-24 sub-cases each, K-mismatch. Try after P1.
+### Step-by-step:
+1. `lean_goal` at L11388 to see exact proof state
+2. Look at what hypotheses you have — especially `hnorm` and the depth argument
+3. If `¬HasLabeledInHead lhs label`, then `normalizeExpr lhs` should produce a trivial result
+4. Check if there's already a `noLabeledInHead_trivialChain` or similar lemma
+5. If not, WRITE ONE — it would close 7 sorries
 
-## P3: TRYCATCH (3 sorries) — L26599, L26617, L26620
+### List variants (5 cases at L11613, L11665, L11696, L11728, L11759):
+Same concept but for args lists and prop lists. May need list-level trivial chain lemma.
+
+## P1: WHILE CONDITION (2 sorries) — L24999, L25011
+Try after P0. These need multi-step SimRel.
+
+## P2: IF-BRANCH (2 sorries) — L25736, L25776
+24 sub-cases each, K-mismatch.
+
+## P3: COMPOUND (5 sorries) — L24675, L24848, L24904, L24908, L24909
+Blocked by error propagation infrastructure.
+
+## P4: TRYCATCH (3 sorries) — L26617, L26635, L26638
 Lower priority.
 
 ## EXECUTION ORDER:
-1. **P1 L24993** (while condition steps) — most tractable, DO FIRST
-2. **P1 L24981** (while condition value) — try after L24993
-3. **P2 L25718, L25758** (if-branch) — try after P1
-4. **P0** — only if P1+P2 done
-5. **P3** — last
+1. **P0 L11388** — investigate trivial mismatch, write helper lemma, close 7+ sorries
+2. **P0 list cases** — extend to list variants, close remaining 5
+3. **P1** — while condition
+4. **P2** — if-branch
+5. **P3/P4** — compound/tryCatch
 
 ## LOG
 **FIRST**: `echo "### $(date -Iseconds) Starting run — [task]" >> agents/proof/log.md`

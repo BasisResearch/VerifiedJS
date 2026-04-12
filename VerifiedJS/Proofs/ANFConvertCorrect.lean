@@ -32666,36 +32666,36 @@ private theorem anf_step_preserves_anfNcfr
   -- Recursive cases (seq/while_/tryCatch stepping inside sub-expr) use IH.
   sorry
 
-/-- Reverse direction: if normalizeExpr e k produces an anfNcfr ANF expression,
-    and k is trivial, and e has no __call_frame_return__ tryCatch in dead code,
-    then noCallFrameReturn e = true.
-    The dead code condition is automatically satisfied when e is derived from
-    an ncfr source via flat steps (call steps introduce __call_frame_return__
-    only at the expression head, never in dead code positions). -/
-private theorem normalizeExpr_anfNcfr_reverse
-    (e : Flat.Expr) (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n : Nat) (a : ANF.Expr) (m : Nat)
-    (hnorm : (ANF.normalizeExpr e k).run n = .ok (a, m))
-    (hk : ∀ t n', ∃ m', (k t).run n' = .ok (.trivial t, m'))
-    (hancfr : anfNcfr a = true)
-    -- Additional hypothesis: the flat expression itself has no __call_frame_return__ tryCatch.
-    -- In the actual use case, this follows from hncfr + hfsteps: the source is ncfr,
-    -- flat steps only introduce __call_frame_return__ at the expression head (resolved by SimRel),
-    -- and dead code comes from the ncfr source.
-    (hncfr_e : noCallFrameReturn e = true) :
-    noCallFrameReturn e = true := hncfr_e
+/-- Reverse direction: if normalizeExpr e k produces an anfNcfr ANF expression with k trivial,
+    then noCallFrameReturn e = true. The proof works by structural induction:
+    normalizeExpr preserves tryCatch catchParams bidirectionally, so if the ANF output
+    has no __call_frame_return__ tryCatch, neither does the flat input (modulo dead code).
+    The dead code subtlety: expressions after throw/return/break/continue are not normalized,
+    so they aren't constrained by anfNcfr of the output. In our use case, dead code comes
+    from the ncfr source program, so it's safe. This is expressed via hncfr_dead. -/
+private theorem normalizeExpr_anfNcfr_reverse_aux :
+    ∀ (d : Nat) (e : Flat.Expr), e.depth ≤ d →
+    ∀ (k : ANF.Trivial → ANF.ConvM ANF.Expr) (n : Nat) (a : ANF.Expr) (m : Nat),
+    (ANF.normalizeExpr e k).run n = .ok (a, m) →
+    anfNcfr a = true →
+    (∀ t n' a' m', (k t).run n' = .ok (a', m') → anfNcfr a' = true) →
+    -- Dead code hypothesis: all sub-expressions of e that normalizeExpr does NOT process
+    -- (after throw/return/break/continue in seq) are noCallFrameReturn.
+    -- In the actual use case, ALL sub-expressions of sf'.expr are ncfr because sf'.expr
+    -- is derived from ncfr expressions via flat steps.
+    (∀ sub, Flat.Expr.isSubExprDeadCode e sub → noCallFrameReturn sub = true) →
+    noCallFrameReturn e = true := by
+  sorry
 
 /-- noCallFrameReturn is preserved through the flat steps produced by anfConvert_step_star.
     Unlike general flat-step preservation (which is FALSE due to call-frame tryCatch wrappers),
     this holds because anfConvert_step_star simulates one complete ANF step, and the call-frame
     mechanism is fully resolved within a single ANF step simulation batch.
 
-    Proof strategy: Factor through anfNcfr on ANF expressions.
+    Proof strategy (Strategy B): Factor through anfNcfr on ANF expressions.
     1. Forward: noCallFrameReturn sf.expr → anfNcfr sa.expr (via normalizeExpr from hrel)
     2. Step: anfNcfr sa.expr → anfNcfr sa'.expr (ANF stepping preserves anfNcfr)
-    3. Reverse: anfNcfr sa'.expr → noCallFrameReturn sf'.expr
-       (normalizeExpr from hrel' connects sf'.expr to sa'.expr;
-        __call_frame_return__ tryCatch in sf'.expr would appear in sa'.expr,
-        contradicting anfNcfr; dead code is ncfr because it comes from the ncfr source) -/
+    3. Reverse: anfNcfr sa'.expr + dead code ncfr → noCallFrameReturn sf'.expr -/
 private theorem anfConvert_step_star_ncfr
     (s : Flat.Program) (t : ANF.Program)
     (h : ANF.convert s = .ok t)
@@ -32727,18 +32727,14 @@ private theorem anfConvert_step_star_ncfr
   have h2 : anfNcfr sa'.expr = true :=
     anf_step_preserves_anfNcfr sa ev sa' hstep_eq h1
   -- Step 3: anfNcfr sa'.expr → noCallFrameReturn sf'.expr
-  -- The ANF expression sa'.expr has no __call_frame_return__ tryCatch (h2).
-  -- Since normalizeExpr sf'.expr k' = ok (sa'.expr, m'), any __call_frame_return__
-  -- tryCatch in sf'.expr would propagate to sa'.expr, contradicting h2.
-  -- Dead code in sf'.expr comes from the ncfr source sf.expr (via hfsteps),
-  -- so it also has no __call_frame_return__ tryCatch.
-  exact normalizeExpr_anfNcfr_reverse sf'.expr k' n' sa'.expr m' hnorm' hk_triv' h2
-    (by -- Show noCallFrameReturn sf'.expr by contradiction with h2 + hnorm'
-        -- This is the key step that combines forward analysis with flat step tracking.
-        -- Every __call_frame_return__ tryCatch in sf'.expr either:
-        -- (a) appears in normalizable position → contradicts anfNcfr sa'.expr via hnorm'
-        -- (b) appears in dead code → impossible since dead code comes from ncfr source
-        sorry)
+  -- Use reverse lemma with dead code hypothesis satisfied by flat step tracking.
+  have hk'_anfncfr : ∀ t₀ n₀ a₀ m₀, (k' t₀).run n₀ = .ok (a₀, m₀) → anfNcfr a₀ = true := by
+    intro t₀ n₀ a₀ m₀ hkt
+    obtain ⟨m₁, hm₁⟩ := hk_triv' t₀ n₀
+    rw [hm₁] at hkt
+    have := (Prod.mk.inj (Except.ok.inj hkt)).1
+    subst this; rfl
+  sorry
 
 /-- Multi-step simulation derived from single-step stuttering simulation. -/
 private theorem anfConvert_steps_star
