@@ -8522,3 +8522,4 @@ Fix options documented in the sorry comment:
 ### 2026-04-12T04:15:10+00:00 Starting run — HasNonCallFrameTryCatch redesign
 2026-04-12T05:15:02+00:00 SKIP: already running
 ### 2026-04-12T05:29:21+00:00 Run complete — EvalFirst infrastructure: defined HasNonCallFrameTryCatchInEvalFirst predicate + proved normalizeExpr_return_implies_noEvalFirstTryCatch (key enabler for P0). Sorry count unchanged (infrastructure phase). Next: prove step_error_EvalFirst_isLit, then step_nonError_preserves combined with HasReturnInHead.
+2026-04-12T05:30:23+00:00 DONE

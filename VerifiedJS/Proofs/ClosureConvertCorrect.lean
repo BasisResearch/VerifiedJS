@@ -1557,147 +1557,14 @@ private theorem CCOptExprEquiv_refl (oe : Option Flat.Expr) : CCOptExprEquiv 0 o
   | some e => unfold CCOptExprEquiv; exact CCExprEquiv_refl e
 end
 
-/-! #### CCExprEquiv 0 implies structural equality.
-    At δ = 0, `CCExprEquiv 0 e1 e2` is equivalent to `e1 = e2`.
-    This is the reverse direction of `eq_implies_CCExprEquiv_zero`. -/
-
-mutual
-private theorem CCExprEquiv_zero_implies_eq : ∀ (e1 e2 : Flat.Expr),
-    CCExprEquiv 0 e1 e2 → e1 = e2 := by
-  intro e1 e2 h
-  match e1, e2 with
-  | .lit v1, .lit v2 => unfold CCExprEquiv at h; exact congrArg _ h
-  | .var n1, .var n2 => unfold CCExprEquiv at h; exact congrArg _ h
-  | .this, .this => rfl
-  | .«let» n1 i1 b1, .«let» n2 i2 b2 =>
-    unfold CCExprEquiv at h; obtain ⟨hn, hi, hb⟩ := h
-    rw [hn, CCExprEquiv_zero_implies_eq i1 i2 hi, CCExprEquiv_zero_implies_eq b1 b2 hb]
-  | .assign n1 v1, .assign n2 v2 =>
-    unfold CCExprEquiv at h; obtain ⟨hn, hv⟩ := h
-    rw [hn, CCExprEquiv_zero_implies_eq v1 v2 hv]
-  | .«if» c1 t1 e1, .«if» c2 t2 e2 =>
-    unfold CCExprEquiv at h; obtain ⟨hc, ht, he⟩ := h
-    rw [CCExprEquiv_zero_implies_eq c1 c2 hc, CCExprEquiv_zero_implies_eq t1 t2 ht,
-        CCExprEquiv_zero_implies_eq e1 e2 he]
-  | .seq a1 b1, .seq a2 b2 =>
-    unfold CCExprEquiv at h; obtain ⟨ha, hb⟩ := h
-    rw [CCExprEquiv_zero_implies_eq a1 a2 ha, CCExprEquiv_zero_implies_eq b1 b2 hb]
-  | .call f1 e1 args1, .call f2 e2 args2 =>
-    unfold CCExprEquiv at h; obtain ⟨hf, he, ha⟩ := h
-    rw [CCExprEquiv_zero_implies_eq f1 f2 hf, CCExprEquiv_zero_implies_eq e1 e2 he,
-        CCExprListEquiv_zero_implies_eq args1 args2 ha]
-  | .newObj f1 e1 args1, .newObj f2 e2 args2 =>
-    unfold CCExprEquiv at h; obtain ⟨hf, he, ha⟩ := h
-    rw [CCExprEquiv_zero_implies_eq f1 f2 hf, CCExprEquiv_zero_implies_eq e1 e2 he,
-        CCExprListEquiv_zero_implies_eq args1 args2 ha]
-  | .getProp o1 p1, .getProp o2 p2 =>
-    unfold CCExprEquiv at h; obtain ⟨hp, ho⟩ := h
-    rw [hp, CCExprEquiv_zero_implies_eq o1 o2 ho]
-  | .setProp o1 p1 v1, .setProp o2 p2 v2 =>
-    unfold CCExprEquiv at h; obtain ⟨hp, ho, hv⟩ := h
-    rw [hp, CCExprEquiv_zero_implies_eq o1 o2 ho, CCExprEquiv_zero_implies_eq v1 v2 hv]
-  | .getIndex o1 i1, .getIndex o2 i2 =>
-    unfold CCExprEquiv at h; obtain ⟨ho, hi⟩ := h
-    rw [CCExprEquiv_zero_implies_eq o1 o2 ho, CCExprEquiv_zero_implies_eq i1 i2 hi]
-  | .setIndex o1 i1 v1, .setIndex o2 i2 v2 =>
-    unfold CCExprEquiv at h; obtain ⟨ho, hi, hv⟩ := h
-    rw [CCExprEquiv_zero_implies_eq o1 o2 ho, CCExprEquiv_zero_implies_eq i1 i2 hi,
-        CCExprEquiv_zero_implies_eq v1 v2 hv]
-  | .deleteProp o1 p1, .deleteProp o2 p2 =>
-    unfold CCExprEquiv at h; obtain ⟨hp, ho⟩ := h
-    rw [hp, CCExprEquiv_zero_implies_eq o1 o2 ho]
-  | .typeof a1, .typeof a2 =>
-    unfold CCExprEquiv at h; rw [CCExprEquiv_zero_implies_eq a1 a2 h]
-  | .getEnv e1 idx1, .getEnv e2 idx2 =>
-    unfold CCExprEquiv at h; obtain ⟨hi, he⟩ := h
-    rw [hi, CCExprEquiv_zero_implies_eq e1 e2 he]
-  | .makeEnv vs1, .makeEnv vs2 =>
-    unfold CCExprEquiv at h; rw [CCExprListEquiv_zero_implies_eq vs1 vs2 h]
-  | .makeClosure fi1 e1, .makeClosure fi2 e2 =>
-    unfold CCExprEquiv at h; obtain ⟨hfi, he⟩ := h
-    have : fi1 = fi2 := by omega
-    rw [this, CCExprEquiv_zero_implies_eq e1 e2 he]
-  | .objectLit ps1, .objectLit ps2 =>
-    unfold CCExprEquiv at h; rw [CCPropListEquiv_zero_implies_eq ps1 ps2 h]
-  | .arrayLit es1, .arrayLit es2 =>
-    unfold CCExprEquiv at h; rw [CCExprListEquiv_zero_implies_eq es1 es2 h]
-  | .throw a1, .throw a2 =>
-    unfold CCExprEquiv at h; rw [CCExprEquiv_zero_implies_eq a1 a2 h]
-  | .tryCatch b1 cp1 cb1 f1, .tryCatch b2 cp2 cb2 f2 =>
-    unfold CCExprEquiv at h; obtain ⟨hcp, hb, hcb, hf⟩ := h
-    rw [hcp, CCExprEquiv_zero_implies_eq b1 b2 hb, CCExprEquiv_zero_implies_eq cb1 cb2 hcb,
-        CCOptExprEquiv_zero_implies_eq f1 f2 hf]
-  | .while_ c1 b1, .while_ c2 b2 =>
-    unfold CCExprEquiv at h; obtain ⟨hc, hb⟩ := h
-    rw [CCExprEquiv_zero_implies_eq c1 c2 hc, CCExprEquiv_zero_implies_eq b1 b2 hb]
-  | .«break» l1, .«break» l2 => unfold CCExprEquiv at h; exact congrArg _ h
-  | .«continue» l1, .«continue» l2 => unfold CCExprEquiv at h; exact congrArg _ h
-  | .labeled l1 b1, .labeled l2 b2 =>
-    unfold CCExprEquiv at h; obtain ⟨hl, hb⟩ := h
-    rw [hl, CCExprEquiv_zero_implies_eq b1 b2 hb]
-  | .«return» a1, .«return» a2 =>
-    unfold CCExprEquiv at h; rw [CCOptExprEquiv_zero_implies_eq a1 a2 h]
-  | .yield a1 d1, .yield a2 d2 =>
-    unfold CCExprEquiv at h; obtain ⟨hd, ha⟩ := h
-    rw [hd, CCOptExprEquiv_zero_implies_eq a1 a2 ha]
-  | .await a1, .await a2 =>
-    unfold CCExprEquiv at h; rw [CCExprEquiv_zero_implies_eq a1 a2 h]
-  | .lit _, .var _ | .lit _, .this | .lit _, .«let» _ _ _ | .lit _, .assign _ _ | .lit _, .«if» _ _ _
-  | .lit _, .seq _ _ | .lit _, .call _ _ _ | .lit _, .newObj _ _ _ | .lit _, .getProp _ _
-  | .lit _, .setProp _ _ _ | .lit _, .getIndex _ _ | .lit _, .setIndex _ _ _ | .lit _, .deleteProp _ _
-  | .lit _, .typeof _ | .lit _, .getEnv _ _ | .lit _, .makeEnv _ | .lit _, .makeClosure _ _
-  | .lit _, .objectLit _ | .lit _, .arrayLit _ | .lit _, .throw _ | .lit _, .tryCatch _ _ _ _
-  | .lit _, .while_ _ _ | .lit _, .«break» _ | .lit _, .«continue» _ | .lit _, .labeled _ _
-  | .lit _, .«return» _ | .lit _, .yield _ _ | .lit _, .await _
-  | .lit _, .unary _ _ | .lit _, .binary _ _ _ =>
-    unfold CCExprEquiv at h; exact absurd h id
-  | .var _, .lit _ | .var _, .this | .var _, .«let» _ _ _ | .var _, .assign _ _ | .var _, .«if» _ _ _
-  | .var _, .seq _ _ | .var _, .call _ _ _ | .var _, .newObj _ _ _ | .var _, .getProp _ _
-  | .var _, .setProp _ _ _ | .var _, .getIndex _ _ | .var _, .setIndex _ _ _ | .var _, .deleteProp _ _
-  | .var _, .typeof _ | .var _, .getEnv _ _ | .var _, .makeEnv _ | .var _, .makeClosure _ _
-  | .var _, .objectLit _ | .var _, .arrayLit _ | .var _, .throw _ | .var _, .tryCatch _ _ _ _
-  | .var _, .while_ _ _ | .var _, .«break» _ | .var _, .«continue» _ | .var _, .labeled _ _
-  | .var _, .«return» _ | .var _, .yield _ _ | .var _, .await _
-  | .var _, .unary _ _ | .var _, .binary _ _ _ =>
-    unfold CCExprEquiv at h; exact absurd h id
-  | .unary op1 a1, .unary op2 a2 =>
-    unfold CCExprEquiv at h; obtain ⟨hop, ha⟩ := h
-    rw [hop, CCExprEquiv_zero_implies_eq a1 a2 ha]
-  | .binary op1 l1 r1, .binary op2 l2 r2 =>
-    unfold CCExprEquiv at h; obtain ⟨hop, hl, hr⟩ := h
-    rw [hop, CCExprEquiv_zero_implies_eq l1 l2 hl, CCExprEquiv_zero_implies_eq r1 r2 hr]
-private theorem CCExprListEquiv_zero_implies_eq : ∀ (es1 es2 : List Flat.Expr),
-    CCExprListEquiv 0 es1 es2 → es1 = es2 := by
-  intro es1 es2 h
-  match es1, es2 with
-  | [], [] => rfl
-  | e1 :: r1, e2 :: r2 =>
-    unfold CCExprListEquiv at h; obtain ⟨he, hr⟩ := h
-    rw [CCExprEquiv_zero_implies_eq e1 e2 he, CCExprListEquiv_zero_implies_eq r1 r2 hr]
-  | [], _ :: _ | _ :: _, [] => unfold CCExprListEquiv at h; exact absurd h id
-private theorem CCPropListEquiv_zero_implies_eq : ∀ (ps1 ps2 : List (Flat.PropName × Flat.Expr)),
-    CCPropListEquiv 0 ps1 ps2 → ps1 = ps2 := by
-  intro ps1 ps2 h
-  match ps1, ps2 with
-  | [], [] => rfl
-  | (p1, e1) :: r1, (p2, e2) :: r2 =>
-    unfold CCPropListEquiv at h; obtain ⟨hp, he, hr⟩ := h
-    rw [hp, CCExprEquiv_zero_implies_eq e1 e2 he, CCPropListEquiv_zero_implies_eq r1 r2 hr]
-  | [], _ :: _ | _ :: _, [] => unfold CCPropListEquiv at h; exact absurd h id
-private theorem CCOptExprEquiv_zero_implies_eq : ∀ (oe1 oe2 : Option Flat.Expr),
-    CCOptExprEquiv 0 oe1 oe2 → oe1 = oe2 := by
-  intro oe1 oe2 h
-  match oe1, oe2 with
-  | none, none => rfl
-  | some e1, some e2 =>
-    unfold CCOptExprEquiv at h; rw [CCExprEquiv_zero_implies_eq e1 e2 h]
-  | none, some _ | some _, none => unfold CCOptExprEquiv at h; exact absurd h id
-end
-
 /-! #### convertExpr produces identical outer expressions when funcs.size agrees.
     Since the outer expression depends only on `funcs.size` (not `nextId`),
-    equal `funcs.size` implies equal expressions. This follows from
-    `convertExpr_CCExprEquiv_shifted` at δ=0 and `CCExprEquiv_zero_implies_eq`. -/
+    equal `funcs.size` implies equal expressions AND equal output `funcs.size`.
+    This is proved directly by structural induction, following the pattern of
+    `convertExpr_state_determined` but only requiring funcs.size agreement.
+    Key insight: `freshVar` (which depends on nextId) only affects FuncDef bodies
+    (which go into the funcs list), never the outer expression tree. The outer
+    expression depends solely on `funcs.size` (through `makeClosure` indices). -/
 
 mutual
 private theorem convertExpr_expr_eq_of_funcs_size (e : Core.Expr)
@@ -1707,12 +1574,163 @@ private theorem convertExpr_expr_eq_of_funcs_size (e : Core.Expr)
     (Flat.convertExpr e scope envVar envMap st2).fst ∧
     (Flat.convertExpr e scope envVar envMap st1).snd.funcs.size =
     (Flat.convertExpr e scope envVar envMap st2).snd.funcs.size := by
-  constructor
-  · exact CCExprEquiv_zero_implies_eq _ _
-      (convertExpr_CCExprEquiv_shifted e scope envVar envMap st1 st2 0 (by omega))
-  · have hd1 := convertExpr_state_delta e scope envVar envMap st1
-    have hd2 := convertExpr_state_delta e scope envVar envMap st2
-    omega
+  cases e with
+  | lit v => simp [Flat.convertExpr, hsz]
+  | var n =>
+    simp only [Flat.convertExpr]
+    cases Flat.lookupEnv envMap n <;> simp [hsz]
+  | this => simp [Flat.convertExpr, hsz]
+  | «break» l => simp [Flat.convertExpr, hsz]
+  | «continue» l => simp [Flat.convertExpr, hsz]
+  | forIn _ _ _ => simp [Flat.convertExpr, hsz]
+  | forOf _ _ _ => simp [Flat.convertExpr, hsz]
+  | «let» name init body =>
+    simp only [Flat.convertExpr]
+    have hi := convertExpr_expr_eq_of_funcs_size init scope envVar envMap st1 st2 hsz
+    have hb := convertExpr_expr_eq_of_funcs_size body (name :: scope) envVar envMap _ _ hi.2
+    exact ⟨by rw [hi.1, hb.1], hb.2⟩
+  | assign name value =>
+    simp only [Flat.convertExpr]
+    have hv := convertExpr_expr_eq_of_funcs_size value scope envVar envMap st1 st2 hsz
+    exact ⟨by rw [hv.1], hv.2⟩
+  | «if» cond then_ else_ =>
+    simp only [Flat.convertExpr]
+    have hc := convertExpr_expr_eq_of_funcs_size cond scope envVar envMap st1 st2 hsz
+    have ht := convertExpr_expr_eq_of_funcs_size then_ scope envVar envMap _ _ hc.2
+    have he := convertExpr_expr_eq_of_funcs_size else_ scope envVar envMap _ _ ht.2
+    exact ⟨by rw [hc.1, ht.1, he.1], he.2⟩
+  | seq a b =>
+    simp only [Flat.convertExpr]
+    have ha := convertExpr_expr_eq_of_funcs_size a scope envVar envMap st1 st2 hsz
+    have hb := convertExpr_expr_eq_of_funcs_size b scope envVar envMap _ _ ha.2
+    exact ⟨by rw [ha.1, hb.1], hb.2⟩
+  | call callee args =>
+    simp only [Flat.convertExpr]
+    have hc := convertExpr_expr_eq_of_funcs_size callee scope envVar envMap st1 st2 hsz
+    have ha := convertExprList_expr_eq_of_funcs_size args scope envVar envMap _ _ hc.2
+    exact ⟨by rw [hc.1, ha.1], ha.2⟩
+  | newObj callee args =>
+    simp only [Flat.convertExpr]
+    have hc := convertExpr_expr_eq_of_funcs_size callee scope envVar envMap st1 st2 hsz
+    have ha := convertExprList_expr_eq_of_funcs_size args scope envVar envMap _ _ hc.2
+    exact ⟨by rw [hc.1, ha.1], ha.2⟩
+  | getProp obj prop =>
+    simp only [Flat.convertExpr]
+    have ho := convertExpr_expr_eq_of_funcs_size obj scope envVar envMap st1 st2 hsz
+    exact ⟨by rw [ho.1], ho.2⟩
+  | setProp obj prop value =>
+    simp only [Flat.convertExpr]
+    have ho := convertExpr_expr_eq_of_funcs_size obj scope envVar envMap st1 st2 hsz
+    have hv := convertExpr_expr_eq_of_funcs_size value scope envVar envMap _ _ ho.2
+    exact ⟨by rw [ho.1, hv.1], hv.2⟩
+  | getIndex obj idx =>
+    simp only [Flat.convertExpr]
+    have ho := convertExpr_expr_eq_of_funcs_size obj scope envVar envMap st1 st2 hsz
+    have hi := convertExpr_expr_eq_of_funcs_size idx scope envVar envMap _ _ ho.2
+    exact ⟨by rw [ho.1, hi.1], hi.2⟩
+  | setIndex obj idx value =>
+    simp only [Flat.convertExpr]
+    have ho := convertExpr_expr_eq_of_funcs_size obj scope envVar envMap st1 st2 hsz
+    have hi := convertExpr_expr_eq_of_funcs_size idx scope envVar envMap _ _ ho.2
+    have hv := convertExpr_expr_eq_of_funcs_size value scope envVar envMap _ _ hi.2
+    exact ⟨by rw [ho.1, hi.1, hv.1], hv.2⟩
+  | deleteProp obj prop =>
+    simp only [Flat.convertExpr]
+    have ho := convertExpr_expr_eq_of_funcs_size obj scope envVar envMap st1 st2 hsz
+    exact ⟨by rw [ho.1], ho.2⟩
+  | typeof arg =>
+    simp only [Flat.convertExpr]
+    have ha := convertExpr_expr_eq_of_funcs_size arg scope envVar envMap st1 st2 hsz
+    exact ⟨by rw [ha.1], ha.2⟩
+  | unary op arg =>
+    simp only [Flat.convertExpr]
+    have ha := convertExpr_expr_eq_of_funcs_size arg scope envVar envMap st1 st2 hsz
+    exact ⟨by rw [ha.1], ha.2⟩
+  | binary op lhs rhs =>
+    simp only [Flat.convertExpr]
+    have hl := convertExpr_expr_eq_of_funcs_size lhs scope envVar envMap st1 st2 hsz
+    have hr := convertExpr_expr_eq_of_funcs_size rhs scope envVar envMap _ _ hl.2
+    exact ⟨by rw [hl.1, hr.1], hr.2⟩
+  | objectLit props =>
+    simp only [Flat.convertExpr]
+    have hp := convertPropList_expr_eq_of_funcs_size props scope envVar envMap st1 st2 hsz
+    exact ⟨by rw [hp.1], hp.2⟩
+  | arrayLit elems =>
+    simp only [Flat.convertExpr]
+    have he := convertExprList_expr_eq_of_funcs_size elems scope envVar envMap st1 st2 hsz
+    exact ⟨by rw [he.1], he.2⟩
+  | functionDef fname params body _isAsync _isGenerator =>
+    -- The outer expression is .makeClosure funcIdx envExpr.
+    -- funcIdx = output.funcs.size after body conversion, which depends only on input funcs.size.
+    -- envExpr depends only on parent scope/envMap, not on nextId.
+    -- The body is converted with possibly different envVar (from freshVar depending on nextId),
+    -- but this only affects the FuncDef body, not the outer expression.
+    unfold Flat.convertExpr
+    simp only [Flat.CCState.freshVar, Flat.CCState.addFunc]
+    -- Body conversion may use different envVar names (from different nextId), but output funcs.size
+    -- is determined by input funcs.size + exprFuncCount(body).
+    have hd1 := convertExpr_state_delta body params
+      (toString "__env" ++ toString "_" ++ toString st1.nextId)
+      (Flat.indexedMap (Flat.dedupStrings
+        (match fname with
+        | some n => List.filter (fun x => x != n) (List.filter (fun v => !List.elem v params) (Flat.freeVars body))
+        | none => List.filter (fun v => !List.elem v params) (Flat.freeVars body)) []) 0)
+      { funcs := st1.funcs, nextId := st1.nextId + 1 }
+    have hd2 := convertExpr_state_delta body params
+      (toString "__env" ++ toString "_" ++ toString st2.nextId)
+      (Flat.indexedMap (Flat.dedupStrings
+        (match fname with
+        | some n => List.filter (fun x => x != n) (List.filter (fun v => !List.elem v params) (Flat.freeVars body))
+        | none => List.filter (fun v => !List.elem v params) (Flat.freeVars body)) []) 0)
+      { funcs := st2.funcs, nextId := st2.nextId + 1 }
+    refine ⟨?_, ?_⟩
+    · -- .fst: .makeClosure funcIdx envExpr — funcIdx depends only on output funcs.size
+      show Flat.Expr.makeClosure _ _ = Flat.Expr.makeClosure _ _
+      have hsz_out : (Flat.convertExpr body _ _ _ { funcs := st1.funcs, nextId := st1.nextId + 1 }).snd.funcs.size =
+          (Flat.convertExpr body _ _ _ { funcs := st2.funcs, nextId := st2.nextId + 1 }).snd.funcs.size := by
+        rw [hd1.2, hd2.2]; simp [hsz]
+      exact congrArg (Flat.Expr.makeClosure · _) hsz_out
+    · -- funcs.size: addFunc increments by 1
+      show Array.size _ = Array.size _
+      simp only [Array.size_push]
+      have hsz_out : (Flat.convertExpr body _ _ _ { funcs := st1.funcs, nextId := st1.nextId + 1 }).snd.funcs.size =
+          (Flat.convertExpr body _ _ _ { funcs := st2.funcs, nextId := st2.nextId + 1 }).snd.funcs.size := by
+        rw [hd1.2, hd2.2]; simp [hsz]
+      exact congrArg (· + 1) hsz_out
+  | throw arg =>
+    simp only [Flat.convertExpr]
+    have ha := convertExpr_expr_eq_of_funcs_size arg scope envVar envMap st1 st2 hsz
+    exact ⟨by rw [ha.1], ha.2⟩
+  | tryCatch body catchParam catchBody finally_ =>
+    simp only [Flat.convertExpr]
+    have hb := convertExpr_expr_eq_of_funcs_size body scope envVar envMap st1 st2 hsz
+    have hc := convertExpr_expr_eq_of_funcs_size catchBody (catchParam :: scope) envVar envMap _ _ hb.2
+    have hf := convertOptExpr_expr_eq_of_funcs_size finally_ scope envVar envMap _ _ hc.2
+    exact ⟨by rw [hb.1, hc.1, hf.1], hf.2⟩
+  | while_ cond body =>
+    simp only [Flat.convertExpr]
+    have hc := convertExpr_expr_eq_of_funcs_size cond scope envVar envMap st1 st2 hsz
+    have hb := convertExpr_expr_eq_of_funcs_size body scope envVar envMap _ _ hc.2
+    exact ⟨by rw [hc.1, hb.1], hb.2⟩
+  | «return» arg =>
+    simp only [Flat.convertExpr]
+    have ha := convertOptExpr_expr_eq_of_funcs_size arg scope envVar envMap st1 st2 hsz
+    exact ⟨by rw [ha.1], ha.2⟩
+  | labeled label body =>
+    simp only [Flat.convertExpr]
+    have hb := convertExpr_expr_eq_of_funcs_size body scope envVar envMap st1 st2 hsz
+    exact ⟨by rw [hb.1], hb.2⟩
+  | yield arg delegate =>
+    simp only [Flat.convertExpr]
+    have ha := convertOptExpr_expr_eq_of_funcs_size arg scope envVar envMap st1 st2 hsz
+    exact ⟨by rw [ha.1], ha.2⟩
+  | await arg =>
+    simp only [Flat.convertExpr]
+    have ha := convertExpr_expr_eq_of_funcs_size arg scope envVar envMap st1 st2 hsz
+    exact ⟨by rw [ha.1], ha.2⟩
+  termination_by sizeOf e
+  decreasing_by all_goals (try cases ‹Option Core.Expr›) <;> simp_wf <;> omega
+
 private theorem convertExprList_expr_eq_of_funcs_size (es : List Core.Expr)
     (scope : List String) (envVar : String) (envMap : Flat.EnvMapping)
     (st1 st2 : Flat.CCState) (hsz : st1.funcs.size = st2.funcs.size) :
@@ -1720,12 +1738,14 @@ private theorem convertExprList_expr_eq_of_funcs_size (es : List Core.Expr)
     (Flat.convertExprList es scope envVar envMap st2).fst ∧
     (Flat.convertExprList es scope envVar envMap st1).snd.funcs.size =
     (Flat.convertExprList es scope envVar envMap st2).snd.funcs.size := by
-  constructor
-  · exact CCExprListEquiv_zero_implies_eq _ _
-      (convertExprList_CCExprEquiv_shifted es scope envVar envMap st1 st2 0 (by omega))
-  · have hd1 := convertExprList_state_delta es scope envVar envMap st1
-    have hd2 := convertExprList_state_delta es scope envVar envMap st2
-    omega
+  cases es with
+  | nil => simp [Flat.convertExprList, hsz]
+  | cons e rest =>
+    simp only [Flat.convertExprList]
+    have he := convertExpr_expr_eq_of_funcs_size e scope envVar envMap st1 st2 hsz
+    have hr := convertExprList_expr_eq_of_funcs_size rest scope envVar envMap _ _ he.2
+    exact ⟨by rw [he.1, hr.1], hr.2⟩
+
 private theorem convertPropList_expr_eq_of_funcs_size (ps : List (Core.PropName × Core.Expr))
     (scope : List String) (envVar : String) (envMap : Flat.EnvMapping)
     (st1 st2 : Flat.CCState) (hsz : st1.funcs.size = st2.funcs.size) :
@@ -1733,12 +1753,14 @@ private theorem convertPropList_expr_eq_of_funcs_size (ps : List (Core.PropName 
     (Flat.convertPropList ps scope envVar envMap st2).fst ∧
     (Flat.convertPropList ps scope envVar envMap st1).snd.funcs.size =
     (Flat.convertPropList ps scope envVar envMap st2).snd.funcs.size := by
-  constructor
-  · exact CCPropListEquiv_zero_implies_eq _ _
-      (convertPropList_CCExprEquiv_shifted ps scope envVar envMap st1 st2 0 (by omega))
-  · have hd1 := convertPropList_state_delta ps scope envVar envMap st1
-    have hd2 := convertPropList_state_delta ps scope envVar envMap st2
-    omega
+  cases ps with
+  | nil => simp [Flat.convertPropList, hsz]
+  | cons p rest =>
+    simp only [Flat.convertPropList]
+    have he := convertExpr_expr_eq_of_funcs_size p.2 scope envVar envMap st1 st2 hsz
+    have hr := convertPropList_expr_eq_of_funcs_size rest scope envVar envMap _ _ he.2
+    exact ⟨by rw [he.1, hr.1], hr.2⟩
+
 private theorem convertOptExpr_expr_eq_of_funcs_size (oe : Option Core.Expr)
     (scope : List String) (envVar : String) (envMap : Flat.EnvMapping)
     (st1 st2 : Flat.CCState) (hsz : st1.funcs.size = st2.funcs.size) :
@@ -1746,12 +1768,11 @@ private theorem convertOptExpr_expr_eq_of_funcs_size (oe : Option Core.Expr)
     (Flat.convertOptExpr oe scope envVar envMap st2).fst ∧
     (Flat.convertOptExpr oe scope envVar envMap st1).snd.funcs.size =
     (Flat.convertOptExpr oe scope envVar envMap st2).snd.funcs.size := by
-  constructor
-  · exact CCOptExprEquiv_zero_implies_eq _ _
-      (convertOptExpr_CCExprEquiv_shifted oe scope envVar envMap st1 st2 0 (by omega))
-  · have hd1 := convertOptExpr_state_delta oe scope envVar envMap st1
-    have hd2 := convertOptExpr_state_delta oe scope envVar envMap st2
-    omega
+  cases oe with
+  | none => simp [Flat.convertOptExpr, hsz]
+  | some e =>
+    simp only [Flat.convertOptExpr]
+    exact convertExpr_expr_eq_of_funcs_size e scope envVar envMap st1 st2 hsz
 end
 
 /-! #### Equality implies CCExprEquiv: if two expressions are equal, they are CCExprEquiv for any δ.
