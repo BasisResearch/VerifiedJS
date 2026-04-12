@@ -16333,26 +16333,102 @@ private theorem hasThrowInHead_compound_throw_step_sim
               by rw [observableTrace_append, hobs_f, hobs_r]; simp⟩
     | call_args h_sub =>
       rename_i f envExpr args
+      -- After rename_i: envExpr=funcIdx (1st), f=envPtr (2nd), args=args (3rd)
+      -- h_sub : HasThrowInHeadList args
       simp only [ANF.normalizeExpr] at hnorm'
-      by_cases hf : HasThrowInHead f
-      · exact throwInHead_compound_lift hf
-          (fun s inner hv t si hs he => step?_call_func_ctx s inner envExpr args hv t si hs he)
-          (fun s inner hv msg si hs => step?_call_func_error s inner envExpr args hv msg si hs)
-          (ih f _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) hf hnorm'
+      by_cases henv : HasThrowInHead envExpr
+      · -- funcIdx has throw: direct lift through func context
+        exact throwInHead_compound_lift henv
+          (fun s inner hv t si hs he => step?_call_func_ctx s inner f args hv t si hs he)
+          (fun s inner hv msg si hs => step?_call_func_error s inner f args hv msg si hs)
+          (ih envExpr _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) henv hnorm'
             (fun x hfx => hewf' x (VarFreeIn.call_func _ _ _ _ hfx))
             (by cases hna' with | call ha _ _ => exact ha) trace')
-      · sorry -- list: f and env evaluate, then args list steps
+      · -- funcIdx no throw: evaluate it, then check envPtr
+        rcases ANF.normalizeExpr_throw_or_k envExpr _ arg' n' m' hnorm' with henv' | ⟨_, n₁, m₁, hcont₁⟩
+        · exact absurd henv' henv
+        · have htc_env := no_throw_head_implies_trivial_chain envExpr.depth envExpr (Nat.le_refl _) _ arg' n' m' hnorm' henv
+          obtain ⟨venv, evs_env, hsteps_env, hnoerr_env, hobs_env, hpres_env⟩ :=
+            trivialChain_eval_value (trivialChainCost envExpr) envExpr env heap trace' funcs cs htc_env
+              (Nat.le_refl _) (fun x hfx => hewf' x (VarFreeIn.call_func _ _ _ _ hfx))
+          obtain ⟨ws_env, hwsteps_env, _, _, _, _, _, _⟩ :=
+            Steps_call_func_ctx_b f args hsteps_env hnoerr_env
+              (fun smid evs1 h _ => hpres_env smid evs1 h)
+          have hws_env_eq : ws_env = ⟨.call (.lit venv) f args, env, heap, trace' ++ evs_env, funcs, cs⟩ := by
+            cases ws_env; simp_all
+          by_cases hf : HasThrowInHead f
+          · -- envPtr has throw: eval funcIdx, lift envPtr through env context
+            obtain ⟨ih_ok, ih_err⟩ :=
+              throwInHead_compound_lift hf
+                (fun s inner hv t si hs he => step?_call_env_ctx s venv inner args hv t si hs he)
+                (fun s inner hv msg si hs => step?_call_env_error s venv inner args hv msg si hs)
+                (ih f _ arg' n₁ m₁ (by simp [Flat.Expr.depth] at hd; omega) hf hcont₁
+                  (fun x hfx => hewf' x (VarFreeIn.call_env _ _ _ _ hfx))
+                  (by cases hna' with | call _ ha _ => exact ha) (trace' ++ evs_env))
+            refine ⟨fun v heval => ?_, fun msg heval => ?_⟩
+            · obtain ⟨evs_r, sf_r, hsteps_r, hexpr_r, henv_r, hheap_r, htrace_r, hobs_r⟩ := ih_ok v heval
+              exact ⟨evs_env ++ evs_r, sf_r,
+                Flat.Steps_trans (hws_env_eq ▸ hwsteps_env) hsteps_r,
+                hexpr_r, henv_r, hheap_r,
+                by rw [htrace_r]; simp [List.append_assoc],
+                by rw [observableTrace_append, hobs_env, hobs_r]; simp⟩
+            · obtain ⟨evs_r, sf_r, hsteps_r, hexpr_r, henv_r, hheap_r, htrace_r, hobs_r⟩ := ih_err msg heval
+              exact ⟨evs_env ++ evs_r, sf_r,
+                Flat.Steps_trans (hws_env_eq ▸ hwsteps_env) hsteps_r,
+                hexpr_r, henv_r, hheap_r,
+                by rw [htrace_r]; simp [List.append_assoc],
+                by rw [observableTrace_append, hobs_env, hobs_r]; simp⟩
+          · -- envPtr no throw: evaluate both, then handle args list
+            sorry -- list case: funcIdx and envPtr evaluated, args list has throw
     | newObj_args h_sub =>
       rename_i f envExpr args
+      -- After rename_i: envExpr=funcIdx (1st), f=envPtr (2nd), args=args (3rd)
+      -- h_sub : HasThrowInHeadList args
       simp only [ANF.normalizeExpr] at hnorm'
-      by_cases hf : HasThrowInHead f
-      · exact throwInHead_compound_lift hf
-          (fun s inner hv t si hs he => step?_newObj_func_ctx s inner envExpr args hv t si hs he)
-          (fun s inner hv msg si hs => step?_newObj_func_error s inner envExpr args hv msg si hs)
-          (ih f _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) hf hnorm'
+      by_cases henv : HasThrowInHead envExpr
+      · -- funcIdx has throw: direct lift through func context
+        exact throwInHead_compound_lift henv
+          (fun s inner hv t si hs he => step?_newObj_func_ctx s inner f args hv t si hs he)
+          (fun s inner hv msg si hs => step?_newObj_func_error s inner f args hv msg si hs)
+          (ih envExpr _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) henv hnorm'
             (fun x hfx => hewf' x (VarFreeIn.newObj_func _ _ _ _ hfx))
             (by cases hna' with | newObj ha _ _ => exact ha) trace')
-      · sorry -- list: f and env evaluate, then args list steps
+      · -- funcIdx no throw: evaluate it, then check envPtr
+        rcases ANF.normalizeExpr_throw_or_k envExpr _ arg' n' m' hnorm' with henv' | ⟨_, n₁, m₁, hcont₁⟩
+        · exact absurd henv' henv
+        · have htc_env := no_throw_head_implies_trivial_chain envExpr.depth envExpr (Nat.le_refl _) _ arg' n' m' hnorm' henv
+          obtain ⟨venv, evs_env, hsteps_env, hnoerr_env, hobs_env, hpres_env⟩ :=
+            trivialChain_eval_value (trivialChainCost envExpr) envExpr env heap trace' funcs cs htc_env
+              (Nat.le_refl _) (fun x hfx => hewf' x (VarFreeIn.newObj_func _ _ _ _ hfx))
+          obtain ⟨ws_env, hwsteps_env, _, _, _, _, _, _⟩ :=
+            Steps_newObj_func_ctx_b f args hsteps_env hnoerr_env
+              (fun smid evs1 h _ => hpres_env smid evs1 h)
+          have hws_env_eq : ws_env = ⟨.newObj (.lit venv) f args, env, heap, trace' ++ evs_env, funcs, cs⟩ := by
+            cases ws_env; simp_all
+          by_cases hf : HasThrowInHead f
+          · -- envPtr has throw: eval funcIdx, lift envPtr through env context
+            obtain ⟨ih_ok, ih_err⟩ :=
+              throwInHead_compound_lift hf
+                (fun s inner hv t si hs he => step?_newObj_env_ctx s venv inner args hv t si hs he)
+                (fun s inner hv msg si hs => step?_newObj_env_error s venv inner args hv msg si hs)
+                (ih f _ arg' n₁ m₁ (by simp [Flat.Expr.depth] at hd; omega) hf hcont₁
+                  (fun x hfx => hewf' x (VarFreeIn.newObj_env _ _ _ _ hfx))
+                  (by cases hna' with | newObj _ ha _ => exact ha) (trace' ++ evs_env))
+            refine ⟨fun v heval => ?_, fun msg heval => ?_⟩
+            · obtain ⟨evs_r, sf_r, hsteps_r, hexpr_r, henv_r, hheap_r, htrace_r, hobs_r⟩ := ih_ok v heval
+              exact ⟨evs_env ++ evs_r, sf_r,
+                Flat.Steps_trans (hws_env_eq ▸ hwsteps_env) hsteps_r,
+                hexpr_r, henv_r, hheap_r,
+                by rw [htrace_r]; simp [List.append_assoc],
+                by rw [observableTrace_append, hobs_env, hobs_r]; simp⟩
+            · obtain ⟨evs_r, sf_r, hsteps_r, hexpr_r, henv_r, hheap_r, htrace_r, hobs_r⟩ := ih_err msg heval
+              exact ⟨evs_env ++ evs_r, sf_r,
+                Flat.Steps_trans (hws_env_eq ▸ hwsteps_env) hsteps_r,
+                hexpr_r, henv_r, hheap_r,
+                by rw [htrace_r]; simp [List.append_assoc],
+                by rw [observableTrace_append, hobs_env, hobs_r]; simp⟩
+          · -- envPtr no throw: evaluate both, then handle args list
+            sorry -- list case: funcIdx and envPtr evaluated, args list has throw
     | makeEnv_values h_sub =>
       sorry -- list case: first non-value element in values has throw
     | objectLit_props h_sub =>
