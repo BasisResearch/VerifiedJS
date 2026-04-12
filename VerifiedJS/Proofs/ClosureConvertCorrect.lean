@@ -1652,11 +1652,11 @@ private theorem convertExpr_CCExprEquiv_shifted (e : Core.Expr)
       (Flat.convertExpr init scope envVar envMap st1).snd
       (Flat.convertExpr init scope envVar envMap st2).snd δ
       (by rw [hd1.1, hd2.1, hid]) (by rw [hd2.2, hd1.2, hsz]; omega)
-    simp only [CCExprEquiv]; exact ⟨rfl, hi, hb⟩
+    simp only [CCExprEquiv]; exact ⟨trivial, hi, hb⟩
   | assign name value =>
     simp only [Flat.convertExpr]
     have hv := convertExpr_CCExprEquiv_shifted value scope envVar envMap st1 st2 δ hid hsz
-    simp only [CCExprEquiv]; exact ⟨rfl, hv⟩
+    simp only [CCExprEquiv]; exact ⟨trivial, hv⟩
   | «if» cond then_ else_ =>
     simp only [Flat.convertExpr]
     have hd1c := convertExpr_state_delta cond scope envVar envMap st1
@@ -1692,7 +1692,7 @@ private theorem convertExpr_CCExprEquiv_shifted (e : Core.Expr)
     have hc := convertExpr_CCExprEquiv_shifted callee scope envVar envMap st1 st2 δ hid hsz
     have ha := convertExprList_CCExprEquiv_shifted args scope envVar envMap _ _ δ
       (by rw [hd1.1, hd2.1, hid]) (by rw [hd2.2, hd1.2, hsz]; omega)
-    simp only [CCExprEquiv]; exact ⟨hc, show _ from rfl, ha⟩
+    simp only [CCExprEquiv]; exact ⟨hc, trivial, ha⟩
   | newObj callee args =>
     simp only [Flat.convertExpr]
     have hd1 := convertExpr_state_delta callee scope envVar envMap st1
@@ -1700,11 +1700,11 @@ private theorem convertExpr_CCExprEquiv_shifted (e : Core.Expr)
     have hc := convertExpr_CCExprEquiv_shifted callee scope envVar envMap st1 st2 δ hid hsz
     have ha := convertExprList_CCExprEquiv_shifted args scope envVar envMap _ _ δ
       (by rw [hd1.1, hd2.1, hid]) (by rw [hd2.2, hd1.2, hsz]; omega)
-    simp only [CCExprEquiv]; exact ⟨hc, show _ from rfl, ha⟩
+    simp only [CCExprEquiv]; exact ⟨hc, trivial, ha⟩
   | getProp obj prop =>
     simp only [Flat.convertExpr]
     have ho := convertExpr_CCExprEquiv_shifted obj scope envVar envMap st1 st2 δ hid hsz
-    simp only [CCExprEquiv]; exact ⟨rfl, ho⟩
+    simp only [CCExprEquiv]; exact ⟨trivial, ho⟩
   | setProp obj prop value =>
     simp only [Flat.convertExpr]
     have hd1 := convertExpr_state_delta obj scope envVar envMap st1
@@ -1712,7 +1712,7 @@ private theorem convertExpr_CCExprEquiv_shifted (e : Core.Expr)
     have ho := convertExpr_CCExprEquiv_shifted obj scope envVar envMap st1 st2 δ hid hsz
     have hv := convertExpr_CCExprEquiv_shifted value scope envVar envMap _ _ δ
       (by rw [hd1.1, hd2.1, hid]) (by rw [hd2.2, hd1.2, hsz]; omega)
-    simp only [CCExprEquiv]; exact ⟨rfl, ho, hv⟩
+    simp only [CCExprEquiv]; exact ⟨trivial, ho, hv⟩
   | getIndex obj idx =>
     simp only [Flat.convertExpr]
     have hd1 := convertExpr_state_delta obj scope envVar envMap st1
@@ -1737,7 +1737,7 @@ private theorem convertExpr_CCExprEquiv_shifted (e : Core.Expr)
   | deleteProp obj prop =>
     simp only [Flat.convertExpr]
     have ho := convertExpr_CCExprEquiv_shifted obj scope envVar envMap st1 st2 δ hid hsz
-    simp only [CCExprEquiv]; exact ⟨rfl, ho⟩
+    simp only [CCExprEquiv]; exact ⟨trivial, ho⟩
   | typeof arg =>
     simp only [Flat.convertExpr]
     exact convertExpr_CCExprEquiv_shifted arg scope envVar envMap st1 st2 δ hid hsz
@@ -1751,7 +1751,7 @@ private theorem convertExpr_CCExprEquiv_shifted (e : Core.Expr)
     have hl := convertExpr_CCExprEquiv_shifted lhs scope envVar envMap st1 st2 δ hid hsz
     have hr := convertExpr_CCExprEquiv_shifted rhs scope envVar envMap _ _ δ
       (by rw [hd1.1, hd2.1, hid]) (by rw [hd2.2, hd1.2, hsz]; omega)
-    simp only [CCExprEquiv]; exact ⟨rfl, hl, hr⟩
+    simp only [CCExprEquiv]; exact ⟨trivial, hl, hr⟩
   | objectLit props =>
     simp only [Flat.convertExpr, CCExprEquiv]
     exact convertPropList_CCExprEquiv_shifted props scope envVar envMap st1 st2 δ hid hsz
@@ -1820,7 +1820,7 @@ private theorem convertExpr_CCExprEquiv_shifted (e : Core.Expr)
     have hc := convertExpr_CCExprEquiv_shifted catchBody (catchParam :: scope) envVar envMap _ _ δ hid_b hsz_b
     have hf := convertOptExpr_CCExprEquiv_shifted finally_ scope envVar envMap _ _ δ
       (by rw [hd1c.1, hd2c.1, hid_b]) (by rw [hd2c.2, hd1c.2, hsz_b]; omega)
-    simp only [CCExprEquiv]; exact ⟨rfl, hb, hc, hf⟩
+    simp only [CCExprEquiv]; exact ⟨trivial, hb, hc, hf⟩
   | while_ cond body =>
     simp only [Flat.convertExpr]
     have hd1 := convertExpr_state_delta cond scope envVar envMap st1
@@ -1880,7 +1880,7 @@ private theorem convertPropList_CCExprEquiv_shifted (ps : List (Core.PropName ×
     have he := convertExpr_CCExprEquiv_shifted p.2 scope envVar envMap st1 st2 δ hid hsz
     have hr := convertPropList_CCExprEquiv_shifted rest scope envVar envMap _ _ δ
       (by rw [hd1.1, hd2.1, hid]) (by rw [hd2.2, hd1.2, hsz]; omega)
-    simp only [CCPropListEquiv]; exact ⟨rfl, he, hr⟩
+    simp only [CCPropListEquiv]; exact ⟨trivial, he, hr⟩
   termination_by sizeOf ps
   decreasing_by all_goals (try simp_wf) <;> omega
 
