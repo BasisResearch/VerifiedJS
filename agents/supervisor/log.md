@@ -1693,3 +1693,63 @@ All three agents spent this cycle on **infrastructure** rather than directly clo
 
 ## Run: 2026-04-12T17:05:01+00:00
 
+
+## Run: 2026-04-12T17:05:01+00:00
+
+### Metrics
+- **ANF sorry lines**: 26 (down from 28 — L18163 CLOSED by wasmspec)
+- **CC sorry occurrences**: 27 on 24 lines (unchanged — jsspec just started sandwich run)
+- **Total sorry occurrences**: 53 (ANF 26 + CC 27)
+- **BUILD**: Clean (verified)
+- **Delta from last run (16:05)**: -2 (L18163 closed)
+
+### What happened since 16:05
+
+**wasmspec (15:30-16:39):**
+- CLOSED L18163 (step_error_noNonCallFrameTryCatch_isLit) ✓
+- Uncommented ~450-line proof, fixed tryCatch depth case + 34 simp→contradiction fixes
+- Also closed L18158 inline sorry + L32673 hncfr_prog
+- Remaining: L19377 (HasNonCallFrameTryCatchInHead), L32634 (ncfr preservation)
+
+**proof (16:30-??):**
+- Started working on L18163 (P4) — BUT wasmspec already closed it at 16:35
+- Proof agent is duplicating work. REDIRECTED in prompt to P1 (while condition)
+
+**jsspec (17:01-??):**
+- Just started funcs.size sandwich argument run. Good direction, let it proceed.
+
+### Agent Prompts Updated (all 3)
+
+1. **proof**: REDIRECTED from P4 (DONE) → P1 (while condition L24993/L24981). P4/L18163 explicitly marked as closed, DO NOT TOUCH. Execution order: P1 → P2 → P0 → P3.
+
+2. **jsspec**: Reinforced sandwich argument with clearer `convertExpr_state_delta` tactic template. Added explicit omega proof sketch. Unchanged strategy, just clearer guidance.
+
+3. **wasmspec**: Acknowledged L18163 closure. Reframed P0 (L32634) with two strategies:
+   - Strategy B (new): check if ANF_SimRel implies ncfr (simpler)
+   - Strategy A (existing): case split mirroring anfConvert_step_star
+   Updated P2 (L19377) analysis of noCallFrameReturn vs HasNonCallFrameTryCatchInHead relationship.
+
+### Sorry Classification (53 total)
+
+**ANF (26):**
+- Blocked infrastructure (12): L11366-L11737
+- HasNonCallFrameTryCatchInHead (1): L19377 — wasmspec P2
+- Compound await/yield/return (5): L24657, L24830, L24886, L24890, L24891 — proof P0
+- While condition (2): L24981, L24993 — proof P1
+- If-branch K-mismatch (2): L25718, L25758 — proof P2
+- TryCatch (3): L26599, L26617, L26620 — proof P3
+- ncfr preservation (1): L32634 — wasmspec P0
+
+**CC (27 occurrences on 24 lines):**
+- funcs.size equality (9): group A — jsspec
+- List/PropList hAgreeIn (6 on 3 lines): group B — jsspec
+- hAgreeOut.symm (5): group C — jsspec
+- Unclassified (2): L8027, L10146 — jsspec group D
+- Blocked (3): L6917, L8235, L8246
+- Axiom (1): L8889
+- While dup (1): L10544
+
+### Trend
+- 16:05: 55 → 17:05: 53 (net -2)
+- Proof agent was blocked on P4, wasmspec unblocked it
+- jsspec sandwich argument is the highest-leverage work right now (could close 18+ CC sorries)

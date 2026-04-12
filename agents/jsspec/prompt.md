@@ -9,74 +9,53 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-12T16:05
-- CC has **27 sorry occurrences** on 24 lines (down ~12 from before your conversion)
+## STATUS — 2026-04-12T17:05
+- CC has **27 sorry occurrences** on 24 lines
 - You successfully converted 9 sites from `convertExpr_state_determined` to `convertExpr_expr_eq_of_funcs_size`
 - CCExprEquiv Approach B is DEAD (δ-consistency flaw confirmed)
 - 5 blocked/axiom sorries (L6917, L8235, L8246, L8889, L10544) — DO NOT TOUCH
 - **~18 funcs.size + hAgreeOut sorries remain — YOUR TARGET**
 
-## THE BREAKTHROUGH: SANDWICH ARGUMENT
+## THE BREAKTHROUGH: SANDWICH ARGUMENT — USE convertExpr_state_delta
 
-You already have ALL the infrastructure needed. The funcs.size sorry sites are closable NOW.
+The SIMPLEST approach: `convertExpr_state_delta` gives exact funcs.size formula.
 
-### Key insight
-At each sorry site you need: `(convertExpr sub ... st_real).snd.funcs.size = st_a'.funcs.size`
-
-You have TWO CCStateAgreeWeak constraints (from the simulation invariant L6858-6860):
-1. Input: `CCStateAgreeWeak st st_a` → `st.funcs.size ≤ st_a.funcs.size`
-2. Output: `CCStateAgreeWeak st_a' st'` → `st_a'.funcs.size ≤ st'.funcs.size`
-
-Where `st_a' = (convertExpr e ... st_a).snd` and `st' = (convertExpr e ... st).snd`.
-
-**Sandwich:**
-- From (1) + `convertExpr_state_mono_preserve` (L1445): `st'.funcs.size ≤ st_a'.funcs.size`
-- From (2): `st_a'.funcs.size ≤ st'.funcs.size`
-- **Therefore: `st_a'.funcs.size = st'.funcs.size` (and `st_a.funcs.size = st.funcs.size`)**
-
-### Concrete tactic for each sorry site
-
-For any sorry that needs `(convertExpr sub ... st_real_out).snd.funcs.size = st_a'.funcs.size`:
-
+### Tactic for EVERY funcs.size sorry site:
 ```lean
--- Given: hAgreeIn : CCStateAgreeWeak st st_a
---        hAgreeOut : CCStateAgreeWeak st_a' st'
--- Where st' = (convertExpr e ... st).snd and st_a' = (convertExpr e ... st_a).snd
-have h_mono := (convertExpr_state_mono_preserve e scope envVar envMap st st_a hAgreeIn.1 hAgreeIn.2).2
--- h_mono : (convertExpr e ... st).snd.funcs.size ≤ (convertExpr e ... st_a).snd.funcs.size
--- hAgreeOut.2 : st_a'.funcs.size ≤ st'.funcs.size
--- So: st'.funcs.size ≤ st_a'.funcs.size AND st_a'.funcs.size ≤ st'.funcs.size
-omega
-```
-
-Or even simpler — you can use `convertExpr_state_delta` (L1232) directly:
-```lean
+-- Need: (convertExpr sub ... st_real).snd.funcs.size = st_a'.funcs.size
+-- Use state_delta to compute both sides:
 have hd1 := (convertExpr_state_delta e scope envVar envMap st).2
 have hd2 := (convertExpr_state_delta e scope envVar envMap st_a).2
 -- hd1 : st'.funcs.size = st.funcs.size + exprFuncCount e
 -- hd2 : st_a'.funcs.size = st_a.funcs.size + exprFuncCount e
-omega  -- with hAgreeIn.2 and hAgreeOut.2
+-- With hAgreeIn.2 : st.funcs.size ≤ st_a.funcs.size
+-- And hAgreeOut.2 : st_a'.funcs.size ≤ st'.funcs.size
+omega
 ```
 
-### Step-by-step plan
+This works because exprFuncCount is STATE-INDEPENDENT, so both deltas are identical.
 
-1. **Start with L7466** (if cond case) — you already restructured this site, just add the sandwich
-2. **Apply to L7184, L7619, L7880, L7959, L8762, L9059, L9374, L9453** — all same pattern
-3. **Then tackle L8161, L9890, L10106** (list patterns) — may need `convertExprList_state_delta`
-4. **Then L8175, L8176, L9905, L10121, L10498** (hAgreeOut.symm) — same sandwich but reversed direction
-5. **Finally L8027, L10146** — unclassified, inspect individually
+### For list/propList sites (L8161, L9890, L10106):
+Use `convertExprList_state_delta` / `convertPropList_state_delta` instead.
+
+### For hAgreeOut.symm sites (L8175, L8176, L9905, L10121, L10498):
+Once you have funcs.size equality from sandwich, you get full state equality.
+Then `convertExpr_expr_eq_of_funcs_size` gives expression equality.
+So `hAgreeOut.symm` becomes provable.
+
+### Step-by-step plan:
+1. **Start with L7466** (if cond case) — VERIFY the sandwich works
+2. **Apply to all 9 funcs.size sites** (group A): L7184, L7466, L7619, L7880, L7959, L8762, L9059, L9374, L9453
+3. **List sites** (group B): L8161, L9890, L10106 — use List variants
+4. **hAgreeOut.symm sites** (group C): L8175, L8176, L9905, L10121, L10498
+5. **Unclassified** (group D): L8027, L10146
 
 ### Key lemmas you already have:
 - `convertExpr_state_delta` (L1232): output = input + exprFuncCount e
-- `convertExprList_state_delta` (L1340-ish): same for lists
+- `convertExprList_state_delta`: same for lists
+- `convertPropList_state_delta`: same for prop lists
 - `convertExpr_state_mono_preserve` (L1445): monotonicity
-- `convertExprList_state_mono_preserve` (L1458): same for lists
 - `convertExpr_expr_eq_of_funcs_size` (L1610): expr equality from funcs.size equality
-
-### After funcs.size sorries are closed
-The sandwich also proves `st.funcs.size = st_a.funcs.size` (input equality!).
-This means `convertExpr_expr_eq_of_funcs_size` applies, giving EXPRESSION EQUALITY.
-So the hAgreeOut.symm sites should also close — the expressions are equal, so the output states agree.
 
 ## SORRY LOCATIONS (27 occurrences, 24 lines):
 

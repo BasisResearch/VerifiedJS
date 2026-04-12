@@ -9,82 +9,57 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-12T16:05
-- YOUR sorries: L18163, L19377, L32640 = **3 sorry lines**
-- L18163: `exact sorry` — commented-out proof has 39 tactic errors (proof agent taking P4 on this)
+## STATUS — 2026-04-12T17:05
+- L18163: DONE ✓ (you closed it at 16:35, great work!)
+- **YOUR sorries: L19377, L32634 = 2 sorry lines**
 - L19377: HasNonCallFrameTryCatchInHead — needs approach A/B/C from comment
-- L32640: noCallFrameReturn preservation in anfConvert_step_star_ncfr
-- All in ANFConvertCorrect.lean
+- L32634: noCallFrameReturn preservation in anfConvert_step_star_ncfr
 
-## IMPORTANT: L18163 IS NOW PROOF AGENT'S JOB
-The proof agent has P4 to fix the 39 tactic errors in the commented-out proof at L18163.
-**DO NOT** work on L18163. Focus on L32640 and L19377.
-
-## P0: noCallFrameReturn preservation (L32640) — START HERE
+## P0: noCallFrameReturn preservation (L32634) — START HERE
 
 ```lean
 sorry -- in anfConvert_step_star_ncfr, needs case analysis mirroring anfConvert_step_star
 ```
 
-**Need a new theorem:** `noCallFrameReturn_step_preserved`
+**Approach:** Prove that the flat steps produced by the ANF simulation preserve noCallFrameReturn.
 
-Follow the EXACT pattern of `NoNestedAbrupt_step_preserved` (L27239):
+General flat-step ncfr preservation is FALSE (call introduces tryCatch "__call_frame_return__" transiently). But `anfConvert_step_star_ncfr` applies only to ANF-simulation step BATCHES that resolve the call frame.
+
+**Strategy A (recommended):** Case split on `hstep : ANF.Step sa ev sa'`, mirror anfConvert_step_star structure. For each case, the batch of flat steps starts and ends with ncfr expressions:
+1. `lean_goal` at L32634 to get exact context
+2. `cases hstep` to split on ANF step constructor
+3. For each case, show the resulting sf'.expr from the Flat.Steps batch is ncfr
+4. The key insight: each case in anfConvert_step_star produces a SPECIFIC flat expression (e.g., .seq, .let, .if, etc.) and you can directly check ncfr on it
+
+**Strategy B (simpler but needs lemma):** Factor through hrel' (the output SimRel):
+- `hrel' : ANF_SimRel s t sa' sf'` gives structural info about sf'.expr
+- If ANF_SimRel implies ncfr (which it should since ANF expressions don't have call-frame returns), prove that as a lemma
+
+Try Strategy B first — check if `ANF_SimRel` implies `noCallFrameReturn sf'.expr`:
 ```lean
-private theorem noCallFrameReturn_step_preserved (sf sf' : Flat.State) (ev : Core.TraceEvent)
-    (hncfr : noCallFrameReturn sf.expr = true)
-    (hfuncs_ncfr : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → noCallFrameReturn fd.body = true)
-    (hstep : Flat.step? sf = some (ev, sf')) :
-    noCallFrameReturn sf'.expr = true := by
-  obtain ⟨e, env, heap, trace, funcs, cs⟩ := sf
-  simp only [] at hncfr hfuncs_ncfr hstep ⊢
-  cases e <;> simp [Flat.step?, noCallFrameReturn] at hncfr hstep ⊢ <;> sorry
+lean_hover_info file="VerifiedJS/Proofs/ANFConvertCorrect.lean" line=<ANF_SimRel_def> column=0
 ```
-
-Then lift to Steps:
-```lean
-private theorem noCallFrameReturn_steps_preserved {sf sf' : Flat.State} {evs : List Core.TraceEvent}
-    (hncfr : noCallFrameReturn sf.expr = true)
-    (hfuncs_ncfr : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → noCallFrameReturn fd.body = true)
-    (hsteps : Flat.Steps sf evs sf') :
-    noCallFrameReturn sf'.expr = true := by
-  induction hsteps with
-  | refl => exact hncfr
-  | tail hstep _ ih =>
-    have hfuncs_eq := Flat.step_preserves_funcs hstep
-    exact ih (noCallFrameReturn_step_preserved _ _ _ hncfr hfuncs_ncfr hstep)
-      (fun i fd h => hfuncs_ncfr i fd (hfuncs_eq ▸ h))
-```
-
-**KEY INSIGHT:** General flat-step preservation is FALSE (call introduces tryCatch "__call_frame_return__"). BUT `anfConvert_step_star_ncfr` only applies to ANF-simulation flat steps (a BATCH that resolves the call frame). So you need to prove preservation for the SPECIFIC step sequence produced by the simulation, not for arbitrary flat steps.
-
-**Alternative approach:** Instead of proving general step preservation, prove that anfConvert_step_star's output expression satisfies ncfr by examining each case of the simulation. This mirrors the structure of anfConvert_step_star itself.
-
-1. `lean_goal` at L32640 to get exact context
-2. Case split on the ANF expression (mirroring anfConvert_step_star)
-3. For each case, show the resulting flat expression preserves noCallFrameReturn
 
 ## P2: HasNonCallFrameTryCatch (L19377) — AFTER P0
 
 This sorry passes `¬HasNonCallFrameTryCatchInHead a` to `HasReturnInHead_Steps_steppable_core`.
 
-**Approach A** (thread noCallFrameReturn as precondition):
-Now that `noCallFrameReturn` precondition is available in `anfConvert_correct`:
-1. `lean_goal` at L19377 to see what hypotheses are available
-2. Check if `hncfr_prog` or similar gives `noCallFrameReturn` for the expression
-3. Prove that `noCallFrameReturn e = true → ¬HasNonCallFrameTryCatchInHead e`
-4. This works because noCallFrameReturn forbids ALL tryCatch with "__call_frame_return__",
-   and HasNonCallFrameTryCatchInHead looks for tryCatch that are NOT "__call_frame_return__"
-   Wait — that's the OPPOSITE direction. Re-check the definitions.
+**Key connection:** Now that L18163 is PROVED, the infrastructure around it is solid. The question is whether `noCallFrameReturn` implies `¬HasNonCallFrameTryCatchInHead`.
 
-**Check definitions first:**
-```
-lean_hover_info file="VerifiedJS/Proofs/ANFConvertCorrect.lean" line=<noCallFrameReturn_def> column=0
-lean_hover_info file="VerifiedJS/Proofs/ANFConvertCorrect.lean" line=<HasNonCallFrameTryCatchInHead_def> column=0
-```
+Check definitions:
+- `noCallFrameReturn e = true` means no tryCatch with catchVar = "__call_frame_return__"
+- `HasNonCallFrameTryCatchInHead e` means there IS a tryCatch whose catchVar ≠ "__call_frame_return__" in head position
+
+These are NOT contradictory! A program can have NO call-frame-return tryCatch AND ALSO no non-call-frame tryCatch (no tryCatch at all). Or it could have non-call-frame tryCatch.
+
+**The real question:** Does the simulation context guarantee ¬HasNonCallFrameTryCatchInHead?
+- Check what hypotheses are available at L19377 (`lean_goal`)
+- If `normalizeExpr` of `.return` produces expressions without user-level tryCatch in head position, prove it
+- May need to thread `noCallFrameReturn` + additional info from normalizeExpr
 
 ## EXECUTION ORDER:
-1. **P0 (L32640)** — noCallFrameReturn preservation (simulation-specific)
-2. **P2 (L19377)** — HasNonCallFrameTryCatchInHead, try Approach A
+1. **P0 (L32634)** — noCallFrameReturn preservation, try Strategy B first
+2. **P2 (L19377)** — HasNonCallFrameTryCatchInHead
 
 ## LOG
 **FIRST**: `echo "### $(date -Iseconds) Starting run — [task]" >> agents/wasmspec/log.md`

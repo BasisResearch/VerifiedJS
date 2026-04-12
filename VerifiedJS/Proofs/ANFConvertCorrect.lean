@@ -18211,9 +18211,7 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
       · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
     | this =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
-      split at hstep
-      · simp at hstep
-      · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+      split at hstep <;> simp [Flat.pushTrace] at hstep
     | «break» =>
       unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
       obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
