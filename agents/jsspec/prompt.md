@@ -9,59 +9,41 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-12T04:05
-- CC: 12 real sorries. Total: **42** (ANF 30 + CC 12).
-- CCExprEquiv_shifted is FULLY PROVED. GREAT WORK.
-- Your 03:00 analysis confirmed: all 5 CCStateAgree sorries are ARCHITECTURALLY BLOCKED
-  because branching creates nextId gaps (from freshVar in skipped branches).
+## STATUS — 2026-04-12T05:05
+- CC: **12** real sorries. Total: **43** (ANF 31 + CC 12).
+- Down from 63 last run (-20). CCExprEquiv_shifted is DONE.
+- 6 CCStateAgree sorries are the MAIN target.
 
-## CC SORRY CLASSIFICATION (12 total):
-1. **CCStateAgree (6)**: L6928, L6954, L9840, L9843, L9917, L10033 — need alpha-equiv
-2. **Multi-step sim (4)**: L6480, L7577, L7785, L7796 — architectural, SKIP
-3. **Axiom (1)**: L8436 — UNPROVABLE, SKIP
-4. **FunctionDef (1)**: L9683 — multi-step, SKIP
+## CC SORRY MAP (12 total):
 
-## P0: EXTEND CCExprEquiv FOR NEXTID SHIFTS — ONLY PATH FORWARD
+**P0: CCStateAgree (6 sorries) — YOUR ONLY FOCUS:**
+- L6918 (if-true CCStateAgree) — st' includes else_ conversion but sim follows then_ only
+- L6944 (if-false CCStateAgree) — st' includes then_ conversion but sim follows else_ only
+- L9830 (tryCatch body-value) — CCStateAgree after body steps
+- L9833 (tryCatch body-value + finally) — same class
+- L9907 (tryCatch throw CCStateAgree) — state after catch conversion
+- L10023 (while_ CCStateAgree) — duplicated sub-expression conversion
 
-Current CCExprEquiv (L1631-1637) requires `hid : st1.nextId = st2.nextId`.
-For branching, nextId differs by `exprFuncCount` of the skipped branch.
+**Root cause**: `freshVar st` generates `"__cc_" ++ toString st.nextId`. When branches
+are skipped, nextId advances by `exprFuncCount` of the skipped branch. The converted
+expressions differ only in generated variable names (systematic offset).
 
-### The problem:
-- `freshVar st` generates `"__cc_" ++ toString st.nextId`
-- Different nextId → different generated variable names
-- Need alpha-equivalence: expressions are equivalent modulo systematic renaming of generated vars
+**Strategy**: You need ONE of:
+1. **Alpha-equiv with offset**: Extend CCExprEquiv to handle `δ_id` offset between
+   generated variable names. Show that behavioral equivalence holds under renaming.
+2. **Semantic irrelevance**: Prove that the funcs/names added by untaken branches are
+   never referenced during execution. The state difference is "dead" state.
+3. **convertExpr determinism mod offset**: Show convertExpr with shifted input state
+   produces alpha-equivalent output.
 
-### Options (pick the most feasible):
+**Start with**: `lean_goal` at L6918 to see the EXACT mismatch. Then pick the minimal fix.
 
-**Option A: CCExprEquiv with nextId offset**
-Extend CCExprEquiv to accept a `δ_id : Nat` offset for nextId differences:
-- Generated var `"__cc_" ++ toString (base + n)` ≡ `"__cc_" ++ toString (base + δ_id + n)`
-- Non-generated vars must match exactly
-- This handles the systematic shift from skipped branches
-
-**Option B: Normalize-then-compare**
-Add a lemma showing `exprFuncCount` of untaken branch doesn't affect the SEMANTIC behavior:
-- The funcs added by the untaken branch are never called
-- The nextId shift just means different names for the same binding structure
-- Prove behavioral equivalence without structural alpha-equiv
-
-**Option C: State normalization**
-Prove that you can "re-run" convertExpr with a shifted nextId and get CCExprEquiv output.
-You already have `convertExpr_CCExprEquiv_shifted` for equal nextId — extend to shifted nextId.
-
-### Start by:
-1. `lean_goal` at L6928 to see the exact gap between `st` and `st_a`
-2. Determine which of nextId, funcs.size, or both differ
-3. Pick the minimal extension that bridges the gap
-4. Implement and test on L6928 first, then apply to other 5 sites
-
-**Expected: -2 to -6 sorries if successful**
-
-## DO NOT ATTEMPT:
-- L8436 (getIndex semantic mismatch — UNPROVABLE)
-- L6480, L7577, L7785, L7796 (multi-step — different blocker class entirely)
-- Building more infrastructure theorems without applying them
+**DO NOT TOUCH:**
+- L6470, L7775, L7786 (multi-step simulation — architectural, different class)
+- L7567 (unclassified — investigate only if everything else done)
+- L8426 (getIndex semantic mismatch — UNPROVABLE)
+- L9673 (functionDef — multi-step)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — alpha-equiv CCExprEquiv" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — alpha-equiv for CCStateAgree" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`

@@ -1,3 +1,58 @@
+## Run: 2026-04-12T05:05:02+00:00
+
+### Metrics
+- **Sorry count**: ANF 31 + CC 12 = **43 total** (Wasm 0)
+- **Delta from last run (02:05)**: -20 (63→43). **DOWN. MAJOR PROGRESS.**
+- **BUILD**: Not verified (LSP only).
+
+### Why count went DOWN (-20)
+1. **proof agent** (-17 ANF): Closed all 18 HasThrowInHead_step_nonError infrastructure sorries. Some merging of labeled-mismatch cases reduced count further. Net: 48→31.
+2. **jsspec agent** (-3 CC): Completed CCExprEquiv_shifted infrastructure. Closed 3 infrastructure sorries. Net: 15→12.
+3. **wasmspec agent** (0): noCallFrameReturn work done in prior cycle. HasNonCallFrameTryCatch (L17804) still blocked by predicate being too strong.
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: P0: step_error_isLit (L14348, easy). P1: compound throw catch-all (L14386). P2: 7 compound error propagation sorries. P3: if-branch K-mismatch (L24147, L24187).
+2. **jsspec**: SOLE FOCUS: alpha-equiv CCExprEquiv for 6 CCStateAgree sorries. Three options given (offset, semantic irrelevance, determinism mod offset). Start with lean_goal at L6918.
+3. **wasmspec**: P0: Redesign HasNonCallFrameTryCatchInEvalFirst (restrict to eval-first positions). P1: Break/continue compound infrastructure. P2: catchParam threading.
+
+### Sorry Classification (43 total)
+**ANF (31):**
+- Labeled trivial mismatch (12): L11365-L11736 — BLOCKED, no known fix
+- step_error_isLit (1): L14348 — proof P0, EASY
+- Compound throw catch-all (1): L14386 — proof P1
+- HasNonCallFrameTryCatch (1): L17804 — wasmspec P0
+- Compound error propagation (7): L23086, L23259, L23315, L23319, L23320, L23410, L23422 — proof P2
+- If-branch K-mismatch (2): L24147, L24187 — proof P3
+- TryCatch (3): L25028, L25046, L25049 — deferred
+- End-of-file (4): L26376, L26377, L26596, L26667 — wasmspec P1/P2 + deep
+
+**CC (12):**
+- CCStateAgree (6): L6918, L6944, L9830, L9833, L9907, L10023 — jsspec P0
+- Multi-step sim (3): L6470, L7775, L7786 — architectural, deferred
+- Unclassified (1): L7567 — investigate later
+- Axiom (1): L8426 — UNPROVABLE
+- FunctionDef (1): L9673 — multi-step, deferred
+
+### Critical Path
+1. **proof P0+P1** (step_error_isLit + compound throw) → ANF 31→29 (-2)
+2. **proof P2** (compound error propagation) → ANF 29→22 (-7)
+3. **jsspec** (CCStateAgree alpha-equiv) → CC 12→6-8 (-4 to -6)
+4. **wasmspec P0** (HasNonCallFrameTryCatch) → ANF 22→21 (-1)
+5. **Best case after this cycle: ~21-24** (from current 43)
+
+### Trend
+- 18:05: 54 → 19:05: 49 → 20:05: 49 → 21:05: 50 → 22:05: 44 → 23:30: 42 → 01:05: 42 → 02:05: 63 → **05:05: 43**
+- Infrastructure investment at 02:05 (+21) now paying dividends (-20)
+- Net from 18:05 baseline: -11
+
+### Concerns
+- **12 trivial mismatch sorries (L11365-L11736) have NO KNOWN FIX.** Needs architectural rethink.
+- **5+ sorries likely permanently blocked** (L8426 unprovable, deep compound/multi-step). Realistic floor: ~17-20.
+- **Memory pressure** continues. Agents hitting OOM. LSP-only mode critical.
+- jsspec CCStateAgree alpha-equiv is HARD — may need multiple cycles.
+
+---
+
 ## Run: 2026-04-12T02:05:01+00:00
 
 ### Metrics
@@ -1031,3 +1086,4 @@ All three agents spent this cycle on **infrastructure** rather than directly clo
 
 ## Run: 2026-04-12T05:05:02+00:00
 
+2026-04-12T05:09:32+00:00 DONE
