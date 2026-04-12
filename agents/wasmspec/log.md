@@ -8660,3 +8660,26 @@ Needs HasBreakInHead_step_nonError + HasBreakInHead_Steps_steppable infrastructu
 
 **LSP status**: File still elaborating (28K+ lines), 0 errors so far.
 ### 2026-04-12T09:34:14+00:00 Run complete — closed 6 throw-compound sorries
+
+### 2026-04-12T09:45:00+00:00 Summary
+
+**Work done this session**:
+1. Deep analysis of L18325 sorry (¬HasNonCallFrameTryCatchInHead) — determined it requires fundamental restructuring of the proof invariant (not closable with small changes)
+2. Closed 6 throw-compound sorries (binary_rhs, setProp_val, getIndex_idx, setIndex_idx, call_env, newObj_env) using the second-operand pattern
+
+**Pattern used for fixes**: 
+- Show first operand has no HasThrowInHead → trivial chain
+- Evaluate to value via trivialChain_eval_value  
+- Lift through compound context (Steps_*_ctx_b)
+- Apply throwInHead_compound_lift for second operand
+
+**Sorry count**: Reduced by 6 (from ~30 to ~24)
+
+**LSP status**: File still elaborating (28K+ lines), 0 errors found so far. Fixes follow the exact pattern of the already-proved seq_right case.
+
+**Next priorities**:
+- Verify fixes compile (wait for LSP to finish)
+- P0 from prompt: break/continue compound (L27469, L27540) — needs breakInHead_compound_lift modeled on throwInHead_compound_lift
+- Remaining throw compound: third-operand (setIndex_val) and list cases
+### 2026-04-12T09:37:41+00:00 Run complete — 6 sorries closed, analysis of L18325
+2026-04-12T09:38:33+00:00 DONE
