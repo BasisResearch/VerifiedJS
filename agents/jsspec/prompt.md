@@ -15,35 +15,70 @@
 - These need equality where IH only provides CCStateAgreeWeak (≤)
 
 ## THE CORE PROBLEM
-`convertExpr_state_determined` requires `st_a'.nextId = st'.nextId` (equality).
-But the simulation invariant at L6858-6860 only gives `CCStateAgreeWeak` (≤).
-The jsspec analysis from March 31 confirmed monotone approach FAILS.
 
-## THE FIX: CCExprEquiv-based approach
+At each sorry site, we have:
+- `st' = (convertExpr init ... st).snd` — the "real" output state
+- `st_a' = (convertExpr sc_sub'.expr ... st_a).snd` — the IH output state
+- `CCStateAgreeWeak st st_a` means `st.nextId ≤ st_a.nextId`
+- `CCStateAgreeWeak st_a' st'` means `st_a'.nextId ≤ st'.nextId`
+- **Need**: `st'.nextId = st_a'.nextId` (equality)
 
-`convertExpr_CCExprEquiv_shifted` (L1854) already proves that expressions are
-`CCExprEquiv δ` when states differ by δ on funcs.size. This means the EXPRESSION
-part doesn't need state equality.
+`convertExpr_state_delta` (L1232) shows:
+- `st'.nextId = st.nextId + exprFuncCount init`
+- `st_a'.nextId = st_a.nextId + exprFuncCount sc_sub'.expr`
 
-**Key insight**: The sorry sites use `convertExpr_state_determined` for TWO things:
-1. Expression equality (`.fst`) — can be replaced with `CCExprEquiv 0` + `CCExprEquiv_refl`
-2. State chaining (`.snd`) — this is the real blocker
+Since `init ≠ sc_sub'.expr` (one is pre-step, one is post-step), and `st.nextId ≤ st_a.nextId`,
+the delta approach DOES NOT give equality. Monotone approach also FAILS (March 31 analysis).
 
-For state chaining: prove that `convertExpr` output state delta depends ONLY on the
-expression structure, not the input state values. Specifically:
+## THE REAL FIX: Strengthen invariant to CCStateAgree
+
+The invariant at L6858-6860 uses `CCStateAgreeWeak`. Change it to `CCStateAgree` (equality):
 
 ```lean
-theorem convertExpr_state_delta_independent (e : Core.Expr)
-    (scope : List String) (envVar : String) (envMap : Flat.EnvMapping)
-    (st1 st2 : Flat.CCState) :
-    (Flat.convertExpr e scope envVar envMap st1).snd.nextId - st1.nextId =
-    (Flat.convertExpr e scope envVar envMap st2).snd.nextId - st2.nextId ∧
-    (Flat.convertExpr e scope envVar envMap st1).snd.funcs.size - st1.funcs.size =
-    (Flat.convertExpr e scope envVar envMap st2).snd.funcs.size - st2.funcs.size
+∃ (st_a st_a' : Flat.CCState),
+  (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
+  CCStateAgree st st_a ∧ CCStateAgree st_a' st'
 ```
 
-If this holds (likely — convertExpr is deterministic in its state consumption), then
-from `st_a'.nextId ≤ st'.nextId` and `delta(st_a) = delta(st)`, you get equality.
+**Why this might work now**: The initial state `st_a = st` (equality) at the start of simulation.
+If each simulation step can produce `st_a = st` (not just ≤), then the cascade problem disappears.
+
+**The cascade problem**: When a compound expression like `.if cond then_ else_` steps and only
+one branch is taken, the output state `st'` accounts for BOTH branches (because `convertExpr`
+processes both). The IH gives `st_a'` from converting only the TAKEN branch's sub-expression.
+
+**Two approaches to fix the cascade**:
+
+### Approach A: Track the conversion function index directly
+Instead of existential `st_a`, use the actual conversion state from the simulation:
+```lean
+sf'.expr = (Flat.convertExpr sc'.expr scope envVar envMap st).fst ∧
+(Flat.convertExpr sc'.expr scope envVar envMap st).snd = st'
+```
+This would mean `st_a = st` always, so equality is trivially maintained.
+BUT: this breaks when sub-expressions step, because the flat expression after stepping
+is NOT `convertExpr` applied to the stepped core expression with the same state.
+
+### Approach B: CCExprEquiv-based simulation relation
+Replace expression equality with `CCExprEquiv δ` in the simulation:
+```lean
+CCExprEquiv δ sf'.expr (Flat.convertExpr sc'.expr scope envVar envMap st').fst
+```
+where δ accounts for the function index shift.
+`convertExpr_CCExprEquiv_shifted` (L1854) already handles the expression part.
+The state threading would use `convertExpr_state_delta` for state equality on output.
+
+**Recommended: Approach B**, because:
+1. `convertExpr_CCExprEquiv_shifted` infrastructure already exists
+2. Expression equivalence modulo function indices is the natural invariant
+3. State delta gives `output = input + exprFuncCount e`, so output equality follows from input equality
+
+### Concrete Plan for Approach B:
+1. Change the invariant to use `CCExprEquiv δ` instead of expression equality
+2. At each sorry site, instead of `convertExpr_state_determined`, use `convertExpr_CCExprEquiv_shifted`
+3. Prove that the simulation relation is preserved under `CCExprEquiv δ`
+
+This is a significant refactoring but would close all ~20 sorry pairs at once.
 
 ## SORRY LOCATIONS (25 real sorry lines):
 
@@ -59,10 +94,10 @@ from `st_a'.nextId ≤ st'.nextId` and `delta(st_a) = delta(st)`, you get equali
 **E. While duplication (1, BLOCKED):** L10515
 
 ## EXECUTION ORDER:
-1. `lean_hover_info` on `convertExpr_state_delta` at L1440 — check if delta lemma exists
-2. Try proving `convertExpr_state_delta_independent` by mutual induction (same structure as `convertExpr_state_determined`)
-3. If it works, derive equality from ≤ + equal deltas at each sorry site
-4. Start with L7461 (if cond) — mid-complexity, single pair
+1. **Analyze**: `lean_hover_info` on `CCExprEquiv` at L1459 and `convertExpr_CCExprEquiv_shifted` at L1854
+2. **Prototype**: Pick ONE sorry pair (L7461, if cond). Try replacing `convertExpr_state_determined` with `convertExpr_CCExprEquiv_shifted` + appropriate δ
+3. **If it works**: Generalize to all sorry sites
+4. **If it doesn't**: The simulation relation needs a deeper refactor
 
 ## LOG
 **FIRST**: `echo "### $(date -Iseconds) Starting run — [task]" >> agents/jsspec/log.md`

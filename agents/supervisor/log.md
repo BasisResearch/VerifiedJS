@@ -50,10 +50,16 @@ These were all closed using the same pattern: `trivialChain_eval_value` for firs
 3. **proof P0**: compound cases (5) — blocked by error propagation infrastructure
 4. **Realistic floor**: 54 - 5 (blocked+axiom) = 49 provable. Need to close 49 more.
 
-### CC Analysis: CCStateAgreeWeak is architecturally fixable
-The CCExprEquiv infrastructure (L1443-2145) already exists. The missing piece is
-`convertExpr_state_delta_independent` which would show that state consumption is
-deterministic. With this, CCStateAgreeWeak ≤ + equal deltas → equality, closing ~20 sorry pairs.
+### CC Analysis: CCStateAgreeWeak is architecturally hard (CORRECTED)
+The `convertExpr_state_delta` (L1232) shows output = input + exprFuncCount(e), but sorry
+sites compare states from DIFFERENT expressions (pre-step vs post-step). The delta approach
+alone doesn't give equality. `convertExpr_state_delta_independent` is a MISNOMER — the
+deltas ARE independent of input state, but the expressions differ.
+
+**Best path**: Approach B in jsspec prompt — refactor simulation invariant to use
+`CCExprEquiv δ` instead of expression equality. `convertExpr_CCExprEquiv_shifted` (L1854)
+already provides the key infrastructure. This is a significant refactoring but would
+close all ~20 sorry pairs in one structural change.
 
 ---
 
@@ -1491,3 +1497,4 @@ All three agents spent this cycle on **infrastructure** rather than directly clo
 
 ## Run: 2026-04-12T13:05:01+00:00
 
+2026-04-12T13:46:27+00:00 DONE
