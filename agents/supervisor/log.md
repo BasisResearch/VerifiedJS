@@ -971,3 +971,60 @@ All three agents spent this cycle on **infrastructure** rather than directly clo
 
 ## Run: 2026-04-12T04:05:01+00:00
 
+
+## Run: 2026-04-12T04:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 30 + CC 12 = **42 total** (Wasm 0)
+- **Delta from last run (02:05)**: -21 (63→42). **DOWN.** Infrastructure explosion fully resolved.
+- **Delta from pre-infrastructure baseline (01:05 = 42)**: 0 net. CCExprEquiv_shifted -4, noCallFrameReturn refactor net 0, HasThrowInHead +18/-18.
+
+### What happened since last run
+1. **proof agent** (-18): Closed ALL 18 HasThrowInHead_step_nonError infrastructure sorries (02:30 run). Currently working on compound throw + if-branch in 03:30 run.
+2. **jsspec agent** (-4): Proved all 4 CCExprEquiv_shifted theorems (02:53 run). 03:00 run confirmed CCStateAgree is architecturally blocked (nextId gaps from branching). Started 04:00 run on weakening sim relation.
+3. **wasmspec agent** (-1 net): Removed noCallFrameReturn threading (03:45 run). Cleaner architecture: -2 sorries (preservation + initial state), +1 in already-sorry tryCatch case. Net -1.
+
+### Sorry Classification (42 total)
+
+**ANF (30):**
+- Trivial mismatch (12): L11186-L11557 — BLOCKED (no known fix)
+- Compound throw (1): L14196 — proof agent P0, needs HasThrowInHead_Steps_steppable
+- HasNonCallFrameTryCatch (1): L17568 — wasmspec P0, predicate redesign needed
+- Compound await/yield/return (5): L22850, L23023, L23079, L23083, L23084 — deep, need error propagation
+- While condition (2): L23174, L23186 — deep
+- If-branch K-mismatch (2): L23911, L23951 — collapsed for OOM
+- TryCatch (3): L24792, L24810, L24813 — deep
+- TryCatch noCallFrameReturn+body_sim (2): L26140, L26141 — partially blocked
+- Break/continue compound (2): L26360, L26431 — need error propagation
+
+**CC (12):**
+- CCStateAgree (6): L6928, L6954, L9840, L9843, L9917, L10033 — jsspec P0, need alpha-equiv
+- Multi-step sim (4): L6480, L7577, L7785, L7796 — architectural, DEFERRED
+- Axiom (1): L8436 — UNPROVABLE
+- FunctionDef (1): L9683 — multi-step, DEFERRED
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: P0 = compound throw L14196 (write HasThrowInHead_Steps_steppable → close). P1 = compound error propagation infrastructure (14 sorries share this blocker). P2 = if-branch.
+2. **jsspec**: P0 = extend CCExprEquiv for nextId shifts (alpha-equiv). Three options given. This is the ONLY path to closing 6 CCStateAgree sorries.
+3. **wasmspec**: P0 = redesign HasNonCallFrameTryCatchInEvalFirst (eval-first only predicate). P1 = compound error propagation. P2 = L26140 catchParam.
+
+### Critical Path
+1. **proof closes L14196** → ANF 30→29 (-1)
+2. **wasmspec closes L17568** → ANF 29→28 (-1)
+3. **jsspec builds alpha-equiv** → CC 12→6-7 (-5 to -6)
+4. **compound error propagation infrastructure** → ANF 28→14-16 (-12 to -14, optimistic)
+5. Best case after this cycle: **~28-32** (from current 42)
+6. Floor (blocked/unprovable): ~18 (12 trivial-mismatch + 4 multi-step + 1 axiom + 1 functionDef)
+
+### Trend
+- 18:05: 54 → 19:05: 49 → 20:05: 49 → 21:05: 50 → 22:05: 44 → 23:30: 42 → 01:05: 42 → 02:05: 63 → **04:05: 42**
+- Infrastructure expansion (02:05) fully resolved. Back to baseline.
+- Next real reduction depends on: compound throw, alpha-equiv, HasNonCallFrameTryCatch redesign.
+
+### Concerns
+1. **Plateau risk**: 42→42 over 3 hours (01:05→04:05). All easy wins taken. Remaining sorries are harder.
+2. **Alpha-equiv is big**: jsspec estimates it's multi-day. May not yield results this cycle.
+3. **12 trivial-mismatch**: No known approach. These may be permanently blocked without architectural redesign of normalizeExpr.
+4. **6 multi-step sim + axiom + functionDef**: 8 CC sorries are likely permanent floor without multi-step simulation infrastructure.
+5. **14 compound error propagation**: All share same blocker. Building the infrastructure (Steps_steppable for each HasXInHead) would be high-leverage but is ~1000+ lines per abrupt type.
+2026-04-12T04:09:44+00:00 DONE

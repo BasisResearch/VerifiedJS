@@ -1,4 +1,4 @@
-# wasmspec — CLOSE noCallFrameReturn PRESERVATION + INITIAL STATE
+# wasmspec — HasNonCallFrameTryCatch REDESIGN + COMPOUND ERROR PROPAGATION
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,62 +9,62 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-12T03:05
-- Total: **47 real sorries** (ANF 35, CC 12). DOWN from 63 last run. -16!
-- Bridge lemma is PROVED. Two new sorries remain: L27149 (preservation) + L27184 (initial state).
-- P1 (HasNonCallFrameTryCatch L17436) is BLOCKED per your analysis — predicate too strong.
+## STATUS — 2026-04-12T04:05
+- Total: **42 real sorries** (ANF 30, CC 12).
+- noCallFrameReturn refactoring DONE — good outcome (net -1).
+- L17568 (HasNonCallFrameTryCatch) still BLOCKED — predicate too strong.
 
-## P0: noCallFrameReturn PRESERVATION (L27149) — HIGHEST PRIORITY
+## P0: REDESIGN HasNonCallFrameTryCatchInHead — HIGHEST PRIORITY
 
-Goal: `noCallFrameReturn sf2.expr = true` where sf2 comes from flat steps simulating one ANF step.
+Your analysis showed the problem: `HasNonCallFrameTryCatchInHead` checks ALL sub-expressions,
+but non-eval-first positions can have tryCatch that doesn't affect evaluation order.
 
-### Approach: prove noCallFrameReturn_step_preserved
+### Fix: Define HasNonCallFrameTryCatchInEvalFirst
+
+Only check the eval-first path (the sub-expression that steps next):
 ```lean
-theorem noCallFrameReturn_step_preserved
-    (hncfr : noCallFrameReturn sf.expr = true)
-    (hstep : Flat.step? sf = some (t, sf')) :
-    noCallFrameReturn sf'.expr = true
+/-- HasNonCallFrameTryCatchInHead restricted to eval-first positions only. -/
+inductive HasNonCallFrameTryCatchInEvalFirst : Flat.Expr → Prop where
+  | tryCatch_direct : catchParam ≠ "__call_frame_return__" →
+      HasNonCallFrameTryCatchInEvalFirst (.tryCatch body catchParam catchBody finally_)
+  | seq_left : HasNonCallFrameTryCatchInEvalFirst e →
+      HasNonCallFrameTryCatchInEvalFirst (.seq e e2)
+  | let_init : HasNonCallFrameTryCatchInEvalFirst e →
+      HasNonCallFrameTryCatchInEvalFirst (.let_ name e body)
+  -- ... only eval-first positions (NOT seq_right, let_body, etc.)
 ```
 
-Proof strategy — case split on `Flat.step?`:
-- **Value/literal cases**: result is value, trivially noCallFrameReturn
-- **Seq/let/if/etc**: structural — sub-expression stepped, rest unchanged
-- **Call**: post-call result is `.lit v` (value), trivially noCallFrameReturn
-- **TryCatch**: only introduces `__call_frame_return__` for call-frame tryCatch,
-  which is excluded by `noCallFrameReturn`. Non-call-frame tryCatch preserves the property.
-
-Then extend to multi-step with `noCallFrameReturn_steps_preserved`.
-Apply at L27149.
+### Steps:
+1. Define `HasNonCallFrameTryCatchInEvalFirst` in the appropriate file
+2. Replace usage of `HasNonCallFrameTryCatchInHead` at L17568 with the new predicate
+3. The key theorem `HasReturnInHead_Steps_steppable` should be TRUE with EvalFirst
+   (since tryCatch in non-eval-first positions can't intercept the return error)
+4. Re-prove the sorry at L17568 using the weaker predicate
 
 **Expected: -1 sorry**
 
-## P1: noCallFrameReturn INITIAL STATE (L27184)
+## P1: COMPOUND ERROR PROPAGATION INFRASTRUCTURE (if P0 done)
 
-Goal: `noCallFrameReturn (initialState program).expr = true` or similar.
+14 ANF sorries need compound Flat.step? error propagation. The break/continue compound cases
+(L26360, L26431) are the closest to the existing throw infrastructure.
 
-Source programs never use `"__call_frame_return__"` as a tryCatch catchParam because:
-- It's a compiler-generated name (starts with `__`)
-- Source programs only have user-written catch parameter names
-- The `compile` function introduces `__call_frame_return__` ONLY during lowering
+Check if HasBreakInHead / HasContinueInHead already have step_nonError analogues.
+If not, and you have time, they follow the EXACT same pattern as HasThrowInHead_step_nonError.
 
-Prove: source expressions have `noCallFrameReturn = true` by structural induction on the AST.
+## P2: L26140, L26141 — tryCatch catchParam + body_sim
 
-**Expected: -1 sorry**
+L26140: `catchParam ≠ "__call_frame_return__"` — this could be proved if we add a
+well-formedness assumption that source programs don't use `__call_frame_return__`.
+Check if `noCallFrameReturn` can be threaded here differently.
 
-## P2: HasNonCallFrameTryCatch — REDESIGN NEEDED (L17436)
-
-Your analysis showed the predicate is too strong. If you have time:
-- Define `HasNonCallFrameTryCatchInEvalFirst` that only checks eval-first positions
-- This is a bigger change (~700 lines per your estimate). Only attempt if P0+P1 done quickly.
-
-## P3: L26229, L26300 — check what's needed
-`lean_goal` at these. May be closeable.
+L26141: `body_sim` inner simulation — needs anfConvert_step_star to be proved by strong induction.
+This is a deep recursive dependency. SKIP unless you see a shortcut.
 
 ## DO NOT WORK ON:
 - L11186-L11557 (labeled trivial mismatch — proof agent, BLOCKED)
 - ClosureConvertCorrect.lean (jsspec)
-- L15136-L15190 (proof agent HasThrowInHead infrastructure)
+- CCExprEquiv/CCStateAgree (jsspec)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — noCallFrameReturn preservation + initial" >> agents/wasmspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — HasNonCallFrameTryCatch redesign" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

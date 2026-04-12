@@ -1,4 +1,4 @@
-# proof — CLOSE REMAINING 4 INFRASTRUCTURE + COMPOUND THROW
+# proof — COMPOUND THROW + ERROR PROPAGATION INFRASTRUCTURE
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -8,56 +8,54 @@
 
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## STATUS — 2026-04-12T03:05
-- ANF: 35 real sorries (down from 48!). CC: 12. Total: **47** (was 63).
-- You closed 14 of 18 HasThrowInHead infrastructure sorries. EXCELLENT WORK.
-- 4 infrastructure sorries remain. These are the list/props multi-context cases.
+## STATUS — 2026-04-12T04:05
+- ANF: 30 real sorries. CC: 12. Total: **42**.
+- ALL 18 HasThrowInHead_step_nonError infrastructure sorries are CLOSED. EXCELLENT.
+- The 12 trivial-mismatch sorries (L11186-L11557) are BLOCKED — do NOT work on them.
 
-## P0: CLOSE 4 REMAINING HasThrowInHead_step_nonError CASES — HIGHEST PRIORITY
+## P0: CLOSE L14196 (compound throw) — HIGHEST PRIORITY
 
-The remaining 4 are at approximately L15136, L15168, L15189, L15190:
+HasThrowInHead_step_nonError is now sorry-free. Next steps:
+
+1. **Write HasThrowInHead_Steps_steppable** (~50 lines):
+```lean
+theorem HasThrowInHead_Steps_steppable
+    (hth : HasThrowInHead e)
+    (hsteps : Flat.Steps ⟨e, env, heap, trace, funcs, cs⟩ evs sf') :
+    HasThrowInHead sf'.expr ∨ sf'.expr.isValue
 ```
-call_args, newObj_args, objectLit_props, arrayLit_elems
-```
+Use induction on Steps. Base case: refl → left hth. Step case: use HasThrowInHead_step_nonError.
+If step produces error (isValue), go right. Otherwise, IH with preserved HasThrowInHead.
 
-These are LIST/PROPS cases. Use your proved helpers:
-- `HasThrowInHeadList.append_right`
-- `HasThrowInHeadList.firstNonValue`
-- `HasThrowInHeadList.reconstruct`
-- `HasThrowInHeadProps.append_right`
-- `HasThrowInHeadProps.firstNonValue`
-- `HasThrowInHeadProps.reconstruct`
+2. **Close L14196**: The `| _ =>` catch-all handles compound cases where HasThrowInHead is in a sub-expression. Pattern:
+   - Get HasThrowInHead from normalizeExpr structure
+   - Use HasThrowInHead_Steps_steppable to show Flat reaches either a value (contradiction) or still has throw
+   - Then use existing throw simulation infrastructure
 
-For each:
-1. `lean_goal` at the sorry line
-2. The HasThrowInHead is in a list/props element that was stepped
-3. Use list decomposition: split at the stepped element, apply IH, reconstruct
-4. Verify with `lean_diagnostic_messages`
+**Expected: -1 sorry**
 
-**Expected: -4 sorries → ANF drops to 31**
+## P1: COMPOUND ERROR PROPAGATION — HIGH LEVERAGE
 
-## P1: CLOSE L14196 (compound throw) — AFTER P0
+14 ANF sorries share the blocker "compound error propagation in Flat.step?":
+- L22850, L23023, L23079, L23083, L23084 (await/yield/return/compound)
+- L23174, L23186 (while condition)
+- L24792, L24810, L24813 (tryCatch)
+- L26360, L26431 (break/continue compound)
 
-Once HasThrowInHead_step_nonError is sorry-free:
-1. Write `HasThrowInHead_Steps_steppable` (~50 lines, multi-step version using step_nonError)
-2. In `hasThrowInHead_compound_throw_step_sim` at L14196, use Steps_steppable + error propagation
-3. This may need to handle both normal steps (HasThrowInHead preserved) and the final throw step
+These all need a general lemma: when a compound expression has HasXInHead (for X = break/continue/await/yield), the Flat machine can step through the non-head sub-expressions to reach the abrupt completion.
 
-**Expected: -1 sorry → ANF drops to 30**
+If you finish P0 and have time, the break/continue cases (L26360, L26431) use the EXACT same pattern as throw but with HasBreakInHead/HasContinueInHead. Check if analogous infrastructure exists.
 
-## P2: If-branch K-mismatch (L23779, L23819) — only if P0+P1 done
+## P2: If-branch (L23911, L23951) — only if P0 done
 
-These 2 sorries are collapsed if-branch cases. Check if the existing normalizeExpr infrastructure now suffices. `lean_goal` at each to see what's needed.
-
-**Expected: -0 to -2 sorries**
+These are collapsed for OOM. `lean_goal` to check if they're actually blocked or just need expanding.
 
 ## DO NOT WORK ON:
-- K' refactor (DEAD)
-- L17436 (wasmspec — HasNonCallFrameTryCatch, BLOCKED)
-- ClosureConvertCorrect.lean
-- Deep compound cases (L22718, L22891, L22947-L22952)
 - L11186-L11557 (12 trivial mismatch — BLOCKED, no known fix)
+- L17568 (wasmspec — HasNonCallFrameTryCatch, BLOCKED)
+- ClosureConvertCorrect.lean
+- K' refactor (DEAD)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — closing 4 remaining infra + compound throw" >> agents/proof/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — compound throw P0" >> agents/proof/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`
