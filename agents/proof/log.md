@@ -7848,3 +7848,35 @@ Prerequisites needed:
 2. Write `HasThrowInHead_step_nonError` first (highest leverage)
 3. Then `HasThrowInHead_Steps_steppable`
 4. Then tackle compound cases one-by-one in hasThrowInHead_compound_throw_step_sim
+### 2026-04-12T01:44:02+00:00 Run complete — infrastructure for compound throw
+
+**Changes made:**
+1. Added HasThrowInHeadList helper theorems (append_right, firstNonValue, reconstruct) — ~40 lines
+2. Added HasThrowInHeadProps helper theorems (append_right, firstNonValue, reconstruct) — ~40 lines
+3. Added HasThrowInHead_step_nonError theorem with 16 proved cases and 18 sorry'd cases — ~280 lines
+
+**Proved cases in HasThrowInHead_step_nonError:**
+throw_direct, seq_left, seq_right, let_init, if_cond, assign_val, getProp_obj,
+deleteProp_obj, typeof_arg, unary_arg, getEnv_env, makeClosure_env,
+return_some_arg, yield_some_arg, await_arg (+ zero base case)
+
+**Sorry'd cases (multi-context, need more complex step? unfolding):**
+setProp_obj, setProp_val, binary_lhs, binary_rhs, getIndex_obj, getIndex_idx,
+setIndex_obj, setIndex_idx, setIndex_val, call_func, call_env, call_args,
+newObj_func, newObj_env, newObj_args, makeEnv_values, objectLit_props, arrayLit_elems
+
+**Net sorry change:** +18 (infrastructure sorries that enable eliminating the compound throw sorry at L14196)
+**Total sorry count:** 42 (was 24 before infrastructure addition)
+
+**Next steps for next run:**
+1. Fill in the 18 sorry'd multi-context cases in HasThrowInHead_step_nonError
+2. Write HasThrowInHead_Steps_steppable (using step_nonError)
+3. Replace the sorry at L14196 with compound case proofs
+4. Expected: -1 original sorry when complete, net 0 or -1 after infrastructure cleaned up
+
+**P0 K' refactor analysis (DO NOT ATTEMPT):**
+The K' flexibility approach cannot solve the 12 trivial-mismatch sorries.
+The body produced by normalizeExpr changes syntactically when a non-head trivial
+representation changes (.var "x" → .litNumber 42 in bindComplex). No amount of K'
+flexibility at the outer level compensates for this syntactic difference.
+See full analysis in log above.

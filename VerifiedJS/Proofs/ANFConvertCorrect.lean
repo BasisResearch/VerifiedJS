@@ -14507,6 +14507,95 @@ private theorem hasReturnInHead_callStackSafe (e : Flat.Expr) (hret : HasReturnI
     | call_args h => right; right; cases h; exact HasReturnInHeadList_valuesFromExprList_none h
     | _ => exact absurd h (by intro h'; exact Flat.Expr.noConfusion h')
 
+/-- Prepending to a list preserves HasThrowInHeadList. -/
+private theorem HasThrowInHeadList_append_right
+    (prefix_ : List Flat.Expr) {suffix_ : List Flat.Expr}
+    (h : HasThrowInHeadList suffix_) :
+    HasThrowInHeadList (prefix_ ++ suffix_) := by
+  induction prefix_ with
+  | nil => exact h
+  | cons _ _ ih => exact HasThrowInHeadList.tail ih
+
+/-- When firstNonValueExpr splits a list with HasThrowInHeadList,
+    either the target or the remaining has it. -/
+private theorem HasThrowInHeadList_firstNonValue
+    {args done : List Flat.Expr} {target : Flat.Expr} {remaining : List Flat.Expr}
+    (hfnv : Flat.firstNonValueExpr args = some (done, target, remaining))
+    (h : HasThrowInHeadList args) :
+    HasThrowInHead target ∨ HasThrowInHeadList remaining := by
+  have hsplit := firstNonValueExpr_eq_append hfnv
+  have hdone := firstNonValueExpr_done_all_lit hfnv
+  rw [hsplit] at h
+  induction done with
+  | nil =>
+    simp at h; cases h with
+    | head h => exact Or.inl h
+    | tail h => exact Or.inr h
+  | cons d ds ih =>
+    simp [List.cons_append] at h
+    cases h with
+    | head hd =>
+      obtain ⟨v, rfl⟩ := hdone d (List.mem_cons_self _ _)
+      exact absurd (HasThrowInHead_not_value _ hd) (by simp [Flat.exprValue?])
+    | tail h =>
+      exact ih (fun e he => hdone e (List.mem_cons_of_mem _ he)) h
+
+/-- Reconstruct HasThrowInHeadList after replacing target in a split list. -/
+private theorem HasThrowInHeadList_reconstruct
+    (done : List Flat.Expr) (e : Flat.Expr) (remaining : List Flat.Expr)
+    (h : HasThrowInHead e ∨ HasThrowInHeadList remaining) :
+    HasThrowInHeadList (done ++ e :: remaining) :=
+  match h with
+  | .inl he => HasThrowInHeadList_append_right done (.head he)
+  | .inr hr => HasThrowInHeadList_append_right done (.tail hr)
+
+/-- Prepending to a prop list preserves HasThrowInHeadProps. -/
+private theorem HasThrowInHeadProps_append_right
+    (prefix_ : List (Flat.PropName × Flat.Expr))
+    {suffix_ : List (Flat.PropName × Flat.Expr)}
+    (h : HasThrowInHeadProps suffix_) :
+    HasThrowInHeadProps (prefix_ ++ suffix_) := by
+  induction prefix_ with
+  | nil => exact h
+  | cons _ _ ih => exact HasThrowInHeadProps.tail ih
+
+/-- When firstNonValueProp splits a prop list with HasThrowInHeadProps,
+    either the target or the remaining has it. -/
+private theorem HasThrowInHeadProps_firstNonValue
+    {props done : List (Flat.PropName × Flat.Expr)}
+    {name : Flat.PropName} {target : Flat.Expr}
+    {remaining : List (Flat.PropName × Flat.Expr)}
+    (hfnv : Flat.firstNonValueProp props = some (done, name, target, remaining))
+    (h : HasThrowInHeadProps props) :
+    HasThrowInHead target ∨ HasThrowInHeadProps remaining := by
+  have hsplit := firstNonValueProp_eq_append hfnv
+  have hdone := firstNonValueProp_done_all_lit hfnv
+  rw [hsplit] at h
+  induction done with
+  | nil =>
+    simp at h; cases h with
+    | head h => exact Or.inl h
+    | tail h => exact Or.inr h
+  | cons d ds ih =>
+    simp [List.cons_append] at h
+    cases h with
+    | head hd =>
+      obtain ⟨v, rfl⟩ := hdone d (List.mem_cons_self _ _)
+      exact absurd (HasThrowInHead_not_value _ hd) (by simp [Flat.exprValue?])
+    | tail h =>
+      exact ih (fun p hp => hdone p (List.mem_cons_of_mem _ hp)) h
+
+/-- Reconstruct HasThrowInHeadProps after replacing target in a split prop list. -/
+private theorem HasThrowInHeadProps_reconstruct
+    (done : List (Flat.PropName × Flat.Expr))
+    (name : Flat.PropName) (e : Flat.Expr)
+    (remaining : List (Flat.PropName × Flat.Expr))
+    (h : HasThrowInHead e ∨ HasThrowInHeadProps remaining) :
+    HasThrowInHeadProps (done ++ (name, e) :: remaining) :=
+  match h with
+  | .inl he => HasThrowInHeadProps_append_right done (.head he)
+  | .inr hr => HasThrowInHeadProps_append_right done (.tail hr)
+
 /-- Prepending to a list preserves HasReturnInHeadList. -/
 private theorem HasReturnInHeadList_append_right
     (prefix_ : List Flat.Expr) {suffix_ : List Flat.Expr}
@@ -14629,6 +14718,222 @@ private theorem HasReturnInHeadProps_valuesFromExprList_none
   | tail h =>
     simp [Flat.valuesFromExprList?]
     cases Flat.exprValue? _ <;> simp [HasReturnInHeadProps_valuesFromExprList_none h]
+
+/-- Non-error steps preserve HasThrowInHead.
+    By strong induction on expression depth. Each compound case unfolds step?,
+    shows the inner sub-expression is not a value, and reconstructs HasThrowInHead. -/
+private theorem HasThrowInHead_step_nonError
+    {sf sf' : Flat.State} {t : Core.TraceEvent}
+    (hth : HasThrowInHead sf.expr)
+    (hstep : Flat.step? sf = some (t, sf'))
+    (hnoerr : ∀ msg, t ≠ .error msg) :
+    HasThrowInHead sf'.expr := by
+  suffices hmain : ∀ (n : Nat) (e : Flat.Expr) (env : Flat.Env) (heap : Core.Heap)
+      (trace : List Core.TraceEvent) (funcs : Array Flat.FuncDef) (cs : List Flat.Env)
+      (sf' : Flat.State) (t : Core.TraceEvent),
+      e.depth ≤ n →
+      HasThrowInHead e →
+      Flat.step? ⟨e, env, heap, trace, funcs, cs⟩ = some (t, sf') →
+      (∀ msg, t ≠ .error msg) →
+      HasThrowInHead sf'.expr by
+    cases sf with | mk e env heap trace funcs cs =>
+    exact hmain e.depth e env heap trace funcs cs sf' t (Nat.le_refl _) hth hstep hnoerr
+  intro n
+  induction n with
+  | zero =>
+    intro e env heap trace funcs cs sf' t hd hth hstep hnoerr
+    cases hth
+    next => -- throw_direct (depth 1, not 0)
+      simp [Flat.Expr.depth] at hd
+    all_goals (simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; omega)
+  | succ n ih =>
+    intro e env heap trace funcs cs sf' t hd hth hstep hnoerr
+    cases hth with
+    | throw_direct =>
+      rename_i arg
+      -- .throw arg: step? evaluates arg. If arg is value, produces error (contradicts hnoerr).
+      -- If arg is not value, steps arg (non-error) → .throw arg'
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · -- arg is value: throw produces error → contradiction
+        simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+      · -- arg is not value: step arg
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .throw_direct
+        · simp at hstep
+    | seq_left h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i b
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .seq_left (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | seq_right h =>
+      rename_i a
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep
+      · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact h
+      · split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; exact .seq_right h
+        · simp at hstep
+    | let_init h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i name body
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .let_init (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | if_cond h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i then_ else_
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .if_cond (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | assign_val h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i name
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .assign_val (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | getProp_obj h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i prop
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .getProp_obj (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | deleteProp_obj h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i prop
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .deleteProp_obj (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | typeof_arg h =>
+      have hv := HasThrowInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .typeof_arg (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | unary_arg h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i op
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .unary_arg (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | getEnv_env h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i idx
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .getEnv_env (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | makeClosure_env h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i funcIdx
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .makeClosure_env (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | return_some_arg h =>
+      have hv := HasThrowInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .return_some_arg (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | yield_some_arg h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i delegate
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .yield_some_arg (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    | await_arg h =>
+      have hv := HasThrowInHead_not_value _ h
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+      split at hstep
+      · split at hstep
+        · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+          obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+          exact .await_arg (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+      · simp at hstep
+    -- Multi-context cases (binary, setProp, getIndex, setIndex, call, newObj, makeEnv, objectLit, arrayLit)
+    -- These require handling multiple sub-expression evaluation orders.
+    | setProp_obj h => sorry -- setProp obj context
+    | setProp_val h => sorry -- setProp val context
+    | binary_lhs h => sorry -- binary lhs context
+    | binary_rhs h => sorry -- binary rhs context
+    | getIndex_obj h => sorry -- getIndex obj context
+    | getIndex_idx h => sorry -- getIndex idx context
+    | setIndex_obj h => sorry -- setIndex obj context
+    | setIndex_idx h => sorry -- setIndex idx context
+    | setIndex_val h => sorry -- setIndex val context
+    | call_func h => sorry -- call func context
+    | call_env h => sorry -- call env context
+    | call_args h => sorry -- call args context
+    | newObj_func h => sorry -- newObj func context
+    | newObj_env h => sorry -- newObj env context
+    | newObj_args h => sorry -- newObj args context
+    | makeEnv_values h => sorry -- makeEnv values context
+    | objectLit_props h => sorry -- objectLit props context
+    | arrayLit_elems h => sorry -- arrayLit elems context
 
 /-- Non-error steps preserve HasReturnInHead. -/
 private theorem HasReturnInHead_step_nonError
