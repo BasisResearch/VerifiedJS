@@ -1,4 +1,4 @@
-# jsspec — CLOSE REMAINING 2 CCStateAgree SORRIES
+# jsspec — CLOSE CCStateAgree SORRIES (6 remaining)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,40 +9,59 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-12T09:05
-- CC: **8** real sorries. Total: **30** (ANF 22 + CC 8).
-- EXCELLENT: You closed 4 CCStateAgree sorries since last run (12→8). Keep going.
-- 4 of the original 6 CCStateAgree sorries are DONE.
+## STATUS — 2026-04-12T10:05
+- CC: **12 real sorry instances** (previous count of 8 missed 4 inline sorries).
+- FLAT since 09:05. No progress in the last hour.
+- Previous runs were undercounting: sorries embedded in expressions like `sorry⟩` and `sorry,` were missed.
 
-## YOUR TARGET: 2 remaining CCStateAgree sorries
+## CORRECTED SORRY MAP (12 total):
 
-- **L10304** (tryCatch CCStateAgree): Body conversion changes nextId/funcs.size. Comment at L10308-10312 has proof skeleton.
-- **L10420** (while_ CCStateAgree): while_ lowers to .if cond (.seq body (.while_ cond body)) (.lit .undefined)
+**CCStateAgree (6)** — YOUR TARGETS:
+- **L7325**: `sorry⟩` — inline, if-true branch, CCStateAgree gap (else_ conversion state included)
+- **L7351**: `sorry,` — inline, adjacent to L7325, same CCStateAgree issue
+- **L10237**: `sorry⟩` — inline, rw + CCStateAgree for body value with hst'_eq
+- **L10240**: `sorry` — CCStateAgree + tryCatch body-value with finally
+- **L10314**: `sorry` — CCStateAgree, st vs st_a accounting for tryCatch conversion state
+- **L10430**: `sorry` — CCStateAgree, while_ lowers to .if cond (.seq body (.while_ cond body)) (.lit .undefined)
 
-### APPROACH (same as what worked for the 4 you already closed):
-Whatever technique you used on L7136, L7162, L10048, L10051 — apply it here.
+**Multi-step (3)** — DO NOT TOUCH:
+- L6877, L8182, L8193 — architectural, requires fundamental design change
 
-For L10304 specifically, the comment block gives you a skeleton:
+**Unclassified (2)** — DO NOT TOUCH:
+- L7974, L10080
+
+**AXIOM (1)** — UNPROVABLE:
+- L8833 — getIndex string semantic mismatch
+
+## APPROACH
+
+### For L7325 + L7351 (if-branch CCStateAgree pair):
+These are inline in a tuple expression. Use `lean_goal` at each position to see what's needed. The issue is that `st'` includes the else_ conversion state but the witness needs to agree only with the taken branch.
+
+Check if `convertExpr_state_mono` exists — it may let you show state monotonicity past the discarded branch.
+
+### For L10237 (body-value with hst'_eq):
+The surrounding code has `by rw [hst'_eq]; sorry`. You need CCStateAgree after rewriting with hst'_eq. Check what hst'_eq provides.
+
+### For L10240 (tryCatch + finally):
+Similar to L10237 but with a `some fin` finally clause adding another nested conversion.
+
+### For L10314 (tryCatch CCStateAgree):
+Comment at L10308-10312 has proof skeleton:
 ```
 cases finally_ with
 | none => use st1 as witness, convertExpr_state_mono, scope_irrelevant
 | some fin => analogous with nested convertExpr state
 ```
 
-For L10420, while_ expansion creates duplicated sub-expressions. Same CCStateAgree gap.
+### For L10430 (while_ CCStateAgree):
+while_ expansion creates duplicated sub-expressions. Same CCStateAgree gap.
 
-## DO NOT TOUCH:
-- L6867 (multi-step — architectural)
-- L7964, L8172, L8183 (multi-step — architectural)
-- L8823 (AXIOM — unprovable)
-- L10070 (unclassified/functionDef)
-
-## FULL CC SORRY MAP (8 total):
-- **Multi-step (3)**: L6867, L8172, L8183
-- **Unclassified (1)**: L7964
-- **AXIOM (1)**: L8823
-- **Unclassified (1)**: L10070
-- **CCStateAgree (2)**: L10304, L10420 ← YOU ARE HERE
+### EXECUTION ORDER:
+1. `lean_goal` at L10314 first — has a proof skeleton
+2. Then L10430 — similar pattern
+3. Then L7325/L7351 pair
+4. Then L10237/L10240 pair
 
 ## LOG
 **FIRST**: `echo "### $(date -Iseconds) Starting run — [task]" >> agents/jsspec/log.md`

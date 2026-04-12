@@ -1,4 +1,4 @@
-# proof — LIST THROW + COMPOUND AWAIT/YIELD
+# proof — THROW LIST + COMPOUND CASES
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -8,56 +8,70 @@
 
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## STATUS — 2026-04-12T09:05
-- ANF: **22** real sorries. CC: 8. Total: **30**.
-- GREAT PROGRESS: -12 from last supervisor run (42→30).
-- L18325 (HasNonCallFrameTryCatch) is GONE — wasmspec closed it.
-- Compound throw catch-all P0 is DECOMPOSED into individual cases. 4 list-throw sorries remain.
+## STATUS — 2026-04-12T10:05
+- ANF: **8 sorry-using declarations** (35 sorry instances). CC: 12 instances. Total: **47 real**.
+- FLAT since 09:05. No agent has committed anything in the last hour.
+- Previous methodology was undercounting inline sorries. Real count is higher than 30.
 
-## P0: LIST THROW CASES (4 sorries — L16095, L16097, L16099, L16101)
+## P0: THROW/LIST AREA (6 sorries — L16180, L16275, L16286, L16288, L16290, L16292)
 
-These are the remaining throw-in-head cases for list/args positions:
-1. **L16095**: `newObj_args` — f has no throw, but args list does. `hf` is false, need to handle env + args.
-2. **L16097**: `makeEnv_values` — throw in first non-value element of values list
-3. **L16099**: `objectLit_props` — throw in first non-value prop
-4. **L16101**: `arrayLit_elems` — throw in first non-value element
+**LINE NUMBERS SHIFTED** from last prompt. Verify with `lean_goal` before editing.
 
-For L16097-16101, the pattern is:
-- HasThrowInHeadList/Props gives you the first non-value element with throw
+- **L16180**: third-operand — obj and idx evaluate, then val steps
+- **L16275**: list — f and env evaluate, then args list steps
+- **L16286**: list — f and env evaluate, then args list steps
+- **L16288**: list case — first non-value element in values has throw
+- **L16290**: list case — first non-value prop in props has throw
+- **L16292**: list case — first non-value element in elems has throw
+
+For L16288-16292, the pattern is:
+- HasThrowInHeadList/Props gives the first non-value element with throw
 - Split the list at that element: `values = prefix ++ [elem] ++ suffix` where prefix is all values
 - Flat.step? steps `elem` through the compound context
-- Use `step?_makeEnv_values_ctx` / `step?_objectLit_props_ctx` / `step?_arrayLit_elems_ctx`
+- Use ctx lemmas (check with `lean_local_search "step?.*ctx"`)
 - Apply IH on the inner element
 
-For L16095, f and env are values (literals), so step? goes into the args list. Same pattern as list cases but inside `newObj`.
-
 ### EXECUTION:
-1. Check `lean_hover_info` on `step?_makeEnv_values_ctx` (or similar name) to find the right ctx lemma
-2. If ctx lemmas don't exist yet, check what `Flat.step?` does for makeEnv with a list — it should step the first non-value element
-3. Prove L16097 first (simplest list case), then replicate for L16099, L16101, L16095
+1. `lean_goal` at L16288 to see what's needed
+2. `lean_local_search "throwInHead.*list"` to find existing infrastructure
+3. Prove L16288 first (simplest), replicate for L16290, L16292
+4. Then L16180 (third-operand), L16275, L16286
 
-## P1: COMPOUND AWAIT/YIELD (2 sorries — L23768, L23941)
+## P1: COMPOUND AWAIT/YIELD/RETURN (5 sorries — L23959, L24132, L24188, L24192, L24193)
 
-These use the SAME error-propagation pattern as the compound throw cases. Since you proved the throw compound cases, the await/yield compound cases should follow the same structure:
-- `normalizeExpr_await_compound_case` / `normalizeExpr_yield_some_compound_case` exist
-- The `| _ =>` catch-all needs the same decomposition as throw
+- **L23959**: compound HasAwaitInHead — blocked by Flat.step? error propagation
+- **L24132**: compound HasYieldInHead — same blocker
+- **L24188**: return (some val) — compound, can produce .let
+- **L24192**: yield (some val) — compound, can produce .let
+- **L24193**: compound expressions (seq, let, assign, if, call, etc.) — needs structural induction
 
-## P2-P5 (remaining 7 sorries):
-- **P2** (2): L24092, L24104 — while condition
-- **P3** (2): L24829, L24869 — if-branch K-mismatch
-- **P4** (2): L25710, L25728 — tryCatch body
-- **P5** (2): L27278, L27349 — break/continue compound (error propagation)
+These use the SAME error-propagation pattern as compound throw. Check for `compound_lift` or `abruptHead_compound_lift` infrastructure.
 
-## BLOCKED (9): L11366-L11643 — trivial mismatch area. DO NOT TOUCH.
+## P2: WHILE CONDITION (2 sorries — L24283, L24295)
+- L24283: While condition value case — transient state breaks single-step SimRel
+- L24295: Condition-steps case — needs flat while-condition simulation
 
-## FULL SORRY MAP (22 total):
-- **BLOCKED (9)**: L11366, L11414, L11462, L11512, L11539, L11589, L11591, L11641, L11643
-- **P0 (4)**: L16095, L16097, L16099, L16101 (list throw) ← YOU ARE HERE
-- **P1 (2)**: L23768, L23941 (compound await/yield)
-- **P2 (2)**: L24092, L24104 (while condition)
-- **P3 (2)**: L24829, L24869 (if-branch K-mismatch)
-- **P4 (2)**: L25710, L25728 (tryCatch body)
-- **P5 (2)**: L27278, L27349 (break/continue compound)
+## P3: IF-BRANCH K-MISMATCH (2 sorries — L25020, L25060)
+- L25020: if_branch true — collapsed for OOM fix, 24 sub-cases blocked by K-mismatch
+- L25060: if_branch false — same
+- These are inside `normalizeExpr_if_branch_step` (L24982) and its false variant
+
+## P4: TRYCATCH (3 sorries — L25901, L25919, L25922)
+- L25901: tryCatch body-error
+- L25919: tryCatch body-step — blocked by callStack propagation + counter alignment
+- L25922: compound cases — deferred
+
+## BLOCKED (12): L11366-L11737 — labeled-in-compound area. DO NOT TOUCH until error propagation infrastructure exists.
+
+## FULL SORRY MAP (35 instances across 8 declarations):
+- **BLOCKED (12)**: L11366, L11414, L11462, L11512, L11539, L11589, L11591, L11641, L11643, L11674, L11706, L11737
+- **P0 (6)**: L16180, L16275, L16286, L16288, L16290, L16292 ← START HERE
+- **P1 (5)**: L23959, L24132, L24188, L24192, L24193
+- **P2 (2)**: L24283, L24295
+- **P3 (2)**: L25020, L25060
+- **P4 (3)**: L25901, L25919, L25922
+- **WASMSPEC (3)**: L18673, L27249, L27250 (wasmspec owns these)
+- **END (2)**: L27469, L27540
 
 ## LOG
 **FIRST**: `echo "### $(date -Iseconds) Starting run — [task]" >> agents/proof/log.md`

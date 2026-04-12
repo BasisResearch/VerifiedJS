@@ -1,4 +1,4 @@
-# wasmspec — BREAK/CONTINUE COMPOUND ERROR PROPAGATION
+# wasmspec — BREAK/CONTINUE + HasNonCallFrameTryCatch
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,40 +9,47 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-12T09:05
-- Total: **30 real sorries** (ANF 22, CC 8). Down from 42!
-- **L18325**: YOU CLOSED IT. Well done. -1 from your work.
-- Infrastructure lemmas (step_error_noNonCallFrameTryCatch_isLit, step_nonError_preserves) confirmed working.
+## STATUS — 2026-04-12T10:05
+- Total: **47 real sorry instances** (ANF 35, CC 12). Previous count of 30 was undercounting.
+- FLAT since 09:05. Nothing committed in the last hour.
+- L18325 closed previously. But L18673 is a DIFFERENT sorry in the same area — still open.
 
-## P0: BREAK/CONTINUE COMPOUND (2 sorries — L27278, L27349)
+## P0: BREAK/CONTINUE COMPOUND (2 sorries — L27249, L27250)
 
-Both sorries are the same blocker: error propagation through compound Flat.step? cases for break/continue.
+**LINE NUMBERS SHIFTED** from last prompt (was L27278, L27349). Verify with `lean_goal`.
 
-At L27278 (break) and L27349 (continue), the catch-all matches ~28 compound HasBreak/ContinueInHead constructors:
-```
-| seq_left _ | seq_right _ | let_init _ | getProp_obj _ | ...
-```
+- **L27249**: `(sorry /- catchParam ≠ "__call_frame_return__": needs noCallFrameReturn threaded as precondition or derived from source well-formedness -/)`
+- **L27250**: `(sorry /- body_sim: inner simulation IH, needs anfConvert_step_star to be proved by strong induction -/)`
 
-For each, you need: if HasBreakInHead (or HasContinueInHead) holds for a compound expression, and the inner sub-expression steps, then the compound expression also steps (through the evaluation context).
+These are inside `anfConvert_step_star` (L27092). Both are in parenthesized sorry with comments explaining what's needed.
 
-This is the SAME pattern as the compound throw cases that proof agent solved. The key ingredients:
-1. A `compound_lift` lemma that lifts inner steps through the evaluation context
-2. ctx/error lemmas for each compound position (step?_binary_lhs_ctx, step?_getProp_obj_ctx, etc.)
+### For L27249:
+Need to show catchParam ≠ "__call_frame_return__". This should follow from source well-formedness or from `noCallFrameReturn` being threaded as a precondition. Check:
+1. `lean_local_search "noCallFrameReturn"` — does the precondition exist?
+2. `lean_hover_info` on the surrounding context to see available hypotheses
+3. If noCallFrameReturn is available, derive the inequality from it
 
-### APPROACH:
-Check if `hasBreakInHead_compound_lift` and `hasContinueInHead_compound_lift` already exist (proof agent may have written them for the throw case). If not, model them after `throwInHead_compound_lift`.
+### For L27250:
+This is the inner simulation IH for the tryCatch body. It needs `anfConvert_step_star` itself (recursive). Check if strong induction is already set up — if the theorem uses `WellFoundedRelation` or `termination_by`, the IH should be available.
 
-Alternatively, since break/continue produce `.error ("break:...")`/`.error ("continue:...")` — these are structurally identical to throw's error propagation. You may be able to reuse throwInHead_compound_lift directly or write a generic `abruptHead_compound_lift`.
+## P1: HasNonCallFrameTryCatch (1 sorry — L18673)
 
-### EXECUTION:
-1. `lean_local_search` for `compound_lift` or `abrupt.*compound` to find existing infrastructure
-2. If nothing exists, write `breakInHead_compound_lift` modeled on `throwInHead_compound_lift`
-3. Apply to each compound constructor at L27278
-4. Replicate for L27349 (continue — same pattern)
+This is `(sorry /- ¬HasNonCallFrameTryCatchInHead a: EvalFirst approach INSUFFICIENT -/)` inside `HasReturnInHead_Steps_steppable` (L18663).
 
-## P1: TRIVIAL MISMATCH AREA (L11366-L11643) — AFTER P0
+This is NOT the same as L18325 (which you already closed). The comment says the EvalFirst approach is insufficient. Check:
+1. `lean_goal` at L18673 to see what's actually needed
+2. The theorem is about HasReturnInHead + steppability. The sorry needs ¬HasNonCallFrameTryCatchInHead.
+3. Since this is in a .return context, `normalizeExpr_tryCatch_not_return_none/some` should help establish that tryCatch can't appear.
 
-These 9 sorries in the "labeled in compound" area may share the same error-propagation blocker. After P0, check if the infrastructure you build can close some of these.
+## P2: END-OF-FILE SORRIES (2 — L27469, L27540)
+
+Check what declarations these are in and what's needed. These may be simpler structural gaps.
+
+## EXECUTION ORDER:
+1. L27249 (noCallFrameReturn) — likely closable with existing infrastructure
+2. L18673 (HasNonCallFrameTryCatch) — same infrastructure area as L18325
+3. L27250 (IH) — depends on recursive structure
+4. L27469, L27540 (end-of-file)
 
 ## LOG
 **FIRST**: `echo "### $(date -Iseconds) Starting run — [task]" >> agents/wasmspec/log.md`
