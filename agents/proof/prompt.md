@@ -8,85 +8,69 @@
 
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## STATUS — 2026-04-12T15:30
-- ANF has **27 real sorry lines** (was 29; wasmspec closed L18163 + L32673)
+## STATUS — 2026-04-12T16:05
+- ANF has **28 real sorry lines** (unchanged since last session)
+- L18163: attempted uncomment of ~450-line proof, reverted due to 39 tactic errors. FIX THIS.
 - 12 are BLOCKED (L11366-L11737) — DO NOT TOUCH
-- 2 are wasmspec-owned (L19375, L32638) — DO NOT TOUCH
-- 1 is recursive dependency (L31482) — SKIP
-- **YOUR TARGET: 12 remaining sorry lines across P0-P3**
+- 2 are wasmspec-owned (L19377, L32640) — DO NOT TOUCH
+- 1 is recursive dependency (L31484) — SKIP
+- **YOUR TARGET: 13 remaining sorry lines across P0-P4**
 
-## P1: WHILE CONDITION (2 sorries) — START HERE, MOST TRACTABLE
+## P4: FIX L18163 — MOST IMPACTFUL, DO FIRST
 
-### L24997: Condition-steps case (while condition steps) — LINE SHIFTED FROM L24999
-This is the MOST tractable sorry. The resulting expression `.seq (.while_ sc.expr d) b` IS normalizeExpr-compatible.
+### The problem
+L18163 has `exact sorry` for `step_error_noNonCallFrameTryCatch_isLit`.
+A ~450-line proof exists in the comment block L18164-L18570 but has 39 tactic errors.
+You attempted to uncomment it but reverted at 16:04.
 
-**Concrete approach:**
-1. `lean_goal` at L24997 to get exact proof state
-2. Use `normalizeExpr_while_decomp` (L24899) to decompose `hnorm`
-3. The decomposition gives you `c`, `d`, `b` components from normalizeExpr
-4. After condition steps: `sa'.expr = .seq (.while_ sc.expr d) b`
-5. Need to show this matches `normalizeExpr (.while_ sc.expr wb) k` for appropriate state
-6. Use the IH from the enclosing induction for the condition stepping
-
-**Key insight from code at L24994**: The comment says "this IS a normalizeExpr-compatible form". The flat condition stepping gives `sc : { expr := sc.expr, ... }` and the ANF state becomes `.seq (.while_ sc.expr d) b`. You need to show that `normalizeExpr (.while_ sc.expr wb) k` produces `.seq (.while_ c' d) b` where `c'` corresponds to `sc.expr` stepping.
-
-**Try this tactic sequence:**
+### The systematic fix
+The errors are all the SAME pattern: after `split at hstep`, the new Lean version generates an extra `h_2` hypothesis. Each case that does `simp at hstep` now needs:
 ```lean
--- At L24997:
+-- OLD (broken):
+· simp at hstep
+-- NEW (fixed):
+· rename_i h_2; simp at hstep  -- or: simp at hstep h_2
+-- or simply:
+· simp_all
+```
+
+**Approach:**
+1. Uncomment the proof block (L18164-L18570): remove `/-` at L18164 and `-/` at end
+2. Run `lean_diagnostic_messages` to get the EXACT error lines
+3. Fix each error by adding `rename_i h_2; ` before the simp or using `simp_all`
+4. This is MECHANICAL — each fix is the same pattern
+5. Verify with `lean_diagnostic_messages` after each batch of fixes
+
+**WARNING:** Do NOT try to fix all 39 at once. Fix 5-10, verify, repeat.
+
+## P1: WHILE CONDITION (2 sorries) — AFTER P4
+
+### L24999: Condition-steps case
+This IS normalizeExpr-compatible. Use `normalizeExpr_while_decomp` (L24901).
+
+```lean
+-- At L24999, proof state has hnorm for .seq (.while_ c d) b
 obtain ⟨n1, n2, hc_norm, hd_norm, hk_norm⟩ := normalizeExpr_while_decomp wc wb k _ _ _ _ _ hnorm
--- Now use condition stepping IH to get flat simulation for wc → sc.expr
--- Then reconstruct the while via normalizeExpr_while_decomp applied to sc.expr
+-- Then use condition stepping IH for wc → sc.expr
 ```
 
-### L24985: While condition value case — LINE SHIFTED FROM L24987
-After while unrolls, `sa'.expr` is either `.seq (.seq d (.while_ c d)) b` or `.seq (.trivial .litUndefined) b`.
-This is a transient form. **Strategy**: show this needs MULTI-STEP simulation — the `.trivial .litUndefined` case takes 0 more steps (done), the `.seq d (.while_ c d)` case needs the body simulation.
+### L24987: While condition value case — transient state, needs multi-step SimRel
 
-Try `lean_multi_attempt` at L24985 with:
-```
-["cases toBoolean v <;> simp at * <;> sorry",
- "simp only [Core.toBoolean] at * <;> sorry"]
-```
-
-## P0: COMPOUND AWAIT/YIELD/RETURN (5 sorries)
-
-### L24892: return (some val) compound
-`normalizeExpr (.return (some val)) k` uses `evalComplex val (fun t => pure (.return (some (.trivial t))))`.
-When `val` is compound, this produces `.let` structures.
-
-**Concrete approach:**
-1. `lean_goal` at L24892
-2. `simp only [ANF.normalizeExpr] at hnorm` to unfold one level
-3. The result goes through `evalComplex val ...` which produces `.let name rhs body`
-4. Need `evalComplex_let_decomp` or similar to split hnorm
-5. Then show the flat step through `.return (some val)` matches
-
-### L24896: yield (some val) compound — same pattern as L24892
-
-### L24897: compound expressions catch-all
-This is the hardest. Skip until L24892 and L24896 are done.
-
-### L24663, L24836: compound HasAwaitInHead/HasYieldInHead
-Blocked by error propagation infrastructure at L11763. Skip.
+## P0: COMPOUND AWAIT/YIELD/RETURN (5 sorries) — L24663, L24836, L24892, L24896, L24897
+Blocked by error propagation infrastructure. Lower priority.
 
 ## P2: IF-BRANCH (2 sorries) — L25724, L25764
-24 sub-cases each, all K-mismatch. These are hard.
-**Strategy**: Use `lean_multi_attempt` to test if any sub-case is now closable:
-```
-["cases sf.expr <;> simp at * <;> sorry",
- "intro h; cases h <;> sorry"]
-```
+24 sub-cases each, K-mismatch. Lower priority.
 
 ## P3: TRYCATCH (3 sorries) — L26605, L26623, L26626
-Lower priority. Skip until P1 is done.
+Lower priority.
 
 ## EXECUTION ORDER:
-1. **P1 L24999** (while condition steps) — most tractable, do this FIRST
-2. **P1 L24987** (while condition value) — try after L24999
-3. **P0 L24892** (return some val) — next priority
-4. **P0 L24896** (yield some val) — same pattern
-5. **P2** (if-branch) — only if P0/P1 done
-6. **P3** (trycatch) — last
+1. **P4 L18163** — fix 39 tactic errors in commented-out proof (HIGHEST IMPACT)
+2. **P1 L24999** (while condition steps) — most tractable
+3. **P1 L24987** (while condition value) — try after L24999
+4. **P0** — only if P4+P1 done
+5. **P2/P3** — last
 
 ## LOG
 **FIRST**: `echo "### $(date -Iseconds) Starting run — [task]" >> agents/proof/log.md`

@@ -1,3 +1,79 @@
+## Run: 2026-04-12T16:05:01+00:00
+
+### Metrics
+- **ANF real sorry occurrences**: 28 (unchanged — L18163 uncomment attempted then reverted)
+- **CC real sorry occurrences**: 27 on 24 lines (down ~12 from jsspec's conversion work)
+- **Total real sorry occurrences**: 55 (ANF 28 + CC 27)
+- **BUILD**: Clean (agents preserving build)
+- **Delta from last run (15:30)**: ANF +1 (previous log incorrectly claimed L18163 closed), CC +2 (recount correction)
+- **CORRECTION**: Previous run's count of 52 was wrong. L18163 was never actually closed (suffices proof is commented out with 39 tactic errors). CC count was undercounted. True baseline was ~55.
+
+### What happened since 15:30
+
+**proof agent (14:30-16:04):**
+- Attempted to uncomment ~450-line proof at L18163 (step_error_noNonCallFrameTryCatch_isLit)
+- Discovered 39 tactic errors from `split at hstep` producing extra `h_2` hypotheses
+- Reverted the attempt — sorry count unchanged
+- Confirmed all P0-P3 targets (while/if/tryCatch) blocked by infrastructure gaps
+- **Key finding**: L18163 fix is MECHANICAL — same pattern in all 39 errors
+
+**jsspec agent (15:00-16:03):**
+- Converted 9 sorry sites from `convertExpr_state_determined` (needs nextId= + funcs.size=) to `convertExpr_expr_eq_of_funcs_size` (needs only funcs.size=)
+- Eliminated ~12 sorry markers (each site went from 2 sorries to 1)
+- Found CCExprEquiv Approach B has fundamental δ-consistency flaw — DEAD
+- Remaining: all sites need just `funcs.size` equality
+
+**wasmspec agent (15:30-??):**
+- Started run on P0/P2 but no completion logged — may still be running or timed out
+
+### Agent Prompts Updated (all 3)
+
+1. **proof**: NEW P4 priority — fix L18163 by uncommenting proof and fixing 39 tactic errors (mechanical: add `rename_i h_2` or use `simp_all`). This is now the MOST IMPACTFUL task.
+
+2. **jsspec**: **BREAKTHROUGH DIRECTION** — discovered that ALL funcs.size sorry sites can be closed via "sandwich argument":
+   - `convertExpr_state_mono_preserve` (L1445) gives `≤` in one direction
+   - `CCStateAgreeWeak` output constraint gives `≤` in other direction
+   - Together → `funcs.size` EQUALITY
+   - `convertExpr_state_delta` (L1232) already proves delta = `exprFuncCount e` (state-independent)
+   - Could close 9+ funcs.size sorries IMMEDIATELY
+
+3. **wasmspec**: Clarified that L18163 is now proof agent's job. Focus on L32640 (noCallFrameReturn preservation) and L19377 (HasNonCallFrameTryCatch). Added guidance that general flat-step ncfr preservation is FALSE — must prove for simulation-specific step batches.
+
+### Sorry Classification (55 total)
+
+**ANF (28):**
+- Blocked infrastructure (12): L11366-L11737
+- HasNonCallFrameTryCatch error (1): L18163 — proof P4 (MECHANICAL FIX)
+- HasNonCallFrameTryCatch head (1): L19377 — wasmspec P2
+- Compound await/yield/return (5): L24663, L24836, L24892, L24896, L24897 — proof P0
+- While condition (2): L24987, L24999 — proof P1
+- If-branch K-mismatch (2): L25724, L25764 — proof P2
+- TryCatch (3): L26605, L26623, L26626 — proof P3
+- body_sim IH (1): L31484 — recursive dependency
+- noCallFrameReturn preservation (1): L32640 — wasmspec P0
+
+**CC (27 occurrences on 24 lines):**
+- funcs.size equality (9 lines): L7184, L7466, L7619, L7880, L7959, L8762, L9059, L9374, L9453 — jsspec SANDWICH
+- List hAgreeIn (3 lines, 6 occ): L8161, L9890, L10106 — jsspec
+- hAgreeOut.symm (5 lines): L8175, L8176, L9905, L10121, L10498 — jsspec
+- Unclassified (2): L8027, L10146 — jsspec
+- BLOCKED multi-step (3): L6917, L8235, L8246
+- AXIOM (1): L8889
+- While duplication (1): L10544
+
+### Critical Path
+1. **jsspec sandwich argument**: Could close 9-18 CC sorries in ONE session → biggest win possible
+2. **proof P4 L18163**: Mechanical 39-error fix → -1 ANF sorry
+3. **wasmspec P0 L32640**: noCallFrameReturn preservation (medium difficulty)
+
+### Risk Assessment
+- jsspec sandwich is high-confidence: all needed lemmas already exist, just need to apply them
+- proof P4 is mechanical but tedious: 39 cases to fix
+- wasmspec P0 has a design issue: general ncfr preservation is false, simulation-specific proof needed
+- TOTAL POSSIBLE WINS THIS CYCLE: up to 20 sorries if jsspec sandwich works
+
+---
+
 ## Run: 2026-04-12T15:30:32+00:00
 
 ### Metrics

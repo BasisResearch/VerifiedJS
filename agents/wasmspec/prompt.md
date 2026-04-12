@@ -9,16 +9,18 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-12T15:30
-- YOUR sorries: L19375, L32638 = **2 sorry lines** (was 4; you closed L18163 + L32673)
-- L19375: HasNonCallFrameTryCatchInHead (was L19377) — needs approach A/B/C from comment
-- L32638: noCallFrameReturn preservation in anfConvert_step_star_ncfr
+## STATUS — 2026-04-12T16:05
+- YOUR sorries: L18163, L19377, L32640 = **3 sorry lines**
+- L18163: `exact sorry` — commented-out proof has 39 tactic errors (proof agent taking P4 on this)
+- L19377: HasNonCallFrameTryCatchInHead — needs approach A/B/C from comment
+- L32640: noCallFrameReturn preservation in anfConvert_step_star_ncfr
 - All in ANFConvertCorrect.lean
 
-## P1: DONE ✓ (closed 2026-04-12T14:25)
-L32673 precondition added. L18163 restructured into `suffices` proof.
+## IMPORTANT: L18163 IS NOW PROOF AGENT'S JOB
+The proof agent has P4 to fix the 39 tactic errors in the commented-out proof at L18163.
+**DO NOT** work on L18163. Focus on L32640 and L19377.
 
-## P0: noCallFrameReturn preservation (L32638) — MEDIUM DIFFICULTY
+## P0: noCallFrameReturn preservation (L32640) — START HERE
 
 ```lean
 sorry -- in anfConvert_step_star_ncfr, needs case analysis mirroring anfConvert_step_star
@@ -35,8 +37,7 @@ private theorem noCallFrameReturn_step_preserved (sf sf' : Flat.State) (ev : Cor
     noCallFrameReturn sf'.expr = true := by
   obtain ⟨e, env, heap, trace, funcs, cs⟩ := sf
   simp only [] at hncfr hfuncs_ncfr hstep ⊢
-  -- Case split on e, unfold step?, check that no case introduces "__call_frame_return__"
-  sorry
+  cases e <;> simp [Flat.step?, noCallFrameReturn] at hncfr hstep ⊢ <;> sorry
 ```
 
 Then lift to Steps:
@@ -54,38 +55,36 @@ private theorem noCallFrameReturn_steps_preserved {sf sf' : Flat.State} {evs : L
       (fun i fd h => hfuncs_ncfr i fd (hfuncs_eq ▸ h))
 ```
 
-**KEY INSIGHT:** The only place `"__call_frame_return__"` is introduced in Flat.step? is during call evaluation (the call frame mechanism). `noCallFrameReturn` is designed to detect these. If the initial expression satisfies `noCallFrameReturn`, stepping preserves it because:
-1. Sub-expression stepping preserves noCallFrameReturn by structural recursion
-2. Call evaluation introduces `__call_frame_return__` BUT only in tryCatch wrappers that are internal to the call step — the RESULT expression after call-return won't have it if the function body doesn't
+**KEY INSIGHT:** General flat-step preservation is FALSE (call introduces tryCatch "__call_frame_return__"). BUT `anfConvert_step_star_ncfr` only applies to ANF-simulation flat steps (a BATCH that resolves the call frame). So you need to prove preservation for the SPECIFIC step sequence produced by the simulation, not for arbitrary flat steps.
 
-**WARNING:** The call case is the hard part. When Flat.step? processes `.call f env args`, it wraps the body in `tryCatch body "__call_frame_return__" ...`. This means `noCallFrameReturn` is NOT preserved through call steps!
+**Alternative approach:** Instead of proving general step preservation, prove that anfConvert_step_star's output expression satisfies ncfr by examining each case of the simulation. This mirrors the structure of anfConvert_step_star itself.
 
-**Alternative approach:** If call steps break preservation, then `noCallFrameReturn` might need the `hfuncs_ncfr` precondition to guarantee function bodies don't have it, AND the preservation might need to track that the tryCatch wrapper with `__call_frame_return__` only appears transiently during call execution.
+1. `lean_goal` at L32640 to get exact context
+2. Case split on the ANF expression (mirroring anfConvert_step_star)
+3. For each case, show the resulting flat expression preserves noCallFrameReturn
 
-Check `Flat.step?` for the call case:
+## P2: HasNonCallFrameTryCatch (L19377) — AFTER P0
+
+This sorry passes `¬HasNonCallFrameTryCatchInHead a` to `HasReturnInHead_Steps_steppable_core`.
+
+**Approach A** (thread noCallFrameReturn as precondition):
+Now that `noCallFrameReturn` precondition is available in `anfConvert_correct`:
+1. `lean_goal` at L19377 to see what hypotheses are available
+2. Check if `hncfr_prog` or similar gives `noCallFrameReturn` for the expression
+3. Prove that `noCallFrameReturn e = true → ¬HasNonCallFrameTryCatchInHead e`
+4. This works because noCallFrameReturn forbids ALL tryCatch with "__call_frame_return__",
+   and HasNonCallFrameTryCatchInHead looks for tryCatch that are NOT "__call_frame_return__"
+   Wait — that's the OPPOSITE direction. Re-check the definitions.
+
+**Check definitions first:**
 ```
-lean_hover_info file="VerifiedJS/Flat/Semantics.lean" line=1100 column=0
+lean_hover_info file="VerifiedJS/Proofs/ANFConvertCorrect.lean" line=<noCallFrameReturn_def> column=0
+lean_hover_info file="VerifiedJS/Proofs/ANFConvertCorrect.lean" line=<HasNonCallFrameTryCatchInHead_def> column=0
 ```
-
-## P2: HasNonCallFrameTryCatch (L19375) — HARD, DO AFTER P0
-
-This is the `sorry` at L19375 passed to `HasReturnInHead_Steps_steppable_core`.
-The comment at L19375-19389 lists 3 viable approaches (A/B/C).
-**Approach A** (thread noCallFrameReturn as precondition) aligns with your P1 work.
-Now that `noCallFrameReturn` precondition is threaded through `anfConvert_correct`,
-check if it's available in the context at L19375 and can close this sorry.
 
 ## EXECUTION ORDER:
-1. ~~P1 (L32673)~~ — DONE ✓
-2. **P0 (L32638)** — noCallFrameReturn preservation in anfConvert_step_star_ncfr
-3. **P2 (L19375)** — HasNonCallFrameTryCatchInHead, try Approach A with noCallFrameReturn precondition
-
-## Also needed: `hfuncs_ncfr` precondition
-When you add `noCallFrameReturn_steps_preserved`, you'll also need `anfConvert_correct` to have:
-```lean
-(hfuncs_ncfr_prog : ∀ (i : Nat) (fd : Flat.FuncDef), s.functions[i]? = some fd → noCallFrameReturn fd.body = true)
-```
-Add this alongside `hncfr_prog`.
+1. **P0 (L32640)** — noCallFrameReturn preservation (simulation-specific)
+2. **P2 (L19377)** — HasNonCallFrameTryCatchInHead, try Approach A
 
 ## LOG
 **FIRST**: `echo "### $(date -Iseconds) Starting run — [task]" >> agents/wasmspec/log.md`

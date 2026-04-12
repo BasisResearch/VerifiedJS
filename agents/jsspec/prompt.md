@@ -1,4 +1,4 @@
-# jsspec — CLOSE CCStateAgreeWeak SORRIES VIA CCExprEquiv
+# jsspec — CLOSE funcs.size SORRIES VIA SANDWICH ARGUMENT
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,110 +9,98 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-12T15:30
-- CC has **25 real sorry lines** (unchanged for 12+ days)
-- 5 blocked/axiom sorries (L6917, L8219, L8230, L8870, L10515) — DO NOT TOUCH
-- **20 CCStateAgreeWeak sorries** — YOUR TARGET
-- Monotone approach was REJECTED (March 31 analysis confirmed it breaks chaining)
-- You are currently prototyping CCExprEquiv on L7461 — KEEP GOING
+## STATUS — 2026-04-12T16:05
+- CC has **27 sorry occurrences** on 24 lines (down ~12 from before your conversion)
+- You successfully converted 9 sites from `convertExpr_state_determined` to `convertExpr_expr_eq_of_funcs_size`
+- CCExprEquiv Approach B is DEAD (δ-consistency flaw confirmed)
+- 5 blocked/axiom sorries (L6917, L8235, L8246, L8889, L10544) — DO NOT TOUCH
+- **~18 funcs.size + hAgreeOut sorries remain — YOUR TARGET**
 
-## THE FIX: CCExprEquiv-BASED SIMULATION (Approach B)
+## THE BREAKTHROUGH: SANDWICH ARGUMENT
 
-### Why this works
-- `convertExpr_CCExprEquiv_shifted` (L1854) is ALREADY PROVEN for all expression types
-- It requires only `funcs.size` difference, NOT `nextId` equality
-- The branching constructs naturally produce states with different `funcs.size`
-- CCExprEquiv captures: expressions differ only in makeClosure function indices
+You already have ALL the infrastructure needed. The funcs.size sorry sites are closable NOW.
 
-### Step 1: Understand the infrastructure (READ FIRST)
+### Key insight
+At each sorry site you need: `(convertExpr sub ... st_real).snd.funcs.size = st_a'.funcs.size`
+
+You have TWO CCStateAgreeWeak constraints (from the simulation invariant L6858-6860):
+1. Input: `CCStateAgreeWeak st st_a` → `st.funcs.size ≤ st_a.funcs.size`
+2. Output: `CCStateAgreeWeak st_a' st'` → `st_a'.funcs.size ≤ st'.funcs.size`
+
+Where `st_a' = (convertExpr e ... st_a).snd` and `st' = (convertExpr e ... st).snd`.
+
+**Sandwich:**
+- From (1) + `convertExpr_state_mono_preserve` (L1445): `st'.funcs.size ≤ st_a'.funcs.size`
+- From (2): `st_a'.funcs.size ≤ st'.funcs.size`
+- **Therefore: `st_a'.funcs.size = st'.funcs.size` (and `st_a.funcs.size = st.funcs.size`)**
+
+### Concrete tactic for each sorry site
+
+For any sorry that needs `(convertExpr sub ... st_real_out).snd.funcs.size = st_a'.funcs.size`:
+
 ```lean
--- L1499-1547: CCExprEquiv definition
-lean_hover_info file="VerifiedJS/Proofs/ClosureConvertCorrect.lean" line=1499 column=0
-
--- L1854: The key theorem
-lean_hover_info file="VerifiedJS/Proofs/ClosureConvertCorrect.lean" line=1854 column=0
+-- Given: hAgreeIn : CCStateAgreeWeak st st_a
+--        hAgreeOut : CCStateAgreeWeak st_a' st'
+-- Where st' = (convertExpr e ... st).snd and st_a' = (convertExpr e ... st_a).snd
+have h_mono := (convertExpr_state_mono_preserve e scope envVar envMap st st_a hAgreeIn.1 hAgreeIn.2).2
+-- h_mono : (convertExpr e ... st).snd.funcs.size ≤ (convertExpr e ... st_a).snd.funcs.size
+-- hAgreeOut.2 : st_a'.funcs.size ≤ st'.funcs.size
+-- So: st'.funcs.size ≤ st_a'.funcs.size AND st_a'.funcs.size ≤ st'.funcs.size
+omega
 ```
 
-### Step 2: Prototype on ONE sorry pair (L7461 — if cond case)
-
-Current code at L7461:
+Or even simpler — you can use `convertExpr_state_delta` (L1232) directly:
 ```lean
-(Flat.convertExpr cond scope envVar envMap st).snd st_a' sorry /- hAgreeOut.1 -/ sorry /- hAgreeOut.2 -/
+have hd1 := (convertExpr_state_delta e scope envVar envMap st).2
+have hd2 := (convertExpr_state_delta e scope envVar envMap st_a).2
+-- hd1 : st'.funcs.size = st.funcs.size + exprFuncCount e
+-- hd2 : st_a'.funcs.size = st_a.funcs.size + exprFuncCount e
+omega  -- with hAgreeIn.2 and hAgreeOut.2
 ```
 
-This calls `convertExpr_state_determined` which requires CCStateAgree (equality).
+### Step-by-step plan
 
-**Replace with CCExprEquiv approach:**
-```lean
--- Instead of convertExpr_state_determined (needs equality), use:
-have h_equiv : CCExprEquiv δ
-    (Flat.convertExpr then_ scope envVar envMap (Flat.convertExpr cond scope envVar envMap st).snd).fst
-    (Flat.convertExpr then_ scope envVar envMap st_a').fst :=
-  convertExpr_CCExprEquiv_shifted then_ scope envVar envMap
-    (Flat.convertExpr cond scope envVar envMap st).snd st_a' δ
-    (by omega)  -- funcs.size relationship from convertExpr_state_delta
-```
+1. **Start with L7466** (if cond case) — you already restructured this site, just add the sandwich
+2. **Apply to L7184, L7619, L7880, L7959, L8762, L9059, L9374, L9453** — all same pattern
+3. **Then tackle L8161, L9890, L10106** (list patterns) — may need `convertExprList_state_delta`
+4. **Then L8175, L8176, L9905, L10121, L10498** (hAgreeOut.symm) — same sandwich but reversed direction
+5. **Finally L8027, L10146** — unclassified, inspect individually
 
-**BUT**: You also need to change the simulation invariant at L6858-6861 to use CCExprEquiv instead of expression equality. This is the key refactoring.
+### Key lemmas you already have:
+- `convertExpr_state_delta` (L1232): output = input + exprFuncCount e
+- `convertExprList_state_delta` (L1340-ish): same for lists
+- `convertExpr_state_mono_preserve` (L1445): monotonicity
+- `convertExprList_state_mono_preserve` (L1458): same for lists
+- `convertExpr_expr_eq_of_funcs_size` (L1610): expr equality from funcs.size equality
 
-### Step 3: Change the simulation invariant (L6858-6861)
+### After funcs.size sorries are closed
+The sandwich also proves `st.funcs.size = st_a.funcs.size` (input equality!).
+This means `convertExpr_expr_eq_of_funcs_size` applies, giving EXPRESSION EQUALITY.
+So the hAgreeOut.symm sites should also close — the expressions are equal, so the output states agree.
 
-Current:
-```lean
-∃ (st_a st_a' : Flat.CCState),
-  (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
-  CCStateAgreeWeak st st_a ∧ CCStateAgreeWeak st_a' st'
-```
+## SORRY LOCATIONS (27 occurrences, 24 lines):
 
-Change to:
-```lean
-∃ (st_a st_a' : Flat.CCState) (δ : Nat),
-  CCExprEquiv δ sf'.expr (Flat.convertExpr sc'.expr scope envVar envMap st_a).fst ∧
-  st_a' = (Flat.convertExpr sc'.expr scope envVar envMap st_a).snd ∧
-  CCStateAgreeWeak st st_a ∧ CCStateAgreeWeak st_a' st' ∧
-  st.funcs.size + δ = st_a.funcs.size
-```
+**A. funcs.size equality (9 lines, 9 occurrences) — CLOSE FIRST:**
+- L7184 (let body), L7466 (if cond), L7619 (seq sub), L7880 (binary lhs)
+- L7959 (call f), L8762 (setProp val), L9059 (getIndex idx), L9374 (setIndex val), L9453 (setProp obj)
 
-With this invariant, the sorry sites transform from needing `convertExpr_state_determined` (needs equality) to needing `convertExpr_CCExprEquiv_shifted` (needs only funcs.size offset).
+**B. List/PropList hAgreeIn (3 lines, 6 occurrences):**
+- L8161 (exprList ×2), L9890 (propList ×2), L10106 (arrayLit ×2)
 
-### Step 4: Verify CCExprEquiv properties exist
-Before changing the invariant, verify these exist:
-1. `CCExprEquiv.refl`: `CCExprEquiv 0 e e` — for base cases
-2. Composition/transitivity — for chaining sub-expressions
-3. `CCExprEquiv` compatibility with Flat.step? — for simulation preservation
+**C. hAgreeOut.symm (5 lines, 5 occurrences):**
+- L8175, L8176, L9905, L10121, L10498
 
-Check with:
-```
-lean_local_search query="CCExprEquiv" file="VerifiedJS/Proofs/ClosureConvertCorrect.lean"
-```
-
-### CRITICAL WARNING
-Changing the invariant at L6858 will break ALL existing proofs that use expression equality.
-**DO NOT** change it until you have verified the CCExprEquiv approach works on L7461 as a prototype.
-
-**Prototype plan:**
-1. Add a SEPARATE lemma `cc_step_sim_CCExprEquiv_if_cond` that proves the if-cond case with the new invariant
-2. If the prototype works, THEN change the invariant
-3. If not, document exactly what's missing
-
-## SORRY LOCATIONS (25 real sorry lines):
-
-**A. CCStateAgreeWeak pairs (~20 lines):**
-- L7181-7186 (let body), L7461 (if cond), L7610 (assign), L7868 (binary lhs)
-- L7944 (call f), L8744 (getProp obj), L9038 (setProp obj), L9350 (setIndex)
-- L9426 (deleteProp obj), L8145 (exprList), L9861 (propList), L10077 (arrayLit)
-- L8159-8160 (hAgreeOut.symm), L9876, L10092, L10469
-
-**B. Unclassified (2):** L8011, L10117
-**C. Multi-step gap (3, BLOCKED):** L6917, L8219, L8230
-**D. AXIOM (1, UNPROVABLE):** L8870
-**E. While duplication (1, BLOCKED):** L10515
+**D. Unclassified (2):** L8027, L10146
+**E. BLOCKED (3):** L6917, L8235, L8246
+**F. AXIOM (1):** L8889
+**G. While dup (1):** L10544
 
 ## EXECUTION ORDER:
-1. Read CCExprEquiv definition and convertExpr_CCExprEquiv_shifted signature
-2. Prototype on L7461 (if cond) with a separate lemma
-3. If works: change invariant at L6858 and fix all sorry sites
-4. If doesn't work: document what's missing
+1. Close L7466 with sandwich argument — VERIFY it works
+2. Apply same pattern to all 9 funcs.size sites (group A)
+3. Then tackle list sites (group B) using convertExprList variants
+4. Then hAgreeOut.symm sites (group C)
+5. Inspect L8027, L10146 (group D)
 
 ## LOG
 **FIRST**: `echo "### $(date -Iseconds) Starting run — [task]" >> agents/jsspec/log.md`

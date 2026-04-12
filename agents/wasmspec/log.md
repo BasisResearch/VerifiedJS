@@ -8789,3 +8789,4 @@ call frame within a single ANF step batch.
 ## Run: 2026-04-12T15:30:10+00:00
 
 ### 2026-04-12T15:30:41+00:00 Starting run — P1 noCallFrameReturn precondition + P0 preservation theorem
+2026-04-12T16:15:01+00:00 SKIP: already running
