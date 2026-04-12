@@ -717,3 +717,63 @@
 
 ## Run: 2026-04-12T00:05:01+00:00
 
+
+## Run: 2026-04-12T00:05:01+00:00
+
+### Metrics
+- **Sorry count (real)**: ANF 30 + CC 12 = **42 total**
+- **Delta from last run (23:30)**: 0 (42→42). **STABLE.**
+- **BUILD**: LSP shows 613 errors in ANF — ALL cascade from timeout at L11688. No errors before L11688. CC has 0 errors. Build is NOT broken.
+
+### What Happened Since Last Run (23:30→00:05)
+1. **proof agent** (run 23:30, completed 00:07): 0 sorries closed. All 30 ANF sorries confirmed infrastructure-blocked. Key finding: HasThrowInHead_Steps_steppable is provable (~550 lines) but trivial mismatch blocks 12 labeled branch sorries (theorem design issue requiring K' flexibility).
+2. **wasmspec agent** (run 23:30, completed 00:06): P2 restructured — `HasReturnInHead_Steps_steppable_core` now sorry-free, wrapper has isolated sorry. Net: 0. Currently re-running (started 00:15) to complete threading.
+3. **jsspec agent** (run 23:30): Skipped ("already running"). Last substantive run was 22:00.
+
+### KEY DISCOVERY: CCExprEquiv offset theorem is DONE
+`convertExpr_CCExprEquiv_shifted` (L1627-1901) is FULLY PROVED with all 4 variants. jsspec completed this but hasn't yet applied it to close sorries. Redirected jsspec to invariant refactor.
+
+### KEY DISCOVERY: K' flexibility pattern exists
+`normalizeExpr_labeled_step_sim` (L11176) already uses K' flexibility in its conclusion. `normalizeExpr_labeled_branch_step` (L10304) does NOT — it fixes K. Refactoring to match the step_sim pattern would unblock 12 ANF sorries.
+
+### Sorry Classification (42 total, unchanged)
+**ANF (30):**
+- Trivial mismatch / K' flexibility (12): L10799-L11170 — proof agent refactoring
+- Compound throw (1): L13809
+- HasNonCallFrameTryCatch P2 (1): L16490 — wasmspec threading
+- Compound HasAwait/Yield (2): L21765, L21938
+- Return/yield compound (3): L21994, L21998, L21999
+- While condition (2): L22089, L22101
+- If branch K-mismatch (2): L22826, L22866
+- TryCatch (3): L23707, L23725, L23728
+- noCallFrame + body_sim (2): L25055, L25066
+- break/continue compound (2): L25285, L25356
+
+**CC (12):**
+- Multi-step simulation (3): L6451, L7756, L7767
+- CCStateAgree (5): L6899, L6925, L9654 area, L9888, L10004 — jsspec applying CCExprEquiv
+- CCStateAgree + tryCatch (1): L9814
+- Axiom/semantic mismatch (1): L8407 — UNPROVABLE
+- Other (2): L7548, L9811
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: REDIRECTED to K' flexibility refactor of normalizeExpr_labeled_branch_step. Specific 4-step plan: change signature, fix existing proofs, fix 12 sorry cases, update callers. Expected: -7 to -12.
+2. **jsspec**: REDIRECTED from building CCExprEquiv (DONE!) to applying it — refactor simulation invariant at 5 CCStateAgree sorry sites. Expected: -3 to -5.
+3. **wasmspec**: Continue P2 threading (currently running). Expected: -1 to -2.
+
+### Critical Path
+1. **K' flexibility refactor** → unblocks 12 ANF sorries. proof agent.
+2. **CCExprEquiv invariant refactor** → unblocks 5 CC sorries. jsspec.
+3. **P2 threading** → -1. wasmspec (in progress).
+4. Best case next run: ~38-40. Best case after both refactors land: ~25-27.
+
+### Trend
+- 18:05: 54 → 19:05: 49 → 20:05: 49 → 21:05: 50 → 22:05: 44 → 23:30: 42 → **00:05: 42**
+- Plateau at 42 for 35 min. Expected — both refactors are multi-run infrastructure.
+- If K' refactor lands next run: ~30. If CCExprEquiv lands: ~25.
+
+### Concerns
+- **Plateau is expected.** Low-hanging fruit exhausted at 42. Both active refactors are infrastructure work that produces 0 sorries during construction, then large drops when applied.
+- **jsspec hasn't run substantively since 22:00.** May need intervention if it stalls again.
+- **Proof agent LSP timeouts at L11688+.** The refactor region (L10304-L11170) is BEFORE the timeout zone, so it should be editable via LSP.
+2026-04-12T00:27:29+00:00 DONE

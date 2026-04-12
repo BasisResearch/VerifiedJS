@@ -1,4 +1,4 @@
-# wasmspec — CLOSE P2 + TACKLE noCallFrameReturn
+# wasmspec — CLOSE P2 (HasNonCallFrameTryCatch threading)
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,59 +9,48 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-11T23:30
-- Total: **42 real sorries** (ANF 30, CC 12). Down from 44 (-2).
-- You closed P0 + P1 last run (step_nonError_preserves + step_error_noNonCallFrameTryCatch). EXCELLENT.
-- **P2 remains**: L16451 — ¬HasNonCallFrameTryCatchInHead from normalizeExpr .return context.
+## STATUS — 2026-04-12T00:05
+- Total: **42 real sorries** (ANF 30, CC 12). Stable.
+- P0+P1 fully proved (step_nonError_preserves + step_error).
+- P2 restructured: `HasReturnInHead_Steps_steppable_core` is sorry-free, wrapper has isolated sorry.
+- You are currently running on P2 threading. CONTINUE.
 
-## P0: Close P2 (L16451) — HIGHEST PRIORITY
+## P0: THREAD ¬HasNonCallFrameTryCatchInHead THROUGH CALLERS (L16490)
 
-Line 16451: `sorry` inside the `suffices h` block of `HasReturnInHead_Steps_steppable`.
+The sorry at L16490 needs `¬HasNonCallFrameTryCatchInHead a` where `a` comes from `normalizeExpr` with a `.return` continuation.
 
-Goal: prove `¬HasNonCallFrameTryCatchInHead a` where `a` comes from `normalizeExpr sf.expr (fun t => pure (.return (some (.trivial t))))`.
+### Your restructuring is good. Now complete the threading:
 
-### Approach:
-1. `lean_goal` at L16451 to see exact context — what is `a`?
-2. `a` is the result of `normalizeExpr` with a `.return` continuation. The key insight is:
-   - `normalizeExpr` never introduces `tryCatch` — only `Flat.step?` does (for function calls)
-   - So `normalizeExpr` output has NO tryCatch at all in eval-head position
-3. You need a lemma: `normalizeExpr_no_tryCatch_in_head` or similar
-4. This should be provable by structural induction on the expression, showing normalizeExpr output has no tryCatch in eval-head position
-5. Alternative: show that `normalizeExpr` output expressions only contain tryCatch when the source expression was `.tryCatch`, and those are never in eval-head position for a `.return` continuation
+1. **Prove normalizeExpr_no_tryCatch_in_head**: normalizeExpr output never has tryCatch in eval-head position (tryCatch only appears from Flat.step? function calls, not from normalizeExpr)
+   - Structural induction on expression
+   - Key cases: normalizeExpr produces .let, .seq, .labeled, .trivial, etc. — NONE are .tryCatch
 
-### Specific tactic approach:
-```lean
--- At L16451, try:
-have : ¬HasNonCallFrameTryCatchInHead a := by
-  -- a comes from normalizeExpr with return continuation
-  -- normalizeExpr doesn't introduce tryCatch in eval-head
-  sorry -- fill with structural argument
-```
+2. **Thread through callers** (~90 edits across 3 theorems per your last analysis):
+   - `hasReturnInHead_return_steps` needs `¬HasNonCallFrameTryCatchInHead` precondition
+   - `normalizeExpr_return_step_sim` needs to derive it from normalizeExpr properties
+   - Top-level caller derives from `normalizeExpr_no_tryCatch_in_head`
 
-**Expected: -1 sorry.**
+3. **Alternative (simpler)**: At L16490, directly prove `¬HasNonCallFrameTryCatchInHead a` by:
+   - `a` = result of `normalizeExpr sf.expr (fun t => pure (.return (some (.trivial t))))`
+   - Use `normalizeExpr_no_tryCatch_in_head` directly
+   - No need to thread through callers if you can derive it at the sorry site
 
-## P1: noCallFrameReturn (L25039) — SECOND PRIORITY
+**Expected: -1 sorry**
 
-Line 25039: needs `catchParam ≠ "__call_frame_return__"` for tryCatch case in anfConvert_step_star.
+## P1: noCallFrameReturn (L25055) — SECOND PRIORITY
 
-This is related to P0 — both are about "__call_frame_return__" invariants. The issue: source Flat programs never have "__call_frame_return__" as a catch param (it's only introduced by Flat.step? for function calls). But during simulation, sf.expr COULD temporarily have it.
+The sorry needs `catchParam ≠ "__call_frame_return__"`. Approach:
+1. Prove: normalizeExpr output has no "__call_frame_return__" catch params
+2. Or: add NoCallFrameParam predicate to SimRel preconditions
 
-### Approach:
-1. `lean_goal` at L25039 to see the exact need
-2. Consider: add a `NoCallFrameParam` predicate as a precondition to the simulation invariant
-3. Prove: normalizeExpr output has no "__call_frame_return__" catch params
-4. Prove: preservation — if `NoCallFrameParam sf.expr` and the ANF step doesn't introduce one, then `NoCallFrameParam sf'.expr`
-5. The tryCatch case in Flat.step? for function calls DOES introduce "__call_frame_return__", but the call case in anfConvert_step_star handles the entire function execution internally
+Only attempt after P0 is done.
 
-This may be multi-run infrastructure. Even partial progress (defining the predicate + stating preservation) is valuable.
-
-**Expected: 0 to -1 sorry.**
+**Expected: -1 sorry**
 
 ## DO NOT WORK ON:
 - L10799-L11170 (labeled trivial mismatch — proof agent)
-- L13809 (compound throw — proof agent)
 - ClosureConvertCorrect.lean (jsspec)
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — P2 HasNonCallFrameTryCatch + noCallFrameReturn" >> agents/wasmspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — P2 threading continued" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`

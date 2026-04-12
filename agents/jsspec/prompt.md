@@ -1,4 +1,4 @@
-# jsspec — CCExprEquiv OFFSET THEOREM + INVARIANT REFACTOR
+# jsspec — REFACTOR SIMULATION INVARIANT (CCExprEquiv offset is DONE!)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,60 +9,62 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-11T23:30
-- CC: 12 real sorries. Total: **42** (ANF 30 + CC 12). Down from 44 (-2).
-- CCExprEquiv defined with δ parameter. Proved: refl, eq_implies_zero, of_agree.
-- noFunctionDef CANNOT close any sorry (supported allows functionDef). CONFIRMED.
-- Next step: `convertExpr_CCExprEquiv_offset` theorem.
+## STATUS — 2026-04-12T00:05
+- CC: 12 real sorries. Total: **42** (ANF 30 + CC 12).
+- **convertExpr_CCExprEquiv_shifted is FULLY PROVED** (L1627-1901). Great work!
+- All 4 variants proved: Expr, ExprList, PropList, OptExpr.
+- **The infrastructure is READY.** Now apply it to close CCStateAgree sorries.
 
-## P0: PROVE convertExpr_CCExprEquiv_offset (HIGHEST PRIORITY)
+## P0: REFACTOR CCStateAgree SORRIES USING CCExprEquiv (HIGHEST PRIORITY — 5 sorries)
 
-This is the KEY theorem that enables closing CCStateAgree sorries.
+The 5 CCStateAgree sorries are at: L6899, L6925, L9654 (area), L9888, L10004.
 
-Statement:
-```lean
-theorem convertExpr_CCExprEquiv_offset (e : Core.Expr) (st1 st2 : CCState)
-    (h_agree : st1.nextId = st2.nextId) (h_funcs : st1.funcs.size = st2.funcs.size) :
-    CCExprEquiv (st2.funcs.size - st1.funcs.size)
-      (convertExpr e st1).fst (convertExpr e st2).fst
+### The Pattern
+Each sorry has this shape:
+```
+-- Need: CCStateAgree st' st_a'
+-- Have: st' = (convertExpr branch2 (convertExpr branch1 st).snd).snd
+--       st_a' = (convertExpr branch1 st).snd  (only took branch1)
+-- Problem: st' has extra state from branch2, so st'.nextId ≠ st_a'.nextId
 ```
 
-i.e., converting the SAME expression from two states that agree on nextId and funcs.size produces CCExprEquiv expressions with δ = funcs.size difference.
-
-When `st1 = st2`, this gives CCExprEquiv 0, which you already have.
-When st1 and st2 differ (e.g., st2 has extra funcs from discarded branch), δ accounts for the offset in makeClosure indices.
-
-### Proof strategy:
-1. Mutual structural induction on `e` (like `convertExpr_state_delta`)
-2. Most cases: sub-expression results are CCExprEquiv by IH, constructor preserves it
-3. `functionDef` case: `addFunc` increments funcs.size → δ shifts by 1 → makeClosure index offset
-4. The δ parameter absorbs the state difference
-
-### How it closes sorries:
-For L6576 (if-true CCStateAgree): `st' = (convertExpr else_ (convertExpr then_ st).snd).snd` but we only took the then_ branch. With CCExprEquiv, we show the then_ expression from `st'` is CCExprEquiv δ to the then_ expression from `(convertExpr then_ st).snd`. The simulation invariant accepts CCExprEquiv instead of equality.
-
-## P1: REFACTOR SIMULATION INVARIANT (only after P0 done)
-
-Change the simulation invariant from `CCStateAgree` (equality) to:
+### The Fix
+Replace `sf.expr = (convertExpr e scope envVar envMap st).fst` equality in the simulation invariant with:
 ```lean
-structure CCSimRel (sf : Flat.State) (sc : Core.State) : Prop where
-  expr_equiv : CCExprEquiv δ sf.expr sc.expr  -- instead of equality
-  state_agree_weak : sc.nextId ≤ sf.nextId    -- instead of equality
-  -- ... other fields
+CCExprEquiv δ sf.expr (convertExpr e scope envVar envMap st_a).fst
 ```
 
-This is a MAJOR refactor. Only start if P0 is fully proved and verified.
+where `δ = st.funcs.size - st_a.funcs.size` and `st_a` is the actual conversion state.
 
-### Priority CCStateAgree sorries (5):
-- L6576, L6602: if-branch (then/else CCStateAgree)
-- L9488, L9565: CCStateAgree after sub-expression
-- L9681: while_ CCStateAgree
+### Concrete Steps:
+
+**Step 1: Start with ONE sorry (L6899 — if-true branch)**
+1. `lean_goal` at L6899 to see exact goal
+2. The goal needs `CCStateAgree st' st_a'`. Instead of proving equality, use:
+   - `convertExpr_CCExprEquiv_shifted` to show the then-branch expression from `st'` is `CCExprEquiv δ` with the then-branch expression from `st_a'`
+   - `convertExpr_state_delta` to compute δ = `exprFuncCount else_`
+3. Change the `suffices` or `have` that introduces the witness to use CCExprEquiv instead
+
+**Step 2: If Step 1 works, check if you can refactor the invariant**
+The simulation invariant (likely in a `structure` or `suffices`) uses `sf.expr = converted_expr`. If you can weaken this to `CCExprEquiv δ sf.expr converted_expr`, the proof flows through.
+
+**Step 3: Apply to remaining 4 CCStateAgree sorries**
+
+### Key Theorems Available:
+- `convertExpr_CCExprEquiv_shifted` (L1627): Different funcs.size → CCExprEquiv δ
+- `convertExpr_state_delta` (L1232): Computes exact state delta
+- `convertExpr_state_determined` (L570): Same state → same expression
+- `CCExprEquiv_refl` (L1513): Reflexivity at δ=0
+
+### Expected: -3 to -5 sorries
+
+## P1: MULTI-STEP SIMULATION (L6451, L7756, L7767) — SECOND PRIORITY
+These 3 sorries are "multi-step simulation gap (architectural)." Separate blocker from CCStateAgree. Only attempt after P0.
 
 ## DO NOT ATTEMPT:
-- Multi-step simulation sorries (L6128, L7433, L7444) — different blocker
-- L8084 (getIndex semantic mismatch — unprovable)
-- L7225, L9331, L9491 — dependent on other infrastructure
+- L8407 (getIndex semantic mismatch — unprovable)
+- L7548, L9811, L9814 — different blockers
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — CCExprEquiv offset theorem" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — CCStateAgree invariant refactor using CCExprEquiv" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`

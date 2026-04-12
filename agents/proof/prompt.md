@@ -1,4 +1,4 @@
-# proof — FIX TRIVIAL MISMATCH INFRASTRUCTURE (11 sorries blocked)
+# proof — REFACTOR normalizeExpr_labeled_branch_step WITH K' FLEXIBILITY (12 sorries)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -8,56 +8,93 @@
 
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## STATUS — 2026-04-11T23:30
-- ANF: 30 real sorries. CC: 12. Total: **42** (was 44 → -2 this cycle).
-- You deleted dead code (break/continue) for -2 last run. GOOD.
-- You correctly identified P0 labeled list tail as BLOCKED by **trivial mismatch**.
-- The trivial mismatch also blocks L10799-L11022 (6 sorries) and L11024/L11076 (2 more).
-- **11 sorries share this ONE blocker.** Fixing it is the highest-leverage task.
+## STATUS — 2026-04-12T00:05
+- ANF: 30 real sorries. CC: 12. Total: **42**.
+- You spent 2 runs investigating trivial mismatch. Found: theorem design issue.
+- `normalizeExpr_labeled_step_sim` (L11176) already solves this with K' flexibility.
+- **The fix is to apply the SAME K' pattern to normalizeExpr_labeled_branch_step.**
 
-## P0: FIX THE TRIVIAL MISMATCH (HIGHEST PRIORITY — 11 sorries)
+## P0: REFACTOR normalizeExpr_labeled_branch_step (HIGHEST PRIORITY — 12 sorries)
 
-The problem: `normalizeExpr_labeled_branch_step` needs `normalizeExpr sf'.expr K = body` (exact equality). But when a non-head element `e` (e.g., `.var "x"`) steps to its value (`.lit v`), the trivial changes, so the continuation `k` produces a DIFFERENT body.
-
-### Option A: Use normalizeExpr_labeled_step_sim pattern
-`normalizeExpr_labeled_step_sim` (L11176) already handles k' flexibility. Check:
-1. `lean_hover_info` on `normalizeExpr_labeled_step_sim` to see its full signature
-2. Can the non-head cases in `normalizeExpr_labeled_branch_step` call `normalizeExpr_labeled_step_sim` instead of needing exact body equality?
-3. The step_sim theorem produces a NEW body through a different k' — check if this composes with the outer proof
-
-### Option B: Change the theorem statement
-Instead of concluding `normalizeExpr sf'.expr k = .ok (.labeled label body, m')`, conclude:
+### The Problem
+`normalizeExpr_labeled_branch_step` (L10304) conclusion requires:
+```lean
+(∃ n' m', (ANF.normalizeExpr sf'.expr K).run n' = .ok (body, m'))
 ```
-∃ body', (normalizeExpr sf'.expr k).run n' = .ok (.labeled label body', m') ∧
-  ∀ env heap, ANF.eval body env heap = ANF.eval body' env heap
+This fixes K. When a non-head trivial steps (`.var "x"` → `.lit v`), the trivial representation changes, so `normalizeExpr sf'.expr K` produces a DIFFERENT body. Blocks 12 sorries.
+
+### The Solution (ALREADY WORKING in normalizeExpr_labeled_step_sim)
+`normalizeExpr_labeled_step_sim` (L11176) conclusion uses:
+```lean
+(∃ (k' : ANF.Trivial → ANF.ConvM ANF.Expr) (n' m' : Nat),
+  (ANF.normalizeExpr sf'.expr k').run n' = .ok (body, m') ∧
+  (∀ (arg : ANF.Trivial) (n'' : Nat), ∃ m'', (k' arg).run n'' = .ok (.trivial arg, m'')))
 ```
-This requires defining and proving semantic equivalence for the body.
+This allows a DIFFERENT k' (as long as it's trivial-preserving). **This is exactly what we need.**
 
-### Option C: Two-phase approach
-For the non-head case `¬HasLabeledInHead e`:
-1. Step `e` to a value (multi-step via IH or direct stepping)
-2. After `e` is a value, the list evaluation proceeds to `rest`
-3. `rest` still has `HasLabeledInHeadList rest` — recurse on `rest`
-4. The BODY is produced by recursion on `rest`, NOT by the continuation applied to `e`
-5. So body equality holds because `e` only affects the prefix steps, not the body itself
+### Step-by-step plan:
 
-**CHECK**: Is option C correct? `lean_goal` at L11107 (makeEnv_values case). The body comes from `hnorm : (normalizeExpr (.makeEnv (e :: rest)) k).run n = .ok (.labeled label body, m)`. After stepping `e` to value `v`, the remaining expression is `.makeEnv ((.lit v) :: rest)`. Does `normalizeExpr (.makeEnv ((.lit v) :: rest)) k` produce the SAME `body`? If `k` gets a trivialChain that includes the result of normalizing `e`, and normalizing `.lit v` vs normalizing `e` gives different trivials... then NO.
+**Step 1: Change the conclusion** of `normalizeExpr_labeled_branch_step` (L10304):
+Change line ~10322 from:
+```lean
+(∃ n' m', (ANF.normalizeExpr sf'.expr K).run n' = .ok (body, m')) ∧
+```
+to:
+```lean
+(∃ (K' : ANF.Trivial → ANF.ConvM ANF.Expr) (n' m' : Nat),
+  (ANF.normalizeExpr sf'.expr K').run n' = .ok (body, m') ∧
+  (∀ (arg : ANF.Trivial) (n'' : Nat), ∃ m'', (K' arg).run n'' = .ok (.trivial arg, m''))) ∧
+```
 
-**START HERE**: `lean_goal` at L11107 to see the exact goal. Then trace through how `normalizeExpr (.makeEnv values) k` threads the trivials. Determine if Option C works.
+**ALSO ADD** a precondition that K is trivial-preserving:
+```lean
+(hk_triv : ∀ (arg : ANF.Trivial) (n' : Nat), ∃ m', (K arg).run n' = .ok (.trivial arg, m')) →
+```
 
-If Option C fails, try Option A. If Option A fails, implement Option B.
+**Step 2: Fix the existing proofs** (cases that already work):
+- The `labeled_direct` case (L~10338): currently returns `⟨n, m', hnorm_inner⟩` — change to `⟨K, n, m', hnorm_inner, hk_triv⟩`
+- Similar for other already-proved cases — just wrap the K witness
 
-**Expected: Unblock 3-11 sorries if successful.**
+**Step 3: Fix the 12 sorry cases**:
+In the `¬HasLabeledInHead` branches (e.g., binary_rhs at L10799):
+- The non-head element `e` steps to value `v` (via existing IH or trivial stepping)
+- After stepping, `sf'.expr` has `.lit v` instead of `e`
+- `normalizeExpr sf'.expr K'` works with K' = a continuation that accounts for the value change
+- The KEY: since `e` was trivial (non-head means it's a trivialChain), after stepping it to `.lit v`:
+  - Original: `normalizeExpr e (fun t => ...)` inlines `t = trivialOfExpr e`
+  - After step: `normalizeExpr (.lit v) (fun t => ...)` inlines `t = trivialOfFlatValue v`
+  - K' = original K but with `t` replaced — this is constructible because K is trivial-preserving
 
-## P1: COMPOUND THROW HEAD CASES (L13809) — LOW PRIORITY
+**Step 4: Update callers** (~7 callers that destructure the result):
+Currently they do: `obtain ⟨..., ⟨n', m', hnorm'⟩, ...⟩`
+Change to: `obtain ⟨..., ⟨K', n', m', hnorm', hk'_triv⟩, ...⟩`
+Then pass K' and hk'_triv downstream instead of K and hk_triv.
 
-Only if P0 is done or fully blocked. The `| _ => sorry` at L13809 covers ~30 HasThrowInHead constructors. Head-position cases (~17) could be proved. But LSP times out in this region.
+### VERIFICATION: Check normalizeExpr_labeled_step_sim callers
+The caller at L25197 already handles K' flexibility:
+```lean
+obtain ⟨evs, sf', hsteps, ⟨k', n', m', hbody, hk'⟩, ...⟩ :=
+  normalizeExpr_labeled_step_sim ...
+```
+This SAME pattern should work for normalizeExpr_labeled_branch_step callers.
+
+### DO THIS FIRST:
+1. `lean_hover_info` at L10304 col 19 to confirm current signature
+2. `lean_goal` at L10799 to see the current sorry goal
+3. Make the signature change (Step 1)
+4. Fix ONE already-proved case (Step 2) to verify the approach works
+5. Then tackle sorry cases one at a time
+
+**Expected: -7 to -12 sorries if the refactor succeeds.**
+
+## P1: COMPOUND THROW (L13809) — only if P0 done
+HasThrowInHead_Steps_steppable is provable (~550 lines, no tryCatch constructors). Only attempt after P0.
 
 ## DO NOT WORK ON:
 - L16451 (wasmspec P2)
-- L21749+ (compound cases — all blocked by deeper issues)
 - ClosureConvertCorrect.lean
+- L21749+ compound cases
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — P0 trivial mismatch investigation" >> agents/proof/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — normalizeExpr_labeled_branch_step K' refactor" >> agents/proof/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/proof/log.md`
