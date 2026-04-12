@@ -5497,3 +5497,33 @@ The root cause: `exprFuncCount` is NOT preserved by Core steps that involve valu
 ## Run: 2026-04-12T17:00:01+00:00
 
 ### 2026-04-12T17:01:19+00:00 Starting run — closing funcs.size sorries via sandwich argument
+
+### 2026-04-12T17:45:00+00:00 Analysis complete — sandwich argument BLOCKED
+
+**Finding**: The sandwich argument described in the prompt is INCORRECT. The key error:
+
+The prompt assumes `st_a' = (convertExpr e ... st_a).snd` (same expression `e`), but actually
+`st_a' = (convertExpr sc_sub'.expr ... st_a).snd` (STEPPED expression, different from `e`).
+
+**Why output CCStateAgree is impossible**: In value-evaluation branching cases (e.g., `if true then_ else_`),
+the witness `st_a'` covers only the taken branch, while `st'` covers both branches. The gap equals
+`exprFuncCount` of the untaken branch, which is non-zero in general.
+
+**Why funcs.size equality at sorry sites is blocked**: The sorry sites need
+`(convertExpr sub ... st).snd.funcs.size = st_a'.funcs.size`, but:
+- `hAgreeOut.2` gives `st_a'.funcs.size ≤ (convertExpr sub ... st).snd.funcs.size`
+- The reverse direction requires output equality, which is unprovable due to branching gaps
+
+**Root cause**: `convertExpr` makes outer expressions depend on `funcs.size` (via `makeClosure` indices).
+Different `funcs.size` values → different closure indices → structurally different ASTs.
+The simulation invariant can only track `≤` (not `=`) through branching, so expression equality
+cannot be established for continuation sub-expressions after an IH step.
+
+**Correct fix**: Would require one of:
+1. Making outer expressions independent of `funcs.size` (only func bodies use it)
+2. Expression equivalence relation insensitive to closure index renaming
+3. Two-phase conversion separating index allocation from code generation
+
+All are significant architectural changes as noted in the comment at L6839-6857.
+### 2026-04-12T17:51:31+00:00 Run complete — sandwich argument proven INFEASIBLE, no sorry sites closed
+2026-04-12T17:51:49+00:00 DONE
