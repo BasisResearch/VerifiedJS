@@ -8045,3 +8045,9 @@ These errors were masked because they co-existed with sorries in other branches 
 
 ## Run: 2026-04-12T14:30:01+00:00
 
+2026-04-12T14:30:04+00:00 EXIT: code 1
+2026-04-12T14:30:04+00:00 DONE
+
+## Run: 2026-04-12T14:30:08+00:00
+
+### 2026-04-12T14:30:20+00:00 Starting run — P1 L24999 while condition steps
