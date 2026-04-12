@@ -8428,3 +8428,6 @@ The theorem quantifies over ALL expressions with HasReturnInHead, but is only TR
 - **To fully eliminate**: Thread `¬HasNonCallFrameTryCatchInHead` through `hasReturnInHead_return_steps` → `normalizeExpr_return_step_sim` → top-level caller. Derive from `normalizeExpr_tryCatch_not_return_*` at each sub-expression level. This requires ~90 edits across 3 theorems.
 ### 2026-04-12T00:06:03+00:00 Run complete — P0+P1 verified done, P2 restructured (core sorry-free, wrapper has isolated sorry). Net sorry change: 0. See log for full analysis.
 2026-04-12T00:06:21+00:00 DONE
+
+## Run: 2026-04-12T00:15:01+00:00
+
