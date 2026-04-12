@@ -5321,3 +5321,37 @@ After branching, `sf'.expr` was computed at one state, but the body sub-expressi
 
 ### 2026-04-12T07:00:13+00:00 Starting run — CCStateAgree invariant weakening
 2026-04-12T08:00:01+00:00 SKIP: already running
+
+### 2026-04-12T07:45 ValidConversionR definition added — invariant analysis complete
+
+**Analysis**: Deep investigation of the 6 CCStateAgree sorry cases (L7136, L7162, L10048, L10051, L10125, L10241) confirmed they are FUNDAMENTALLY UNPROVABLE with the current invariant. The root cause:
+
+- `convertExpr` chains CCState through ALL sub-expressions sequentially
+- Branching (if/while/tryCatch) takes one path but `st'` includes state from ALL paths
+- Both `nextId` and `funcs.size` diverge by `exprFuncCount` of un-taken branches
+- `convertExpr_expr_eq_of_funcs_size` means expressions depend on `funcs.size`
+- The seq case NEEDS output agreement to relate sibling sub-expressions, but branching INSIDE a sibling breaks it
+- NO weakening (≤, funcs.size-only, conservation laws) can fix this because the flat expression was compiled at a specific `funcs.size` that can't be recovered after a nested branch
+
+**Solution implemented**: `ValidConversionR` — a recursive structural valid-conversion relation (~L2150-2220).
+
+Unlike the exact conversion equation `fe = (convertExpr ce ... st).fst`, `ValidConversionR` decomposes structurally: each sub-expression may have been converted at an independent CCState. Key advantages:
+- Sibling preservation is FREE: `ValidConversionR fb b` carries through unchanged after stepping
+- Branching naturally handled: taken branch's `ValidConversionR` comes from decomposition
+- While expansion works: reuses same sub-expression `ValidConversionR` proofs for duplicated code
+
+**Added** (LSP-verified, all goals closed):
+- `ValidConversionR` mutual def with `ValidConversionRList` (~80 lines)
+- `convertExpr_implies_ValidConversionR` bridging lemma (~90 lines)
+
+**Remaining for invariant migration** (future runs):
+1. Change `CC_SimRel` (L2866) from `∃ st st', (sf.expr, st') = convertExpr ...` to `ValidConversionR scope envVar envMap sf.expr sc.expr`
+2. Change suffices block (L6808) to produce `ValidConversionR` instead of exact conversion + CCStateAgree
+3. Update outer proof (L6813-6841) to use ValidConversionR
+4. Update ~30 case proofs to decompose/compose ValidConversionR instead of using `convertExpr_state_determined` + `hAgreeOut`
+5. Fix halt preservation to work with ValidConversionR
+6. Close the 6 sorry cases using ValidConversionR decomposition
+
+Estimated: ~300-500 lines of changes across ~30 locations.
+### 2026-04-12T08:17:46+00:00 Run complete — ValidConversionR definition added + bridging lemma proved. No sorry change. Build intact.
+2026-04-12T08:18:02+00:00 DONE
