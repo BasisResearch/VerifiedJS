@@ -8037,3 +8037,4 @@ These errors were masked because they co-existed with sorries in other branches 
 ## Run: 2026-04-12T12:30:07+00:00
 
 ### 2026-04-12T12:30:28+00:00 Starting run — P0 throw/list sorries (L16381, L16430, L16542)
+### 2026-04-12T13:17:31+00:00 P0 complete — replaced 3 throw/list sorries (call_args, newObj_args, objectLit_props) with full proofs following makeEnv_values/arrayLit_elems pattern
