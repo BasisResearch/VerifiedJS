@@ -5271,3 +5271,37 @@ All 6 CCStateAgree sorries require the same architectural change:
 ## Run: 2026-04-12T05:00:01+00:00
 
 ### 2026-04-12T05:00:12+00:00 Starting run — alpha-equiv CCExprEquiv for nextId shifts
+
+### 2026-04-12T05:30 Infrastructure: convertExpr_expr_eq_of_funcs_size
+
+**Added** `convertExpr_expr_eq_of_funcs_size` (and List/Prop/Opt variants) at ~L1560:
+- Proves: if `st1.funcs.size = st2.funcs.size`, then `(convertExpr e ... st1).fst = (convertExpr e ... st2).fst`
+- Also: output `funcs.size` are equal
+- Key: NO constraint on `nextId` needed for expression equality
+- Proved by structural induction following `convertExpr_state_determined` pattern
+- For `functionDef` case: uses `convertExpr_state_delta` to show output `funcs.size` depends only on input `funcs.size`
+
+**Architectural analysis of CCStateAgree sorry sites (all 6 blocked):**
+
+The 6 CCStateAgree sorries (L7136, L7162, L10048, L10051, L10125, L10241) ALL have the same root cause:
+- After branching (if/while/tryCatch), the taken branch has a state gap equal to `exprFuncCount(skipped_branch)` in BOTH `nextId` and `funcs.size`
+- The gap is identical for both fields because `convertExpr_state_delta` shows both grow by exactly `exprFuncCount`
+- `convertExpr_expr_eq_of_funcs_size` shows expression equality only needs `funcs.size` — but the gap exists for `funcs.size` too
+
+**Why local fixes are impossible:**
+The simulation invariant (L6411-6413 in suffices) requires:
+```
+(sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
+CCStateAgree st st_a ∧ CCStateAgree st' st_a'
+```
+
+After branching, `sf'.expr` was computed at one state, but the body sub-expression in the parent was computed at a DIFFERENT state (ahead by the skipped branch's delta). No single witness state `st_a` can make BOTH the expression AND the body match exactly.
+
+**Required fix: Global invariant change to use CCExprEquiv δ:**
+1. Replace exact equality with `CCExprEquiv δ sf'.expr (convertExpr sc'.expr ... st_a).fst`
+2. Track `st_a.funcs.size = st.funcs.size + δ` and `st_a'.funcs.size = st'.funcs.size + δ`
+3. BUT: CCExprEquiv uses a single δ for all sub-expressions, while after branching, different sub-expressions have different offsets (init has δ > 0, body has δ = 0)
+4. The conservation law `st_a.funcs.size + exprFuncCount(sc'.expr) = st.funcs.size + exprFuncCount(sc.expr)` ensures body offsets cancel out
+5. This change affects ALL ~30+ proved cases (mechanical but large)
+### 2026-04-12T05:38:39+00:00 Run complete — added convertExpr_expr_eq_of_funcs_size, 0 sorry reduction, full architectural analysis of CCStateAgree blocker
+2026-04-12T05:39:21+00:00 DONE
