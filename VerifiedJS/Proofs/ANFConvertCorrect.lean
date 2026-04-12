@@ -14927,7 +14927,34 @@ private theorem HasThrowInHead_step_nonError
           obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
           exact .setProp_obj (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
       · simp at hstep
-    | setProp_val h => sorry -- setProp val context
+    | setProp_val h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i obj prop
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? obj
+      · -- obj not a value: step obj, val unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .setProp_val h
+        · simp at hstep
+      · -- obj = some (.object addr): step val
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .setProp_val (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+        · simp at hstep
+      · -- obj = some _ (non-object): step val
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .setProp_val (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+        · simp at hstep
     | binary_lhs h =>
       have hv := HasThrowInHead_not_value _ h
       rename_i op rhs
@@ -14939,7 +14966,26 @@ private theorem HasThrowInHead_step_nonError
           obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
           exact .binary_lhs (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
       · simp at hstep
-    | binary_rhs h => sorry -- binary rhs context
+    | binary_rhs h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i op lhs
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? lhs
+      · -- lhs not a value: step lhs, rhs unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .binary_rhs h
+        · simp at hstep
+      · -- lhs = some lv: step rhs
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .binary_rhs (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+        · simp at hstep
     | getIndex_obj h =>
       have hv := HasThrowInHead_not_value _ h
       rename_i idx
@@ -14951,7 +14997,26 @@ private theorem HasThrowInHead_step_nonError
           obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
           exact .getIndex_obj (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
       · simp at hstep
-    | getIndex_idx h => sorry -- getIndex idx context
+    | getIndex_idx h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i obj
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? obj
+      · -- obj not a value: step obj, idx unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .getIndex_idx h
+        · simp at hstep
+      all_goals (  -- obj = some (.object addr) | some (.string str) | some _
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .getIndex_idx (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+        · simp at hstep)
     | setIndex_obj h =>
       have hv := HasThrowInHead_not_value _ h
       rename_i idx val
@@ -14963,8 +15028,80 @@ private theorem HasThrowInHead_step_nonError
           obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
           exact .setIndex_obj (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
       · simp at hstep
-    | setIndex_idx h => sorry -- setIndex idx context
-    | setIndex_val h => sorry -- setIndex val context
+    | setIndex_idx h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i obj val
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? obj
+      · -- obj not a value: step obj, idx unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .setIndex_idx h
+        · simp at hstep
+      · -- obj = some (.object addr): step idx
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .setIndex_idx (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+        · simp at hstep
+      · -- obj = some _ (non-object): step idx
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .setIndex_idx (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+        · simp at hstep
+    | setIndex_val h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i obj idx
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? obj
+      · -- obj not a value: step obj, val unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .setIndex_val h
+        · simp at hstep
+      · -- obj = some (.object addr)
+        split at hstep  -- exprValue? idx
+        · -- idx not a value: step idx, val unchanged
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+              obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .setIndex_val h
+          · simp at hstep
+        · -- idx = some idxVal: step val
+          rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+              obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .setIndex_val (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+          · simp at hstep
+      · -- obj = some _ (non-object)
+        split at hstep  -- exprValue? idx
+        · -- idx not a value: step idx, val unchanged
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+              obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .setIndex_val h
+          · simp at hstep
+        · -- idx = some _: step val
+          rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+          split at hstep
+          · split at hstep
+            · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+              obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+              exact .setIndex_val (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+          · simp at hstep
     | call_func h =>
       have hv := HasThrowInHead_not_value _ h
       rename_i env args
@@ -14976,7 +15113,26 @@ private theorem HasThrowInHead_step_nonError
           obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
           exact .call_func (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
       · simp at hstep
-    | call_env h => sorry -- call env context
+    | call_env h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i f args
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? funcExpr
+      · -- func not a value: step func, env unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .call_env h
+        · simp at hstep
+      · -- func = some _: step env
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .call_env (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+        · simp at hstep
     | call_args h => sorry -- call args context
     | newObj_func h =>
       have hv := HasThrowInHead_not_value _ h
@@ -14989,7 +15145,26 @@ private theorem HasThrowInHead_step_nonError
           obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
           exact .newObj_func (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
       · simp at hstep
-    | newObj_env h => sorry -- newObj env context
+    | newObj_env h =>
+      have hv := HasThrowInHead_not_value _ h
+      rename_i f args
+      unfold Flat.step? at hstep; dsimp only [] at hstep
+      split at hstep  -- exprValue? funcExpr
+      · -- func not a value: step func, env unchanged
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .newObj_env h
+        · simp at hstep
+      · -- func = some _: step env
+        rw [show Flat.exprValue? _ = none from hv] at hstep; dsimp only [] at hstep
+        split at hstep
+        · split at hstep
+          · simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+            obtain ⟨rfl, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]
+            exact .newObj_env (ih _ _ _ _ _ _ _ _ (by simp [Flat.Expr.depth] at hd ⊢; omega) h (by assumption) hnoerr)
+        · simp at hstep
     | newObj_args h => sorry -- newObj args context
     | makeEnv_values h => sorry -- makeEnv values context
     | objectLit_props h => sorry -- objectLit props context
