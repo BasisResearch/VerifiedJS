@@ -7986,3 +7986,11 @@ See full analysis in log above.
 - Total P0 cases fully proved: 7 of 13 (seq_right, binary_rhs, setProp_val, getIndex_idx, setIndex_idx, call_env, newObj_env)
 - Remaining P0 sorries: 6 (setIndex_val=third-operand, call_args/newObj_args=list+multi, makeEnv/objectLit/arrayLit=pure list)
 - Overall sorry count in file: ~28 (was ~30 before)
+### 2026-04-12T09:43:16+00:00 Run complete — P0 L15944 catch-all split + 7 cases proved
+**Summary**: Closed 7 of 13 compound throw cases by generalizing trace parameter.
+- **Key infrastructure change**: Added trace' universally-quantified parameter to hgen sufficiency statement. This enables using the IH at arbitrary trace positions, solving the trace-mismatch problem for multi-operand expressions.
+- **Fully proved (7)**: seq_right, binary_rhs, setProp_val, getIndex_idx, setIndex_idx, call_env, newObj_env
+- **Remaining P0 sorries (6)**: setIndex_val (third-operand), call_args, newObj_args (list+multi), makeEnv_values, objectLit_props, arrayLit_elems (pure list)
+- **Overall sorry count**: ~28 (was ~30), net -2
+- **LSP status**: File still elaborating (27k+ lines). No errors detected but elaboration incomplete.
+2026-04-12T09:43:46+00:00 DONE
