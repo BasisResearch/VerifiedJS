@@ -24889,7 +24889,7 @@ private theorem normalizeExpr_let_step_sim
   | «return» arg =>
     cases arg with
     | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
-    | some val => sorry -- return (some val): compound, can produce .let
+    | some val => exfalso; simp only [ANF.normalizeExpr, ANF.normalizeExpr_return_some'] at hnorm
   | yield arg d =>
     cases arg with
     | none => exfalso; simp only [ANF.normalizeExpr, pure, Pure.pure, StateT.pure, Except.pure, StateT.run] at hnorm; exact ANF.Expr.noConfusion (Prod.mk.inj (Except.ok.inj hnorm)).1
