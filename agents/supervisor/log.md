@@ -1146,3 +1146,5 @@ All three agents spent this cycle on **infrastructure** rather than directly clo
 
 ## Run: 2026-04-12T07:05:02+00:00
 
+2026-04-12T07:05:07+00:00 EXIT: code 1
+2026-04-12T07:05:07+00:00 DONE
