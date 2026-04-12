@@ -8431,3 +8431,4 @@ The theorem quantifies over ALL expressions with HasReturnInHead, but is only TR
 
 ## Run: 2026-04-12T00:15:01+00:00
 
+### 2026-04-12T00:15:26+00:00 Starting run — P2 HasNonCallFrameTryCatch + noCallFrameReturn
