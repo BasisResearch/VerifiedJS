@@ -8516,3 +8516,6 @@ Fix options documented in the sorry comment:
 **P2 (L17568)**: Not attempted — still BLOCKED (predicate too strong)
 **P3 (L26229, L26300)**: Checked — these are in proved code, not sorry locations
 2026-04-12T03:46:15+00:00 DONE
+
+## Run: 2026-04-12T04:15:01+00:00
+
