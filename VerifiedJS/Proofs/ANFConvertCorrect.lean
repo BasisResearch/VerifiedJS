@@ -10114,7 +10114,7 @@ private theorem noCallFrameReturn_normalizeExprList_tryCatch_param_aux
       unfold noCallFrameReturnList at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
     exact ih e he _ _ _ _ _ _ _ h hncfr_e
       (fun t n' b' cp' cb' f' m' hkt =>
-        ihl hrest hncfr_rest (fun ts => k (t :: ts)) _ _ hkt
+        ihl hrest hncfr_rest (fun ts => k (t :: ts)) _ _ _ _ _ _ hkt
           (fun ts n'' b'' cp'' cb'' f'' m'' hk' => hk_ncfr _ _ _ _ _ _ _ hk'))
 
 /-- Helper for normalizeProps: if noCallFrameReturnProps holds and normalizeProps
@@ -10150,7 +10150,7 @@ private theorem noCallFrameReturn_normalizeProps_tryCatch_param_aux
       unfold noCallFrameReturnProps at hncfr; simp [Bool.and_eq_true] at hncfr; exact hncfr.2
     exact ih pexpr he _ _ _ _ _ _ _ h hncfr_e
       (fun t n' b' cp' cb' f' m' hkt =>
-        ihp hrest hncfr_rest (fun ps => k ((pname, t) :: ps)) _ _ hkt
+        ihp hrest hncfr_rest (fun ps => k ((pname, t) :: ps)) _ _ _ _ _ _ hkt
           (fun ps n'' b'' cp'' cb'' f'' m'' hk' => hk_ncfr _ _ _ _ _ _ _ hk'))
 
 /-- If `normalizeExpr e k` produces `.tryCatch body catchParam catchBody finally_`,

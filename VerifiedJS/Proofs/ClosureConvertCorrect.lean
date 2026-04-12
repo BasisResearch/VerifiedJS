@@ -10233,9 +10233,49 @@ private theorem closureConvert_step_simulation
           -- Same class as if-else/while_ CCStateAgree architectural issue.
           exact ⟨st, st, by simp [sc', Flat.convertExpr], ⟨Nat.le_refl _, Nat.le_refl _⟩,
             by rw [hst'_eq]; exact convertExpr_state_mono (.tryCatch body catchParam catchBody none) scope envVar envMap st⟩
-      | some fin => sorry -- BLOCKED: CCStateAgree + tryCatch body-value with finally.
-            -- Same CCStateAgree issue as the none case, compounded by finally_ conversion.
-            -- FIX: Full proof exists (see git history); blocked only by CCStateAgreeWeak invariant change.
+      | some fin =>
+        simp [Flat.convertOptExpr] at hconv
+        obtain ⟨hsf_expr, hst'_eq⟩ := hconv
+        have hsf_eta : sf = { sf with expr := (.tryCatch (.lit (Flat.convertValue v)) catchParam
+            (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst
+            (some (Flat.convertExpr fin scope envVar envMap
+              (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).snd).fst)) } := by
+          cases sf; simp_all [st1, st2]
+        rw [hsf_eta] at hstep
+        have hstep_rw := Flat_step?_tryCatch_body_value_finally sf (Flat.convertValue v) catchParam
+            (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).fst
+            (Flat.convertExpr fin scope envVar envMap
+              (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).snd).fst hncf
+        rw [hstep_rw] at hstep; clear hstep_rw
+        simp only [Option.some.injEq, Prod.mk.injEq] at hstep
+        obtain ⟨hev, hsf'⟩ := hstep; subst hev; subst hsf'
+        let sc' : Core.State :=
+          ⟨.seq fin (.lit v), sc.env, sc.heap, sc.trace ++ [.silent], sc.funcs, sc.callStack⟩
+        refine ⟨injMap, sc', ⟨?_⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, hfuncCorr⟩
+        · show Core.step? sc = some (.silent, sc')
+          have hsc' : sc = { sc with expr := .tryCatch (.lit v) catchParam catchBody (some fin) } := by
+            obtain ⟨_, _, _, _, _, _⟩ := sc; simp only [] at hsc; subst hsc; rfl
+          rw [hsc']
+          exact Core.step_tryCatch_normal_withFinally _ _ _ _ _ _ _ _ _ hncf
+        · simp [sc', htrace]
+        · exact hinj
+        · exact henvCorr
+        · exact henvwf
+        · exact hheapvwf
+        · simp [sc', hheapna]
+        · simp [sc', noCallFrameReturn]
+          exact ⟨by unfold noCallFrameReturn at hncfr; simp at hncfr; exact hncfr.2, trivial⟩
+        · simp [sc', ExprAddrWF, ValueAddrWF]
+          exact ⟨by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.2,
+                 by simp [ExprAddrWF] at hexprwf; exact hexprwf.1⟩
+        · -- CCStateAgreeWeak with st_a = (convertExpr catchBody ... st).snd
+          exact ⟨(Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).snd,
+            (Flat.convertExpr fin scope envVar envMap
+              (Flat.convertExpr catchBody (catchParam :: scope) envVar envMap st).snd).snd,
+            by simp [sc', Flat.convertExpr, Flat.convertValue],
+            convertExpr_state_mono catchBody (catchParam :: scope) envVar envMap st,
+            by rw [hst'_eq]; simp [Flat.convertExpr, Flat.convertOptExpr, st1, st2];
+               exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
     | none =>
       -- Body is not a value; step the body via IH
       have hfnv : Flat.exprValue? fbody = none :=
@@ -10432,9 +10472,10 @@ private theorem closureConvert_step_simulation
       exact ⟨hexprwf.1, ⟨hexprwf.2, hexprwf.1, hexprwf.2⟩, trivial⟩
     · -- Conversion relation: need convertExpr (.if cond (.seq body (.while_ cond body)) (.lit .undefined))
       -- to match sf'.expr. This requires CCState independence since while_ duplicates cond and body.
-      sorry -- BLOCKED: CCStateAgree. while_ lowers to .if cond (.seq body (.while_ cond body)) (.lit .undefined)
-      -- which duplicates cond and body, each needing independent CCState threading. The duplicated
-      -- sub-expressions get different CCState inputs, breaking CCStateAgree.
+      sorry -- BLOCKED: while_ duplication. The lowered form .if cond (.seq body (.while_ cond body)) (.lit .undefined)
+      -- converts cond and body TWICE with different CCStates, producing different makeClosure indices.
+      -- sf'.expr has fcond/fbody from the original conversion, but the new conversion produces different
+      -- indices for the duplicated copies. Requires CCExprEquiv to express the structural equivalence.
   | forIn binding obj body =>
     rw [hsc] at hconv
     simp [Flat.convertExpr] at hconv
