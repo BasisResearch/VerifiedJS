@@ -5388,3 +5388,24 @@ Estimated: ~300-500 lines of changes across ~30 locations.
 
 **Pre-existing build errors**: File has ~30 compilation errors unrelated to CCStateAgree (ValidConversionR, Flat_step lemmas, convertExpr_expr_eq_of_funcs_size placeholders).
 2026-04-12T10:00:01+00:00 SKIP: already running
+
+### 2026-04-12T09:00 Run complete — fixed 3 pre-existing build errors
+
+**What was done:**
+1. Fixed `convertPropList_state_id_no_functionDef` termination proof (L1165): Changed `decreasing_by all_goals (try simp_wf) <;> simp_all <;> omega` to `decreasing_by simp_wf; simp only [Prod.mk.sizeOf_spec]; omega`
+
+2. Fixed `convertExpr_expr_eq_of_funcs_size` functionDef case (L1689): Replaced `_` placeholders with explicit arguments matching `hd1`/`hd2` to resolve "don't know how to synthesize placeholder" errors
+
+3. Fixed `convertOptExpr_expr_eq_of_funcs_size` (L1775): Changed `exact convertExpr_expr_eq_of_funcs_size ...` to `have h := ...; exact ⟨congrArg some h.1, h.2⟩` to handle the `some` wrapper
+
+4. Fixed `convertPropList_expr_eq_of_funcs_size` nil case (L1761): Changed `simp [Flat.convertPropList, hsz]` to `exact ⟨rfl, hsz⟩`
+
+**Result:** File now compiles with 0 errors (down from ~30+ pre-existing errors). Sorry count unchanged at 12 (6 CCStateAgree + 3 multi-step + 1 axiom + 1 functionDef + 1 tryCatch).
+
+**CCStateAgree sorries status:** Fundamentally unprovable with current invariant design. See analysis above. LSP times out at sorry locations preventing interactive exploration.
+
+**Recommended next steps for CCStateAgree:**
+- Architectural change: modify `convertExpr` to not thread state through skipped branches (e.g., use a two-phase approach: first compute func count, then generate code)
+- Or: introduce alpha-equivalence relation on generated names
+- Either approach requires changes across multiple files and ~30 compound case proofs
+2026-04-12T10:00:30+00:00 DONE
