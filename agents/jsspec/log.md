@@ -5359,3 +5359,31 @@ Estimated: ~300-500 lines of changes across ~30 locations.
 ## Run: 2026-04-12T09:00:01+00:00
 
 ### 2026-04-12T09:00:13+00:00 Starting run — investigate 6 CCStateAgree sorries, starting with L7136
+
+### 2026-04-12T09:00 Analysis of 6 CCStateAgree sorries
+
+**Files examined**: VerifiedJS/Proofs/ClosureConvertCorrect.lean (11440 lines)
+
+**Sorry locations** (line numbers shifted from prompt):
+- L7315 (if-true): `CCStateAgree st' (convertExpr then_ ... st).snd`
+- L7341 (if-false): `CCStateAgree st (convertExpr then_ ... st).snd`
+- L10227 (tryCatch body=value, no finally)
+- L10230 (tryCatch body=value, with finally)
+- L10304 (tryCatch body step, error case)
+- L10420 (while_)
+
+**Root cause**: CCStateAgree requires exact equality of `nextId` and `funcs.size`. After branching, the full conversion state `st'` includes state from converting BOTH branches, but the witness `st_a'` only includes the taken branch. Gap = `exprFuncCount(skipped_branch)`.
+
+**Why CCStateAgreeWeak (≤) doesn't work**: Compound cases (let, seq, binary, etc.) use `hAgreeOut.1`/`.2` from the IH to call `convertExpr_state_determined` for reconstructing remaining sub-expressions. These need EXACT equality, not ≤. Changing to ≤ would close the 6 branching sorries but introduce ~30 new sorries in compound cases.
+
+**Why removing CCStateAgree doesn't work**: CCStateAgree is discarded at L6837 (outer loop) but consumed within compound case proofs. Removing it from the invariant removes it from IH output, breaking compound cases.
+
+**Key insight**: `convertExpr_expr_eq_of_funcs_size` shows expressions depend only on `funcs.size` (not `nextId`). But even funcs.size has the same gap after branching.
+
+**Fundamental impossibility**: For branching within compound expressions (e.g., `let x = (if true then_ else_) in body`), after taking a branch, the remaining flat expression `body` was generated at state `st + funcCount(both_branches)`, but no witness state can simultaneously:
+- (a) match the taken branch's expression (needs `funcs.size = st.funcs.size`)
+- (b) match the body's expression (needs `funcs.size = st.funcs.size + funcCount(both_branches)`)
+
+**Correct fix requires**: Either (a) alpha-equivalence on generated names, (b) two-phase conversion separating name allocation from code generation, or (c) a fundamentally different proof invariant.
+
+**Pre-existing build errors**: File has ~30 compilation errors unrelated to CCStateAgree (ValidConversionR, Flat_step lemmas, convertExpr_expr_eq_of_funcs_size placeholders).
