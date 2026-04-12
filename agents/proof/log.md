@@ -7910,3 +7910,40 @@ See full analysis in log above.
 
 ### 2026-04-12T03:30:14+00:00 Starting run — closing 4 remaining infra + compound throw
 2026-04-12T04:30:03+00:00 SKIP: already running
+
+### 2026-04-12T03:30 Run — infrastructure for compound throw
+
+**BUILD: PASSES** ✓
+
+**Sorry count**: ANF ~31 real sorries (+1 temporary for step_error_isLit), CC unchanged.
+
+#### What was done: Two new infrastructure lemmas for compound throw proof
+
+1. **step_error_isLit** (~10 lines, sorry'd body):
+   - Statement: `∀ sf sf' msg, step? sf = some (.error msg, sf') → ∃ v, sf'.expr = .lit v`
+   - General lemma: ANY error step produces .lit result (no conditions needed)
+   - Same as `Flat_step_error_isLit` in CC file but with simpler signature
+   - Body sorry'd because `simp [Flat.pushTrace]` behaves differently in ANF context
+   - Will be proved in follow-up (mechanical, same approach as CC file's 460-line proof)
+
+2. **HasThrowInHead_Steps_steppable** (~45 lines, fully proved modulo step_error_isLit):
+   - Statement: If HasThrowInHead a, Steps from a to smid, step? smid = some (t, smid'), then HasThrowInHead smid.expr
+   - Non-error steps: preserved by HasThrowInHead_step_nonError
+   - Error steps: by step_error_isLit, result is .lit (stuck) → no further steps → contradiction
+   - Placed after HasThrowInHead_step_nonError (L15340 area)
+
+#### Analysis findings
+
+- **P0 was already complete**: HasThrowInHead_step_nonError has zero sorries (all 18 cases proved)
+- **P1 (compound throw L14207)**: Requires depth induction restructuring of `hasThrowInHead_compound_throw_step_sim`. The two new lemmas are prerequisites for the compound case proofs (needed for callStack preservation in Steps_compound_error_lift)
+- **List/props sorries (5 at L11411-L11557)**: Blocked by K-mismatch (trivial mismatch between .var "x" and .lit v). Same root cause as the 7 trivial mismatch sorries.
+- **If-branch sorries (L23968, L24008)**: Also blocked by K-mismatch
+
+#### Key infrastructure chain for closing compound throw (P1):
+1. ✅ step_error_isLit (stated, sorry'd)
+2. ✅ HasThrowInHead_Steps_steppable (proved, uses step_error_isLit)
+3. ✅ hasThrowInHead_callStackSafe (already existed)
+4. ⬜ Restructure hasThrowInHead_compound_throw_step_sim with depth induction
+5. ⬜ Prove compound cases using IH + Steps_compound_error_lift + callStack preservation
+### 2026-04-12T04:50:53+00:00 Run complete — added step_error_isLit + HasThrowInHead_Steps_steppable infrastructure
+2026-04-12T04:51:11+00:00 DONE

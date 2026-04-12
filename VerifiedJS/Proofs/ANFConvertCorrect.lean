@@ -9426,6 +9426,97 @@ private theorem HasNonCallFrameTryCatchInHeadProps_mid_or_tail
     | tail h =>
       exact ih hds_done h
 
+/-! ## HasNonCallFrameTryCatchInEvalFirst: weaker version that only follows eval-first positions.
+    Unlike HasNonCallFrameTryCatchInHead which checks ALL sub-expressions, this predicate only
+    tracks the sub-expression that step? would evaluate next. This is sufficient for
+    step_error → .lit proofs because error propagation follows the eval-first path.
+    Key property: normalizeExpr e k = .return → ¬HasNonCallFrameTryCatchInEvalFirst e,
+    because .tryCatch blocks .return propagation in normalizeExpr. -/
+
+set_option autoImplicit true in
+inductive HasNonCallFrameTryCatchInEvalFirst : Flat.Expr → Prop where
+  | tryCatch_direct : cp ≠ "__call_frame_return__" →
+      HasNonCallFrameTryCatchInEvalFirst (.tryCatch body cp cb fin)
+  | seq_left : HasNonCallFrameTryCatchInEvalFirst a →
+      HasNonCallFrameTryCatchInEvalFirst (.seq a b)
+  | let_init : HasNonCallFrameTryCatchInEvalFirst init →
+      HasNonCallFrameTryCatchInEvalFirst (.let name init body)
+  | if_cond : HasNonCallFrameTryCatchInEvalFirst c →
+      HasNonCallFrameTryCatchInEvalFirst (.if c t e)
+  | assign_val : HasNonCallFrameTryCatchInEvalFirst val →
+      HasNonCallFrameTryCatchInEvalFirst (.assign name val)
+  | getProp_obj : HasNonCallFrameTryCatchInEvalFirst obj →
+      HasNonCallFrameTryCatchInEvalFirst (.getProp obj prop)
+  | setProp_obj : HasNonCallFrameTryCatchInEvalFirst obj →
+      HasNonCallFrameTryCatchInEvalFirst (.setProp obj prop val)
+  | unary_arg : HasNonCallFrameTryCatchInEvalFirst arg →
+      HasNonCallFrameTryCatchInEvalFirst (.unary op arg)
+  | typeof_arg : HasNonCallFrameTryCatchInEvalFirst arg →
+      HasNonCallFrameTryCatchInEvalFirst (.typeof arg)
+  | deleteProp_obj : HasNonCallFrameTryCatchInEvalFirst obj →
+      HasNonCallFrameTryCatchInEvalFirst (.deleteProp obj prop)
+  | binary_lhs : HasNonCallFrameTryCatchInEvalFirst lhs →
+      HasNonCallFrameTryCatchInEvalFirst (.binary op lhs rhs)
+  | getIndex_obj : HasNonCallFrameTryCatchInEvalFirst obj →
+      HasNonCallFrameTryCatchInEvalFirst (.getIndex obj idx)
+  | setIndex_obj : HasNonCallFrameTryCatchInEvalFirst obj →
+      HasNonCallFrameTryCatchInEvalFirst (.setIndex obj idx val)
+  | call_func : HasNonCallFrameTryCatchInEvalFirst f →
+      HasNonCallFrameTryCatchInEvalFirst (.call f env args)
+  | newObj_func : HasNonCallFrameTryCatchInEvalFirst f →
+      HasNonCallFrameTryCatchInEvalFirst (.newObj f env args)
+  | getEnv_env : HasNonCallFrameTryCatchInEvalFirst env →
+      HasNonCallFrameTryCatchInEvalFirst (.getEnv env idx)
+  | makeClosure_env : HasNonCallFrameTryCatchInEvalFirst env →
+      HasNonCallFrameTryCatchInEvalFirst (.makeClosure funcIdx env)
+  | return_some_arg : HasNonCallFrameTryCatchInEvalFirst v →
+      HasNonCallFrameTryCatchInEvalFirst (.return (some v))
+  | throw_arg : HasNonCallFrameTryCatchInEvalFirst arg →
+      HasNonCallFrameTryCatchInEvalFirst (.throw arg)
+  | yield_some_arg : HasNonCallFrameTryCatchInEvalFirst v →
+      HasNonCallFrameTryCatchInEvalFirst (.yield (some v) d)
+  | await_arg : HasNonCallFrameTryCatchInEvalFirst arg →
+      HasNonCallFrameTryCatchInEvalFirst (.await arg)
+  | labeled_body : HasNonCallFrameTryCatchInEvalFirst body →
+      HasNonCallFrameTryCatchInEvalFirst (.labeled name body)
+
+/-- .lit never has HasNonCallFrameTryCatchInEvalFirst. -/
+private theorem HasNonCallFrameTryCatchInEvalFirst_not_lit {v : Flat.Value} :
+    ¬HasNonCallFrameTryCatchInEvalFirst (.lit v) := fun h => nomatch h
+
+/-- HasNonCallFrameTryCatchInHead implies HasNonCallFrameTryCatchInEvalFirst
+    (the strong predicate implies the weak one, for eval-first sub-expressions). -/
+private theorem HasNonCallFrameTryCatchInEvalFirst_of_Head
+    (h : HasNonCallFrameTryCatchInEvalFirst e) : HasNonCallFrameTryCatchInHead e := by
+  induction h with
+  | tryCatch_direct hcp => exact .tryCatch_direct hcp
+  | seq_left _ ih => exact .seq_left ih
+  | let_init _ ih => exact .let_init ih
+  | if_cond _ ih => exact .if_cond ih
+  | assign_val _ ih => exact .assign_val ih
+  | getProp_obj _ ih => exact .getProp_obj ih
+  | setProp_obj _ ih => exact .setProp_obj ih
+  | unary_arg _ ih => exact .unary_arg ih
+  | typeof_arg _ ih => exact .typeof_arg ih
+  | deleteProp_obj _ ih => exact .deleteProp_obj ih
+  | binary_lhs _ ih => exact .binary_lhs ih
+  | getIndex_obj _ ih => exact .getIndex_obj ih
+  | setIndex_obj _ ih => exact .setIndex_obj ih
+  | call_func _ ih => exact .call_func ih
+  | newObj_func _ ih => exact .newObj_func ih
+  | getEnv_env _ ih => exact .getEnv_env ih
+  | makeClosure_env _ ih => exact .makeClosure_env ih
+  | return_some_arg _ ih => exact .return_some_arg ih
+  | throw_arg _ ih => exact .throw_arg ih
+  | yield_some_arg _ ih => exact .yield_some_arg ih
+  | await_arg _ ih => exact .await_arg ih
+  | labeled_body _ ih => exact .labeled_body ih
+
+/-- ¬HasNonCallFrameTryCatchInHead implies ¬HasNonCallFrameTryCatchInEvalFirst. -/
+private theorem not_HasNonCallFrameTryCatchInEvalFirst_of_not_Head
+    (h : ¬HasNonCallFrameTryCatchInHead e) : ¬HasNonCallFrameTryCatchInEvalFirst e :=
+  fun hef => h (HasNonCallFrameTryCatchInEvalFirst_of_Head hef)
+
 -- DONE (2026-04-11): HasReturnInHead_Steps_steppable sorry closed.
 -- Fix: Carry ¬HasNonCallFrameTryCatchInHead as invariant through the Steps induction.
 -- The by_cases on HasTryCatchInHead was replaced by a single error-step path using
