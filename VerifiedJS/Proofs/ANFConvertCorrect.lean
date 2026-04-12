@@ -14380,18 +14380,18 @@ private theorem step_error_isLit
       | none =>
         unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
         obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
-      | some => simp [Flat.Expr.depth] at hd; omega
+      | some => simp [Flat.Expr.depth] at hd <;> omega
     | yield arg d =>
       cases arg with
       | none => unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
-      | some => simp [Flat.Expr.depth] at hd; omega
+      | some => simp [Flat.Expr.depth] at hd <;> omega
     | seq _ _ | «let» _ _ _ | assign _ _ | «if» _ _ _
     | binary _ _ _ | unary _ _ | typeof _ | call _ _ _
     | newObj _ _ _ | getProp _ _ | setProp _ _ _ | getIndex _ _
     | setIndex _ _ _ | deleteProp _ _ | throw _
     | tryCatch _ _ _ _ | while_ _ _ | labeled _ _ | await _
     | getEnv _ _ | makeClosure _ _ | makeEnv _ | objectLit _ | arrayLit _ =>
-      simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; omega
+      simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd <;> omega
   | succ n ih =>
     intro e env heap trace funcs cs sf' msg' hd hstep
     -- Helper tactic pattern: after splitting, either simp closes (non-error branch)
@@ -17687,9 +17687,7 @@ private theorem HasReturnInHead_step_error_isLit
       · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
     | this =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
-      split at hstep
-      · simp at hstep
-      · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+      split at hstep <;> simp [Flat.pushTrace] at hstep
     | «break» =>
       unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
       obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
@@ -17701,18 +17699,18 @@ private theorem HasReturnInHead_step_error_isLit
       | none =>
         unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
         obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
-      | some => simp [Flat.Expr.depth] at hd; omega
+      | some => simp [Flat.Expr.depth] at hd <;> omega
     | yield arg d =>
       cases arg with
       | none => unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
-      | some => simp [Flat.Expr.depth] at hd; omega
+      | some => simp [Flat.Expr.depth] at hd <;> omega
     | seq _ _ | «let» _ _ _ | assign _ _ | «if» _ _ _
     | binary _ _ _ | unary _ _ | typeof _ | call _ _ _
     | newObj _ _ _ | getProp _ _ | setProp _ _ _ | getIndex _ _
     | setIndex _ _ _ | deleteProp _ _ | throw _ | tryCatch _ _ _ _
     | while_ _ _ | labeled _ _ | await _ | getEnv _ _
     | makeClosure _ _ | makeEnv _ | objectLit _ | arrayLit _ =>
-      simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; omega
+      simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd <;> omega
   | succ n ih =>
     intro e env heap trace funcs cs sf' msg' hd hntc_e hstep
     -- For compound expressions, step? unfolds to matching on sub-expressions.

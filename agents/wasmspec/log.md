@@ -8815,3 +8815,4 @@ Build status: CLEAN (0 errors)
 
 ## Run: 2026-04-12T17:15:02+00:00
 
+### 2026-04-12T17:15:14+00:00 Starting run — P0 (L32634) noCallFrameReturn preservation

@@ -208,7 +208,7 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | Emit | emit_behavioral_correct | YES — `∀ trace, IR.IRBehaves → Wasm.Behaves` | 1 sorry | **BLOCKED on wasmspec** EmitSimRel.step_sim (:5058) |
 | EndToEnd | flat_to_wasm_correct | YES — partial composition (Flat→Wasm) | 1 sorry | EndToEnd.lean:55. Composition of above; last to prove |
 
-**Chain status (2026-04-11T19:05)**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count: 49 total** (ANF 37, CC 12, Wasm 0). DOWN from 60 at 15:30. **Flat/ SORRY-FREE**. Core/ SORRY-FREE. ANF/Semantics SORRY-FREE. Wasm/Semantics SORRY-FREE. Build PASS. **Spec coverage: 2800 refs, 0 mismatches, 44380/44380 lines (100.0%). ALL TARGETS MET.**
+**Chain status (2026-04-12T17:05)**: All 6 Behaves relations DEFINED. All theorem STATEMENTS correct. **2 passes FULLY PROVED** (Elaborate, Optimize). **Sorry count: 53 total** (ANF 26, CC 27, Wasm 0, Lower 0). DOWN from 55 at 16:05. L18163 CLOSED by wasmspec. **Flat/ SORRY-FREE**. Core/ SORRY-FREE. ANF/Semantics SORRY-FREE. Wasm/Semantics SORRY-FREE. Build PASS. **Spec coverage: 2800 refs, 0 mismatches, 44380/44380 lines (100.0%). ALL TARGETS MET.**
 
 **RESOLVED ABSTRACTIONS**:
 - ✅ LowerCodeCorr constructors FIXED (wasmspec 01:15 — while_, throw, return_, break_, continue_ now specify actual instruction shapes)
@@ -251,13 +251,12 @@ arithmetic, boolean_logic, conditionals, do_while, for_loop, functions, let_bind
 | jsspec | **ACTIVE** | Fresh session (03:00). Proved 2 CC sorries in last run. Working on CCStateAgree fix. |
 | wasmspec | **STUCK** | While loop self-match (13h+ wasted). Timeout ~14:30. |
 
-### Metrics (2026-03-31T03:05)
+### Metrics (2026-04-12T17:05)
 | Metric | Value |
 |--------|-------|
-| Sorry count | **56 grep-c** (19 CC + 37 ANF + 0 Lower) |
-| Real sorries | **~47** (14 CC + 33 ANF) |
+| Sorry count | **53** (26 ANF + 27 CC + 0 Lower) |
 | Build | **PASS** (all modules clean) |
-| Delta | -2 from 01:05 (CC 19→17). jsspec proved convertExprList/PropList_firstNonValueExpr/Prop_some. |
-| **BLOCKER 1** | ANF 42 aux lemma sorries fundamentally unprovable. Agent stuck, will delete on restart. |
-| **BLOCKER 2** | CCStateAgree too strong for branching. Blocks 3 CC sorries. jsspec investigating fix. |
-| **BLOCKER 3** | 2 of 3 agents permanently stuck in while loops. Cannot kill (different users). |
+| Delta | -2 from 16:05. wasmspec closed L18163 (step_error_noNonCallFrameTryCatch_isLit). |
+| **BLOCKER 1** | ANF L11366-11737: 12 infrastructure sorries (labeled args stepping). |
+| **BLOCKER 2** | CC funcs.size equality: 18 sorries closable via sandwich argument (jsspec working on it). |
+| **BLOCKER 3** | ANF compound cases (await/yield/return/while/if/tryCatch): 12 sorries need proof agent. |
