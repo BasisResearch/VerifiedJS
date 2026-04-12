@@ -15768,32 +15768,33 @@ private theorem hasThrowInHead_compound_throw_step_sim
       e'.depth ≤ d → HasThrowInHead e' →
       (ANF.normalizeExpr e' K).run n' = .ok (.throw arg', m') →
       ExprWellFormed e' env → NoNestedAbrupt e' →
+      ∀ (trace' : List Core.TraceEvent),
       (∀ v, ANF.evalTrivial env arg' = .ok v →
         ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
-          Flat.Steps ⟨e', env, heap, trace, funcs, cs⟩ evs sf' ∧
+          Flat.Steps ⟨e', env, heap, trace', funcs, cs⟩ evs sf' ∧
           sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
-          sf'.trace = trace ++ evs ∧
+          sf'.trace = trace' ++ evs ∧
           observableTrace evs = observableTrace [.error (Flat.valueToString v)]) ∧
       (∀ msg, ANF.evalTrivial env arg' = .error msg →
         ∃ (evs : List Core.TraceEvent) (sf' : Flat.State),
-          Flat.Steps ⟨e', env, heap, trace, funcs, cs⟩ evs sf' ∧
+          Flat.Steps ⟨e', env, heap, trace', funcs, cs⟩ evs sf' ∧
           sf'.expr = .lit .undefined ∧ sf'.env = env ∧ sf'.heap = heap ∧
-          sf'.trace = trace ++ evs ∧
+          sf'.trace = trace' ++ evs ∧
           observableTrace evs = observableTrace [.error msg]) by
-    exact hgen e.depth e k arg n m (Nat.le_refl _) hth hnorm hewf hna
+    exact hgen e.depth e k arg n m (Nat.le_refl _) hth hnorm hewf hna trace
   intro d; induction d with
   | zero =>
-    intro e' K arg' n' m' hd hth' hnorm' hewf' hna'
+    intro e' K arg' n' m' hd hth' hnorm' hewf' hna' _
     cases hth' <;> (simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; try omega)
   | succ d ih =>
-    intro e' K arg' n' m' hd hth' hnorm' hewf' hna'
+    intro e' K arg' n' m' hd hth' hnorm' hewf' hna' trace'
     cases hth' with
     | throw_direct =>
       rename_i flat_arg
       have hnorm'' : (ANF.normalizeExpr flat_arg (fun t => pure (ANF.Expr.throw t))).run n' =
           .ok (.throw arg', m') := by
         simp only [ANF.normalizeExpr] at hnorm'; exact hnorm'
-      exact normalizeExpr_throw_compound_case flat_arg env heap trace funcs cs arg' n' m' hnorm'' hewf' hna'
+      exact normalizeExpr_throw_compound_case flat_arg env heap trace' funcs cs arg' n' m' hnorm'' hewf' hna'
     | return_some_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_return hna' h
     | yield_some_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_yield hna' h
     | await_arg h => exfalso; exact noNestedAbrupt_hasThrowInHead_absurd_await hna' h
@@ -15805,7 +15806,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
         (fun s inner hv msg si hs => step?_seq_error s inner b hv msg si hs)
         (ih a _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
           (fun x hfx => hewf' x (VarFreeIn.seq_l _ _ _ hfx))
-          (by cases hna' with | seq ha _ => exact ha))
+          (by cases hna' with | seq ha _ => exact ha) trace')
     | let_init h_sub =>
       rename_i init name body
       simp only [ANF.normalizeExpr_let'] at hnorm'
@@ -15814,7 +15815,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
         (fun s inner hv msg si hs => step?_let_init_error s name inner body hv msg si hs)
         (ih init _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
           (fun x hfx => hewf' x (VarFreeIn.let_init _ _ _ _ hfx))
-          (by cases hna' with | «let» ha _ => exact ha))
+          (by cases hna' with | «let» ha _ => exact ha) trace')
     | getProp_obj h_sub =>
       rename_i obj prop
       simp only [ANF.normalizeExpr] at hnorm'
@@ -15823,7 +15824,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
         (fun s inner hv msg si hs => step?_getProp_error s inner prop hv msg si hs)
         (ih obj _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
           (fun x hfx => hewf' x (VarFreeIn.getProp_obj _ _ _ hfx))
-          (by cases hna' with | getProp ha => exact ha))
+          (by cases hna' with | getProp ha => exact ha) trace')
     | unary_arg h_sub =>
       rename_i a op
       simp only [ANF.normalizeExpr] at hnorm'
@@ -15832,7 +15833,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
         (fun s inner hv msg si hs => step?_unary_error s op inner hv msg si hs)
         (ih a _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
           (fun x hfx => hewf' x (VarFreeIn.unary_arg _ _ _ hfx))
-          (by cases hna' with | unary ha => exact ha))
+          (by cases hna' with | unary ha => exact ha) trace')
     | typeof_arg h_sub =>
       rename_i a
       simp only [ANF.normalizeExpr] at hnorm'
@@ -15841,7 +15842,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
         (fun s inner hv msg si hs => step?_typeof_error s inner hv msg si hs)
         (ih a _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
           (fun x hfx => hewf' x (VarFreeIn.typeof_arg _ _ hfx))
-          (by cases hna' with | typeof ha => exact ha))
+          (by cases hna' with | typeof ha => exact ha) trace')
     | deleteProp_obj h_sub =>
       rename_i obj prop
       simp only [ANF.normalizeExpr] at hnorm'
@@ -15850,7 +15851,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
         (fun s inner hv msg si hs => step?_deleteProp_error s inner prop hv msg si hs)
         (ih obj _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
           (fun x hfx => hewf' x (VarFreeIn.deleteProp_obj _ _ _ hfx))
-          (by cases hna' with | deleteProp ha => exact ha))
+          (by cases hna' with | deleteProp ha => exact ha) trace')
     | assign_val h_sub =>
       rename_i val name
       simp only [ANF.normalizeExpr_assign'] at hnorm'
@@ -15859,7 +15860,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
         (fun s inner hv msg si hs => step?_assign_error s name inner hv msg si hs)
         (ih val _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
           (fun x hfx => hewf' x (VarFreeIn.assign_value _ _ _ hfx))
-          (by cases hna' with | assign ha => exact ha))
+          (by cases hna' with | assign ha => exact ha) trace')
     | if_cond h_sub =>
       rename_i c t_ e_
       simp only [ANF.normalizeExpr_if'] at hnorm'
@@ -15868,7 +15869,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
         (fun s inner hv msg si hs => step?_if_cond_error s inner t_ e_ hv msg si hs)
         (ih c _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
           (fun x hfx => hewf' x (VarFreeIn.if_cond _ _ _ _ hfx))
-          (by cases hna' with | «if» ha _ _ => exact ha))
+          (by cases hna' with | «if» ha _ _ => exact ha) trace')
     | binary_lhs h_sub =>
       rename_i lhs op rhs
       simp only [ANF.normalizeExpr] at hnorm'
@@ -15877,7 +15878,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
         (fun s inner hv msg si hs => step?_binary_lhs_error s op inner rhs hv msg si hs)
         (ih lhs _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
           (fun x hfx => hewf' x (VarFreeIn.binary_lhs _ _ _ _ hfx))
-          (by cases hna' with | binary ha _ => exact ha))
+          (by cases hna' with | binary ha _ => exact ha) trace')
     | setProp_obj h_sub =>
       rename_i obj prop val
       simp only [ANF.normalizeExpr] at hnorm'
@@ -15886,7 +15887,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
         (fun s inner hv msg si hs => step?_setProp_obj_error s inner prop val hv msg si hs)
         (ih obj _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
           (fun x hfx => hewf' x (VarFreeIn.setProp_obj _ _ _ _ hfx))
-          (by cases hna' with | setProp ha _ => exact ha))
+          (by cases hna' with | setProp ha _ => exact ha) trace')
     | getIndex_obj h_sub =>
       rename_i obj idx
       simp only [ANF.normalizeExpr] at hnorm'
@@ -15895,7 +15896,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
         (fun s inner hv msg si hs => step?_getIndex_obj_error s inner idx hv msg si hs)
         (ih obj _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
           (fun x hfx => hewf' x (VarFreeIn.getIndex_obj _ _ _ hfx))
-          (by cases hna' with | getIndex ha _ => exact ha))
+          (by cases hna' with | getIndex ha _ => exact ha) trace')
     | setIndex_obj h_sub =>
       rename_i obj idx val
       simp only [ANF.normalizeExpr] at hnorm'
@@ -15904,7 +15905,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
         (fun s inner hv msg si hs => step?_setIndex_obj_error s inner idx val hv msg si hs)
         (ih obj _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
           (fun x hfx => hewf' x (VarFreeIn.setIndex_obj _ _ _ _ hfx))
-          (by cases hna' with | setIndex ha _ _ => exact ha))
+          (by cases hna' with | setIndex ha _ _ => exact ha) trace')
     | getEnv_env h_sub =>
       rename_i envExpr idx
       simp only [ANF.normalizeExpr] at hnorm'
@@ -15913,7 +15914,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
         (fun s inner hv msg si hs => step?_getEnv_error s inner idx hv msg si hs)
         (ih envExpr _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
           (fun x hfx => hewf' x (VarFreeIn.getEnv_env _ _ _ hfx))
-          (by cases hna' with | getEnv ha => exact ha))
+          (by cases hna' with | getEnv ha => exact ha) trace')
     | makeClosure_env h_sub =>
       rename_i envExpr funcIdx
       simp only [ANF.normalizeExpr] at hnorm'
@@ -15922,7 +15923,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
         (fun s inner hv msg si hs => step?_makeClosure_env_error s funcIdx inner hv msg si hs)
         (ih envExpr _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
           (fun x hfx => hewf' x (VarFreeIn.makeClosure_env _ _ _ hfx))
-          (by cases hna' with | makeClosure ha => exact ha))
+          (by cases hna' with | makeClosure ha => exact ha) trace')
     | call_func h_sub =>
       rename_i f envExpr args
       simp only [ANF.normalizeExpr] at hnorm'
@@ -15931,7 +15932,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
         (fun s inner hv msg si hs => step?_call_func_error s inner envExpr args hv msg si hs)
         (ih f _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
           (fun x hfx => hewf' x (VarFreeIn.call_func _ _ _ _ hfx))
-          (by cases hna' with | call ha _ _ => exact ha))
+          (by cases hna' with | call ha _ _ => exact ha) trace')
     | newObj_func h_sub =>
       rename_i f envExpr args
       simp only [ANF.normalizeExpr] at hnorm'
@@ -15940,7 +15941,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
         (fun s inner hv msg si hs => step?_newObj_func_error s inner envExpr args hv msg si hs)
         (ih f _ arg' n' m' (by simp [Flat.Expr.depth] at hd; omega) h_sub hnorm'
           (fun x hfx => hewf' x (VarFreeIn.newObj_func _ _ _ _ hfx))
-          (by cases hna' with | newObj ha _ _ => exact ha))
+          (by cases hna' with | newObj ha _ _ => exact ha) trace')
     | _ => sorry -- remaining compound cases: second-operand and list-based
 
 /-- If normalizeExpr sf.expr k produces .throw arg (with trivial-preserving k),
