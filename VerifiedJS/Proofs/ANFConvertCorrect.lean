@@ -18195,10 +18195,11 @@ private theorem step_error_noNonCallFrameTryCatch_isLit
     | seq _ _ | «let» _ _ _ | assign _ _ | «if» _ _ _
     | binary _ _ _ | unary _ _ | typeof _ | call _ _ _
     | newObj _ _ _ | getProp _ _ | setProp _ _ _ | getIndex _ _
-    | setIndex _ _ _ | deleteProp _ _ | throw _ | tryCatch _ _ _ _
+    | setIndex _ _ _ | deleteProp _ _ | throw _
     | while_ _ _ | labeled _ _ | await _ | getEnv _ _
     | makeClosure _ _ | makeEnv _ | objectLit _ | arrayLit _ =>
       simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd <;> omega
+    | tryCatch _ _ _ fin => cases fin <;> simp [Flat.Expr.depth] at hd <;> omega
   | succ n ih =>
     intro e env heap trace funcs cs sf' msg' hd hncf_e hstep
     cases e with
