@@ -8687,3 +8687,4 @@ Needs HasBreakInHead_step_nonError + HasBreakInHead_Steps_steppable infrastructu
 ## Run: 2026-04-12T10:15:02+00:00
 
 ### 2026-04-12T10:15:20+00:00 Starting run — P0 break/continue compound error propagation
+2026-04-12T11:15:03+00:00 SKIP: already running
