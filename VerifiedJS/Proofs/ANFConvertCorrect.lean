@@ -14405,7 +14405,7 @@ private theorem step_error_isLit
       · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
     | this =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
-      split at hstep <;> simp at hstep
+      split at hstep <;> simp [Flat.pushTrace] at hstep
     | «break» =>
       unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
       obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
@@ -15047,7 +15047,7 @@ private theorem HasThrowInHead_step_nonError
     cases hth
     next => -- throw_direct (depth 1, not 0)
       simp [Flat.Expr.depth] at hd
-    all_goals (simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; omega)
+    all_goals (simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd <;> omega)
   | succ n ih =>
     intro e env heap trace funcs cs sf' t hd hth hstep hnoerr
     cases hth with
@@ -17151,7 +17151,7 @@ private theorem HasReturnInHead_step_nonError
     next => -- return_none_direct (depth 0, but always produces error)
       unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
       exact absurd hstep.1.symm (hnoerr _)
-    all_goals (simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; omega)
+    all_goals (simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd <;> omega)
   | succ n ih =>
     intro e env heap trace funcs cs sf' t hd hret hstep hnoerr
     cases hret with
@@ -17726,9 +17726,7 @@ private theorem HasReturnInHead_step_error_isLit
       · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
     | this =>
       unfold Flat.step? at hstep; dsimp only [] at hstep
-      split at hstep
-      · simp at hstep
-      · simp [Flat.pushTrace] at hstep; obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
+      split at hstep <;> simp [Flat.pushTrace] at hstep
     | «break» =>
       unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
       obtain ⟨_, rfl⟩ := hstep; exact ⟨_, rfl⟩
@@ -18654,7 +18652,7 @@ private theorem step_nonError_preserves_noNonCallFrameTryCatch
     | setIndex _ _ _ | deleteProp _ _ | throw _ | tryCatch _ _ _ _
     | while_ _ _ | labeled _ _ | await _ | getEnv _ _
     | makeClosure _ _ | makeEnv _ | objectLit _ | arrayLit _ =>
-      simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd; omega
+      simp [Flat.Expr.depth, Flat.Expr.listDepth, Flat.Expr.propListDepth] at hd <;> omega
   | succ n ih =>
     intro e env heap trace funcs cs sf' t hd hncf hstep hnoerr
     cases e with
