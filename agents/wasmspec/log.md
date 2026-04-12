@@ -8527,3 +8527,9 @@ Fix options documented in the sorry comment:
 ## Run: 2026-04-12T06:15:12+00:00
 
 ### 2026-04-12T06:15:25+00:00 Starting run — EvalFirst chain completion
+2026-04-12T06:30:06+00:00 EXIT: code 1
+2026-04-12T06:30:06+00:00 DONE
+
+## Run: 2026-04-12T06:30:08+00:00
+
+### 2026-04-12T06:30:23+00:00 Starting run — EvalFirst chain completion

@@ -5309,3 +5309,5 @@ After branching, `sf'.expr` was computed at one state, but the body sub-expressi
 ## Run: 2026-04-12T06:00:01+00:00
 
 ### 2026-04-12T06:00:08+00:00 Starting run — alpha-equiv for CCStateAgree
+2026-04-12T06:30:11+00:00 EXIT: code 1
+2026-04-12T06:30:11+00:00 DONE

@@ -7956,3 +7956,9 @@ See full analysis in log above.
 
 ## Run: 2026-04-12T06:30:01+00:00
 
+2026-04-12T06:30:04+00:00 EXIT: code 1
+2026-04-12T06:30:04+00:00 DONE
+
+## Run: 2026-04-12T06:30:09+00:00
+
+### 2026-04-12T06:30:24+00:00 Starting run — P0 compound throw L14682
