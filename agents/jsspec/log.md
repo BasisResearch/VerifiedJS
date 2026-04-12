@@ -5270,3 +5270,4 @@ All 6 CCStateAgree sorries require the same architectural change:
 
 ## Run: 2026-04-12T05:00:01+00:00
 
+### 2026-04-12T05:00:12+00:00 Starting run — alpha-equiv CCExprEquiv for nextId shifts
