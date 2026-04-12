@@ -5152,3 +5152,27 @@ in branches where no function definitions appear.
 ### 2026-04-11T23:30:14+00:00 Starting run — noFunctionDef branch-split
 2026-04-12T00:00:01+00:00 SKIP: already running
 2026-04-12T01:00:01+00:00 SKIP: already running
+
+### 2026-04-12T00:10 CCExprEquiv_shifted infrastructure
+
+**Analysis completed**: All 6 CCStateAgree sorries (L6865, L6891, L9777, L9780, L9854, L9970) are fundamentally blocked.
+They require `noFunctionDef` for untaken branches, which cannot be established from `supported` hypothesis.
+The correct fix is CCExprEquiv-based invariant weakening (multi-run architectural change).
+
+**Infrastructure added** (sorry count: 16 → 20, +4 in new theorems):
+1. `CCExprEquiv_var_self` — reflexivity for var nodes at any δ ✓
+2. `CCExprEquiv_getEnv_var_self` — reflexivity for getEnv nodes at any δ ✓
+3. `CCExprListEquiv_envExprs_refl` — reflexivity for captured-variable lists ✓
+4. `convertExpr_CCExprEquiv_shifted` (mutual block, 4 theorems) — STATEMENT proved, BODY sorry'd
+   - Blocked by Lean 4 elaborator unifying implicit `_ _` state args
+   - FIX: supply explicit `(Flat.convertExpr sub ... st1).snd` / `(Flat.convertExpr sub ... st2).snd` instead of `_`
+   - All case proof sketches written and verified individually correct in comments
+
+**Key insight discovered**: `simp only [CCExprEquiv]` unfolds the mutual def (not `unfold CCExprEquiv`),
+and reduces `name = name` to `True` (use `trivial` not `rfl`).
+
+**Next run priorities**:
+1. Fix convertExpr_CCExprEquiv_shifted: replace `_ _` with explicit states in recursive IH calls
+2. This handles nextId-equal case. Full solution needs CCExprEquiv extended for nextId shifts too
+3. Then modify CC_SimRel suffices to use CCExprEquiv instead of CCStateAgree equality
+### 2026-04-12T01:37:36+00:00 Run complete — CCExprEquiv_shifted infrastructure added (+4 sorry in new theorems, 0 existing changed)
