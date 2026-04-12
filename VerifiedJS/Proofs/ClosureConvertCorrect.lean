@@ -1648,7 +1648,8 @@ private theorem CCExprEquiv_zero_implies_eq : ∀ (e1 e2 : Flat.Expr),
   | .lit _, .typeof _ | .lit _, .getEnv _ _ | .lit _, .makeEnv _ | .lit _, .makeClosure _ _
   | .lit _, .objectLit _ | .lit _, .arrayLit _ | .lit _, .throw _ | .lit _, .tryCatch _ _ _ _
   | .lit _, .while_ _ _ | .lit _, .«break» _ | .lit _, .«continue» _ | .lit _, .labeled _ _
-  | .lit _, .«return» _ | .lit _, .yield _ _ | .lit _, .await _ =>
+  | .lit _, .«return» _ | .lit _, .yield _ _ | .lit _, .await _
+  | .lit _, .unary _ _ | .lit _, .binary _ _ _ =>
     unfold CCExprEquiv at h; exact absurd h id
   | .var _, .lit _ | .var _, .this | .var _, .«let» _ _ _ | .var _, .assign _ _ | .var _, .«if» _ _ _
   | .var _, .seq _ _ | .var _, .call _ _ _ | .var _, .newObj _ _ _ | .var _, .getProp _ _
@@ -1656,9 +1657,15 @@ private theorem CCExprEquiv_zero_implies_eq : ∀ (e1 e2 : Flat.Expr),
   | .var _, .typeof _ | .var _, .getEnv _ _ | .var _, .makeEnv _ | .var _, .makeClosure _ _
   | .var _, .objectLit _ | .var _, .arrayLit _ | .var _, .throw _ | .var _, .tryCatch _ _ _ _
   | .var _, .while_ _ _ | .var _, .«break» _ | .var _, .«continue» _ | .var _, .labeled _ _
-  | .var _, .«return» _ | .var _, .yield _ _ | .var _, .await _ =>
+  | .var _, .«return» _ | .var _, .yield _ _ | .var _, .await _
+  | .var _, .unary _ _ | .var _, .binary _ _ _ =>
     unfold CCExprEquiv at h; exact absurd h id
-  | _, _ => unfold CCExprEquiv at h; exact absurd h id
+  | .unary op1 a1, .unary op2 a2 =>
+    unfold CCExprEquiv at h; obtain ⟨hop, ha⟩ := h
+    rw [hop, CCExprEquiv_zero_implies_eq a1 a2 ha]
+  | .binary op1 l1 r1, .binary op2 l2 r2 =>
+    unfold CCExprEquiv at h; obtain ⟨hop, hl, hr⟩ := h
+    rw [hop, CCExprEquiv_zero_implies_eq l1 l2 hl, CCExprEquiv_zero_implies_eq r1 r2 hr]
 private theorem CCExprListEquiv_zero_implies_eq : ∀ (es1 es2 : List Flat.Expr),
     CCExprListEquiv 0 es1 es2 → es1 = es2 := by
   intro es1 es2 h
