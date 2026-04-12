@@ -32615,6 +32615,30 @@ private theorem anfConvert_halt_star
   fun sa sf hrel hstuck hwf =>
     anfConvert_halt_star_aux s t h sf.expr.depth sa sf (Nat.le_refl _) hrel hstuck hwf
 
+/-- noCallFrameReturn is preserved through the flat steps produced by anfConvert_step_star.
+    Unlike general flat-step preservation (which is FALSE due to call-frame tryCatch wrappers),
+    this holds because anfConvert_step_star simulates one complete ANF step, and the call-frame
+    mechanism is fully resolved within a single ANF step simulation batch. -/
+private theorem anfConvert_step_star_ncfr
+    (s : Flat.Program) (t : ANF.Program)
+    (h : ANF.convert s = .ok t)
+    (sa : ANF.State) (sf : Flat.State) (ev : Core.TraceEvent) (sa' : ANF.State)
+    (hrel : ANF_SimRel s t sa sf)
+    (hewf : ExprWellFormed sf.expr sf.env)
+    (hna : NoNestedAbrupt sf.expr)
+    (hncfr : noCallFrameReturn sf.expr = true)
+    (hfuncs_ncfr : ∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → noCallFrameReturn fd.body = true)
+    (hstep : ANF.Step sa ev sa')
+    (sf' : Flat.State) (evs : List Core.TraceEvent)
+    (hfsteps : Flat.Steps sf evs sf')
+    (hrel' : ANF_SimRel s t sa' sf') :
+    noCallFrameReturn sf'.expr = true := by
+  -- The flat steps from anfConvert_step_star simulate one ANF step.
+  -- Call steps introduce tryCatch "__call_frame_return__" transiently,
+  -- but the batch resolves the call frame, so sf'.expr is ncfr again.
+  -- Proof requires case analysis mirroring anfConvert_step_star.
+  sorry
+
 /-- Multi-step simulation derived from single-step stuttering simulation. -/
 private theorem anfConvert_steps_star
     (s : Flat.Program) (t : ANF.Program)
@@ -32626,25 +32650,29 @@ private theorem anfConvert_steps_star
       noCallFrameReturn sf.expr = true →
       (∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → NoNestedAbrupt fd.body) →
       (∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → hasAbruptCompletion fd.body = false) →
+      (∀ (i : Nat) (fd : Flat.FuncDef), sf.funcs[i]? = some fd → noCallFrameReturn fd.body = true) →
       ANF.Steps sa tr sa' →
       ∃ (sf' : Flat.State) (tr' : List Core.TraceEvent),
         Flat.Steps sf tr' sf' ∧
         observableTrace tr = observableTrace tr' ∧
         ANF_SimRel s t sa' sf' ∧
         ExprWellFormed sf'.expr sf'.env := by
-  intro sa sf tr sa' hrel hwf hna hncfr hfuncs_na hfuncs_ac hsteps
+  intro sa sf tr sa' hrel hwf hna hncfr hfuncs_na hfuncs_ac hfuncs_ncfr hsteps
   induction hsteps generalizing sf with
   | refl => exact ⟨sf, [], .refl sf, rfl, hrel, hwf⟩
   | tail hstep _ ih =>
     obtain ⟨sf2, evs1, hfsteps1, hobsev, hrel2, hwf2⟩ :=
       anfConvert_step_star s t h _ _ _ _ hrel hwf hna hncfr hstep
     have hna2 : NoNestedAbrupt sf2.expr := NoNestedAbrupt_steps_preserved hna hfuncs_na hfuncs_ac hfsteps1
-    have hncfr2 : noCallFrameReturn sf2.expr = true := sorry /- noCallFrameReturn preservation through flat steps -/
+    have hncfr2 : noCallFrameReturn sf2.expr = true :=
+      anfConvert_step_star_ncfr s t h _ _ _ _ hrel hwf hna hncfr
+        (fun i fd h => hfuncs_ncfr i fd h) hstep sf2 evs1 hfsteps1 hrel2
     have hfuncs_eq := Flat.Steps_preserves_funcs hfsteps1
     obtain ⟨sf3, evs2, hfsteps2, hobstr, hrel3, hwf3⟩ :=
       ih sf2 hrel2 hwf2 hna2 hncfr2
         (fun i fd h => hfuncs_na i fd (hfuncs_eq ▸ h))
         (fun i fd h => hfuncs_ac i fd (hfuncs_eq ▸ h))
+        (fun i fd h => hfuncs_ncfr i fd (hfuncs_eq ▸ h))
     exact ⟨sf3, evs1 ++ evs2,
       Flat.Steps.append hfsteps1 hfsteps2,
       by rw [show ∀ (a : Core.TraceEvent) l, a :: l = [a] ++ l from fun _ _ => rfl,
@@ -32675,7 +32703,7 @@ theorem anfConvert_correct (s : Flat.Program) (t : ANF.Program)
     hncfr_prog
   -- Multi-step simulation (now threads WF)
   obtain ⟨sf, tr', hfsteps, hobstr, hrel, hwf_sf⟩ :=
-    anfConvert_steps_star s t h _ _ _ _ hinit hwf_init hna_init hncfr_init hfuncs_na_prog hfuncs_ac_prog hsteps
+    anfConvert_steps_star s t h _ _ _ _ hinit hwf_init hna_init hncfr_init hfuncs_na_prog hfuncs_ac_prog hfuncs_ncfr_prog hsteps
   obtain ⟨sf', evs', hfsteps', hhalt', hobsevs, hrel'⟩ :=
     anfConvert_halt_star s t h _ _ hrel hhalt hwf_sf
   -- Combine: Flat reaches sf via tr', then sf' via evs' (all silent)
