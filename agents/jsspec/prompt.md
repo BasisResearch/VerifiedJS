@@ -1,4 +1,4 @@
-# jsspec — CLOSE CCStateAgreeWeak SORRIES
+# jsspec — CLOSE CCStateAgreeWeak SORRIES VIA CCExprEquiv
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,76 +9,90 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-12T13:05
-- CC has **25 real sorry lines** (5 blocked/axiom, 20 CCStateAgreeWeak)
-- The dominant pattern: `convertExpr_state_determined ... st_a' sorry /- hAgreeOut.1 -/ sorry /- hAgreeOut.2 -/`
-- These need equality where IH only provides CCStateAgreeWeak (≤)
+## STATUS — 2026-04-12T14:05
+- CC has **25 real sorry lines** (unchanged for 12 days)
+- 5 blocked/axiom sorries (L6917, L8219, L8230, L8870, L10515) — DO NOT TOUCH
+- **20 CCStateAgreeWeak sorries** — YOUR TARGET
+- Monotone approach was REJECTED (March 31 analysis confirmed it breaks chaining)
 
-## THE CORE PROBLEM
+## THE FIX: CCExprEquiv-BASED SIMULATION (Approach B)
 
-At each sorry site, we have:
-- `st' = (convertExpr init ... st).snd` — the "real" output state
-- `st_a' = (convertExpr sc_sub'.expr ... st_a).snd` — the IH output state
-- `CCStateAgreeWeak st st_a` means `st.nextId ≤ st_a.nextId`
-- `CCStateAgreeWeak st_a' st'` means `st_a'.nextId ≤ st'.nextId`
-- **Need**: `st'.nextId = st_a'.nextId` (equality)
+### Why this works
+- `convertExpr_CCExprEquiv_shifted` (L1854) is ALREADY PROVEN for all expression types
+- It requires only `funcs.size` difference, NOT `nextId` equality
+- The branching constructs naturally produce states with different `funcs.size`
+- CCExprEquiv captures: expressions differ only in makeClosure function indices
 
-`convertExpr_state_delta` (L1232) shows:
-- `st'.nextId = st.nextId + exprFuncCount init`
-- `st_a'.nextId = st_a.nextId + exprFuncCount sc_sub'.expr`
+### Step 1: Understand the infrastructure (READ FIRST)
+```lean
+-- L1499-1547: CCExprEquiv definition
+lean_hover_info file="VerifiedJS/Proofs/ClosureConvertCorrect.lean" line=1499 column=0
 
-Since `init ≠ sc_sub'.expr` (one is pre-step, one is post-step), and `st.nextId ≤ st_a.nextId`,
-the delta approach DOES NOT give equality. Monotone approach also FAILS (March 31 analysis).
+-- L1854: The key theorem
+lean_hover_info file="VerifiedJS/Proofs/ClosureConvertCorrect.lean" line=1854 column=0
+```
 
-## THE REAL FIX: Strengthen invariant to CCStateAgree
+### Step 2: Prototype on ONE sorry pair (L7461 — if cond case)
 
-The invariant at L6858-6860 uses `CCStateAgreeWeak`. Change it to `CCStateAgree` (equality):
+Current code at L7461:
+```lean
+(Flat.convertExpr cond scope envVar envMap st).snd st_a' sorry /- hAgreeOut.1 -/ sorry /- hAgreeOut.2 -/
+```
 
+This calls `convertExpr_state_determined` which requires CCStateAgree (equality).
+
+**Replace with CCExprEquiv approach:**
+```lean
+-- Instead of convertExpr_state_determined (needs equality), use:
+have h_equiv : CCExprEquiv δ
+    (Flat.convertExpr then_ scope envVar envMap (Flat.convertExpr cond scope envVar envMap st).snd).fst
+    (Flat.convertExpr then_ scope envVar envMap st_a').fst :=
+  convertExpr_CCExprEquiv_shifted then_ scope envVar envMap
+    (Flat.convertExpr cond scope envVar envMap st).snd st_a' δ
+    (by omega)  -- funcs.size relationship from convertExpr_state_delta
+```
+
+**BUT**: You also need to change the simulation invariant at L6858-6861 to use CCExprEquiv instead of expression equality. This is the key refactoring.
+
+### Step 3: Change the simulation invariant (L6858-6861)
+
+Current:
 ```lean
 ∃ (st_a st_a' : Flat.CCState),
   (sf'.expr, st_a') = Flat.convertExpr sc'.expr scope envVar envMap st_a ∧
-  CCStateAgree st st_a ∧ CCStateAgree st_a' st'
+  CCStateAgreeWeak st st_a ∧ CCStateAgreeWeak st_a' st'
 ```
 
-**Why this might work now**: The initial state `st_a = st` (equality) at the start of simulation.
-If each simulation step can produce `st_a = st` (not just ≤), then the cascade problem disappears.
-
-**The cascade problem**: When a compound expression like `.if cond then_ else_` steps and only
-one branch is taken, the output state `st'` accounts for BOTH branches (because `convertExpr`
-processes both). The IH gives `st_a'` from converting only the TAKEN branch's sub-expression.
-
-**Two approaches to fix the cascade**:
-
-### Approach A: Track the conversion function index directly
-Instead of existential `st_a`, use the actual conversion state from the simulation:
+Change to:
 ```lean
-sf'.expr = (Flat.convertExpr sc'.expr scope envVar envMap st).fst ∧
-(Flat.convertExpr sc'.expr scope envVar envMap st).snd = st'
+∃ (st_a st_a' : Flat.CCState) (δ : Nat),
+  CCExprEquiv δ sf'.expr (Flat.convertExpr sc'.expr scope envVar envMap st_a).fst ∧
+  st_a' = (Flat.convertExpr sc'.expr scope envVar envMap st_a).snd ∧
+  CCStateAgreeWeak st st_a ∧ CCStateAgreeWeak st_a' st' ∧
+  st.funcs.size + δ = st_a.funcs.size
 ```
-This would mean `st_a = st` always, so equality is trivially maintained.
-BUT: this breaks when sub-expressions step, because the flat expression after stepping
-is NOT `convertExpr` applied to the stepped core expression with the same state.
 
-### Approach B: CCExprEquiv-based simulation relation
-Replace expression equality with `CCExprEquiv δ` in the simulation:
-```lean
-CCExprEquiv δ sf'.expr (Flat.convertExpr sc'.expr scope envVar envMap st').fst
+With this invariant, the sorry sites transform from needing `convertExpr_state_determined` (needs equality) to needing `convertExpr_CCExprEquiv_shifted` (needs only funcs.size offset).
+
+### Step 4: Verify CCExprEquiv properties exist
+Before changing the invariant, verify these exist:
+1. `CCExprEquiv.refl`: `CCExprEquiv 0 e e` — for base cases
+2. Composition/transitivity — for chaining sub-expressions
+3. `CCExprEquiv` compatibility with Flat.step? — for simulation preservation
+
+Check with:
 ```
-where δ accounts for the function index shift.
-`convertExpr_CCExprEquiv_shifted` (L1854) already handles the expression part.
-The state threading would use `convertExpr_state_delta` for state equality on output.
+lean_local_search query="CCExprEquiv" file="VerifiedJS/Proofs/ClosureConvertCorrect.lean"
+```
 
-**Recommended: Approach B**, because:
-1. `convertExpr_CCExprEquiv_shifted` infrastructure already exists
-2. Expression equivalence modulo function indices is the natural invariant
-3. State delta gives `output = input + exprFuncCount e`, so output equality follows from input equality
+### CRITICAL WARNING
+Changing the invariant at L6858 will break ALL existing proofs that use expression equality.
+**DO NOT** change it until you have verified the CCExprEquiv approach works on L7461 as a prototype.
 
-### Concrete Plan for Approach B:
-1. Change the invariant to use `CCExprEquiv δ` instead of expression equality
-2. At each sorry site, instead of `convertExpr_state_determined`, use `convertExpr_CCExprEquiv_shifted`
-3. Prove that the simulation relation is preserved under `CCExprEquiv δ`
-
-This is a significant refactoring but would close all ~20 sorry pairs at once.
+**Prototype plan:**
+1. Add a SEPARATE lemma `cc_step_sim_CCExprEquiv_if_cond` that proves the if-cond case with the new invariant
+2. If the prototype works, THEN change the invariant
+3. If not, document exactly what's missing
 
 ## SORRY LOCATIONS (25 real sorry lines):
 
@@ -94,10 +108,10 @@ This is a significant refactoring but would close all ~20 sorry pairs at once.
 **E. While duplication (1, BLOCKED):** L10515
 
 ## EXECUTION ORDER:
-1. **Analyze**: `lean_hover_info` on `CCExprEquiv` at L1459 and `convertExpr_CCExprEquiv_shifted` at L1854
-2. **Prototype**: Pick ONE sorry pair (L7461, if cond). Try replacing `convertExpr_state_determined` with `convertExpr_CCExprEquiv_shifted` + appropriate δ
-3. **If it works**: Generalize to all sorry sites
-4. **If it doesn't**: The simulation relation needs a deeper refactor
+1. Read CCExprEquiv definition and convertExpr_CCExprEquiv_shifted signature
+2. Prototype on L7461 (if cond) with a separate lemma
+3. If works: change invariant at L6858 and fix all sorry sites
+4. If doesn't work: document what's missing
 
 ## LOG
 **FIRST**: `echo "### $(date -Iseconds) Starting run — [task]" >> agents/jsspec/log.md`
