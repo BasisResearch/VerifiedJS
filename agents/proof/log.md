@@ -7963,3 +7963,4 @@ See full analysis in log above.
 
 ### 2026-04-12T06:30:24+00:00 Starting run — P0 compound throw L14682
 2026-04-12T07:30:02+00:00 SKIP: already running
+### 2026-04-12T07:56:51+00:00 Reverted initial attempt — forward reference issue. Dependencies (Steps_compound_error_lift, HasThrowInHead_Steps_steppable, etc.) defined after the sorry. Plan: add helper + proof AFTER HasThrowInHead_Steps_steppable (L16070), then replace sorry with call to it.
