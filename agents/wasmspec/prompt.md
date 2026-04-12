@@ -1,4 +1,4 @@
-# wasmspec — HasNonCallFrameTryCatch REDESIGN + BREAK/CONTINUE INFRASTRUCTURE
+# wasmspec — COMPLETE EvalFirst INFRASTRUCTURE + SWAP IN
 
 ## ABSOLUTE RULES
 - **DO NOT** edit ClosureConvertCorrect.lean — jsspec owns it
@@ -9,61 +9,45 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-12T05:05
-- Total: **43 real sorries** (ANF 31, CC 12). Down from 63 (-20).
-- noCallFrameReturn refactoring DONE.
-- L17804 (HasNonCallFrameTryCatch) still BLOCKED — predicate too strong.
+## STATUS — 2026-04-12T06:05
+- Total: **42 real sorries** (ANF 30, CC 12). Down from 43 (-1).
+- HasNonCallFrameTryCatchInEvalFirst: DEFINED ✓
+- normalizeExpr_return_implies_noEvalFirstTryCatch: PROVED ✓
+- Next: complete the EvalFirst chain and swap it in at L18100
 
-## P0: REDESIGN HasNonCallFrameTryCatchInHead — HIGHEST PRIORITY (-1 sorry)
+## P0: COMPLETE THE EvalFirst CHAIN — HIGHEST PRIORITY (-1 sorry)
 
-The current `HasNonCallFrameTryCatchInHead` checks ALL sub-expressions including
-non-eval-first positions. This is too strong — tryCatch in non-eval-first positions
-(like the body of a seq_right, or let_body) doesn't affect evaluation order.
+You've defined the predicate and proved the key enabler. Now finish:
 
-### Fix: Define HasNonCallFrameTryCatchInEvalFirst
-Only check the eval-first path (the sub-expression that Flat.step? evaluates next):
-```lean
-inductive HasNonCallFrameTryCatchInEvalFirst : Flat.Expr → Prop where
-  | tryCatch_direct : catchParam ≠ "__call_frame_return__" →
-      HasNonCallFrameTryCatchInEvalFirst (.tryCatch body catchParam catchBody finally_)
-  | seq_left : HasNonCallFrameTryCatchInEvalFirst e →
-      HasNonCallFrameTryCatchInEvalFirst (.seq e e2)
-  | let_init : HasNonCallFrameTryCatchInEvalFirst e →
-      HasNonCallFrameTryCatchInEvalFirst (.let_ name e body)
-  | binary_lhs : HasNonCallFrameTryCatchInEvalFirst e →
-      HasNonCallFrameTryCatchInEvalFirst (.binary op e rhs)
-  -- Add ONLY positions where Flat.step? recurses into the sub-expression
-  -- Do NOT add: seq_right, let_body, if branches, tryCatch body/catch, etc.
-```
+### Step 1: step_nonError_preserves_noEvalFirstTryCatch
+Prove: if ¬HasNonCallFrameTryCatchInEvalFirst e and step? doesn't produce error,
+then ¬HasNonCallFrameTryCatchInEvalFirst e' for the result.
+This is a case analysis on step? — each non-error case either:
+- Reduces to a sub-expression that also has no eval-first tryCatch
+- Produces a .lit (stuck)
 
-### Steps:
-1. Check where `HasNonCallFrameTryCatchInHead` is defined — `lean_local_search`
-2. Define `HasNonCallFrameTryCatchInEvalFirst` nearby
-3. Replace usage at L17804 with the new predicate
-4. The key theorem should now be provable: eval-first tryCatch is the ONLY kind that
-   can intercept the return error during stepping
+### Step 2: HasReturnInHead_implies_noEvalFirstTryCatch (or equivalent)
+Show: normalizeExpr output with HasReturnInHead has no eval-first non-call-frame tryCatch.
+You already proved normalizeExpr_return_implies_noEvalFirstTryCatch — check if this IS that.
 
-**Expected: -1 sorry**
+### Step 3: SWAP IN at L18100
+Replace `sorry /- ¬HasNonCallFrameTryCatchInHead` with the EvalFirst-based proof:
+- Use normalizeExpr output → ¬HasNonCallFrameTryCatchInEvalFirst
+- Use step preservation to maintain it across Steps
+- Use the EvalFirst version where the old predicate was needed
 
-## P1: BREAK/CONTINUE COMPOUND INFRASTRUCTURE (if P0 done)
+### Expected: -1 sorry (L18100 closed)
 
-L26596 and L26667 need compound error propagation for break/continue cases.
-Same pattern as HasThrowInHead — but for HasBreakInHead/HasContinueInHead.
+## P1: BREAK/CONTINUE COMPOUND (L26891, L26962) — if P0 done
 
 Check if `HasBreakInHead_step_nonError` and `HasContinueInHead_step_nonError` exist.
-If not, they follow the EXACT same pattern as HasThrowInHead_step_nonError.
-This would close 2 sorries and establish infrastructure for more.
+If not, define them following the EXACT pattern of HasThrowInHead_step_nonError.
+These would enable closing L26891 and L26962.
 
-## P2: L26376 (catchParam ≠ "__call_frame_return__")
+## P2: catchParam (L26671) — if P1 done
 
-This needs `noCallFrameReturn` threaded as a precondition. Check if the caller of
-the theorem at L26376 already has noCallFrameReturn in scope. If so, just thread it.
-
-## DO NOT WORK ON:
-- L11365-L11736 (labeled trivial mismatch — BLOCKED)
-- ClosureConvertCorrect.lean (jsspec)
-- CCExprEquiv/CCStateAgree (jsspec)
+Thread noCallFrameReturn as precondition. Check caller scope.
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — HasNonCallFrameTryCatch redesign" >> agents/wasmspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — EvalFirst chain completion" >> agents/wasmspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/wasmspec/log.md`
