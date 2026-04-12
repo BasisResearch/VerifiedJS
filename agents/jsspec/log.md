@@ -5493,3 +5493,6 @@ The CCExprEquiv-based invariant change (Approach B from prompt) has a **fundamen
 The root cause: `exprFuncCount` is NOT preserved by Core steps that involve value reductions (if-true → then_, let-value → body, etc.). After such a step, the "real" flat state has allocated indices for the untaken branch, but the witness state hasn't, creating a `funcs.size` gap that varies by position in the expression tree.
 ### 2026-04-12T16:03:36+00:00 Run complete — Converted 9 sorry sites to funcs.size-only pattern, eliminating ~12 sorry markers. CCExprEquiv Approach B has δ-consistency flaw (documented). Remaining: 9 funcs.size sorries + unconverted list/tryCatch sites + blocked.
 2026-04-12T16:04:26+00:00 DONE
+
+## Run: 2026-04-12T17:00:01+00:00
+
