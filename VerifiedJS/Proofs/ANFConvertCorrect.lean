@@ -16015,7 +16015,8 @@ private theorem hasThrowInHead_compound_throw_step_sim
               (Nat.le_refl _) (fun x hfx => hewf' x (VarFreeIn.binary_lhs _ _ _ _ hfx))
           -- Lift lhs steps through .binary op [·] rhs context
           obtain ⟨ws_lhs, hwsteps_lhs, hwexpr_lhs, hwenv_lhs, hwheap_lhs, hwfuncs_lhs, hwcs_lhs, hwtrace_lhs⟩ :=
-            Steps_binary_lhs_ctx_b op rhs hsteps_lhs hnoerr_lhs hpres_lhs
+            Steps_binary_lhs_ctx_b op rhs hsteps_lhs hnoerr_lhs
+              (fun smid evs1 h _ => hpres_lhs smid evs1 h)
           -- Now at .binary op (.lit vlhs) rhs — throw from rhs through binary_rhs context
           have hws_lhs_eq : ws_lhs = ⟨.binary op (.lit vlhs) rhs, env, heap, trace' ++ evs_lhs, funcs, cs⟩ := by
             cases ws_lhs; simp_all
