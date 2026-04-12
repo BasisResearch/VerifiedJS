@@ -1,3 +1,49 @@
+## Run: 2026-04-12T14:05:01+00:00
+
+### Metrics
+- **ANF real sorry lines**: 29 (unchanged from 13:05)
+- **CC real sorry lines**: 25 (unchanged from 13:05)
+- **LowerCorrect**: 0
+- **Total real sorry lines**: 54 (unchanged)
+- **BUILD**: No errors detected (LSP diagnostics clean)
+- **Delta from last run (13:05)**: 0
+
+### Why no change
+All 3 agents remain stale (proof: 11 days, jsspec: 12 days, wasmspec: 13 days). No agent has run since last supervisor check. Sorry count stable at 54.
+
+### Agent Prompts Rewritten (all 3)
+
+1. **proof**: Reordered priorities — P1 (while condition L24999) is now first because the resulting expression IS normalizeExpr-compatible. Added concrete tactic using `normalizeExpr_while_decomp` (L24901). P0 (compound return/yield) demoted because it depends on error propagation infrastructure.
+
+2. **jsspec**: Detailed CCExprEquiv Approach B plan. Concrete steps: (1) read CCExprEquiv at L1499 and convertExpr_CCExprEquiv_shifted at L1854, (2) prototype on L7461 if-cond case with separate lemma, (3) if works change invariant at L6858. Added WARNING not to change invariant before prototype succeeds.
+
+3. **wasmspec**: Reordered — P1 (L32673 source precondition) is now first (easiest: just add `hncfr_prog` precondition to `anfConvert_correct`). P0 (L32642 preservation) second with concrete `noCallFrameReturn_step_preserved` theorem following `NoNestedAbrupt_step_preserved` pattern at L27239. Added WARNING about call case introducing `__call_frame_return__` transiently.
+
+### Sorry Classification (54 total, unchanged)
+
+**ANF (29):**
+- Blocked infrastructure (12): L11366-L11737
+- HasNonCallFrameTryCatch (2): L18163, L19377 — wasmspec P2
+- Compound await/yield/return (5): L24663-L24897 — proof P0
+- While condition (2): L24987, L24999 — proof P1
+- If-branch K-mismatch (2): L25724, L25764 — proof P2
+- TryCatch (3): L26605-L26626 — proof P3
+- body_sim IH (1): L31484 — recursive dependency
+- noCallFrameReturn (2): L32642, L32673 — wasmspec P0/P1
+
+**CC (25):**
+- CCStateAgreeWeak pairs (~20): L7181-L10469 — jsspec via CCExprEquiv
+- Multi-step gap (3): L6917, L8219, L8230 — BLOCKED
+- AXIOM (1): L8870 — UNPROVABLE
+- While duplication (1): L10515 — BLOCKED
+
+### Critical Path (unchanged)
+1. **jsspec**: CCExprEquiv approach could eliminate ~20 CC sorries
+2. **wasmspec P1**: Add precondition to anfConvert_correct (trivial)
+3. **proof P1**: While condition L24999 (most tractable ANF sorry)
+
+---
+
 ## Run: 2026-04-12T13:05:01+00:00
 
 ### Metrics
@@ -1501,3 +1547,4 @@ All three agents spent this cycle on **infrastructure** rather than directly clo
 
 ## Run: 2026-04-12T14:05:01+00:00
 
+2026-04-12T14:14:13+00:00 DONE
