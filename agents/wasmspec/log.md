@@ -8589,3 +8589,45 @@ Needs HasBreakInHead_step_nonError + HasBreakInHead_Steps_steppable infrastructu
 ## Run: 2026-04-12T08:15:01+00:00
 
 ### 2026-04-12T08:15:09+00:00 Starting run — P0 L18325 close sorry
+
+### 2026-04-12T08:40:00+00:00 Deep analysis of L18325 sorry
+
+**Problem**: `HasReturnInHead_Steps_steppable` calls `_core` which needs `¬HasNonCallFrameTryCatchInHead a`, but the wrapper only has `HasReturnInHead a`.
+
+**Key findings from analysis**:
+
+1. **`HasReturnInHead a` does NOT imply `¬HasNonCallFrameTryCatchInHead a`**
+   - Counter-example: `a = .seq (.return none) (.tryCatch body "user" cb fin)`
+   - HasReturnInHead via seq_left return_none_direct ✓
+   - HasNonCallFrameTryCatchInHead via seq_right (non_call_frame ...) ✓
+   - Both coexist because return is in left side, tryCatch in right side
+
+2. **Flat semantics key insight: `.seq a b` error drops `b`**
+   - step? (.seq a b) when a produces error: result is `(error, {expr := sa.expr})` — seq wrapper AND `b` are discarded
+   - So tryCatch in `b` (seq_right) can NEVER catch errors from `a`
+   - step_error_noNonCallFrameTryCatch_isLit is OVERLY CONSERVATIVE for seq case
+
+3. **normalizeExpr prevents most problematic cases but NOT all**
+   - normalizeExpr_tryCatch_not_return: tryCatch input NEVER produces .return output
+   - So tryCatch can never be in eval-first path when normalizeExpr produces .return
+   - BUT tryCatch CAN be in non-eval-first positions (seq_right, let_body, etc.)
+   - `a = .seq (.return none) (.tryCatch ...)` is valid at call sites
+
+4. **The sorry is NEVER actually used at problematic call sites**
+   - For counter-example expression, Steps from IH are just 1 step (return → .lit + error)
+   - _core enters refl case, returns hret directly without using hncf
+   - But Lean requires hncf at TYPE level regardless
+
+5. **Threading `¬HasNonCallFrameTryCatchInHead` through call chain FAILS**
+   - Can't add it to anfConvert_step_star as invariant
+   - Source programs WITH tryCatch have HasNonCallFrameTryCatchInHead = true
+   - Entering a source tryCatch during execution breaks the invariant
+
+**Correct approach (requires significant restructuring)**:
+- Define `HasNonCallFrameTryCatchInEvalFirst` (eval-first positions only, NO seq_right/let_body/if_then/if_else/while_*)
+- Prove step_error with eval-first predicate (works because error drops non-eval-first parts)
+- Prove step_nonError_preserves with HasReturnInHead (prevents seq_right transitions when HasReturnInHead is via seq_left)
+- The seq_right transition case (a becomes value → move to b) requires deriving eval-first for b, which needs the normalizeExpr context at the _core level
+- This is a ~800 line change affecting multiple lemmas
+
+**Conclusion**: This sorry cannot be closed with small, safe changes. Requires fundamental restructuring of the proof invariant used in _core. Moving to P1 assessment.
