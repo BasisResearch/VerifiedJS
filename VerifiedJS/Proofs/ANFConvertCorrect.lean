@@ -10193,13 +10193,13 @@ private theorem noCallFrameReturn_normalizeExpr_tryCatch_param_aux :
       simp only [Bool.and_eq_true, bne_iff_ne, ne_eq] at hncfr
       simp only [ANF.normalizeExpr, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at h
       cases hb : (ANF.normalizeExpr body_f k).run n with
-      | error msg => rw [hb] at h; simp at h
+      | error msg => simp only [StateT.run] at hb; rw [hb] at h; simp at h
       | ok vb =>
-        obtain ⟨body', n1⟩ := vb; rw [hb] at h; simp only [Except.bind] at h
+        obtain ⟨body', n1⟩ := vb; simp only [StateT.run] at hb; rw [hb] at h; simp only [Except.bind] at h
         cases hc : (ANF.normalizeExpr cb_f k).run n1 with
-        | error msg => rw [hc] at h; simp at h
+        | error msg => simp only [StateT.run] at hc; rw [hc] at h; simp at h
         | ok vc =>
-          obtain ⟨catch', n2⟩ := vc; rw [hc] at h; simp only [Except.bind] at h
+          obtain ⟨catch', n2⟩ := vc; simp only [StateT.run] at hc; rw [hc] at h; simp only [Except.bind] at h
           cases fin_f with
           | none =>
             simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h
@@ -10208,9 +10208,9 @@ private theorem noCallFrameReturn_normalizeExpr_tryCatch_param_aux :
           | some fin_flat =>
             simp only [Functor.map, StateT.map, bind, Bind.bind, StateT.bind, StateT.run, Except.bind] at h
             cases hf : (ANF.normalizeExpr fin_flat (fun _ => pure (.trivial .litUndefined))).run n2 with
-            | error msg => simp [hf] at h
+            | error msg => simp only [StateT.run] at hf; rw [hf] at h; simp at h
             | ok vf =>
-              obtain ⟨fin', n3⟩ := vf; simp [hf] at h
+              obtain ⟨fin', n3⟩ := vf; simp only [StateT.run] at hf; rw [hf] at h; simp only [Except.bind] at h
               simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h
               have hcp := (ANF.Expr.tryCatch.inj h.1).2.1.symm
               rw [hcp]; exact hncfr.1.1.1

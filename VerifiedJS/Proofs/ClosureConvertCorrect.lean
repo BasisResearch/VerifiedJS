@@ -7322,10 +7322,8 @@ private theorem closureConvert_step_simulation
         · simp [sc', noCallFrameReturn] at hncfr ⊢; exact hncfr.1
         · simp [sc', ExprAddrWF] at hexprwf ⊢; exact hexprwf.2.1
         · exact ⟨st, (Flat.convertExpr then_ scope envVar envMap st).snd, by
-            simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, sorry⟩ -- BLOCKED: CCStateAgree. st' includes else_ conversion state but
-            -- st_a' = (convertExpr then_ ... st).snd. Would need convertExpr else_ to not change
-            -- nextId/funcs.size, which fails when else_ contains functionDef nodes.
-            -- FIX: Change invariant to CCStateAgreeWeak; then use convertExpr_state_mono else_.
+            simp [sc', Flat.convertExpr], ⟨Nat.le_refl _, Nat.le_refl _⟩,
+            by rw [hconv.2]; exact convertExpr_state_mono else_ scope envVar envMap _⟩
       | false =>
         rw [Flat_step?_if_false _ _ _ _ (by rw [toBoolean_convertValue, htb])] at hstep
         simp at hstep
@@ -7348,10 +7346,9 @@ private theorem closureConvert_step_simulation
         · simp [sc', ExprAddrWF] at hexprwf ⊢; exact hexprwf.2.2
         · exact ⟨(Flat.convertExpr then_ scope envVar envMap st).snd,
             (Flat.convertExpr else_ scope envVar envMap (Flat.convertExpr then_ scope envVar envMap st).snd).snd, by
-            simp [sc', Flat.convertExpr], sorry, by rw [hconv.2]; exact ⟨rfl, rfl⟩⟩
-            -- BLOCKED: CCStateAgree. st_a must skip then_ conversion state to reach else_,
-            -- but CCStateAgree st st_a requires equality which fails when then_ changes state.
-            -- FIX: Change invariant to CCStateAgreeWeak; then use convertExpr_state_mono then_.
+            simp [sc', Flat.convertExpr],
+            convertExpr_state_mono then_ scope envVar envMap st,
+            by rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
     | none =>
       have hsupp_cond : cond.supported = true := by
         have h := hsupp; unfold Core.Expr.supported at h; simp [Bool.and_eq_true] at h; exact h.1.1
@@ -10234,9 +10231,8 @@ private theorem closureConvert_step_simulation
         · -- CCStateAgree: st' = (convertExpr catchBody ... st).snd, st_a' = st
           -- Output agreement CCStateAgree st' st requires catchBody to not change CCState.
           -- Same class as if-else/while_ CCStateAgree architectural issue.
-          exact ⟨st, st, by simp [sc', Flat.convertExpr], ⟨rfl, rfl⟩, by rw [hst'_eq]; sorry⟩
-          -- BLOCKED: CCStateAgree. st' = (convertExpr catchBody ... st).snd but st_a' = st.
-          -- FIX: Change invariant to CCStateAgreeWeak; then output = convertExpr_state_mono catchBody.
+          exact ⟨st, st, by simp [sc', Flat.convertExpr], ⟨Nat.le_refl _, Nat.le_refl _⟩,
+            by rw [hst'_eq]; exact convertExpr_state_mono (.tryCatch body catchParam catchBody none) scope envVar envMap st⟩
       | some fin => sorry -- BLOCKED: CCStateAgree + tryCatch body-value with finally.
             -- Same CCStateAgree issue as the none case, compounded by finally_ conversion.
             -- FIX: Full proof exists (see git history); blocked only by CCStateAgreeWeak invariant change.
@@ -10309,17 +10305,26 @@ private theorem closureConvert_step_simulation
                   (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.1) hmono,
                 ExprAddrWF_mono fin
                   (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.2) hmono⟩
-          · -- CCStateAgree: convertExpr_scope_irrelevant solves scope mismatch
-            -- but CCStateAgree st st1 remains (body conversion may change nextId/funcs.size)
-            sorry -- BLOCKED: CCStateAgree. Need CCStateAgree st st_a where st_a accounts for
-            -- body conversion state st1 = (convertExpr body ... st).snd, but body may contain
-            -- functionDef nodes that change nextId/funcs.size.
-            -- FIX: Change invariant to CCStateAgreeWeak; use st1 as witness with scope_irrelevant
-            -- and convertExpr_state_mono body. Full proof skeleton:
-            -- cases finally_ with
-            -- | none => ⟨st1, (convertExpr catchBody scope ... st1).snd, by simp [...]; rw [scope_irrelevant],
-            --   convertExpr_state_mono body ..., by rw [hconv.2]; simp [...]; rw [← scope_irrelevant]; le_refl⟩
-            -- | some fin => analogous with (convertExpr fin ... (convertExpr catchBody ... st1).snd).snd
+          · -- CCStateAgreeWeak: convertExpr_scope_irrelevant solves scope mismatch,
+            -- convertExpr_state_mono gives st ≤ st1, and st_a' ≤ st' by construction.
+            cases finally_ with
+            | none =>
+              refine ⟨st1, (Flat.convertExpr catchBody scope envVar envMap st1).snd, ?_,
+                convertExpr_state_mono body scope envVar envMap st, ?_⟩
+              · simp only [sc', handler, Flat.convertExpr]
+                rw [convertExpr_scope_irrelevant catchBody scope (catchParam :: scope)]
+              · rw [hconv.2]; simp [Flat.convertExpr, Flat.convertOptExpr, st1, st2]
+                rw [← convertExpr_scope_irrelevant catchBody scope (catchParam :: scope)]
+                exact ⟨Nat.le_refl _, Nat.le_refl _⟩
+            | some fin =>
+              refine ⟨st1, (Flat.convertExpr fin scope envVar envMap
+                (Flat.convertExpr catchBody scope envVar envMap st1).snd).snd, ?_,
+                convertExpr_state_mono body scope envVar envMap st, ?_⟩
+              · simp only [sc', handler, Flat.convertExpr]
+                rw [convertExpr_scope_irrelevant catchBody scope (catchParam :: scope)]
+              · rw [hconv.2]; simp [Flat.convertExpr, Flat.convertOptExpr, st1, st2]
+                rw [← convertExpr_scope_irrelevant catchBody scope (catchParam :: scope)]
+                exact ⟨Nat.le_refl _, Nat.le_refl _⟩
         · -- Non-error: body step preserves tryCatch wrapper
           simp only [not_exists] at herr
           have heq := Flat_step?_tryCatch_body_step sf fbody catchParam fcatch ffin sb t hncf hfnv hm herr
