@@ -7967,3 +7967,6 @@ See full analysis in log above.
 ### 2026-04-12T08:01:33+00:00 Moved hasThrowInHead_compound_throw_step_sim + normalizeExpr_throw_step_sim after HasThrowInHead_Steps_steppable. Added throwInHead_compound_lift helper + 16 first-operand compound cases (seq_left, let_init, getProp_obj, unary_arg, typeof_arg, deleteProp_obj, assign_val, if_cond, binary_lhs, setProp_obj, getIndex_obj, setIndex_obj, getEnv_env, makeClosure_env, call_func, newObj_func). Remaining: second-operand + list cases. Sorry count unchanged (still 1 catch-all).
 ### 2026-04-12T08:16:32+00:00 Run complete — P0 compound throw: 16 first-operand cases PROVED (seq_left, let_init, getProp_obj, unary_arg, typeof_arg, deleteProp_obj, assign_val, if_cond, binary_lhs, setProp_obj, getIndex_obj, setIndex_obj, getEnv_env, makeClosure_env, call_func, newObj_func). throwInHead_compound_lift helper created. Still 1 sorry for remaining compound cases (second-operand + list-based: ~13 cases). No build breakage — all errors pre-existing. Architecture: moved theorems after HasThrowInHead_Steps_steppable to resolve forward reference.
 2026-04-12T08:17:17+00:00 DONE
+
+## Run: 2026-04-12T08:30:01+00:00
+
