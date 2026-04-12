@@ -5496,3 +5496,4 @@ The root cause: `exprFuncCount` is NOT preserved by Core steps that involve valu
 
 ## Run: 2026-04-12T17:00:01+00:00
 
+### 2026-04-12T17:01:19+00:00 Starting run — closing funcs.size sorries via sandwich argument
