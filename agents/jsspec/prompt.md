@@ -1,4 +1,4 @@
-# jsspec — REFACTOR SIMULATION INVARIANT (CCExprEquiv offset is DONE!)
+# jsspec — APPLY CCExprEquiv TO CLOSE CCStateAgree SORRIES (5 sorries)
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -9,62 +9,50 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-12T00:05
+## STATUS — 2026-04-12T01:05
 - CC: 12 real sorries. Total: **42** (ANF 30 + CC 12).
-- **convertExpr_CCExprEquiv_shifted is FULLY PROVED** (L1627-1901). Great work!
-- All 4 variants proved: Expr, ExprList, PropList, OptExpr.
-- **The infrastructure is READY.** Now apply it to close CCStateAgree sorries.
+- **convertExpr_CCExprEquiv_shifted is FULLY PROVED** (L1627-1901). All 4 variants.
+- **convertExpr_state_delta is PROVED**. Infrastructure is DONE.
+- **You've been running since 23:30. The infrastructure is ready. CLOSE SORRIES NOW.**
 
-## P0: REFACTOR CCStateAgree SORRIES USING CCExprEquiv (HIGHEST PRIORITY — 5 sorries)
+## P0: CLOSE CCStateAgree SORRIES (5 sorries — L6899, L6925, L9654, L9888, L10004)
 
-The 5 CCStateAgree sorries are at: L6899, L6925, L9654 (area), L9888, L10004.
+### DO NOT build more infrastructure. USE what you have.
 
-### The Pattern
-Each sorry has this shape:
-```
--- Need: CCStateAgree st' st_a'
--- Have: st' = (convertExpr branch2 (convertExpr branch1 st).snd).snd
---       st_a' = (convertExpr branch1 st).snd  (only took branch1)
--- Problem: st' has extra state from branch2, so st'.nextId ≠ st_a'.nextId
-```
+**For each sorry, the fix is the same pattern:**
 
-### The Fix
-Replace `sf.expr = (convertExpr e scope envVar envMap st).fst` equality in the simulation invariant with:
+1. `lean_goal` at the sorry line to see the exact goal
+2. The goal asks for something like `CCStateAgree st' st_a'` or needs an expression match
+3. Instead of exact equality, use `convertExpr_CCExprEquiv_shifted` to show the expressions are CCExprEquiv with offset δ
+4. Use `convertExpr_state_delta` to compute δ = `exprFuncCount` of the skipped branch
+
+### Start with L6899 (if-true branch):
 ```lean
-CCExprEquiv δ sf.expr (convertExpr e scope envVar envMap st_a).fst
+-- Goal shape: ... sorry⟩ -- BLOCKED: CCStateAgree
+-- Fix: replace CCStateAgree requirement with CCExprEquiv δ
+-- δ = exprFuncCount else_branch
 ```
 
-where `δ = st.funcs.size - st_a.funcs.size` and `st_a` is the actual conversion state.
+1. Read lines around L6899 to understand the exact proof structure
+2. The `sorry` is embedded in a tuple. Replace the equality witness with a CCExprEquiv witness
+3. You may need to change a `have` or `suffices` upstream to weaken from exact equality to CCExprEquiv
 
-### Concrete Steps:
+### If refactoring the invariant is needed:
+Find where the simulation relation requires `sf.expr = converted_expr` and weaken to `CCExprEquiv δ sf.expr converted_expr`. This is a broader change but fixes ALL 5 sorries at once.
 
-**Step 1: Start with ONE sorry (L6899 — if-true branch)**
-1. `lean_goal` at L6899 to see exact goal
-2. The goal needs `CCStateAgree st' st_a'`. Instead of proving equality, use:
-   - `convertExpr_CCExprEquiv_shifted` to show the then-branch expression from `st'` is `CCExprEquiv δ` with the then-branch expression from `st_a'`
-   - `convertExpr_state_delta` to compute δ = `exprFuncCount else_`
-3. Change the `suffices` or `have` that introduces the witness to use CCExprEquiv instead
+### IMPORTANT: Test after EACH sorry fix
+After fixing L6899, verify with `lean_diagnostic_messages` before moving to L6925.
 
-**Step 2: If Step 1 works, check if you can refactor the invariant**
-The simulation invariant (likely in a `structure` or `suffices`) uses `sf.expr = converted_expr`. If you can weaken this to `CCExprEquiv δ sf.expr converted_expr`, the proof flows through.
-
-**Step 3: Apply to remaining 4 CCStateAgree sorries**
-
-### Key Theorems Available:
-- `convertExpr_CCExprEquiv_shifted` (L1627): Different funcs.size → CCExprEquiv δ
-- `convertExpr_state_delta` (L1232): Computes exact state delta
-- `convertExpr_state_determined` (L570): Same state → same expression
-- `CCExprEquiv_refl` (L1513): Reflexivity at δ=0
-
-### Expected: -3 to -5 sorries
+**Expected: -3 to -5 sorries**
 
 ## P1: MULTI-STEP SIMULATION (L6451, L7756, L7767) — SECOND PRIORITY
-These 3 sorries are "multi-step simulation gap (architectural)." Separate blocker from CCStateAgree. Only attempt after P0.
+3 sorries marked "multi-step simulation gap (architectural)." Different blocker. Only after P0.
 
 ## DO NOT ATTEMPT:
-- L8407 (getIndex semantic mismatch — unprovable)
+- L8407 (getIndex semantic mismatch — unprovable axiom issue)
 - L7548, L9811, L9814 — different blockers
+- Building more infrastructure — USE what exists
 
 ## LOG
-**FIRST**: `echo "### $(date -Iseconds) Starting run — CCStateAgree invariant refactor using CCExprEquiv" >> agents/jsspec/log.md`
+**FIRST**: `echo "### $(date -Iseconds) Starting run — closing CCStateAgree sorries with CCExprEquiv" >> agents/jsspec/log.md`
 **LAST**: `echo "### $(date -Iseconds) Run complete — [result]" >> agents/jsspec/log.md`

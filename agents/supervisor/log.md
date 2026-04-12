@@ -1,3 +1,59 @@
+## Run: 2026-04-12T01:05:01+00:00
+
+### Metrics
+- **Sorry count**: ANF 30 + CC 12 = **42 total**
+- **Delta from last run (23:30)**: 0 (42→42). **FLAT.**
+- **BUILD**: Not verified (LSP only).
+
+### Why no change
+All three agents spent this cycle on **infrastructure** rather than directly closing sorries:
+1. **proof agent** (00:30 start, still running): Started K' refactor for normalizeExpr_labeled_branch_step. This is the RIGHT work — it unblocks 12 sorries. No results yet.
+2. **jsspec agent** (23:30 start, still running): Working on convertExpr_CCExprEquiv_shifted application. Infrastructure was proven last run. Should be closing CCStateAgree sorries NOW.
+3. **wasmspec agent** (00:15-00:55): Proved `noCallFrameReturn_normalizeExpr_tryCatch_param` bridge lemma (~330 lines). Infrastructure for L25442 sorry. No sorry closed.
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: Kept on K' refactor. Added compound throw (L14196) as P1 fallback. Added if-branch K-mismatch (L23213, L23253) as P2.
+2. **jsspec**: Added urgency — infrastructure is DONE, CLOSE SORRIES NOW. Explicit pattern for each sorry.
+3. **wasmspec**: Redirected to USE the bridge lemma. P0: thread noCallFrameReturn for L25442 (-1). P1: normalizeExpr_no_tryCatch_in_head for L16877 (-1).
+
+### Sorry Classification (42 total, unchanged)
+**ANF (30):**
+- Trivial mismatch zone (12): L11186-L11557 — proof agent K' refactor
+- Compound throw: 1 (L14196) — proof agent P1
+- HasNonCallFrameTryCatch: 1 (L16877) — wasmspec P1
+- Compound HasAwait/Yield: 2 (L22152, L22325)
+- Return/yield compound: 3 (L22381, L22385, L22386)
+- While condition: 2 (L22476, L22488)
+- If branch K-mismatch: 2 (L23213, L23253) — proof agent P2
+- TryCatch: 3 (L24094, L24112, L24115)
+- noCallFrameReturn + body_sim: 2 (L25442, L25453) — wasmspec P0
+- End-of-file break/continue: 2 (L25672, L25743)
+
+**CC (12):**
+- Multi-step simulation: 3 (L6451, L7756, L7767) — jsspec P1
+- CCStateAgree: 5 (L6899, L6925, L9654, L9888, L10004) — jsspec P0
+- CCStateAgree + tryCatch: 1 (L9814)
+- Axiom/semantic mismatch: 1 (L8407) — UNPROVABLE
+- Other: 2 (L7548, L9811)
+
+### Critical Path
+1. **proof K' refactor** → unblocks 12 ANF sorries. In progress.
+2. **jsspec CCExprEquiv application** → closes 3-5 CC sorries. Infrastructure ready.
+3. **wasmspec threading** → closes 1-2 ANF sorries. Bridge lemma ready.
+4. Best case next run: 35-37. Best case after all infrastructure lands: ~28-30.
+
+### Trend
+- 18:05: 54 → 19:05: 49 → 20:05: 49 → 21:05: 50 → 22:05: 44 → 23:30: 42 → **01:05: 42**
+- Net movement: -12 in 7 hours. Rate: -1.7/hour (slowing due to infrastructure phase).
+- **Expect acceleration next 2-3 runs** as infrastructure gets applied.
+
+### Concerns
+- **jsspec has been running 1.5 hours.** If it's still building infrastructure instead of closing sorries, it needs to be redirected harder. Updated prompt with urgency.
+- **proof K' refactor is high-risk/high-reward.** If it fails, fall back to compound throw (L14196) for guaranteed -1.
+- **8 sorries are likely permanently blocked** (L8407 unprovable + 7 deep compound/architectural). Realistic floor: ~34.
+
+---
+
 ## Run: 2026-04-11T23:30:04+00:00
 
 ### Metrics
