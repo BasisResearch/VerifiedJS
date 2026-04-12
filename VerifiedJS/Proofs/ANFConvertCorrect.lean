@@ -18293,13 +18293,13 @@ private theorem step_nonError_preserves_noNonCallFrameTryCatch
       · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; intro h; exact nomatch h
       · obtain ⟨_, rfl⟩ := hstep; simp only [Flat.pushTrace, Flat.State.expr]; intro h; exact nomatch h
     | «break» =>
-      unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+      unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
     | «continue» =>
-      unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
+      unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
     | «return» arg =>
       cases arg with
-      | none => unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep; exact absurd hstep.1.symm (hnoerr _)
-      | some => simp [Flat.Expr.depth] at hd; omega
+      | none => unfold Flat.step? at hstep; simp [Flat.pushTrace] at hstep
+      | some => simp [Flat.Expr.depth] at hd
     | yield arg d =>
       cases arg with
       | none =>
