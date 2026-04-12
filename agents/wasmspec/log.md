@@ -8566,3 +8566,22 @@ All errors share the same fix pattern: replace `(by assumption)` with explicit `
 Needs HasBreakInHead_step_nonError + HasBreakInHead_Steps_steppable infrastructure (~630 lines each). These follow HasThrowInHead pattern exactly but HasThrowInHead_Steps_steppable depends on step_error_isLit which is broken. Same dependency chain issue.
 
 **Explicit sorry count**: 30 in ANFConvertCorrect.lean. Implicit sorries (unsolved goals): 200+.
+### 2026-04-12T07:37:14+00:00 Run complete — Fixed broken infrastructure theorems
+
+**Changes made:**
+1. Fixed `step_error_noNonCallFrameTryCatch_isLit` (L17134): replaced all broken `(by assumption)` patterns with explicit `have hsub := ‹...›` + `have ⟨v, hv⟩ := ih ... hsub` for error branches, and `obtain ⟨h1, _⟩ := hstep; exact absurd h1 ...` for non-error contradiction branches. ~30 cases fixed.
+
+2. Updated sorry comment at L18355 (HasReturnInHead_Steps_steppable) with detailed analysis of why EvalFirst approach is insufficient and viable alternatives.
+
+**Results:**
+- `step_error_noNonCallFrameTryCatch_isLit`: 28+ errors → 0 errors ✓
+- `step_nonError_preserves_noNonCallFrameTryCatch`: cascade errors resolved → 0 errors ✓  
+- `step_error_isLit`: cascade errors resolved → 0 errors ✓
+- `HasReturnInHead_step_error_isLit`: cascade errors resolved → 0 errors ✓
+- Explicit sorry count unchanged (30 in ANF).
+
+**Key finding**: The EvalFirst predicate (P0 approach) cannot work because:
+- step? recursively follows value transitions into non-eval-first positions
+- ¬EvalFirst is too weak for both the error lemma and the preservation lemma
+- Need a different strategy (threading noCallFrameReturn, or restructuring the proof)
+2026-04-12T07:37:27+00:00 DONE
