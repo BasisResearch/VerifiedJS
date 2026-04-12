@@ -1,4 +1,4 @@
-# proof — COMPOUND THROW: SECOND-OPERAND + LIST CASES
+# proof — LIST THROW + COMPOUND AWAIT/YIELD
 
 ## RULES
 - **DO NOT** run `lake build` — USE LSP ONLY.
@@ -8,65 +8,56 @@
 
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## STATUS — 2026-04-12T08:05
-- ANF: **30** real sorries. CC: 12. Total: **42**.
-- 12 trivial-mismatch sorries (L11366-L11737): BLOCKED, DO NOT TOUCH.
-- L18325 (HasNonCallFrameTryCatch): wasmspec owns it. DO NOT TOUCH.
-- You added 16 first-operand cases at 08:01. GREAT. Now close the catch-all.
+## STATUS — 2026-04-12T09:05
+- ANF: **22** real sorries. CC: 8. Total: **30**.
+- GREAT PROGRESS: -12 from last supervisor run (42→30).
+- L18325 (HasNonCallFrameTryCatch) is GONE — wasmspec closed it.
+- Compound throw catch-all P0 is DECOMPOSED into individual cases. 4 list-throw sorries remain.
 
-## P0: L15944 `| _ => sorry` — CLOSE THIS NOW
+## P0: LIST THROW CASES (4 sorries — L16095, L16097, L16099, L16101)
 
-You proved 16 first-operand cases using `throwInHead_compound_lift`. The remaining `| _ =>` catches:
+These are the remaining throw-in-head cases for list/args positions:
+1. **L16095**: `newObj_args` — f has no throw, but args list does. `hf` is false, need to handle env + args.
+2. **L16097**: `makeEnv_values` — throw in first non-value element of values list
+3. **L16099**: `objectLit_props` — throw in first non-value prop
+4. **L16101**: `arrayLit_elems` — throw in first non-value element
 
-**Second-operand cases** (the first sub-expression is already a value):
-- `binary_rhs`: `binary op (.lit lv) rhs` — throw is in rhs
-- `setProp_value`: `setProp (.lit obj) prop val` — throw is in val
-- `getIndex_idx`: `getIndex (.lit obj) idx` — throw is in idx
-- `setIndex_idx`: `setIndex (.lit obj) idx val` — throw is in idx
-- `setIndex_value`: `setIndex (.lit obj) (.lit iv) val` — throw is in val
-- `call_env`: `call (.lit f) env args` — throw is in env
-- `newObj_env`: `newObj (.lit f) env args` — throw is in env
+For L16097-16101, the pattern is:
+- HasThrowInHeadList/Props gives you the first non-value element with throw
+- Split the list at that element: `values = prefix ++ [elem] ++ suffix` where prefix is all values
+- Flat.step? steps `elem` through the compound context
+- Use `step?_makeEnv_values_ctx` / `step?_objectLit_props_ctx` / `step?_arrayLit_elems_ctx`
+- Apply IH on the inner element
 
-For these, you need a SECOND-OPERAND variant of throwInHead_compound_lift:
-```lean
-private theorem throwInHead_compound_lift_second
-    {outer : Flat.Expr} {inner : Flat.Expr}
-    (h_sub : HasThrowInHead inner)
-    (h_val : Flat.exprValue? outer.firstChild = some _)  -- first operand is value
-    (h_ctx : ∀ s inner' hv t si, step? ⟨inner, ...⟩ = some (t, si) → ...)
-    (h_err : ...)
-    (ih : ...) : ... := ...
-```
-
-OR just inline: since the first operand is a `.lit`, `step?` on the compound expression directly steps the second operand. The ctx/error lemmas for second-operand position should exist (step?_binary_rhs_ctx etc.).
-
-**List cases** (throw is in first non-value element):
-- `call_args`: `call (.lit f) (.lit e) args` — throw is in args list
-- `newObj_args`: `newObj (.lit f) (.lit e) args` — throw is in args list
-- `makeEnv_elem`: `makeEnv values` — throw is in values list
-- `objectLit_value`: `objectLit props` — throw is in props list
-- `arrayLit_elem`: `arrayLit elems` — throw is in elems list
-
-For list cases, use the HasThrowInHeadList/Props infrastructure you already proved in HasThrowInHead_step_nonError. The key: decompose via firstNonValue, step the first non-value element, reconstruct.
+For L16095, f and env are values (literals), so step? goes into the args list. Same pattern as list cases but inside `newObj`.
 
 ### EXECUTION:
-1. Split `| _ =>` into individual match arms for EACH remaining constructor
-2. Prove each second-operand case (7 cases) — these follow the same pattern as first-operand but use the _rhs/_val/_idx/_env ctx/error lemmas
-3. Prove each list case (5 cases) — use firstNonValue decomposition + list IH
-4. If ANY case is too hard, sorry it individually — 12 individual sorries > 1 opaque catch-all
+1. Check `lean_hover_info` on `step?_makeEnv_values_ctx` (or similar name) to find the right ctx lemma
+2. If ctx lemmas don't exist yet, check what `Flat.step?` does for makeEnv with a list — it should step the first non-value element
+3. Prove L16097 first (simplest list case), then replicate for L16099, L16101, L16095
 
-### AFTER P0: Move to P1 (L23611-L23845)
-These 5 sorries use the SAME infrastructure pattern for HasAwaitInHead/HasYieldInHead compound cases.
+## P1: COMPOUND AWAIT/YIELD (2 sorries — L23768, L23941)
 
-## FULL SORRY MAP (30 total):
-- **BLOCKED (12)**: L11366-L11737 (trivial mismatch)
-- **WASMSPEC (1)**: L18325
-- **P0 (1)**: L15944 (compound throw catch-all) ← YOU ARE HERE
-- **P1 (5)**: L23611, L23784, L23840, L23844, L23845 (await/yield/return compound)
-- **P2 (2)**: L23935, L23947 (while condition)
-- **P3 (2)**: L24672, L24712 (if-branch K-mismatch)
-- **P4 (3)**: L25553, L25571, L25574 (tryCatch)
-- **P5 (4)**: L26901, L26902, L27121, L27192 (end-of-file)
+These use the SAME error-propagation pattern as the compound throw cases. Since you proved the throw compound cases, the await/yield compound cases should follow the same structure:
+- `normalizeExpr_await_compound_case` / `normalizeExpr_yield_some_compound_case` exist
+- The `| _ =>` catch-all needs the same decomposition as throw
+
+## P2-P5 (remaining 7 sorries):
+- **P2** (2): L24092, L24104 — while condition
+- **P3** (2): L24829, L24869 — if-branch K-mismatch
+- **P4** (2): L25710, L25728 — tryCatch body
+- **P5** (2): L27278, L27349 — break/continue compound (error propagation)
+
+## BLOCKED (9): L11366-L11643 — trivial mismatch area. DO NOT TOUCH.
+
+## FULL SORRY MAP (22 total):
+- **BLOCKED (9)**: L11366, L11414, L11462, L11512, L11539, L11589, L11591, L11641, L11643
+- **P0 (4)**: L16095, L16097, L16099, L16101 (list throw) ← YOU ARE HERE
+- **P1 (2)**: L23768, L23941 (compound await/yield)
+- **P2 (2)**: L24092, L24104 (while condition)
+- **P3 (2)**: L24829, L24869 (if-branch K-mismatch)
+- **P4 (2)**: L25710, L25728 (tryCatch body)
+- **P5 (2)**: L27278, L27349 (break/continue compound)
 
 ## LOG
 **FIRST**: `echo "### $(date -Iseconds) Starting run — [task]" >> agents/proof/log.md`

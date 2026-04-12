@@ -1,3 +1,55 @@
+## Run: 2026-04-12T09:05:06+00:00
+
+### Metrics
+- **Sorry count**: ANF 22 + CC 8 = **30 total** (Wasm 0)
+- **Delta from last run (08:05)**: **-12** (42→30). BEST HOUR YET.
+- **BUILD**: Not verified (LSP only).
+
+### What happened (-12 sorries)
+1. **proof agent** (-8 ANF): Decomposed compound throw catch-all. Closed second-operand cases + some list cases. L18325 also gone (wasmspec). Await/yield/return compound reduced from 5 to 2.
+2. **jsspec agent** (-4 CC): Closed 4 of 6 CCStateAgree sorries. 2 remain (L10304 tryCatch, L10420 while_).
+3. **wasmspec agent** (-1 ANF): Closed L18325 (HasNonCallFrameTryCatch) using fixed infrastructure.
+4. **Other**: End-of-file sorries reduced from 4 to 2.
+
+### Agent Prompts Rewritten (all 3)
+1. **proof**: Redirected to P0 list-throw cases (4 sorries: L16095-L16101). Then P1 compound await/yield (2).
+2. **jsspec**: Praised progress. Directed to close remaining 2 CCStateAgree (L10304, L10420). Gave proof skeleton from code comments.
+3. **wasmspec**: Redirected to break/continue compound error propagation (L27278, L27349 — 2 sorries). Same pattern as throw compound_lift.
+
+### Sorry Classification (30 total)
+**ANF (22):**
+- Blocked/labeled-in-compound (9): L11366-L11643 — needs error propagation infrastructure
+- List throw (4): L16095, L16097, L16099, L16101 — proof P0 (ACTIVE)
+- Compound await/yield (2): L23768, L23941 — proof P1
+- While condition (2): L24092, L24104 — proof P2
+- If-branch K-mismatch (2): L24829, L24869 — proof P3
+- TryCatch body (2): L25710, L25728 — proof P4
+- Break/continue compound (2): L27278, L27349 — wasmspec P0
+
+**CC (8):**
+- Multi-step sim (3): L6867, L8172, L8183 — architectural
+- Unclassified (2): L7964, L10070
+- AXIOM (1): L8823 — unprovable
+- CCStateAgree (2): L10304, L10420 — jsspec P0
+
+### Critical Path
+1. **proof P0** (list throw -4): In progress, infrastructure exists
+2. **jsspec P0** (CCStateAgree -2): 4/6 done, 2 remain
+3. **wasmspec P0** (break/continue -2): New assignment, same pattern as solved throw compound
+4. **Best case next run: ~22-24** from 30
+
+### Trend
+- 18:05: 54 → ... → 06:05: 42 → 07:30: 42 → 08:05: 42 → **09:05: 30**
+- Net from 18:05 baseline: **-24**
+- **STALL BROKEN**: -12 in one hour after 3 runs flat at 42.
+
+### Concerns
+- 9 blocked sorries (L11366-L11643) share error-propagation blocker. If wasmspec builds compound_lift for break/continue, it may unblock these too.
+- CC architectural sorries (multi-step sim, L6867/L8172/L8183) need fundamental design change. Not addressable by current agents.
+- L8823 (AXIOM) is confirmed unprovable — getIndex string semantic mismatch.
+
+---
+
 ## Run: 2026-04-12T08:05:01+00:00
 
 ### Metrics
@@ -1270,3 +1322,4 @@ All three agents spent this cycle on **infrastructure** rather than directly clo
 
 ## Run: 2026-04-12T09:05:05+00:00
 
+2026-04-12T09:08:54+00:00 DONE

@@ -15966,9 +15966,10 @@ private theorem hasThrowInHead_compound_throw_step_sim
           obtain ⟨ws_a, hwsteps_a, hwexpr_a, hwenv_a, hwheap_a, hwfuncs_a, hwcs_a, hwtrace_a⟩ :=
             Steps_seq_ctx_b b hsteps_a hnoerr_a hpres_a
           -- Step .seq (.lit va) b → b
-          have hstep_drop : Flat.step? ⟨.seq (.lit va) b, env, heap, trace' ++ evs_a, funcs, cs⟩ =
-              some (.silent, ⟨b, env, heap, (trace' ++ evs_a) ++ [.silent], funcs, cs⟩) := by
-            simp [Flat.step?, Flat.exprValue?, Flat.pushTrace]
+          obtain ⟨s_drop, hstep_drop, hexpr_drop, henv_drop, hheap_drop, _, _, htrace_drop⟩ :=
+            step?_seq_lit ⟨_, env, heap, trace' ++ evs_a, funcs, cs⟩ va b
+          have hs_drop_eq : s_drop = ⟨b, env, heap, (trace' ++ evs_a) ++ [.silent], funcs, cs⟩ := by
+            cases s_drop; simp_all
           -- Get IH result for b at shifted trace
           obtain ⟨ih_ok, ih_err⟩ := ih b _ arg' n₁ m₁
             (by simp [Flat.Expr.depth] at hd; omega) h_sub hcont
@@ -15980,7 +15981,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
             have hws_a_eq : ws_a = ⟨.seq (.lit va) b, env, heap, trace' ++ evs_a, funcs, cs⟩ := by
               cases ws_a; simp_all
             refine ⟨evs_a ++ [.silent] ++ evs_b, sf_b,
-              (hws_a_eq ▸ hwsteps_a).trans (.tail ⟨hstep_drop⟩ hsteps_b),
+              Flat.Steps_trans (hws_a_eq ▸ hwsteps_a) (.tail ⟨hs_drop_eq ▸ hstep_drop⟩ hsteps_b),
               hexpr_b, henv_b, hheap_b, ?_, ?_⟩
             · rw [htrace_b]; simp [List.append_assoc]
             · rw [observableTrace_append, observableTrace_append, hobs_a,
@@ -15989,7 +15990,7 @@ private theorem hasThrowInHead_compound_throw_step_sim
             have hws_a_eq : ws_a = ⟨.seq (.lit va) b, env, heap, trace' ++ evs_a, funcs, cs⟩ := by
               cases ws_a; simp_all
             refine ⟨evs_a ++ [.silent] ++ evs_b, sf_b,
-              (hws_a_eq ▸ hwsteps_a).trans (.tail ⟨hstep_drop⟩ hsteps_b),
+              Flat.Steps_trans (hws_a_eq ▸ hwsteps_a) (.tail ⟨hs_drop_eq ▸ hstep_drop⟩ hsteps_b),
               hexpr_b, henv_b, hheap_b, ?_, ?_⟩
             · rw [htrace_b]; simp [List.append_assoc]
             · rw [observableTrace_append, observableTrace_append, hobs_a,
