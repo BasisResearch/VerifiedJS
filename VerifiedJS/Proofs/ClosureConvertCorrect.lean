@@ -7186,7 +7186,7 @@ private theorem closureConvert_step_simulation
               rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
               rw [hbody.1]
             · rw [hconv.2]
-              exact convertExpr_state_mono_preserve body (name :: scope) envVar envMap _ _ hAgreeOut.1 hAgreeOut.2
+              exact (convertExpr_state_determined body (name :: scope) envVar envMap _ _ hAgreeOut.1 hAgreeOut.2).2
       | none =>
         have heq : Flat.step? { sf with expr := (Flat.Expr.let name (Flat.convertExpr init scope envVar envMap st).fst
             (Flat.convertExpr body (name :: scope) envVar envMap (Flat.convertExpr init scope envVar envMap st).snd).fst) } = none := by
@@ -7391,7 +7391,7 @@ private theorem closureConvert_step_simulation
             (Flat.convertExpr else_ scope envVar envMap (Flat.convertExpr then_ scope envVar envMap st).snd).snd, by
             simp [sc', Flat.convertExpr],
             convertExpr_state_mono then_ scope envVar envMap st,
-            by rw [hconv.2]; exact ⟨Nat.le_refl _, Nat.le_refl _⟩⟩
+            by rw [hconv.2]; exact ⟨rfl, rfl⟩⟩
     | none =>
       have hsupp_cond : cond.supported = true := by
         have h := hsupp; unfold Core.Expr.supported at h; simp [Bool.and_eq_true] at h; exact h.1.1
@@ -7473,8 +7473,8 @@ private theorem closureConvert_step_simulation
           rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
           rw [hthen.1, helse.1]
         · rw [hconv.2]
-          have haw_then := convertExpr_state_mono_preserve then_ scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2
-          exact convertExpr_state_mono_preserve else_ scope envVar envMap _ _ haw_then.1 haw_then.2
+          have haw_then := (convertExpr_state_determined then_ scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2).2
+          exact (convertExpr_state_determined else_ scope envVar envMap _ _ haw_then.1 haw_then.2).2
   | seq a b =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
@@ -7623,7 +7623,7 @@ private theorem closureConvert_step_simulation
               rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
               rw [hb.1]
             · rw [hconv.2]
-              exact convertExpr_state_mono_preserve b scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2
+              exact (convertExpr_state_determined b scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2).2
       | none =>
         have heq : Flat.step? { sf with expr := (Flat.Expr.seq (Flat.convertExpr a scope envVar envMap st).fst
             (Flat.convertExpr b scope envVar envMap (Flat.convertExpr a scope envVar envMap st).snd).fst) } = none := by
@@ -7884,7 +7884,7 @@ private theorem closureConvert_step_simulation
           rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
           rw [hrhs.1]
         · rw [hconv.2]
-          exact convertExpr_state_mono_preserve rhs scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2
+          exact (convertExpr_state_determined rhs scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2).2
   | call f args =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
@@ -7963,7 +7963,7 @@ private theorem closureConvert_step_simulation
           rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
           rw [hargs.1]
         · rw [hst]
-          exact convertExprList_state_mono_preserve args scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2
+          exact (convertExprList_state_determined args scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2).2
     | some cv =>
       have hlit : f = .lit cv := by
         cases f <;> simp [Core.exprValue?] at hcev; subst hcev; rfl
@@ -8766,7 +8766,7 @@ private theorem closureConvert_step_simulation
           rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
           rw [hval.1]
         · rw [hst]
-          exact convertExpr_state_mono_preserve value scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2
+          exact (convertExpr_state_determined value scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2).2
   | getIndex obj idx =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
@@ -9063,7 +9063,7 @@ private theorem closureConvert_step_simulation
           rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
           rw [hidx.1]
         · rw [hst]
-          exact convertExpr_state_mono_preserve idx scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2
+          exact (convertExpr_state_determined idx scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2).2
   | setIndex obj idx value =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
@@ -9378,7 +9378,7 @@ private theorem closureConvert_step_simulation
             rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
             rw [hval.1]
           · rw [hst]
-            exact convertExpr_state_mono_preserve value scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2
+            exact (convertExpr_state_determined value scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2).2
     | none =>
       have hfnv : Flat.exprValue? (Flat.convertExpr obj scope envVar envMap st).fst = none :=
         convertExpr_not_value_supported obj hcev (by simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp ⊢; first | exact hsupp | exact hsupp.1 | exact hsupp.2 | exact hsupp.1.1 | exact hsupp.1.2 | (simp only [Bool.and_eq_true] at hsupp; first | exact hsupp.1 | exact hsupp.2 | exact hsupp.2.1 | exact hsupp.2.2)) scope envVar envMap st
@@ -9461,8 +9461,8 @@ private theorem closureConvert_step_simulation
           rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
           rw [hidx.1, hval.1]
         · rw [hst]
-          have haw_idx := convertExpr_state_mono_preserve idx scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2
-          exact convertExpr_state_mono_preserve value scope envVar envMap _ _ haw_idx.1 haw_idx.2
+          have haw_idx := (convertExpr_state_determined idx scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2).2
+          exact (convertExpr_state_determined value scope envVar envMap _ _ haw_idx.1 haw_idx.2).2
   | deleteProp obj prop =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
@@ -10495,7 +10495,7 @@ private theorem closureConvert_step_simulation
             have hconv'_snd : (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' :=
               congrArg Prod.snd hconv'.symm
             have hAgreeOut_sym : st_a'.nextId = st1.nextId ∧ st_a'.funcs.size = st1.funcs.size :=
-              sorry /- hAgreeOut.symm — needs CCStateAgree equality, have CCStateAgreeWeak (≤) -/
+              hAgreeOut
             have hsd_c := convertExpr_state_determined catchBody (catchParam :: scope) envVar envMap
               st_a' st1 hAgreeOut_sym.1 hAgreeOut_sym.2
             have hsd_f := convertOptExpr_state_determined finally_ scope envVar envMap

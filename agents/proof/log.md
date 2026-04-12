@@ -8066,3 +8066,17 @@ These errors were masked because they co-existed with sorries in other branches 
 
 ### 2026-04-12T16:30:21+00:00 Starting run — P4 L18163 fix commented-out proof
 2026-04-12T17:30:27+00:00 SKIP: already running
+### 2026-04-12T17:33:23+00:00 Run complete — Fixed 1246+ cascading errors
+
+**Changes made:**
+1. L10205: Added `bind, Bind.bind, StateT.bind, Except.bind` to simp in tryCatch `fin_f = none` case — resolved root cascade of 1246 errors
+2. L18212: Fixed `| this =>` case in `step_error_noNonCallFrameTryCatch_isLit` succ — collapsed unnecessary second bullet (split <;> simp)
+3. L17688, L17729: Fixed `| this =>` cases in `HasReturnInHead_step_error_isLit` (zero and succ)
+4. L14406: Fixed `| this =>` case in `step_error_isLit` succ
+5. L14383, L14387, L14394: Changed `; omega` to `<;> omega` in `step_error_isLit` zero case
+6. L17704, L17708, L17715: Changed `; omega` to `<;> omega` in `HasReturnInHead_step_error_isLit` zero case
+7. L15050, L17154, L18655: Changed `; omega` to `<;> omega` in `all_goals` blocks for step_nonError theorems
+
+**Result:** File went from 1246 errors → 0 errors. Sorry count unchanged at 27 active. P4 (L18163 step_error proof) confirmed working.
+
+**Remaining work:** 13 target sorries (P0-P3) all require deep LSP access (times out >L18000). P1 L24995 (while condition steps) needs sub-simulation IH infrastructure.
