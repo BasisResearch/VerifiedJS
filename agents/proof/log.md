@@ -7999,3 +7999,4 @@ See full analysis in log above.
 
 ### 2026-04-12T10:30:42+00:00 Starting run — P0: close remaining 6 throw-compound sorries (third-operand + list cases)
 ### 2026-04-12T11:12:14+00:00 Progress update — setIndex_val proved, call_args/newObj_args restructured
+2026-04-12T11:30:01+00:00 SKIP: already running
