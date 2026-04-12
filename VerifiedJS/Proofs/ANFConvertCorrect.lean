@@ -10202,7 +10202,7 @@ private theorem noCallFrameReturn_normalizeExpr_tryCatch_param_aux :
           obtain ⟨catch', n2⟩ := vc; simp only [StateT.run] at hc; rw [hc] at h; simp only [Except.bind] at h
           cases fin_f with
           | none =>
-            simp only [pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h
+            simp only [bind, Bind.bind, StateT.bind, Except.bind, pure, Pure.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h
             have hcp := (ANF.Expr.tryCatch.inj h.1).2.1.symm
             rw [hcp]; exact hncfr.1.1.1
           | some fin_flat =>
