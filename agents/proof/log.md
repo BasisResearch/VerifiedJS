@@ -7905,3 +7905,6 @@ See full analysis in log above.
 **P2 (if-branch K-mismatch):** Deferred per instructions (requires P1)
 ### 2026-04-12T03:18:37+00:00 Run complete — P0 done: closed 18 HasThrowInHead_step_nonError sorries (ANF 48→27). No new errors. P1/P2 deferred.
 2026-04-12T03:18:47+00:00 DONE
+
+## Run: 2026-04-12T03:30:01+00:00
+
