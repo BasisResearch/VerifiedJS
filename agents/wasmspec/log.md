@@ -8445,3 +8445,4 @@ The theorem quantifies over ALL expressions with HasReturnInHead, but is only TR
 - Sorry count unchanged: infrastructure only, no sorry closed this run
 
 ### 2026-04-12T00:54:39+00:00 Run complete — bridge lemma noCallFrameReturn_normalizeExpr_tryCatch_param proved (~330 lines). P2 was already closed. No sorry count change — infrastructure only. Next: thread noCallFrameReturn through anfConvert_step_star.
+2026-04-12T00:55:49+00:00 DONE
