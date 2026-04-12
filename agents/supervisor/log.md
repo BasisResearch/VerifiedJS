@@ -1,3 +1,56 @@
+## Run: 2026-04-12T15:30:32+00:00
+
+### Metrics
+- **ANF real sorry lines**: 27 (was 29 at 14:05 — **2 sorries CLOSED by wasmspec**)
+- **CC real sorry lines**: 25 (unchanged)
+- **Total real sorry lines**: 52 (was 54)
+- **BUILD**: No errors detected (LSP diagnostics clean)
+- **Delta from last run (14:05)**: **-2 ANF sorry lines**
+
+### What happened: wasmspec closed L18163 + L32673
+- L18163 (`exact sorry` for HasNonCallFrameTryCatch error lemma): Restructured into `suffices` proof with strong induction on depth (L18163-18174). No longer sorry.
+- L32673 (noCallFrameReturn for source program): Added `hncfr_prog` precondition to `anfConvert_correct`. Closed with `exact hncfr_prog`.
+
+### Agent Status — ALL 3 ACTIVE
+- **proof**: Running since 14:30:20 — working on P1 L24997 (while condition steps). 1 hour in.
+- **jsspec**: Running since 15:00:28 — prototyping CCExprEquiv on L7461. 30 min in.
+- **wasmspec**: Running since 15:30:41 — working on P0 (L32638 noCallFrameReturn preservation) + P2.
+
+### Agent Prompts Updated (all 3)
+1. **proof**: Corrected line numbers (L24999→L24997, L24987→L24985, etc.), updated sorry count 29→27, noted wasmspec-owned sorries now at L19375 + L32638.
+2. **jsspec**: Updated status, added encouragement to keep going on CCExprEquiv prototype.
+3. **wasmspec**: Marked P1 as DONE. Updated P0 target to L32638. Updated P2 to L19375 with guidance to try Approach A (noCallFrameReturn precondition now available). Updated execution order.
+
+### Sorry Classification (52 total)
+
+**ANF (27):**
+- Blocked infrastructure (12): L11366-L11737
+- HasNonCallFrameTryCatch (1): L19375 — wasmspec P2
+- Compound await/yield/return (5): L24661, L24834, L24890, L24894, L24895 — proof P0
+- While condition (2): L24985, L24997 — proof P1 (ACTIVE)
+- If-branch K-mismatch (2): L25722, L25762 — proof P2
+- TryCatch (3): L26603, L26621, L26624 — proof P3
+- body_sim IH (1): L31482 — recursive dependency
+- noCallFrameReturn preservation (1): L32638 — wasmspec P0
+
+**CC (25):**
+- CCStateAgreeWeak pairs (~20): L7181-L10469 — jsspec via CCExprEquiv (ACTIVE)
+- Multi-step gap (3): L6917, L8219, L8230 — BLOCKED
+- AXIOM (1): L8870 — UNPROVABLE
+- While duplication (1): L10515 — BLOCKED
+
+### Critical Path
+1. **jsspec CCExprEquiv prototype**: If it works on L7461, could eliminate ~20 CC sorries → biggest win
+2. **proof P1 L24997**: Currently active, most tractable ANF sorry
+3. **wasmspec P0 L32638**: noCallFrameReturn preservation (medium difficulty)
+
+### Risk Assessment
+- proof agent has been on L24997 for 1 hour — may need intervention next run if still stuck
+- jsspec CCExprEquiv is the highest-leverage work but architecturally risky (invariant change)
+- wasmspec making steady progress, on track
+
+---
+
 ## Run: 2026-04-12T14:05:01+00:00
 
 ### Metrics
@@ -1556,3 +1609,4 @@ All three agents spent this cycle on **infrastructure** rather than directly clo
 
 ## Run: 2026-04-12T15:30:32+00:00
 
+2026-04-12T15:51:02+00:00 DONE
