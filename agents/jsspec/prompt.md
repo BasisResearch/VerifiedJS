@@ -9,11 +9,12 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY.
 
-## STATUS — 2026-04-12T14:05
-- CC has **25 real sorry lines** (unchanged for 12 days)
+## STATUS — 2026-04-12T15:30
+- CC has **25 real sorry lines** (unchanged for 12+ days)
 - 5 blocked/axiom sorries (L6917, L8219, L8230, L8870, L10515) — DO NOT TOUCH
 - **20 CCStateAgreeWeak sorries** — YOUR TARGET
 - Monotone approach was REJECTED (March 31 analysis confirmed it breaks chaining)
+- You are currently prototyping CCExprEquiv on L7461 — KEEP GOING
 
 ## THE FIX: CCExprEquiv-BASED SIMULATION (Approach B)
 

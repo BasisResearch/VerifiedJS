@@ -8756,14 +8756,17 @@ private theorem closureConvert_step_simulation
       · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
       · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf', by
             exact ExprAddrWF_mono value (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2) (Core_step_heap_size_mono hcstep_sub)⟩
-      · have hval := convertExpr_state_determined value scope envVar envMap
-            (Flat.convertExpr obj scope envVar envMap st).snd st_a' sorry /- hAgreeOut.1 -/ sorry /- hAgreeOut.2 — needs CCStateAgree equality, have CCStateAgreeWeak (≤) -/
+      · -- Use convertExpr_expr_eq_of_funcs_size (needs only funcs.size=, not nextId=)
+        have hval := convertExpr_expr_eq_of_funcs_size value scope envVar envMap
+            (Flat.convertExpr obj scope envVar envMap st).snd st_a'
+            sorry /- funcs.size eq: needs (Flat.convertExpr obj ... st).snd.funcs.size = st_a'.funcs.size — have CCStateAgreeWeak (≤) -/
         refine ⟨st_a, (Flat.convertExpr value scope envVar envMap st_a').snd, ?_, hAgreeIn, ?_⟩
         · simp only [sc', Flat.convertExpr]
           rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from (congrArg Prod.fst hconv').symm]
           rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
           rw [hval.1]
-        · rw [hst]; exact hval.2
+        · rw [hst]
+          exact convertExpr_state_mono_preserve value scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2
   | getIndex obj idx =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
@@ -9050,14 +9053,17 @@ private theorem closureConvert_step_simulation
       · simp [sc', noCallFrameReturn]; exact ⟨hncfr', by simp [noCallFrameReturn] at hncfr; exact hncfr.2⟩
       · simp only [sc']; simp only [ExprAddrWF]; exact ⟨hexprwf', by
             exact ExprAddrWF_mono idx (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2) (Core_step_heap_size_mono hcstep_sub)⟩
-      · have hidx := convertExpr_state_determined idx scope envVar envMap
-            (Flat.convertExpr obj scope envVar envMap st).snd st_a' sorry /- hAgreeOut.1 -/ sorry /- hAgreeOut.2 — needs CCStateAgree equality, have CCStateAgreeWeak (≤) -/
+      · -- Use convertExpr_expr_eq_of_funcs_size (needs only funcs.size=, not nextId=)
+        have hidx := convertExpr_expr_eq_of_funcs_size idx scope envVar envMap
+            (Flat.convertExpr obj scope envVar envMap st).snd st_a'
+            sorry /- funcs.size eq: needs (Flat.convertExpr obj ... st).snd.funcs.size = st_a'.funcs.size — have CCStateAgreeWeak (≤) -/
         refine ⟨st_a, (Flat.convertExpr idx scope envVar envMap st_a').snd, ?_, hAgreeIn, ?_⟩
         · simp only [sc', Flat.convertExpr]
           rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from (congrArg Prod.fst hconv').symm]
           rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
           rw [hidx.1]
-        · rw [hst]; exact hidx.2
+        · rw [hst]
+          exact convertExpr_state_mono_preserve idx scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2
   | setIndex obj idx value =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv
@@ -9361,15 +9367,18 @@ private theorem closureConvert_step_simulation
           have heap_mono := Core_step_heap_size_mono hcstep_sub
           refine ⟨ValueAddrWF_mono hcv_wf heap_mono, hexprwf', ?_⟩
           exact ExprAddrWF_mono value (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.2) heap_mono
-        · have hval := convertExpr_state_determined value scope envVar envMap
+        · -- Use convertExpr_expr_eq_of_funcs_size (needs only funcs.size=, not nextId=)
+          have hval := convertExpr_expr_eq_of_funcs_size value scope envVar envMap
               (Flat.convertExpr idx scope envVar envMap st).snd
-              st_a' sorry /- hAgreeOut.1 -/ sorry /- hAgreeOut.2 — needs CCStateAgree equality, have CCStateAgreeWeak (≤) -/
+              st_a'
+              sorry /- funcs.size eq: needs (Flat.convertExpr idx ... st).snd.funcs.size = st_a'.funcs.size — have CCStateAgreeWeak (≤) -/
           refine ⟨st_a, (Flat.convertExpr value scope envVar envMap st_a').snd, ?_, hAgreeIn, ?_⟩
           · simp only [sc', Flat.convertExpr]
             rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from (congrArg Prod.fst hconv').symm]
             rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
             rw [hval.1]
-          · rw [hst]; exact hval.2
+          · rw [hst]
+            exact convertExpr_state_mono_preserve value scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2
     | none =>
       have hfnv : Flat.exprValue? (Flat.convertExpr obj scope envVar envMap st).fst = none :=
         convertExpr_not_value_supported obj hcev (by simp only [Core.Expr.supported, Bool.and_eq_true] at hsupp ⊢; first | exact hsupp | exact hsupp.1 | exact hsupp.2 | exact hsupp.1.1 | exact hsupp.1.2 | (simp only [Bool.and_eq_true] at hsupp; first | exact hsupp.1 | exact hsupp.2 | exact hsupp.2.1 | exact hsupp.2.2)) scope envVar envMap st
@@ -9438,18 +9447,22 @@ private theorem closureConvert_step_simulation
       · simp only [sc']; simp only [ExprAddrWF]; refine ⟨hexprwf', ?_, ?_⟩
         · exact ExprAddrWF_mono idx (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.1) (Core_step_heap_size_mono hcstep_sub)
         · exact ExprAddrWF_mono value (by simp [ExprAddrWF] at hexprwf; exact hexprwf.2.2) (Core_step_heap_size_mono hcstep_sub)
-      · have hidx := convertExpr_state_determined idx scope envVar envMap
-            (Flat.convertExpr obj scope envVar envMap st).snd st_a' sorry /- hAgreeOut.1 -/ sorry /- hAgreeOut.2 — needs CCStateAgree equality, have CCStateAgreeWeak (≤) -/
-        have hval := convertExpr_state_determined value scope envVar envMap
+      · -- Use convertExpr_expr_eq_of_funcs_size (needs only funcs.size=, not nextId=)
+        have hidx := convertExpr_expr_eq_of_funcs_size idx scope envVar envMap
+            (Flat.convertExpr obj scope envVar envMap st).snd st_a'
+            sorry /- funcs.size eq: needs (Flat.convertExpr obj ... st).snd.funcs.size = st_a'.funcs.size — have CCStateAgreeWeak (≤) -/
+        have hval := convertExpr_expr_eq_of_funcs_size value scope envVar envMap
             (Flat.convertExpr idx scope envVar envMap (Flat.convertExpr obj scope envVar envMap st).snd).snd
-            (Flat.convertExpr idx scope envVar envMap st_a').snd hidx.2.1 hidx.2.2
+            (Flat.convertExpr idx scope envVar envMap st_a').snd hidx.2
         refine ⟨st_a, (Flat.convertExpr value scope envVar envMap
             (Flat.convertExpr idx scope envVar envMap st_a').snd).snd, ?_, hAgreeIn, ?_⟩
         · simp only [sc', Flat.convertExpr]
           rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).fst = sa.expr from (congrArg Prod.fst hconv').symm]
           rw [show (Flat.convertExpr sc_sub'.expr scope envVar envMap st_a).snd = st_a' from (congrArg Prod.snd hconv').symm]
           rw [hidx.1, hval.1]
-        · rw [hst]; exact hval.2
+        · rw [hst]
+          have haw_idx := convertExpr_state_mono_preserve idx scope envVar envMap _ _ hAgreeOut.1 hAgreeOut.2
+          exact convertExpr_state_mono_preserve value scope envVar envMap _ _ haw_idx.1 haw_idx.2
   | deleteProp obj prop =>
     rw [hsc] at hconv hncfr hexprwf hd hsupp
     simp [Flat.convertExpr] at hconv

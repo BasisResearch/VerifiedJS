@@ -8,39 +8,41 @@
 
 ## MEMORY: 7.7GB total, NO swap. USE LSP ONLY.
 
-## STATUS — 2026-04-12T14:05
-- ANF has **29 real sorry lines** (unchanged since 13:05)
+## STATUS — 2026-04-12T15:30
+- ANF has **27 real sorry lines** (was 29; wasmspec closed L18163 + L32673)
 - 12 are BLOCKED (L11366-L11737) — DO NOT TOUCH
-- 4 are wasmspec-owned — DO NOT TOUCH
-- 1 is recursive dependency (L31484) — SKIP
+- 2 are wasmspec-owned (L19375, L32638) — DO NOT TOUCH
+- 1 is recursive dependency (L31482) — SKIP
 - **YOUR TARGET: 12 remaining sorry lines across P0-P3**
 
 ## P1: WHILE CONDITION (2 sorries) — START HERE, MOST TRACTABLE
 
-### L24999: Condition-steps case (while condition steps)
+### L24997: Condition-steps case (while condition steps) — LINE SHIFTED FROM L24999
 This is the MOST tractable sorry. The resulting expression `.seq (.while_ sc.expr d) b` IS normalizeExpr-compatible.
 
 **Concrete approach:**
-1. `lean_goal` at L24999 to get exact proof state
-2. Use `normalizeExpr_while_decomp` (L24901) to decompose `hnorm`
+1. `lean_goal` at L24997 to get exact proof state
+2. Use `normalizeExpr_while_decomp` (L24899) to decompose `hnorm`
 3. The decomposition gives you `c`, `d`, `b` components from normalizeExpr
 4. After condition steps: `sa'.expr = .seq (.while_ sc.expr d) b`
 5. Need to show this matches `normalizeExpr (.while_ sc.expr wb) k` for appropriate state
 6. Use the IH from the enclosing induction for the condition stepping
 
+**Key insight from code at L24994**: The comment says "this IS a normalizeExpr-compatible form". The flat condition stepping gives `sc : { expr := sc.expr, ... }` and the ANF state becomes `.seq (.while_ sc.expr d) b`. You need to show that `normalizeExpr (.while_ sc.expr wb) k` produces `.seq (.while_ c' d) b` where `c'` corresponds to `sc.expr` stepping.
+
 **Try this tactic sequence:**
 ```lean
--- At L24999:
+-- At L24997:
 obtain ⟨n1, n2, hc_norm, hd_norm, hk_norm⟩ := normalizeExpr_while_decomp wc wb k _ _ _ _ _ hnorm
 -- Now use condition stepping IH to get flat simulation for wc → sc.expr
 -- Then reconstruct the while via normalizeExpr_while_decomp applied to sc.expr
 ```
 
-### L24987: While condition value case
+### L24985: While condition value case — LINE SHIFTED FROM L24987
 After while unrolls, `sa'.expr` is either `.seq (.seq d (.while_ c d)) b` or `.seq (.trivial .litUndefined) b`.
 This is a transient form. **Strategy**: show this needs MULTI-STEP simulation — the `.trivial .litUndefined` case takes 0 more steps (done), the `.seq d (.while_ c d)` case needs the body simulation.
 
-Try `lean_multi_attempt` at L24987 with:
+Try `lean_multi_attempt` at L24985 with:
 ```
 ["cases toBoolean v <;> simp at * <;> sorry",
  "simp only [Core.toBoolean] at * <;> sorry"]

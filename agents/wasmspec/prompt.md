@@ -9,49 +9,19 @@
 
 ## MEMORY: ~500MB free. USE LSP ONLY — no builds.
 
-## STATUS — 2026-04-12T14:05
-- YOUR sorries: L18163, L19377, L32642, L32673 = **4 sorry lines**
+## STATUS — 2026-04-12T15:30
+- YOUR sorries: L19375, L32638 = **2 sorry lines** (was 4; you closed L18163 + L32673)
+- L19375: HasNonCallFrameTryCatchInHead (was L19377) — needs approach A/B/C from comment
+- L32638: noCallFrameReturn preservation in anfConvert_step_star_ncfr
 - All in ANFConvertCorrect.lean
 
-## P1: noCallFrameReturn for source (L32673) — START HERE, EASIEST
+## P1: DONE ✓ (closed 2026-04-12T14:25)
+L32673 precondition added. L18163 restructured into `suffices` proof.
+
+## P0: noCallFrameReturn preservation (L32638) — MEDIUM DIFFICULTY
 
 ```lean
-have hncfr_init : noCallFrameReturn (Flat.initialState s).expr = true :=
-  sorry /- noCallFrameReturn for source program -/
-```
-
-`Flat.initialState s` has `.expr = s.main` (see Flat/Semantics.lean:1213).
-So the goal is: `noCallFrameReturn s.main = true`.
-
-**This needs a precondition on the source program.** Check if `anfConvert_correct` (L32659) already has one. Currently it has:
-- `hna_prog : NoNestedAbrupt s.main`
-- `hfuncs_na_prog`, `hfuncs_ac_prog`
-
-**It does NOT have `noCallFrameReturn s.main = true`.**
-
-**Fix:** Add a new precondition to `anfConvert_correct`:
-```lean
-theorem anfConvert_correct (s : Flat.Program) (t : ANF.Program)
-    (h : ANF.convert s = .ok t)
-    (hwf_prog : ExprWellFormed s.main (Flat.initialState s).env)
-    (hna_prog : NoNestedAbrupt s.main)
-    (hncfr_prog : noCallFrameReturn s.main = true)  -- ADD THIS
-    (hfuncs_na_prog : ∀ (i : Nat) (fd : Flat.FuncDef), s.functions[i]? = some fd → NoNestedAbrupt fd.body)
-    (hfuncs_ac_prog : ∀ (i : Nat) (fd : Flat.FuncDef), s.functions[i]? = some fd → hasAbruptCompletion fd.body = false) :
-```
-
-Then L32673 becomes `exact hncfr_prog`.
-
-**IMPORTANT:** After adding this precondition, check that ALL callers of `anfConvert_correct` can provide it. Search for callers:
-```
-lean_local_search query="anfConvert_correct" file="VerifiedJS/Proofs/ANFConvertCorrect.lean"
-```
-Also check EndToEnd.lean for callers.
-
-## P0: noCallFrameReturn preservation (L32642) — MEDIUM DIFFICULTY
-
-```lean
-have hncfr2 : noCallFrameReturn sf2.expr = true := sorry
+sorry -- in anfConvert_step_star_ncfr, needs case analysis mirroring anfConvert_step_star
 ```
 
 **Need a new theorem:** `noCallFrameReturn_step_preserved`
@@ -97,14 +67,18 @@ Check `Flat.step?` for the call case:
 lean_hover_info file="VerifiedJS/Flat/Semantics.lean" line=1100 column=0
 ```
 
-## P2: HasNonCallFrameTryCatch (L18163, L19377) — HARD, DO AFTER P0/P1
+## P2: HasNonCallFrameTryCatch (L19375) — HARD, DO AFTER P0
 
-These depend on P0. Skip until P0 and P1 are done.
+This is the `sorry` at L19375 passed to `HasReturnInHead_Steps_steppable_core`.
+The comment at L19375-19389 lists 3 viable approaches (A/B/C).
+**Approach A** (thread noCallFrameReturn as precondition) aligns with your P1 work.
+Now that `noCallFrameReturn` precondition is threaded through `anfConvert_correct`,
+check if it's available in the context at L19375 and can close this sorry.
 
 ## EXECUTION ORDER:
-1. **P1 (L32673)** — Add precondition to anfConvert_correct, verify callers can provide it
-2. **P0 (L32642)** — Write noCallFrameReturn_step_preserved, following NoNestedAbrupt_step_preserved pattern
-3. **P2 (L18163, L19377)** — Only after P0/P1 done
+1. ~~P1 (L32673)~~ — DONE ✓
+2. **P0 (L32638)** — noCallFrameReturn preservation in anfConvert_step_star_ncfr
+3. **P2 (L19375)** — HasNonCallFrameTryCatchInHead, try Approach A with noCallFrameReturn precondition
 
 ## Also needed: `hfuncs_ncfr` precondition
 When you add `noCallFrameReturn_steps_preserved`, you'll also need `anfConvert_correct` to have:
