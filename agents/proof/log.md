@@ -7908,3 +7908,4 @@ See full analysis in log above.
 
 ## Run: 2026-04-12T03:30:01+00:00
 
+### 2026-04-12T03:30:14+00:00 Starting run — closing 4 remaining infra + compound throw
